@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 0.3.0 – 2026-06-07
+
+### Added
+- Turnierleiter-MVP: Teilnehmer im Dashboard bearbeiten, löschen, zurückziehen und reaktivieren.
+- Erweiterte Teilnehmerfelder im UI: Geburtsjahr, Geschlecht, DWZ, Elo, manuelle TWZ, FIDE-ID, DSB-ID, Titel, Status und Notizen.
+- Kategorieauswertungen für Frauen, U10/U12/U14/U16/U18/U25 und Senioren.
+- Kreuztabelle mit Ergebnisanzeige aus Spielersicht.
+- Heldenpokal-Auswertung auf Basis tatsächlicher Punkte minus erwarteter Punkte gegen Gegner-TWZ.
+- CSV-Import/-Export für Teilnehmer.
+- JSON-Backup/-Restore für ganze Turniere.
+- API-Endpunkte für Kreuztabelle, Kategorien, Heldenpokal und Import/Export.
+- Unit-Tests für Kreuztabelle, Kategorien, Heldenpokal und CSV-Import/-Export.
+
+### Changed
+- Dashboard auf Version 0.3.0 erweitert und Tabellenbereiche für große Turniere scrollbar gemacht.
+- Rundenturnier-Auslosung berücksichtigt nur aktive Spieler.
+
 ## 0.2.1 – 2026-06-07
 
 ### Fixed

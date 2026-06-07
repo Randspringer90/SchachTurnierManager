@@ -38,7 +38,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.2.0",
+    version = "0.3.0",
     time = DateTimeOffset.UtcNow,
     database = databasePath
 }));
@@ -70,6 +70,30 @@ app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
     }
 });
 
+app.MapPost("/api/tournaments/import", (ImportTournamentRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.SaveImportedTournament(request.Tournament, request.OverwriteExisting));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/export/json", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Json(service.RequireTournament(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 app.MapPost("/api/tournaments/{id:guid}/players", (Guid id, PlayerRequest request, TournamentService service) =>
 {
     try
@@ -94,6 +118,18 @@ app.MapPut("/api/tournaments/{id:guid}/players/{playerId:guid}", (Guid id, Guid 
     }
 });
 
+app.MapPatch("/api/tournaments/{id:guid}/players/{playerId:guid}/status", (Guid id, Guid playerId, UpdatePlayerStatusRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.SetPlayerStatus(id, playerId, request.Status));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
 app.MapDelete("/api/tournaments/{id:guid}/players/{playerId:guid}", (Guid id, Guid playerId, TournamentService service) =>
 {
     try
@@ -101,6 +137,30 @@ app.MapDelete("/api/tournaments/{id:guid}/players/{playerId:guid}", (Guid id, Gu
         return Results.Ok(service.RemovePlayer(id, playerId));
     }
     catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/players/export.csv", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Text(service.ExportPlayersCsv(id), "text/csv; charset=utf-8");
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/players/import.csv", (Guid id, ImportPlayersCsvRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.ImportPlayersCsv(id, request.Content, request.ReplaceExisting));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
         return Results.BadRequest(new { error = ex.Message });
     }
@@ -166,6 +226,42 @@ app.MapGet("/api/tournaments/{id:guid}/standings", (Guid id, TournamentService s
     }
 });
 
+app.MapGet("/api/tournaments/{id:guid}/cross-table", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.GetCrossTable(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/categories", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.GetCategoryStandings(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/hero-cup", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.GetHeroCup(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 app.MapGet("/api/tournaments/{id:guid}/audit", (Guid id, TournamentService service) =>
 {
     try
@@ -179,5 +275,3 @@ app.MapGet("/api/tournaments/{id:guid}/audit", (Guid id, TournamentService servi
 });
 
 app.Run();
-
-public sealed record RecordBoardResultRequest(int RoundNumber, int BoardNumber, GameResultKind Result);

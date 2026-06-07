@@ -37,3 +37,11 @@
 - [ ] Start-BAT/PowerShell ohne Entwicklerwerkzeuge.
 - [ ] Datenpfad unter AppData oder Projektdata konfigurierbar.
 - [ ] Windows-Installer evaluieren.
+
+
+## Nächster Fokus ab 0.3.0
+
+- Schweizer-System-Auslosung härten: Farbhistorie, Farbpräferenz, Bye-Regeln, Scoregroups und Floater-Audit.
+- Golden Tests mit realistischen Turnierverläufen.
+- Swiss-Chess/Swiss-Manager/Chess-Results-Adapter als Import-/Export-Schicht vorbereiten.
+- Portable Paket und spätere Windows-Installation ausbauen.

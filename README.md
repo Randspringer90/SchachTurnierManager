@@ -60,6 +60,17 @@ Dashboard:
 http://localhost:5173
 ```
 
+## Funktionen in 0.3.0
+
+- Turniere lokal anlegen und dauerhaft speichern.
+- Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
+- Schweizer-System-Basis und Rundenturnier-Runden erzeugen.
+- Ergebnisse erfassen und Live-Tabelle berechnen.
+- Kategorieauswertungen für Frauen, Jugendklassen und Senioren anzeigen.
+- Kreuztabelle und Heldenpokal anzeigen.
+- Teilnehmer per CSV importieren/exportieren.
+- Turnier per JSON sichern und wiederherstellen.
+
 ## Lokale Datenbank
 
 Die API legt die SQLite-Datenbank standardmäßig unter `%LOCALAPPDATA%\SchachTurnierManager\SchachTurnierManager.sqlite` an.
@@ -76,4 +87,4 @@ Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit
 
 ## Status
 
-Version 0.2.0: Persistentes MVP mit SQLite, API-Endpunkten, bedienbarem React-Dashboard, Frontend-Build-Fix, `.gitattributes`, erweitertem Testskript und Persistenztest. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
+Version 0.3.0: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-Import/-Export und JSON-Backup/-Restore. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.

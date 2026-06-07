@@ -17,4 +17,5 @@ public sealed record TournamentSettings
     };
     public bool AllowManualPairingOverrides { get; init; } = true;
     public int? SeniorBirthYearOrEarlier { get; init; }
+    public int HeroCupMinimumRatedGames { get; init; } = 1;
 }

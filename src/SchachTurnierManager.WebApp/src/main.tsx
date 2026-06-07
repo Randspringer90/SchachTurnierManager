@@ -23,11 +23,17 @@ type Player = {
   id: string;
   name: string;
   club?: string | null;
+  federation?: string | null;
+  country?: string | null;
   birthYear?: number | null;
   gender: number;
+  fideId?: string | null;
+  nationalId?: string | null;
+  title?: string | null;
   startingRank: number;
   rating: RatingProfile;
   status: number;
+  notes?: string | null;
 };
 
 type GameResult = {
@@ -61,16 +67,94 @@ type StandingRow = {
   buchholz: number;
   buchholzCutOne: number;
   sonnebornBerger: number;
+  averageOpponentRating: number;
   tournamentPerformance?: number | null;
   heroScore: number;
+  categories: Record<string, boolean>;
 };
 
 type Tournament = {
   id: string;
   name: string;
   createdOn: string;
+  settings: {
+    format: number;
+    scoringSystem: number;
+    twzSource: number;
+    plannedRounds: number;
+    seniorBirthYearOrEarlier?: number | null;
+    heroCupMinimumRatedGames: number;
+  };
   players: Player[];
   rounds: TournamentRound[];
+};
+
+type CategoryStandingTable = {
+  category: string;
+  rows: StandingRow[];
+};
+
+type CrossTable = {
+  players: CrossTablePlayer[];
+  rows: CrossTableRow[];
+};
+
+type CrossTablePlayer = {
+  playerId: string;
+  name: string;
+  rank: number;
+  startingRank: number;
+  points: number;
+};
+
+type CrossTableRow = {
+  playerId: string;
+  name: string;
+  rank: number;
+  points: number;
+  cells: CrossTableCell[];
+};
+
+type CrossTableCell = {
+  playerId: string;
+  opponentId: string;
+  isSelf: boolean;
+  roundNumber?: number | null;
+  boardNumber?: number | null;
+  color: number;
+  resultLabel: string;
+  points?: number | null;
+  isBye: boolean;
+  notes?: string | null;
+};
+
+type HeroCupRow = {
+  rank: number;
+  playerId: string;
+  name: string;
+  twz: number;
+  ratedGames: number;
+  actualScore: number;
+  expectedScore: number;
+  overPerformance: number;
+  averageOpponentRating: number;
+  tournamentPerformance?: number | null;
+  reason: string;
+};
+
+type PlayerForm = {
+  name: string;
+  club: string;
+  birthYear: string;
+  gender: number;
+  dwz: string;
+  elo: string;
+  manualTwz: string;
+  fideId: string;
+  nationalId: string;
+  title: string;
+  status: number;
+  notes: string;
 };
 
 const resultOptions = [
@@ -91,6 +175,35 @@ const formatOptions = [
   { value: 0, label: 'Jeder gegen Jeden' }
 ];
 
+const genderOptions = [
+  { value: 0, label: 'unbekannt' },
+  { value: 1, label: 'offen' },
+  { value: 2, label: 'weiblich' },
+  { value: 3, label: 'männlich' },
+  { value: 4, label: 'divers' }
+];
+
+const playerStatusOptions = [
+  { value: 0, label: 'aktiv' },
+  { value: 1, label: 'pausiert' },
+  { value: 2, label: 'zurückgezogen' }
+];
+
+const emptyPlayerForm: PlayerForm = {
+  name: '',
+  club: '',
+  birthYear: '',
+  gender: 0,
+  dwz: '',
+  elo: '',
+  manualTwz: '',
+  fideId: '',
+  nationalId: '',
+  title: '',
+  status: 0,
+  notes: ''
+};
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
@@ -109,8 +222,85 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return await response.json() as T;
 }
 
+async function requestText(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return await response.text();
+}
+
 function resultLabel(kind: number): string {
   return resultOptions.find(option => option.value === kind)?.label ?? String(kind);
+}
+
+function genderLabel(kind: number): string {
+  return genderOptions.find(option => option.value === kind)?.label ?? String(kind);
+}
+
+function statusLabel(kind: number): string {
+  return playerStatusOptions.find(option => option.value === kind)?.label ?? String(kind);
+}
+
+function twzOf(player: Player): number {
+  return player.rating.manualTwz ?? player.rating.dwz ?? player.rating.elo ?? 0;
+}
+
+function numberOrNull(value: string): number | null {
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : Number(trimmed);
+}
+
+function playerToForm(player: Player): PlayerForm {
+  return {
+    name: player.name,
+    club: player.club ?? '',
+    birthYear: player.birthYear?.toString() ?? '',
+    gender: player.gender,
+    dwz: player.rating.dwz?.toString() ?? '',
+    elo: player.rating.elo?.toString() ?? '',
+    manualTwz: player.rating.manualTwz?.toString() ?? '',
+    fideId: player.fideId ?? '',
+    nationalId: player.nationalId ?? '',
+    title: player.title ?? '',
+    status: player.status,
+    notes: player.notes ?? ''
+  };
+}
+
+function formToRequest(form: PlayerForm, startingRank?: number): unknown {
+  return {
+    name: form.name,
+    club: form.club || null,
+    federation: null,
+    country: null,
+    birthYear: numberOrNull(form.birthYear),
+    gender: form.gender,
+    elo: numberOrNull(form.elo),
+    rapidElo: null,
+    blitzElo: null,
+    dwz: numberOrNull(form.dwz),
+    dwzIndex: null,
+    manualTwz: numberOrNull(form.manualTwz),
+    fideId: form.fideId || null,
+    nationalId: form.nationalId || null,
+    title: form.title || null,
+    status: form.status,
+    notes: form.notes || null,
+    startingRank: startingRank ?? null
+  };
+}
+
+function downloadText(filename: string, content: string, type: string): void {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function App() {
@@ -118,36 +308,57 @@ function App() {
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [selectedId, setSelectedId] = React.useState<string>('');
   const [standings, setStandings] = React.useState<StandingRow[]>([]);
+  const [categories, setCategories] = React.useState<CategoryStandingTable[]>([]);
+  const [crossTable, setCrossTable] = React.useState<CrossTable | null>(null);
+  const [heroCup, setHeroCup] = React.useState<HeroCupRow[]>([]);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
-  const [playerName, setPlayerName] = React.useState('');
-  const [club, setClub] = React.useState('');
-  const [twz, setTwz] = React.useState('');
-  const [birthYear, setBirthYear] = React.useState('');
+  const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
+  const [editingPlayerId, setEditingPlayerId] = React.useState<string | null>(null);
+  const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
+  const [replacePlayers, setReplacePlayers] = React.useState(false);
+  const [backupJson, setBackupJson] = React.useState('');
   const [status, setStatus] = React.useState('Bereit.');
   const [error, setError] = React.useState<string | null>(null);
   const selectedTournament = tournaments.find(tournament => tournament.id === selectedId) ?? tournaments[0];
 
-  const loadTournaments = React.useCallback(async () => {
+  const loadTournaments = React.useCallback(async (): Promise<Tournament[]> => {
     const data = await requestJson<Tournament[]>('/api/tournaments');
     setTournaments(data);
     if (!selectedId && data.length > 0) {
       setSelectedId(data[0].id);
     }
+    return data;
   }, [selectedId]);
 
-  const loadStandings = React.useCallback(async (id: string) => {
+  const loadDerived = React.useCallback(async (id: string) => {
     if (!id) {
       setStandings([]);
+      setCategories([]);
+      setCrossTable(null);
+      setHeroCup([]);
       return;
     }
-    setStandings(await requestJson<StandingRow[]>(`/api/tournaments/${id}/standings`));
+
+    const [standingData, categoryData, crossTableData, heroCupData] = await Promise.all([
+      requestJson<StandingRow[]>(`/api/tournaments/${id}/standings`),
+      requestJson<CategoryStandingTable[]>(`/api/tournaments/${id}/categories`),
+      requestJson<CrossTable>(`/api/tournaments/${id}/cross-table`),
+      requestJson<HeroCupRow[]>(`/api/tournaments/${id}/hero-cup`)
+    ]);
+    setStandings(standingData);
+    setCategories(categoryData);
+    setCrossTable(crossTableData);
+    setHeroCup(heroCupData);
   }, []);
 
-  const refresh = React.useCallback(async (id?: string) => {
-    await loadTournaments();
-    await loadStandings(id ?? selectedTournament?.id ?? selectedId);
-  }, [loadStandings, loadTournaments, selectedId, selectedTournament?.id]);
+  const refresh = React.useCallback(async (preferredId?: string) => {
+    const data = await loadTournaments();
+    const id = preferredId ?? selectedTournament?.id ?? selectedId ?? data[0]?.id ?? '';
+    if (id) {
+      await loadDerived(id);
+    }
+  }, [loadDerived, loadTournaments, selectedId, selectedTournament?.id]);
 
   React.useEffect(() => {
     requestJson<Health>('/api/health')
@@ -158,9 +369,9 @@ function App() {
 
   React.useEffect(() => {
     if (selectedTournament?.id) {
-      loadStandings(selectedTournament.id).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+      loadDerived(selectedTournament.id).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
     }
-  }, [loadStandings, selectedTournament?.id]);
+  }, [loadDerived, selectedTournament?.id]);
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,7 +385,8 @@ function App() {
           scoringSystem: 0,
           twzSource: 0,
           plannedRounds: 5,
-          allowManualPairingOverrides: true
+          allowManualPairingOverrides: true,
+          heroCupMinimumRatedGames: 1
         }
       })
     });
@@ -183,40 +395,54 @@ function App() {
     await refresh(created.id);
   }
 
-  async function addPlayer(event: React.FormEvent<HTMLFormElement>) {
+  async function savePlayer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedTournament) {
       return;
     }
+
     setError(null);
-    await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players`, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: playerName,
-        club: club || null,
-        federation: null,
-        country: null,
-        birthYear: birthYear ? Number(birthYear) : null,
-        gender: 0,
-        elo: null,
-        rapidElo: null,
-        blitzElo: null,
-        dwz: null,
-        dwzIndex: null,
-        manualTwz: twz ? Number(twz) : null,
-        fideId: null,
-        nationalId: null,
-        title: null,
-        status: 0,
-        notes: null,
-        startingRank: null
-      })
+    const existing = editingPlayerId ? selectedTournament.players.find(player => player.id === editingPlayerId) : undefined;
+    const body = JSON.stringify(formToRequest(playerForm, existing?.startingRank));
+    if (editingPlayerId) {
+      await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${editingPlayerId}`, { method: 'PUT', body });
+      setStatus('Teilnehmer aktualisiert.');
+    } else {
+      await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players`, { method: 'POST', body });
+      setStatus('Teilnehmer gespeichert.');
+    }
+
+    setPlayerForm(emptyPlayerForm);
+    setEditingPlayerId(null);
+    await refresh(selectedTournament.id);
+  }
+
+  async function deleteOrWithdrawPlayer(player: Player) {
+    if (!selectedTournament) {
+      return;
+    }
+
+    setError(null);
+    await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}`, { method: 'DELETE' });
+    setStatus('Teilnehmer gelöscht oder zurückgezogen.');
+    if (editingPlayerId === player.id) {
+      setEditingPlayerId(null);
+      setPlayerForm(emptyPlayerForm);
+    }
+    await refresh(selectedTournament.id);
+  }
+
+  async function setPlayerStatus(player: Player, newStatus: number) {
+    if (!selectedTournament) {
+      return;
+    }
+
+    setError(null);
+    await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: newStatus })
     });
-    setPlayerName('');
-    setClub('');
-    setTwz('');
-    setBirthYear('');
-    setStatus('Teilnehmer gespeichert.');
+    setStatus(`Status für ${player.name} geändert.`);
     await refresh(selectedTournament.id);
   }
 
@@ -243,6 +469,50 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  async function importPlayers() {
+    if (!selectedTournament) {
+      return;
+    }
+
+    setError(null);
+    const imported = await requestJson<Player[]>(`/api/tournaments/${selectedTournament.id}/players/import.csv`, {
+      method: 'POST',
+      body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
+    });
+    setStatus(`${imported.length} Teilnehmer importiert.`);
+    await refresh(selectedTournament.id);
+  }
+
+  async function exportPlayers() {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const csv = await requestText(`/api/tournaments/${selectedTournament.id}/players/export.csv`);
+    downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
+  }
+
+  async function exportTournamentJson() {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const text = await requestText(`/api/tournaments/${selectedTournament.id}/export/json`);
+    setBackupJson(JSON.stringify(JSON.parse(text), null, 2));
+    downloadText(`${selectedTournament.name}-backup.json`, JSON.stringify(JSON.parse(text), null, 2), 'application/json;charset=utf-8');
+  }
+
+  async function importTournamentJson() {
+    const parsed = JSON.parse(backupJson) as Tournament;
+    const imported = await requestJson<Tournament>('/api/tournaments/import', {
+      method: 'POST',
+      body: JSON.stringify({ tournament: parsed, overwriteExisting: true })
+    });
+    setSelectedId(imported.id);
+    setStatus(`Turnier importiert: ${imported.name}`);
+    await refresh(imported.id);
+  }
+
   function playerNameById(id?: string | null): string {
     if (!id || !selectedTournament) {
       return '—';
@@ -250,13 +520,18 @@ function App() {
     return selectedTournament.players.find(player => player.id === id)?.name ?? id.slice(0, 8);
   }
 
+  function editPlayer(player: Player): void {
+    setEditingPlayerId(player.id);
+    setPlayerForm(playerToForm(player));
+  }
+
   return (
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.2.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.3.0</p>
           <h1>SchachTurnierManager</h1>
-          <p>Persistentes MVP mit SQLite, API, Teilnehmererfassung, Auslosung, Ergebnissen und Live-Tabelle.</p>
+          <p>Persistenter Turnierleiter mit SQLite, Teilnehmerpflege, Kategorien, Kreuztabelle, Heldenpokal und Im-/Export.</p>
         </div>
         <div className="status-card">
           <strong>Backend</strong>
@@ -275,8 +550,8 @@ function App() {
         <aside className="panel">
           <h2>Turniere</h2>
           <form onSubmit={(event) => void createTournament(event)} className="stack">
-            <input value={newTournamentName} onChange={event => setNewTournamentName(event.target.value)} placeholder="Turniername" />
-            <select value={format} onChange={event => setFormat(Number(event.target.value))}>
+            <input value={newTournamentName} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setNewTournamentName(event.target.value)} placeholder="Turniername" />
+            <select value={format} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setFormat(Number(event.target.value))}>
               {formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <button type="submit">Turnier anlegen</button>
@@ -301,54 +576,144 @@ function App() {
               <h2>{selectedTournament?.name ?? 'Noch kein Turnier'}</h2>
               <p>{selectedTournament ? `${selectedTournament.players.length} Teilnehmer · ${selectedTournament.rounds.length} Runden` : 'Lege zuerst ein Turnier an.'}</p>
             </div>
-            <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.length < 2}>Nächste Runde auslosen</button>
+            <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Nächste Runde auslosen</button>
           </div>
 
           <div className="grid two">
             <article className="card">
-              <h3>Teilnehmer erfassen</h3>
-              <form onSubmit={(event) => void addPlayer(event)} className="player-form">
-                <input value={playerName} onChange={event => setPlayerName(event.target.value)} placeholder="Name *" />
-                <input value={club} onChange={event => setClub(event.target.value)} placeholder="Verein" />
-                <input value={twz} onChange={event => setTwz(event.target.value)} placeholder="TWZ" type="number" min="0" />
-                <input value={birthYear} onChange={event => setBirthYear(event.target.value)} placeholder="Geburtsjahr" type="number" min="1900" max="2100" />
-                <button type="submit" disabled={!selectedTournament}>Speichern</button>
+              <h3>{editingPlayerId ? 'Teilnehmer bearbeiten' : 'Teilnehmer erfassen'}</h3>
+              <form onSubmit={(event) => void savePlayer(event)} className="player-form wide">
+                <input value={playerForm.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, name: event.target.value })} placeholder="Name *" />
+                <input value={playerForm.club} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, club: event.target.value })} placeholder="Verein" />
+                <input value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder="Geburtsjahr" type="number" min="1900" max="2100" />
+                <select value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
+                  {genderOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <input value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
+                <input value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo" type="number" min="0" />
+                <input value={playerForm.manualTwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, manualTwz: event.target.value })} placeholder="TWZ manuell" type="number" min="0" />
+                <input value={playerForm.fideId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, fideId: event.target.value })} placeholder="FIDE-ID" />
+                <input value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
+                <input value={playerForm.title} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, title: event.target.value })} placeholder="Titel" />
+                <select value={playerForm.status} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, status: Number(event.target.value) })}>
+                  {playerStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <input value={playerForm.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, notes: event.target.value })} placeholder="Notizen" />
+                <button type="submit" disabled={!selectedTournament}>{editingPlayerId ? 'Aktualisieren' : 'Speichern'}</button>
+                {editingPlayerId && <button type="button" className="secondary" onClick={() => { setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); }}>Abbrechen</button>}
               </form>
-              <table>
-                <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>TWZ</th></tr></thead>
-                <tbody>
-                  {selectedTournament?.players.map(player => (
-                    <tr key={player.id}>
-                      <td>{player.startingRank}</td>
-                      <td>{player.name}</td>
-                      <td>{player.club ?? '—'}</td>
-                      <td>{player.rating.manualTwz ?? player.rating.dwz ?? player.rating.elo ?? 0}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </article>
 
             <article className="card">
+              <h3>Teilnehmerliste</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>TWZ</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
+                  <tbody>
+                    {selectedTournament?.players.map(player => (
+                      <tr key={player.id} className={player.status === 2 ? 'muted-row' : ''}>
+                        <td>{player.startingRank}</td>
+                        <td>{player.name}</td>
+                        <td>{player.club ?? '—'}</td>
+                        <td>{twzOf(player)}</td>
+                        <td>{genderLabel(player.gender)} {player.birthYear ? `· ${player.birthYear}` : ''}</td>
+                        <td>{statusLabel(player.status)}</td>
+                        <td className="actions">
+                          <button type="button" className="small" onClick={() => editPlayer(player)}>Bearbeiten</button>
+                          {player.status === 0
+                            ? <button type="button" className="small" onClick={() => void setPlayerStatus(player, 2)}>Zurückziehen</button>
+                            : <button type="button" className="small" onClick={() => void setPlayerStatus(player, 0)}>Aktivieren</button>}
+                          <button type="button" className="small danger" onClick={() => void deleteOrWithdrawPlayer(player)}>Löschen</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+
+          <div className="grid two">
+            <article className="card">
               <h3>Live-Tabelle</h3>
-              <table>
-                <thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>BH</th><th>SB</th><th>TPR</th></tr></thead>
+              <div className="table-scroll">
+                <table>
+                  <thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>BH</th><th>SB</th><th>TPR</th></tr></thead>
+                  <tbody>
+                    {standings.map(row => (
+                      <tr key={row.playerId}>
+                        <td>{row.rank}</td>
+                        <td>{row.name}</td>
+                        <td>{row.points}</td>
+                        <td>{row.wins}</td>
+                        <td>{row.buchholz}</td>
+                        <td>{row.sonnebornBerger}</td>
+                        <td>{row.tournamentPerformance ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <article className="card">
+              <h3>Heldenpokal</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead><tr><th>Rang</th><th>Name</th><th>Über Erwartung</th><th>Ist</th><th>Erwartet</th><th>Ø Gegner</th></tr></thead>
+                  <tbody>
+                    {heroCup.map(row => (
+                      <tr key={row.playerId}>
+                        <td>{row.rank}</td>
+                        <td title={row.reason}>{row.name}</td>
+                        <td>{row.overPerformance}</td>
+                        <td>{row.actualScore}/{row.ratedGames}</td>
+                        <td>{row.expectedScore}</td>
+                        <td>{row.averageOpponentRating}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+
+          <article className="card">
+            <h3>Kategorieauswertungen</h3>
+            {categories.length === 0 && <p>Noch keine Kategorie mit passenden Spielern.</p>}
+            <div className="category-grid">
+              {categories.map(category => (
+                <section key={category.category} className="mini-table">
+                  <h4>{category.category}</h4>
+                  <table>
+                    <tbody>
+                      {category.rows.map(row => <tr key={row.playerId}><td>{row.rank}</td><td>{row.name}</td><td>{row.points}</td></tr>)}
+                    </tbody>
+                  </table>
+                </section>
+              ))}
+            </div>
+          </article>
+
+          <article className="card">
+            <h3>Kreuztabelle</h3>
+            <div className="table-scroll">
+              <table className="cross-table">
+                <thead>
+                  <tr><th>Spieler</th>{crossTable?.players.map(player => <th key={player.playerId}>{player.rank}</th>)}<th>Pkt.</th></tr>
+                </thead>
                 <tbody>
-                  {standings.map(row => (
+                  {crossTable?.rows.map(row => (
                     <tr key={row.playerId}>
-                      <td>{row.rank}</td>
-                      <td>{row.name}</td>
+                      <th>{row.rank}. {row.name}</th>
+                      {row.cells.map(cell => <td key={cell.opponentId} title={cell.roundNumber ? `R${cell.roundNumber}, Brett ${cell.boardNumber}` : undefined}>{cell.resultLabel}</td>)}
                       <td>{row.points}</td>
-                      <td>{row.wins}</td>
-                      <td>{row.buchholz}</td>
-                      <td>{row.sonnebornBerger}</td>
-                      <td>{row.tournamentPerformance ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </article>
-          </div>
+            </div>
+          </article>
 
           <article className="card">
             <h3>Runden und Ergebnisse</h3>
@@ -356,30 +721,55 @@ function App() {
             {selectedTournament?.rounds.map(round => (
               <section key={round.roundNumber} className="round-box">
                 <h4>Runde {round.roundNumber}</h4>
-                <table>
-                  <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Speichern</th></tr></thead>
-                  <tbody>
-                    {round.pairings.map(pairing => (
-                      <tr key={`${round.roundNumber}-${pairing.boardNumber}`}>
-                        <td>{pairing.boardNumber}</td>
-                        <td>{playerNameById(pairing.whitePlayerId)}</td>
-                        <td>{pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
-                        <td>{resultLabel(pairing.result.kind)}</td>
-                        <td>
-                          <select
-                            value={pairing.result.kind}
-                            onChange={event => void recordResult(round.roundNumber, pairing.boardNumber, Number(event.target.value))}
-                            disabled={pairing.isBye}
-                          >
-                            {resultOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="table-scroll">
+                  <table>
+                    <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Speichern</th></tr></thead>
+                    <tbody>
+                      {round.pairings.map(pairing => (
+                        <tr key={`${round.roundNumber}-${pairing.boardNumber}`}>
+                          <td>{pairing.boardNumber}</td>
+                          <td>{playerNameById(pairing.whitePlayerId)}</td>
+                          <td>{pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                          <td>{resultLabel(pairing.result.kind)}</td>
+                          <td>
+                            <select
+                              value={pairing.result.kind}
+                              onChange={(event: React.ChangeEvent<HTMLSelectElement>) => void recordResult(round.roundNumber, pairing.boardNumber, Number(event.target.value))}
+                              disabled={pairing.isBye}
+                            >
+                              {resultOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </section>
             ))}
+          </article>
+
+          <article className="card">
+            <h3>Import / Export</h3>
+            <div className="grid two">
+              <section>
+                <h4>Teilnehmer-CSV</h4>
+                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setCsvContent(event.target.value)} rows={7} />
+                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setReplacePlayers(event.target.checked)} /> vorhandene Teilnehmer ersetzen</label>
+                <div className="actions">
+                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament}>CSV importieren</button>
+                  <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>CSV exportieren</button>
+                </div>
+              </section>
+              <section>
+                <h4>JSON-Backup</h4>
+                <textarea value={backupJson} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setBackupJson(event.target.value)} rows={7} placeholder="Backup-JSON hier einfügen oder exportieren" />
+                <div className="actions">
+                  <button type="button" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup exportieren</button>
+                  <button type="button" className="secondary" onClick={() => void importTournamentJson()} disabled={!backupJson.trim()}>Backup importieren</button>
+                </div>
+              </section>
+            </div>
           </article>
         </section>
       </section>

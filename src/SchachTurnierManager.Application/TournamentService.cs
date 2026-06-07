@@ -9,6 +9,9 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly RoundRobinPairingEngine _roundRobin = new();
     private readonly SwissPairingEngine _swiss = new();
     private readonly StandingsCalculator _standings = new();
+    private readonly CrossTableCalculator _crossTable = new();
+    private readonly CategoryStandingsCalculator _categoryStandings = new();
+    private readonly HeroCupCalculator _heroCup = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -28,6 +31,23 @@ public sealed class TournamentService(ITournamentStore store)
         return tournament;
     }
 
+    public TournamentState SaveImportedTournament(TournamentState tournament, bool overwriteExisting)
+    {
+        if (string.IsNullOrWhiteSpace(tournament.Name))
+        {
+            throw new ArgumentException("Importiertes Turnier hat keinen Namen.", nameof(tournament));
+        }
+
+        if (!overwriteExisting && _store.Get(tournament.Id) is not null)
+        {
+            throw new InvalidOperationException($"Turnier {tournament.Id} existiert bereits.");
+        }
+
+        EnsureUniquePlayerNames(tournament);
+        _store.Save(tournament);
+        return tournament;
+    }
+
     public Player AddPlayer(Guid tournamentId, Player player)
     {
         var tournament = RequireTournament(tournamentId);
@@ -36,6 +56,43 @@ public sealed class TournamentService(ITournamentStore store)
         tournament.Players.Add(normalized);
         _store.Save(tournament);
         return normalized;
+    }
+
+    public IReadOnlyList<Player> ImportPlayersCsv(Guid tournamentId, string csv, bool replaceExisting)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var importedPlayers = PlayerCsvCodec.ImportPlayers(csv);
+        if (importedPlayers.Count == 0)
+        {
+            return Array.Empty<Player>();
+        }
+
+        if (replaceExisting)
+        {
+            if (tournament.Rounds.Count > 0)
+            {
+                throw new InvalidOperationException("Teilnehmer können nach ausgelosten Runden nicht vollständig ersetzt werden. Nutze stattdessen Ergänzen oder lege ein neues Turnier an.");
+            }
+
+            tournament.Players.Clear();
+        }
+
+        var added = new List<Player>();
+        foreach (var player in importedPlayers)
+        {
+            var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
+            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+            tournament.Players.Add(normalized);
+            added.Add(normalized);
+        }
+
+        _store.Save(tournament);
+        return added;
+    }
+
+    public string ExportPlayersCsv(Guid tournamentId)
+    {
+        return PlayerCsvCodec.ExportPlayers(RequireTournament(tournamentId).Players);
     }
 
     public Player UpdatePlayer(Guid tournamentId, Guid playerId, Player player)
@@ -57,6 +114,21 @@ public sealed class TournamentService(ITournamentStore store)
         tournament.Players[index] = normalized;
         _store.Save(tournament);
         return normalized;
+    }
+
+    public Player SetPlayerStatus(Guid tournamentId, Guid playerId, PlayerStatus status)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var index = tournament.Players.FindIndex(p => p.Id == playerId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
+        }
+
+        var existing = tournament.Players[index];
+        tournament.Players[index] = existing with { Status = status };
+        _store.Save(tournament);
+        return tournament.Players[index];
     }
 
     public Player RemovePlayer(Guid tournamentId, Guid playerId)
@@ -150,6 +222,21 @@ public sealed class TournamentService(ITournamentStore store)
         return _standings.Calculate(RequireTournament(tournamentId));
     }
 
+    public CrossTable GetCrossTable(Guid tournamentId)
+    {
+        return _crossTable.Calculate(RequireTournament(tournamentId));
+    }
+
+    public IReadOnlyList<CategoryStandingTable> GetCategoryStandings(Guid tournamentId)
+    {
+        return _categoryStandings.Calculate(RequireTournament(tournamentId));
+    }
+
+    public IReadOnlyList<HeroCupRow> GetHeroCup(Guid tournamentId)
+    {
+        return _heroCup.Calculate(RequireTournament(tournamentId));
+    }
+
     public IReadOnlyList<PairingAudit> GetAudit(Guid tournamentId)
     {
         return RequireTournament(tournamentId).Rounds.Select(r => r.Audit).ToList();
@@ -162,7 +249,7 @@ public sealed class TournamentService(ITournamentStore store)
 
     private TournamentRound GetNextRoundRobinRound(TournamentState tournament)
     {
-        var all = _roundRobin.GenerateAllRounds(tournament.Players, tournament.Settings.TwzSource);
+        var all = _roundRobin.GenerateAllRounds(tournament.Players.Where(p => p.IsActive).ToList(), tournament.Settings.TwzSource);
         if (tournament.Rounds.Count >= all.Count)
         {
             throw new InvalidOperationException("Alle Rundenturnier-Runden wurden bereits erzeugt.");
@@ -203,6 +290,17 @@ public sealed class TournamentService(ITournamentStore store)
         if (tournament.Players.Any(p => p.Id != ownId && string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidOperationException($"Ein Spieler mit dem Namen '{name}' existiert bereits in diesem Turnier.");
+        }
+    }
+
+    private static void EnsureUniquePlayerNames(TournamentState tournament)
+    {
+        var duplicate = tournament.Players
+            .GroupBy(player => player.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new InvalidOperationException($"Der Spielername '{duplicate.Key}' kommt mehrfach vor.");
         }
     }
 

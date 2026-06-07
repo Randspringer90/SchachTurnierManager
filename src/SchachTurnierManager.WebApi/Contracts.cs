@@ -55,3 +55,11 @@ public sealed record PlayerRequest(
 }
 
 public sealed record RecordResultRequest(GameResultKind Result);
+
+public sealed record RecordBoardResultRequest(int RoundNumber, int BoardNumber, GameResultKind Result);
+
+public sealed record UpdatePlayerStatusRequest(PlayerStatus Status);
+
+public sealed record ImportPlayersCsvRequest(string Content, bool ReplaceExisting = false);
+
+public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = true);
