@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.2.1 – 2026-06-07
+
+### Fixed
+- Stabilisiert den SQLite-Persistenztest: Testdatenbank liegt jetzt in einem eigenen temporären Verzeichnis, SQLite-Pooling ist deaktiviert, Connection-Pools werden vor dem Cleanup geleert und der Cleanup wiederholt Datei-/Ordnerlöschungen kurz.
+- Behebt den lokalen Testfehler `IOException: ... sqlite ... used by another process` in `SqliteTournamentStoreTests`.
+
 ## 0.2.0 – 2026-06-07
 
 ### Added

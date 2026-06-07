@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using SchachTurnierManager.Application;
 using SchachTurnierManager.Domain.Models;
@@ -11,12 +12,13 @@ public sealed class SqliteTournamentStoreTests
     [Fact]
     public void SaveAndReload_PreservesPlayersRoundsAndResults()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}.sqlite");
+        var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testDirectory);
+        var databasePath = Path.Combine(testDirectory, "tournament.sqlite");
+
         try
         {
-            var options = new DbContextOptionsBuilder<TournamentDbContext>()
-                .UseSqlite($"Data Source={databasePath}")
-                .Options;
+            var options = CreateOptions(databasePath);
 
             using (var db = new TournamentDbContext(options))
             {
@@ -42,10 +44,51 @@ public sealed class SqliteTournamentStoreTests
         }
         finally
         {
-            if (File.Exists(databasePath))
+            DeleteTestDirectory(testDirectory);
+        }
+    }
+
+    private static DbContextOptions<TournamentDbContext> CreateOptions(string databasePath)
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath,
+            Pooling = false
+        }.ToString();
+
+        return new DbContextOptionsBuilder<TournamentDbContext>()
+            .UseSqlite(connectionString)
+            .Options;
+    }
+
+    private static void DeleteTestDirectory(string testDirectory)
+    {
+        SqliteConnection.ClearAllPools();
+
+        for (var attempt = 1; attempt <= 5; attempt++)
+        {
+            try
             {
-                File.Delete(databasePath);
+                if (Directory.Exists(testDirectory))
+                {
+                    Directory.Delete(testDirectory, recursive: true);
+                }
+
+                return;
             }
+            catch (IOException) when (attempt < 5)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(100 * attempt));
+            }
+            catch (UnauthorizedAccessException) when (attempt < 5)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(100 * attempt));
+            }
+        }
+
+        if (Directory.Exists(testDirectory))
+        {
+            Directory.Delete(testDirectory, recursive: true);
         }
     }
 }
