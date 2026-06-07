@@ -20,7 +20,7 @@ public sealed class CrossTableCalculatorTests
                 new TournamentRound
                 {
                     RoundNumber = 1,
-                    Pairings = { Pairing.Game(1, white.Id, black.Id) with { Result = new GameResult(GameResultKind.WhiteWin) } }
+                    Pairings = new[] { Pairing.Game(1, white.Id, black.Id) with { Result = new GameResult(GameResultKind.WhiteWin) } }
                 }
             }
         };

@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.3.1 – 2026-06-07
+
+### Fixed
+- Behebt die Kompilierfehler in `CrossTableCalculatorTests` und `HeroCupCalculatorTests`: `TournamentRound.Pairings` ist `IReadOnlyList<Pairing>` und muss in Tests per Array/Collection-Initializer gesetzt werden.
+- `scripts\Test-All.ps1` und `scripts\After-Apply-V0.3.ps1` brechen jetzt bei fehlgeschlagenen externen Befehlen zuverlässig ab.
+
+### Changed
+- `scripts\Start-Dev.ps1` wartet nun kurz auf Backend und Frontend, bevor der Browser geöffnet wird. Dadurch werden anfängliche Vite-Proxy-Fehler durch noch nicht gestartetes Backend reduziert.
+- Zusätzliches Skript `scripts\After-Apply-V0.3.1.ps1` für die Stabilisierungskontrolle.
+
 ## 0.3.0 – 2026-06-07
 
 ### Added

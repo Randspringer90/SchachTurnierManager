@@ -20,7 +20,7 @@ public sealed class HeroCupCalculatorTests
                 new TournamentRound
                 {
                     RoundNumber = 1,
-                    Pairings = { Pairing.Game(1, underdog.Id, favorite.Id) with { Result = new GameResult(GameResultKind.WhiteWin) } }
+                    Pairings = new[] { Pairing.Game(1, underdog.Id, favorite.Id) with { Result = new GameResult(GameResultKind.WhiteWin) } }
                 }
             }
         };

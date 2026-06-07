@@ -1,9 +1,29 @@
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path "$PSScriptRoot\.."
+
+function Invoke-Checked {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][scriptblock]$Command
+    )
+
+    Write-Host "[Test-All] $Label..."
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "Schritt fehlgeschlagen ($Label). ExitCode=$LASTEXITCODE"
+    }
+}
+
 Set-Location $root
-dotnet restore
-dotnet build --no-restore
-dotnet test --no-build
+Invoke-Checked "dotnet restore" { dotnet restore }
+Invoke-Checked "dotnet build" { dotnet build --no-restore }
+Invoke-Checked "dotnet test" { dotnet test --no-build }
+
 Set-Location (Join-Path $root "src\SchachTurnierManager.WebApp")
-if (-not (Test-Path node_modules)) { npm install }
-npm run build
+if (-not (Test-Path node_modules)) {
+    Invoke-Checked "npm install" { npm install }
+}
+Invoke-Checked "npm run build" { npm run build }
+
+Set-Location $root
+Write-Host "[Test-All] Alle Prüfungen abgeschlossen."
