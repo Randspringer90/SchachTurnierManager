@@ -1,3 +1,4 @@
+using Xunit;
 using SchachTurnierManager.Domain.Models;
 
 namespace SchachTurnierManager.Application.Tests;

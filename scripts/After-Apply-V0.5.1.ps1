@@ -9,7 +9,7 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][scriptblock]$Command
     )
 
-    Write-Host "[v0.5] $Label..."
+    Write-Host "[v0.5.1] $Label..."
     & $Command
     if ($LASTEXITCODE -ne 0) {
         throw "Schritt fehlgeschlagen ($Label). ExitCode=$LASTEXITCODE"
@@ -29,4 +29,4 @@ finally {
     Pop-Location
 }
 
-Write-Host '[v0.5] Nachkontrolle abgeschlossen. Bitte danach git status prüfen und committen.'
+Write-Host '[v0.5.1] Nachkontrolle abgeschlossen. Bitte danach git status prüfen und committen.'

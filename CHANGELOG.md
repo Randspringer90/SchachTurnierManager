@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.5.0 - Manuelle Paarungen und Rundensperren
+## 0.5.1 - Stabilisierung Workflow-Tests und Checkpoint-Skripte
+
+- Fehlendes `using Xunit;` in `RoundWorkflowTests` ergänzt.
+- `After-Apply-V0.5.ps1`, `After-Apply-V0.5.1.ps1` und `Commit-Checkpoint.ps1` brechen jetzt zuverlässig bei fehlgeschlagenen nativen Befehlen ab.
+- Checkpoint-Commits werden nicht mehr ausgeführt, wenn Build/Test/Frontend-Build fehlschlagen.
+
+## 0.5.1 - Manuelle Paarungen und Rundensperren
 
 - Manuelle Paarungskorrekturen pro Brett ergänzt.
 - Rundensperre und Prüfstatus ergänzt.
