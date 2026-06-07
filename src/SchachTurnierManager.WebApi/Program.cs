@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SchachTurnierManager.Application;
 using SchachTurnierManager.Domain.Models;
@@ -38,7 +39,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.6.0",
+    version = "0.7.0",
     time = DateTimeOffset.UtcNow,
     database = databasePath
 }));
@@ -334,4 +335,57 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/diagnostics", (G
     }
 });
 
+app.MapGet("/api/tournaments/{id:guid}/standings/export.csv", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportStandingsCsv(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/pairings/export.csv", (Guid id, int? roundNumber, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportPairingsCsv(id, roundNumber));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/print/html", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportPrintableTournamentHtml(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/print/html", (Guid id, int roundNumber, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportPrintableRoundHtml(id, roundNumber));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 app.Run();
+
+static IResult ToDownload(ExportDocument document)
+{
+    return Results.File(Encoding.UTF8.GetBytes(document.Content), document.ContentType, document.FileName);
+}

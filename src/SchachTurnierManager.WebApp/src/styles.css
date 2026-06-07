@@ -383,3 +383,15 @@ th {
 .warning-row {
   background: rgba(245, 158, 11, 0.08);
 }
+
+.vertical-actions {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.round-print-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}

@@ -60,7 +60,7 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen in 0.4.0
+## Funktionen bis 0.7.0
 
 - Turniere lokal anlegen und dauerhaft speichern.
 - Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
@@ -70,6 +70,8 @@ http://localhost:5173
 - Kreuztabelle, Heldenpokal und Rundenaudit anzeigen.
 - Teilnehmer per CSV importieren/exportieren.
 - Turnier per JSON sichern und wiederherstellen.
+- Tabelle und Paarungen als CSV exportieren.
+- Turnierbericht und Rundenblätter als HTML-Druckansicht erzeugen.
 
 ## Lokale Datenbank
 

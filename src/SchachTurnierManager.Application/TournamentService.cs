@@ -13,6 +13,7 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly CategoryStandingsCalculator _categoryStandings = new();
     private readonly HeroCupCalculator _heroCup = new();
     private readonly RoundDiagnosticsCalculator _roundDiagnostics = new();
+    private readonly TournamentExportFormatter _exports = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -358,6 +359,35 @@ public sealed class TournamentService(ITournamentStore store)
     public IReadOnlyList<HeroCupRow> GetHeroCup(Guid tournamentId)
     {
         return _heroCup.Calculate(RequireTournament(tournamentId));
+    }
+
+
+    public ExportDocument ExportStandingsCsv(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportStandingsCsv(tournament, _standings.Calculate(tournament));
+    }
+
+    public ExportDocument ExportPairingsCsv(Guid tournamentId, int? roundNumber = null)
+    {
+        return _exports.ExportPairingsCsv(RequireTournament(tournamentId), roundNumber);
+    }
+
+    public ExportDocument ExportPrintableTournamentHtml(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportPrintableTournamentHtml(
+            tournament,
+            _standings.Calculate(tournament),
+            _roundDiagnostics.Calculate(tournament));
+    }
+
+    public ExportDocument ExportPrintableRoundHtml(Guid tournamentId, int roundNumber)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        var round = tournament.Rounds[roundIndex];
+        return _exports.ExportPrintableRoundHtml(tournament, round, _roundDiagnostics.Calculate(tournament, round));
     }
 
     public IReadOnlyList<PairingAudit> GetAudit(Guid tournamentId)

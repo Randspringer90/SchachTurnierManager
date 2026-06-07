@@ -628,6 +628,22 @@ function App() {
     downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
   }
 
+  function openTournamentExport(path: string) {
+    if (!selectedTournament) {
+      return;
+    }
+
+    window.open(`/api/tournaments/${selectedTournament.id}/${path}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function openRoundPrint(roundNumber: number) {
+    if (!selectedTournament) {
+      return;
+    }
+
+    window.open(`/api/tournaments/${selectedTournament.id}/rounds/${roundNumber}/print/html`, '_blank', 'noopener,noreferrer');
+  }
+
   async function exportTournamentJson() {
     if (!selectedTournament) {
       return;
@@ -669,7 +685,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.6.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.7.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -981,6 +997,20 @@ function App() {
                 <div className="actions">
                   <button type="button" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup exportieren</button>
                   <button type="button" className="secondary" onClick={() => void importTournamentJson()} disabled={!backupJson.trim()}>Backup importieren</button>
+                </div>
+              </section>
+              <section>
+                <h4>Druck / Aushang</h4>
+                <p className="muted">Erzeugt lokale CSV-/HTML-Dateien für Tabelle, Paarungen, Rundenblatt und kompletten Turnierbericht.</p>
+                <div className="actions vertical-actions">
+                  <button type="button" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle als CSV</button>
+                  <button type="button" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen als CSV</button>
+                  <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnier-Druckansicht</button>
+                </div>
+                <div className="round-print-list">
+                  {selectedTournament?.rounds.map(round => (
+                    <button key={`print-${round.roundNumber}`} type="button" className="small secondary" onClick={() => openRoundPrint(round.roundNumber)}>Runde {round.roundNumber} drucken</button>
+                  ))}
                 </div>
               </section>
             </div>

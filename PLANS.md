@@ -30,6 +30,7 @@
 - [x] Swiss-Pairing in Richtung FIDE Dutch vorbereitend ausbauen: Scoregroups, Floater-Audit, Bye-Schutz, Farbhistorie.
 - [x] Golden-/Unit-Tests mit Pairing-Fällen für Bye, Rematch und Farben.
 - [ ] Buchholz-Feinheiten, kampflose Partien, Cut-Wertungen sauber spezifizieren.
+- [x] Druck-/CSV-Export für Tabelle und Paarungen als lokale Adaptergrundlage.
 - [ ] Import/Export-Adapter für Swiss-/Chess-Results-Ökosystem untersuchen.
 
 ## v0.5 – Installation
@@ -64,3 +65,16 @@
 - Kampflos-/Bye-Wertungen fachlich schärfen.
 - Buchholz/SB/Cut-Wertungen für kampflose Ergebnisse präzisieren.
 - Erweiterte Ergebnisvalidierung und Rundenabschluss-Workflow.
+
+
+## Abgeschlossen in 0.7.0
+
+- Tabellen-CSV und Paarungs-CSV ergänzt.
+- HTML-Druckansicht für Turnierbericht und einzelne Rundenblätter ergänzt.
+- Dashboard-Druck-/Exportbereich erweitert.
+
+## Nächster Fokus 0.8.0
+
+- Portable Publish inklusive statischem Frontend über Backend.
+- Startskript für Nicht-Entwickler.
+- Optionaler Datenpfad/Backup-Ordner im UI.

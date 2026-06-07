@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 - Druckansichten und Exportpaket
+
+- CSV-Export für Gesamtwertung ergänzt.
+- CSV-Export für alle Paarungen oder eine einzelne Runde ergänzt.
+- HTML-Druckansicht für kompletten Turnierbericht ergänzt.
+- HTML-Druckansicht für einzelne Rundenblätter ergänzt.
+- Dashboard-Buttons für Tabelle, Paarungen, Turnierbericht und Rundenblätter ergänzt.
+- Export-Formatter mit Tests für CSV/HTML-Ausgaben ergänzt.
+
 ## 0.6.0 - Stabilisierung Workflow-Tests und Checkpoint-Skripte
 
 - Fehlendes `using Xunit;` in `RoundWorkflowTests` ergänzt.
