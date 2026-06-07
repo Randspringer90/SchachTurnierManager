@@ -58,6 +58,14 @@ public enum TiebreakType
     StartingRank = 99
 }
 
+public enum RoundResultStatus
+{
+    Open = 0,
+    Complete = 1,
+    Verified = 2,
+    Locked = 3
+}
+
 public enum GameResultKind
 {
     NotPlayed = 0,

@@ -45,3 +45,17 @@
 - Buchholz-/kampflos-/Cut-Wertungsdetails präzisieren und testen.
 - Swiss-Chess/Swiss-Manager/Chess-Results-Adapter als Import-/Export-Schicht vorbereiten.
 - Portable Paket und spätere Windows-Installation ausbauen.
+
+
+## Abgeschlossen in 0.5.0
+
+- Manuelle Paarungsänderungen mit Audit.
+- Runden sperren/entsperren und als geprüft markieren.
+- Ergebnisänderungen in geschlossenen Runden blockieren.
+- Checkpoint-Commit-Skript.
+
+## Nächster Fokus 0.6.0
+
+- Kampflos-/Bye-Wertungen fachlich schärfen.
+- Buchholz/SB/Cut-Wertungen für kampflose Ergebnisse präzisieren.
+- Erweiterte Ergebnisvalidierung und Rundenabschluss-Workflow.

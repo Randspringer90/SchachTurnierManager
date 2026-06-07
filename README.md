@@ -87,9 +87,18 @@ Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit
 
 ## Status
 
-Version 0.4.1: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export und gehärteter Schweizer-System-Auslosung V2. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
+Version 0.5.0: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export und gehärteter Schweizer-System-Auslosung V2. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
 
 
 ## Entwicklerstart-Hinweis
 
 `scripts/Start-Dev.ps1` öffnet das Dashboard bewusst über `http://127.0.0.1:5173`, weil Vite lokal an IPv4 gebunden ist und `localhost` je nach Windows-/Browser-Konfiguration zuerst IPv6 auflösen kann.
+
+
+## Regelmäßige Checkpoint-Commits
+
+Nach einem grünen Stand kann ein geprüfter Commit mit folgendem Skript erstellt werden:
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-Checkpoint.ps1" -Message "Checkpoint: Beschreibung" -Push
+```

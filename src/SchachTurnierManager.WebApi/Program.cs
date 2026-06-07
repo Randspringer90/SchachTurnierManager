@@ -38,7 +38,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.4.1",
+    version = "0.5.0",
     time = DateTimeOffset.UtcNow,
     database = databasePath
 }));
@@ -207,6 +207,42 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNu
     try
     {
         return Results.Ok(service.RecordResult(id, roundNumber, boardNumber, request.Result));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPut("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNumber:int}/pairing", (Guid id, int roundNumber, int boardNumber, OverridePairingRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.OverridePairing(id, roundNumber, boardNumber, request.WhitePlayerId, request.BlackPlayerId, request.Notes));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPatch("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/lock", (Guid id, int roundNumber, UpdateRoundLockRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.SetRoundLock(id, roundNumber, request.IsLocked));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPatch("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/verify", (Guid id, int roundNumber, UpdateRoundVerifiedRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.SetRoundVerified(id, roundNumber, request.IsVerified));
     }
     catch (InvalidOperationException ex)
     {

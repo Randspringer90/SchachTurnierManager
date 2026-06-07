@@ -8,3 +8,6 @@ Regeln:
 - Wiederholungen im Schweizer System vermeiden.
 - Farben und Byes protokollieren.
 - FIDE-Dutch später als eigener austauschbarer Algorithmus.
+
+
+0.5.0 ergänzt manuelle Pairing-Overrides. Jede manuelle Änderung muss als Audit-Meldung protokolliert werden und darf gesperrte/geprüfte Runden nicht verändern.

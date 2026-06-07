@@ -30,3 +30,8 @@ Später kann aus den Snapshots ein normalisiertes relationales Modell entstehen,
 - SQLite/EF Core ist in `Infrastructure` isoliert.
 - Swiss-/Chess-Results-Anbindungen werden Adapter, nicht Kernlogik.
 - Manuelle Änderungen sollen später im Audit sichtbar sein.
+
+
+## Rundenworkflow
+
+Runden besitzen ab 0.5.0 einen Status: offen, vollständig, gesperrt oder geprüft. Ergebnis- und Paarungsänderungen sind nur in offenen/vollständigen, nicht gesperrten Runden erlaubt. Geprüfte Runden werden automatisch gesperrt.

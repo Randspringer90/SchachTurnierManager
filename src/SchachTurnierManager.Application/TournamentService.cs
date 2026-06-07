@@ -170,6 +170,8 @@ public sealed class TournamentService(ITournamentStore store)
             throw new InvalidOperationException("Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.");
         }
 
+        EnsurePreviousRoundComplete(tournament);
+
         TournamentRound nextRound = tournament.Settings.Format switch
         {
             TournamentFormat.RoundRobin => GetNextRoundRobinRound(tournament),
@@ -185,13 +187,10 @@ public sealed class TournamentService(ITournamentStore store)
     public TournamentRound RecordResult(Guid tournamentId, int roundNumber, int boardNumber, GameResultKind resultKind)
     {
         var tournament = RequireTournament(tournamentId);
-        var roundIndex = tournament.Rounds.FindIndex(r => r.RoundNumber == roundNumber);
-        if (roundIndex < 0)
-        {
-            throw new InvalidOperationException($"Runde {roundNumber} wurde nicht gefunden.");
-        }
-
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
         var round = tournament.Rounds[roundIndex];
+        EnsureRoundEditable(round);
+
         var foundBoard = false;
         var updatedPairings = round.Pairings
             .Select(p =>
@@ -202,7 +201,7 @@ public sealed class TournamentService(ITournamentStore store)
                 }
 
                 foundBoard = true;
-                return p with { Result = new GameResult(resultKind) };
+                return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
             })
             .ToList();
 
@@ -211,7 +210,130 @@ public sealed class TournamentService(ITournamentStore store)
             throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
         }
 
-        var updated = round with { Pairings = updatedPairings };
+        var updated = WithCalculatedStatus(round with { Pairings = updatedPairings });
+        tournament.Rounds[roundIndex] = updated;
+        _store.Save(tournament);
+        return updated;
+    }
+
+    public TournamentRound OverridePairing(Guid tournamentId, int roundNumber, int boardNumber, Guid? whitePlayerId, Guid? blackPlayerId, string? notes)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        var round = tournament.Rounds[roundIndex];
+        EnsureRoundEditable(round);
+
+        if (whitePlayerId is null && blackPlayerId is null)
+        {
+            throw new InvalidOperationException("Mindestens ein Spieler muss gesetzt sein.");
+        }
+
+        if (whitePlayerId is not null && blackPlayerId is not null && whitePlayerId == blackPlayerId)
+        {
+            throw new InvalidOperationException("Ein Spieler kann nicht gegen sich selbst spielen.");
+        }
+
+        ValidatePlayerCanBePaired(tournament, whitePlayerId, nameof(whitePlayerId));
+        ValidatePlayerCanBePaired(tournament, blackPlayerId, nameof(blackPlayerId));
+
+        var foundBoard = false;
+        var normalizedNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        var updatedPairings = round.Pairings
+            .Select(pairing =>
+            {
+                if (pairing.BoardNumber != boardNumber)
+                {
+                    if (PlayerAppearsInPairing(pairing, whitePlayerId) || PlayerAppearsInPairing(pairing, blackPlayerId))
+                    {
+                        throw new InvalidOperationException("Ein Spieler darf in derselben Runde nicht mehrfach gepaart werden.");
+                    }
+
+                    return pairing;
+                }
+
+                foundBoard = true;
+                if (whitePlayerId is null)
+                {
+                    throw new InvalidOperationException("Ein Brett benötigt mindestens einen Weißspieler. Für Bye bitte Spieler als Weiß und Schwarz leer lassen.");
+                }
+
+                var result = blackPlayerId is null ? new GameResult(GameResultKind.Bye) : GameResult.NotPlayed;
+                return pairing with
+                {
+                    WhitePlayerId = whitePlayerId,
+                    BlackPlayerId = blackPlayerId,
+                    Result = result,
+                    IsManualOverride = true,
+                    LastChangedAt = DateTimeOffset.UtcNow,
+                    Notes = AppendNote(pairing.Notes, normalizedNotes ?? "Manuell geänderte Paarung")
+                };
+            })
+            .ToList();
+
+        if (!foundBoard)
+        {
+            throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
+        }
+
+        var audit = round.Audit with
+        {
+            Messages = round.Audit.Messages
+                .Concat(new[] { $"Manuelle Paarungsänderung in Runde {roundNumber}, Brett {boardNumber}." })
+                .ToList()
+        };
+        var updated = WithCalculatedStatus(round with { Pairings = updatedPairings, Audit = audit });
+        tournament.Rounds[roundIndex] = updated;
+        _store.Save(tournament);
+        return updated;
+    }
+
+    public TournamentRound SetRoundLock(Guid tournamentId, int roundNumber, bool isLocked)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        var round = tournament.Rounds[roundIndex];
+        var audit = round.Audit with
+        {
+            Messages = round.Audit.Messages
+                .Concat(new[] { isLocked ? $"Runde {roundNumber} wurde gesperrt." : $"Runde {roundNumber} wurde entsperrt." })
+                .ToList()
+        };
+        var updated = WithCalculatedStatus(round with
+        {
+            IsLocked = isLocked,
+            LockedAt = isLocked ? DateTimeOffset.UtcNow : null,
+            Audit = audit
+        });
+        tournament.Rounds[roundIndex] = updated;
+        _store.Save(tournament);
+        return updated;
+    }
+
+    public TournamentRound SetRoundVerified(Guid tournamentId, int roundNumber, bool isVerified)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        var round = tournament.Rounds[roundIndex];
+
+        if (isVerified && !IsRoundComplete(round))
+        {
+            throw new InvalidOperationException($"Runde {roundNumber} kann erst geprüft werden, wenn alle Ergebnisse eingetragen sind.");
+        }
+
+        var audit = round.Audit with
+        {
+            Messages = round.Audit.Messages
+                .Concat(new[] { isVerified ? $"Runde {roundNumber} wurde als geprüft markiert." : $"Runde {roundNumber} wurde als ungeprüft markiert." })
+                .ToList()
+        };
+        var updated = WithCalculatedStatus(round with
+        {
+            IsVerified = isVerified,
+            VerifiedAt = isVerified ? DateTimeOffset.UtcNow : null,
+            IsLocked = isVerified || round.IsLocked,
+            LockedAt = isVerified ? (round.LockedAt ?? DateTimeOffset.UtcNow) : round.LockedAt,
+            Audit = audit
+        });
         tournament.Rounds[roundIndex] = updated;
         _store.Save(tournament);
         return updated;
@@ -245,6 +367,76 @@ public sealed class TournamentService(ITournamentStore store)
     public TournamentState RequireTournament(Guid tournamentId)
     {
         return _store.Get(tournamentId) ?? throw new InvalidOperationException($"Turnier {tournamentId} wurde nicht gefunden.");
+    }
+
+    private static int RequireRoundIndex(TournamentState tournament, int roundNumber)
+    {
+        var index = tournament.Rounds.FindIndex(r => r.RoundNumber == roundNumber);
+        if (index < 0)
+        {
+            throw new InvalidOperationException($"Runde {roundNumber} wurde nicht gefunden.");
+        }
+
+        return index;
+    }
+
+    private static void EnsureRoundEditable(TournamentRound round)
+    {
+        if (round.IsLocked || round.IsVerified)
+        {
+            throw new InvalidOperationException($"Runde {round.RoundNumber} ist gesperrt oder geprüft und kann nicht mehr geändert werden.");
+        }
+    }
+
+    private static void EnsurePreviousRoundComplete(TournamentState tournament)
+    {
+        var latestRound = tournament.Rounds.OrderByDescending(r => r.RoundNumber).FirstOrDefault();
+        if (latestRound is not null && !IsRoundComplete(latestRound))
+        {
+            throw new InvalidOperationException($"Runde {latestRound.RoundNumber} hat noch offene Ergebnisse. Bitte erst abschließen oder korrigieren.");
+        }
+    }
+
+    private static bool IsRoundComplete(TournamentRound round)
+    {
+        return round.Pairings.Count > 0 && round.Pairings.All(pairing => pairing.IsBye || pairing.Result.Kind != GameResultKind.NotPlayed);
+    }
+
+    private static TournamentRound WithCalculatedStatus(TournamentRound round)
+    {
+        var status = round.IsVerified
+            ? RoundResultStatus.Verified
+            : round.IsLocked
+                ? RoundResultStatus.Locked
+                : IsRoundComplete(round)
+                    ? RoundResultStatus.Complete
+                    : RoundResultStatus.Open;
+
+        return round with { ResultStatus = status };
+    }
+
+    private static bool PlayerAppearsInPairing(Pairing pairing, Guid? whitePlayerId)
+    {
+        return whitePlayerId is not null && (pairing.WhitePlayerId == whitePlayerId || pairing.BlackPlayerId == whitePlayerId);
+    }
+
+    private static void ValidatePlayerCanBePaired(TournamentState tournament, Guid? playerId, string argumentName)
+    {
+        if (playerId is null)
+        {
+            return;
+        }
+
+        var player = tournament.Players.FirstOrDefault(p => p.Id == playerId);
+        if (player is null)
+        {
+            throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden ({argumentName}).");
+        }
+
+        if (!player.IsActive)
+        {
+            throw new InvalidOperationException($"Spieler {player.Name} ist nicht aktiv und kann nicht gepaart werden.");
+        }
     }
 
     private TournamentRound GetNextRoundRobinRound(TournamentState tournament)

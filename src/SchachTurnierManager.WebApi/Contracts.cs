@@ -58,6 +58,12 @@ public sealed record RecordResultRequest(GameResultKind Result);
 
 public sealed record RecordBoardResultRequest(int RoundNumber, int BoardNumber, GameResultKind Result);
 
+public sealed record OverridePairingRequest(Guid? WhitePlayerId, Guid? BlackPlayerId, string? Notes);
+
+public sealed record UpdateRoundLockRequest(bool IsLocked);
+
+public sealed record UpdateRoundVerifiedRequest(bool IsVerified);
+
 public sealed record UpdatePlayerStatusRequest(PlayerStatus Status);
 
 public sealed record ImportPlayersCsvRequest(string Content, bool ReplaceExisting = false);

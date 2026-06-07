@@ -49,6 +49,8 @@ type Pairing = {
   result: GameResult;
   notes?: string | null;
   isBye: boolean;
+  isManualOverride: boolean;
+  lastChangedAt?: string | null;
 };
 
 type PairingAudit = {
@@ -65,6 +67,12 @@ type TournamentRound = {
   roundNumber: number;
   pairings: Pairing[];
   audit: PairingAudit;
+  isLocked: boolean;
+  isVerified: boolean;
+  resultStatus: number;
+  lockedAt?: string | null;
+  verifiedAt?: string | null;
+  notes?: string | null;
 };
 
 type StandingRow = {
@@ -152,6 +160,8 @@ type HeroCupRow = {
   tournamentPerformance?: number | null;
   reason: string;
 };
+
+type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
 type PlayerForm = {
   name: string;
@@ -253,6 +263,15 @@ function statusLabel(kind: number): string {
   return playerStatusOptions.find(option => option.value === kind)?.label ?? String(kind);
 }
 
+function roundStatusLabel(kind: number): string {
+  switch (kind) {
+    case 1: return 'vollständig';
+    case 2: return 'geprüft';
+    case 3: return 'gesperrt';
+    default: return 'offen';
+  }
+}
+
 function twzOf(player: Player): number {
   return player.rating.manualTwz ?? player.rating.dwz ?? player.rating.elo ?? 0;
 }
@@ -329,6 +348,7 @@ function App() {
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
+  const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [status, setStatus] = React.useState('Bereit.');
   const [error, setError] = React.useState<string | null>(null);
   const selectedTournament = tournaments.find(tournament => tournament.id === selectedId) ?? tournaments[0];
@@ -480,6 +500,76 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  function editKey(roundNumber: number, boardNumber: number): string {
+    return `${roundNumber}-${boardNumber}`;
+  }
+
+  function pairingEdit(round: TournamentRound, pairing: Pairing): PairingEdit {
+    const key = editKey(round.roundNumber, pairing.boardNumber);
+    return pairingEdits[key] ?? {
+      whitePlayerId: pairing.whitePlayerId ?? '',
+      blackPlayerId: pairing.blackPlayerId ?? '',
+      notes: pairing.notes ?? ''
+    };
+  }
+
+  function updatePairingEdit(roundNumber: number, boardNumber: number, patch: Partial<PairingEdit>): void {
+    const key = editKey(roundNumber, boardNumber);
+    setPairingEdits(previous => ({
+      ...previous,
+      [key]: { ...(previous[key] ?? { whitePlayerId: '', blackPlayerId: '', notes: '' }), ...patch }
+    }));
+  }
+
+  async function saveManualPairing(round: TournamentRound, pairing: Pairing) {
+    if (!selectedTournament) {
+      return;
+    }
+    const edit = pairingEdit(round, pairing);
+    setError(null);
+    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/boards/${pairing.boardNumber}/pairing`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        whitePlayerId: edit.whitePlayerId || null,
+        blackPlayerId: edit.blackPlayerId || null,
+        notes: edit.notes || null
+      })
+    });
+    setStatus(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} manuell gespeichert.`);
+    setPairingEdits(previous => {
+      const copy = { ...previous };
+      delete copy[editKey(round.roundNumber, pairing.boardNumber)];
+      return copy;
+    });
+    await refresh(selectedTournament.id);
+  }
+
+  async function setRoundLock(round: TournamentRound, isLocked: boolean) {
+    if (!selectedTournament) {
+      return;
+    }
+    setError(null);
+    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/lock`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isLocked })
+    });
+    setStatus(isLocked ? `Runde ${round.roundNumber} gesperrt.` : `Runde ${round.roundNumber} entsperrt.`);
+    await refresh(selectedTournament.id);
+  }
+
+  async function setRoundVerified(round: TournamentRound, isVerified: boolean) {
+    if (!selectedTournament) {
+      return;
+    }
+    setError(null);
+    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isVerified })
+    });
+    setStatus(isVerified ? `Runde ${round.roundNumber} geprüft.` : `Runde ${round.roundNumber} wieder geöffnet.`);
+    await refresh(selectedTournament.id);
+  }
+
   async function importPlayers() {
     if (!selectedTournament) {
       return;
@@ -540,9 +630,9 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.4.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.5.0</p>
           <h1>SchachTurnierManager</h1>
-          <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, Farbhistorie, Kategorien, Kreuztabelle, Heldenpokal und Im-/Export.</p>
+          <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
         <div className="status-card">
           <strong>Backend</strong>
@@ -731,7 +821,16 @@ function App() {
             {selectedTournament?.rounds.length === 0 && <p>Noch keine Runde ausgelost.</p>}
             {selectedTournament?.rounds.map(round => (
               <section key={round.roundNumber} className="round-box">
-                <h4>Runde {round.roundNumber}</h4>
+                <div className="round-header">
+                  <div>
+                    <h4>Runde {round.roundNumber}</h4>
+                    <p className="muted">Status: {roundStatusLabel(round.resultStatus)}{round.isLocked ? ' · gesperrt' : ''}{round.isVerified ? ' · geprüft' : ''}</p>
+                  </div>
+                  <div className="actions">
+                    <button type="button" className="small" onClick={() => void setRoundLock(round, !round.isLocked)} disabled={round.isVerified}>{round.isLocked ? 'Entsperren' : 'Sperren'}</button>
+                    <button type="button" className="small secondary" onClick={() => void setRoundVerified(round, !round.isVerified)}>{round.isVerified ? 'Prüfung zurücknehmen' : 'Als geprüft markieren'}</button>
+                  </div>
+                </div>
                 {round.audit && (
                   <details className="audit-box">
                     <summary>{round.audit.algorithm} · {round.audit.rulesetVersion}</summary>
@@ -757,25 +856,43 @@ function App() {
                 )}
                 <div className="table-scroll">
                   <table>
-                    <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Speichern</th></tr></thead>
+                    <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Manuelle Paarung</th></tr></thead>
                     <tbody>
-                      {round.pairings.map(pairing => (
-                        <tr key={`${round.roundNumber}-${pairing.boardNumber}`}>
-                          <td>{pairing.boardNumber}</td>
-                          <td>{playerNameById(pairing.whitePlayerId)}</td>
-                          <td>{pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
-                          <td>{resultLabel(pairing.result.kind)}</td>
-                          <td>
-                            <select
-                              value={pairing.result.kind}
-                              onChange={(event: React.ChangeEvent<HTMLSelectElement>) => void recordResult(round.roundNumber, pairing.boardNumber, Number(event.target.value))}
-                              disabled={pairing.isBye}
-                            >
-                              {resultOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
+                      {round.pairings.map(pairing => {
+                        const edit = pairingEdit(round, pairing);
+                        const roundClosed = round.isLocked || round.isVerified;
+                        return (
+                          <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
+                            <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
+                            <td>{playerNameById(pairing.whitePlayerId)}</td>
+                            <td>{pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                            <td>
+                              <select
+                                value={pairing.result.kind}
+                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) => void recordResult(round.roundNumber, pairing.boardNumber, Number(event.target.value))}
+                                disabled={pairing.isBye || roundClosed}
+                              >
+                                {resultOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                              </select>
+                              <small>{resultLabel(pairing.result.kind)}</small>
+                            </td>
+                            <td>
+                              <div className="manual-pairing">
+                                <select value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={roundClosed}>
+                                  <option value="">Weiß wählen</option>
+                                  {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+                                </select>
+                                <select value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={roundClosed}>
+                                  <option value="">Schwarz/Bye leer</option>
+                                  {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+                                </select>
+                                <input value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder="Notiz" disabled={roundClosed} />
+                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={roundClosed || !edit.whitePlayerId}>Paarung speichern</button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

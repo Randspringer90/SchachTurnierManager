@@ -7,6 +7,7 @@ public sealed record Pairing
     public Guid? BlackPlayerId { get; init; }
     public GameResult Result { get; init; } = GameResult.NotPlayed;
     public bool IsManualOverride { get; init; }
+    public DateTimeOffset? LastChangedAt { get; init; }
     public string? Notes { get; init; }
 
     public bool IsBye => BlackPlayerId is null || Result.Kind == GameResultKind.Bye;

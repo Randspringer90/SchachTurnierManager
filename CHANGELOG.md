@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 - Manuelle Paarungen und Rundensperren
+
+- Manuelle Paarungskorrekturen pro Brett ergänzt.
+- Rundensperre und Prüfstatus ergänzt.
+- Ergebnisänderungen in gesperrten/geprüften Runden werden verhindert.
+- Nächste Runde erfordert vollständig eingetragene vorherige Runde.
+- Dashboard zeigt Rundenzustand und erlaubt Paarungskorrekturen mit Notiz.
+- Checkpoint-Skript für regelmäßige grüne Commits ergänzt.
+
 ## 0.4.1 – 2026-06-07
 
 ### Fixed

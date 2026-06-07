@@ -18,3 +18,8 @@
 2. Swiss-Chess/Swiss-Manager/Chess-Results Adapter.
 3. Portable Release und Windows-Installer.
 4. PWA/Handy-App-Modus.
+
+
+## 0.5.0
+
+Manuelle Paarungsänderungen, Rundensperren, Prüfstatus und Checkpoint-Commits.

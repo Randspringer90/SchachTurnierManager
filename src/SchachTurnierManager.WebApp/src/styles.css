@@ -314,3 +314,46 @@ th {
   margin: 0.25rem 0;
   color: #cbd5e1;
 }
+
+.round-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.muted {
+  color: #94a3b8;
+  margin: 0.25rem 0 0;
+}
+
+.manual-row {
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.manual-row small {
+  display: block;
+  color: #93c5fd;
+  font-size: 0.72rem;
+  margin-top: 0.15rem;
+}
+
+.manual-pairing {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) minmax(140px, 1fr) auto;
+  gap: 0.35rem;
+  min-width: 620px;
+}
+
+.manual-pairing input,
+.manual-pairing select {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .round-header,
+  .manual-pairing {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}
