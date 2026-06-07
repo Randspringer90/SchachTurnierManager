@@ -23,3 +23,12 @@
 ## 0.5.0
 
 Manuelle Paarungsänderungen, Rundensperren, Prüfstatus und Checkpoint-Commits.
+
+
+## 0.8.0
+
+Portable lokale Anwendung: Backend hostet Dashboard, Pack-Skript erzeugt `output\portable` und optional ZIP-Paket.
+
+## Danach
+
+Klassischer Windows-Installer, Update-Workflow, Release-Checkliste und FIDE-Dutch-Swiss-Annäherung.

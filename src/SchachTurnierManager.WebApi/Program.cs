@@ -27,6 +27,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+var webRootPath = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var embeddedDashboardAvailable = File.Exists(Path.Combine(webRootPath, "index.html"));
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TournamentDbContext>();
@@ -35,13 +38,36 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors();
 
+if (embeddedDashboardAvailable)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+else
+{
+    app.MapGet("/", () => Results.Content("""
+        <!doctype html>
+        <html lang="de">
+        <head><meta charset="utf-8"><title>SchachTurnierManager</title></head>
+        <body style="font-family: system-ui, sans-serif; margin: 2rem;">
+          <h1>SchachTurnierManager API</h1>
+          <p>Das eingebettete Dashboard wurde in diesem Startmodus nicht gefunden.</p>
+          <p>Entwicklung: <code>scripts\Start-Dev.ps1</code> starten.</p>
+          <p>Portable Paket: <code>scripts\Pack-Portable.ps1</code> erzeugen und dann <code>Start-SchachTurnierManager.bat</code> verwenden.</p>
+          <p><a href="/api/health">API-Healthcheck öffnen</a></p>
+        </body>
+        </html>
+        """, "text/html; charset=utf-8"));
+}
+
 app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.7.1",
+    version = "0.8.0",
     time = DateTimeOffset.UtcNow,
-    database = databasePath
+    database = databasePath,
+    embeddedDashboard = embeddedDashboardAvailable
 }));
 
 app.MapGet("/api/tournaments", (TournamentService service) => Results.Ok(service.ListTournaments()));
@@ -382,6 +408,11 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/print/html", (Gu
         return Results.NotFound(new { error = ex.Message });
     }
 });
+
+if (embeddedDashboardAvailable)
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 

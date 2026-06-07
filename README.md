@@ -60,7 +60,7 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen bis 0.7.1
+## Funktionen bis 0.8.0
 
 - Turniere lokal anlegen und dauerhaft speichern.
 - Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
@@ -72,6 +72,28 @@ http://localhost:5173
 - Turnier per JSON sichern und wiederherstellen.
 - Tabelle und Paarungen als CSV exportieren.
 - Turnierbericht und Rundenblätter als HTML-Druckansicht erzeugen.
+- Portable Paket mit eingebettetem Dashboard erzeugen und per Start-BAT lokal ausführen.
+
+## Portable Paket erstellen
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Pack-Portable.ps1"
+```
+
+Ergebnis:
+
+```text
+output\portable\Start-SchachTurnierManager.bat
+output\SchachTurnierManager_Portable_0.8.0.zip
+```
+
+Die portable Variante öffnet das Dashboard über:
+
+```text
+http://127.0.0.1:5088/
+```
+
+Die portable Datenbank liegt im Paketordner unter `data\SchachTurnierManager.sqlite`.
 
 ## Lokale Datenbank
 
@@ -89,7 +111,7 @@ Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit
 
 ## Status
 
-Version 0.6.0: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export und gehärteter Schweizer-System-Auslosung V2. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
+Version 0.8.0: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export, Druckansichten, gehärteter Schweizer-System-Auslosung V2 und portablem lokalen Paket. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein klassischer Windows-Installer.
 
 
 ## Entwicklerstart-Hinweis

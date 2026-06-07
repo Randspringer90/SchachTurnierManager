@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0 - Portable App / lokale Auslieferung
+
+- Backend kann das gebaute React-Dashboard direkt aus `wwwroot` ausliefern.
+- Portable Paket erzeugt jetzt `output\portable` mit `app`, `data`, Start-BAT und README.
+- `Pack-Portable.ps1` baut Frontend, publisht Backend und kopiert `dist` in das veröffentlichte `wwwroot`.
+- `Start-Portable.bat` startet die lokale API auf `http://127.0.0.1:5088` und öffnet das eingebettete Dashboard.
+- Healthcheck meldet, ob ein eingebettetes Dashboard gefunden wurde.
+- Neues Nachkontrollskript `After-Apply-V0.8.ps1`.
+
+
 ## 0.7.1 - Stabilisierung Druckansichten
 
 - Korrigiert Buildfehler im HTML-Export: Rundenprüfung nutzt `RoundDiagnostics.Warnings` statt einer nicht existierenden `Messages`-Eigenschaft.

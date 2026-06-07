@@ -78,3 +78,16 @@
 - Portable Publish inklusive statischem Frontend über Backend.
 - Startskript für Nicht-Entwickler.
 - Optionaler Datenpfad/Backup-Ordner im UI.
+
+
+## v0.8.0 - Portable App / Auslieferung
+
+- Backend liefert gebaute WebApp aus `wwwroot` aus.
+- Portable Paket unter `output\portable` mit Start-BAT, app-Ordner, data-Ordner und README.
+- Optional später: Self-contained Paket und echter Windows-Installer.
+
+## v0.9.0 - Nächster Vorschlag
+
+- Installations-/Update-Erlebnis verbessern.
+- Datenbank-Backup/Restore im Portable-Kontext sichtbarer machen.
+- Erste Release-Checkliste und manuelle QA-Szenarien.
