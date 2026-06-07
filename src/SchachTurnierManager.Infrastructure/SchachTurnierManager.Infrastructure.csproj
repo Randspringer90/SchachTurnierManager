@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SchachTurnierManager.Domain\SchachTurnierManager.Domain.csproj" />
+    <ProjectReference Include="..\SchachTurnierManager.Application\SchachTurnierManager.Application.csproj" />
+  </ItemGroup>
+</Project>

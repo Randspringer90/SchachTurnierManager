@@ -1,0 +1,10 @@
+project_name = "SchachTurnierManager"
+default_model = "gpt-5.5-thinking"
+approval_policy = "never"
+sandbox = "workspace-write"
+
+[paths]
+root = "."
+logs = "logs"
+output = "output"
+skills = ".agents/skills"

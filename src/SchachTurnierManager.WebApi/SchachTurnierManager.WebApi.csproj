@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <UserSecretsId>SchachTurnierManager.WebApi-LocalOnly</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SchachTurnierManager.Domain\SchachTurnierManager.Domain.csproj" />
+    <ProjectReference Include="..\SchachTurnierManager.Application\SchachTurnierManager.Application.csproj" />
+    <ProjectReference Include="..\SchachTurnierManager.Infrastructure\SchachTurnierManager.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
