@@ -51,9 +51,20 @@ type Pairing = {
   isBye: boolean;
 };
 
+type PairingAudit = {
+  algorithm: string;
+  rulesetVersion: string;
+  createdAt: string;
+  messages: string[];
+  scoreGroups: string[];
+  floaters: string[];
+  colorNotes: string[];
+};
+
 type TournamentRound = {
   roundNumber: number;
   pairings: Pairing[];
+  audit: PairingAudit;
 };
 
 type StandingRow = {
@@ -529,9 +540,9 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.3.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.4.1</p>
           <h1>SchachTurnierManager</h1>
-          <p>Persistenter Turnierleiter mit SQLite, Teilnehmerpflege, Kategorien, Kreuztabelle, Heldenpokal und Im-/Export.</p>
+          <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, Farbhistorie, Kategorien, Kreuztabelle, Heldenpokal und Im-/Export.</p>
         </div>
         <div className="status-card">
           <strong>Backend</strong>
@@ -721,6 +732,29 @@ function App() {
             {selectedTournament?.rounds.map(round => (
               <section key={round.roundNumber} className="round-box">
                 <h4>Runde {round.roundNumber}</h4>
+                {round.audit && (
+                  <details className="audit-box">
+                    <summary>{round.audit.algorithm} · {round.audit.rulesetVersion}</summary>
+                    <div className="audit-grid">
+                      <section>
+                        <strong>Hinweise</strong>
+                        <ul>{round.audit.messages.map((message, index) => <li key={`m-${index}`}>{message}</li>)}</ul>
+                      </section>
+                      <section>
+                        <strong>Scoregruppen</strong>
+                        <ul>{round.audit.scoreGroups.map((message, index) => <li key={`s-${index}`}>{message}</li>)}</ul>
+                      </section>
+                      <section>
+                        <strong>Floater</strong>
+                        <ul>{round.audit.floaters.length === 0 ? <li>keine</li> : round.audit.floaters.map((message, index) => <li key={`f-${index}`}>{message}</li>)}</ul>
+                      </section>
+                      <section>
+                        <strong>Farben</strong>
+                        <ul>{round.audit.colorNotes.map((message, index) => <li key={`c-${index}`}>{message}</li>)}</ul>
+                      </section>
+                    </div>
+                  </details>
+                )}
                 <div className="table-scroll">
                   <table>
                     <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Speichern</th></tr></thead>

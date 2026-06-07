@@ -283,3 +283,34 @@ th {
     min-width: unset;
   }
 }
+
+.audit-box {
+  margin: 0.75rem 0 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 0.8rem 1rem;
+}
+
+.audit-box summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+.audit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.audit-grid ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.audit-grid li {
+  margin: 0.25rem 0;
+  color: #cbd5e1;
+}

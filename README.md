@@ -60,14 +60,14 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen in 0.3.0
+## Funktionen in 0.4.0
 
 - Turniere lokal anlegen und dauerhaft speichern.
 - Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
-- Schweizer-System-Basis und Rundenturnier-Runden erzeugen.
+- Schweizer-System-V2 mit Scoregruppen-Audit, Floater-Hinweisen, Bye-Schutz und Farbhistorie sowie Rundenturnier-Runden erzeugen.
 - Ergebnisse erfassen und Live-Tabelle berechnen.
 - Kategorieauswertungen für Frauen, Jugendklassen und Senioren anzeigen.
-- Kreuztabelle und Heldenpokal anzeigen.
+- Kreuztabelle, Heldenpokal und Rundenaudit anzeigen.
 - Teilnehmer per CSV importieren/exportieren.
 - Turnier per JSON sichern und wiederherstellen.
 
@@ -87,4 +87,9 @@ Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit
 
 ## Status
 
-Version 0.3.0: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-Import/-Export und JSON-Backup/-Restore. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
+Version 0.4.1: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export und gehärteter Schweizer-System-Auslosung V2. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
+
+
+## Entwicklerstart-Hinweis
+
+`scripts/Start-Dev.ps1` öffnet das Dashboard bewusst über `http://127.0.0.1:5173`, weil Vite lokal an IPv4 gebunden ist und `localhost` je nach Windows-/Browser-Konfiguration zuerst IPv6 auflösen kann.

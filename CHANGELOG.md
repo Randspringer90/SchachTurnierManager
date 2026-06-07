@@ -1,4 +1,29 @@
+# Changelog
+
+## 0.4.1 – 2026-06-07
+
+### Fixed
+- `Start-Dev.ps1` prüft und öffnet das Frontend jetzt über `http://127.0.0.1:5173`, passend zur Vite-Bindung.
+- Vite-Proxy verwendet `http://127.0.0.1:5088` als Backend-Ziel.
+- CORS erlaubt zusätzlich `http://127.0.0.1:5173`.
+- Startskript wartet länger und protokolliert den letzten Verbindungsfehler, falls Backend oder Frontend nicht rechtzeitig erreichbar sind.
+
 # CHANGELOG
+
+## 0.4.0 – 2026-06-07
+
+### Added
+- Schweizer-System-Auslosung V2 mit scoregruppenorientierter Gegnerwahl.
+- Pairing-Audit mit Scoregruppen, Floatern und Farbhistorie-/Farbpräferenz-Hinweisen.
+- Erweiterte Swiss-Golden-Tests für Bye-Schutz, Rematch-Vermeidung, Farbpräferenz und Audit.
+- Auditanzeige im Dashboard direkt an jeder Runde.
+- `scripts\After-Apply-V0.4.ps1` für die lokale Nachkontrolle.
+
+### Changed
+- Swiss-Pairing vermeidet Wiederholungen robuster und dokumentiert unvermeidbare Wiederholungen explizit.
+- Bye-Vergabe bevorzugt die niedrigste Scoregruppe ohne bisheriges Bye.
+- Farbvergabe berücksichtigt Farbbilanz, letzte Farben und drohende dritte gleiche Farbe.
+- Dashboard-Version auf 0.4.0 angehoben.
 
 ## 0.3.1 – 2026-06-07
 

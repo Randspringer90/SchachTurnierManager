@@ -19,16 +19,16 @@
 - [x] Persistenztest.
 
 ## v0.3 – Turnierleiter-Funktionen
-- [ ] Teilnehmer bearbeiten und zurückziehen im Dashboard.
-- [ ] Kreuztabelle anzeigen.
-- [ ] Kategorien U10/U12/U14/U16/U18/U25, Frauen, Senioren und Heldenpokal im UI.
-- [ ] CSV-Import Teilnehmer.
-- [ ] CSV-/JSON-Export und JSON-Backup/Restore.
-- [ ] Bessere Fehler-/Auditansicht im Dashboard.
+- [x] Teilnehmer bearbeiten und zurückziehen im Dashboard.
+- [x] Kreuztabelle anzeigen.
+- [x] Kategorien U10/U12/U14/U16/U18/U25, Frauen, Senioren und Heldenpokal im UI.
+- [x] CSV-Import Teilnehmer.
+- [x] CSV-/JSON-Export und JSON-Backup/Restore.
+- [x] Bessere Fehler-/Auditansicht im Dashboard.
 
 ## v0.4 – Regelhärte
-- [ ] Swiss-Pairing in Richtung FIDE Dutch ausbauen.
-- [ ] Golden-Testdateien mit bekannten Pairing-Fällen.
+- [x] Swiss-Pairing in Richtung FIDE Dutch vorbereitend ausbauen: Scoregroups, Floater-Audit, Bye-Schutz, Farbhistorie.
+- [x] Golden-/Unit-Tests mit Pairing-Fällen für Bye, Rematch und Farben.
 - [ ] Buchholz-Feinheiten, kampflose Partien, Cut-Wertungen sauber spezifizieren.
 - [ ] Import/Export-Adapter für Swiss-/Chess-Results-Ökosystem untersuchen.
 
@@ -39,9 +39,9 @@
 - [ ] Windows-Installer evaluieren.
 
 
-## Nächster Fokus ab 0.3.0
+## Nächster Fokus ab 0.4.0
 
-- Schweizer-System-Auslosung härten: Farbhistorie, Farbpräferenz, Bye-Regeln, Scoregroups und Floater-Audit.
-- Golden Tests mit realistischen Turnierverläufen.
+- Schweizer-System weiter Richtung FIDE Dutch entwickeln: Bracket-/Scoregroup-Transpositionslogik, absolute Kriterien, detaillierte Floater-Verwaltung.
+- Buchholz-/kampflos-/Cut-Wertungsdetails präzisieren und testen.
 - Swiss-Chess/Swiss-Manager/Chess-Results-Adapter als Import-/Export-Schicht vorbereiten.
 - Portable Paket und spätere Windows-Installation ausbauen.
