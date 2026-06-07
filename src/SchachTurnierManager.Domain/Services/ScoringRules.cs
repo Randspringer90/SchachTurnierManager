@@ -14,15 +14,27 @@ public static class ScoringRules
         };
     }
 
-    public static bool IsWinFor(GameResult result, bool isWhite)
+    public static bool IsWinFor(GameResult result, bool isWhite, bool countForfeitWins = true, bool countByeAsWin = false)
     {
         return result.Kind switch
         {
-            GameResultKind.WhiteWin or GameResultKind.WhiteForfeitWin or GameResultKind.ArmageddonWhiteWin => isWhite,
-            GameResultKind.BlackWin or GameResultKind.BlackForfeitWin or GameResultKind.ArmageddonBlackWin => !isWhite,
-            GameResultKind.Bye => true,
+            GameResultKind.WhiteWin or GameResultKind.ArmageddonWhiteWin => isWhite,
+            GameResultKind.BlackWin or GameResultKind.ArmageddonBlackWin => !isWhite,
+            GameResultKind.WhiteForfeitWin => countForfeitWins && isWhite,
+            GameResultKind.BlackForfeitWin => countForfeitWins && !isWhite,
+            GameResultKind.Bye => countByeAsWin,
             _ => false
         };
+    }
+
+    public static bool IsForfeit(GameResultKind kind)
+    {
+        return kind is GameResultKind.WhiteForfeitWin or GameResultKind.BlackForfeitWin or GameResultKind.DoubleForfeit;
+    }
+
+    public static bool IsOverTheBoard(GameResultKind kind)
+    {
+        return kind is GameResultKind.WhiteWin or GameResultKind.Draw or GameResultKind.BlackWin or GameResultKind.ArmageddonWhiteWin or GameResultKind.ArmageddonBlackWin;
     }
 
     public static decimal NormalizedClassicalScore(GameResultKind kind, bool isWhite)

@@ -47,7 +47,7 @@
 - Portable Paket und spätere Windows-Installation ausbauen.
 
 
-## Abgeschlossen in 0.5.2
+## Abgeschlossen in 0.6.0
 
 - v0.5-Testkompilierung stabilisiert.
 - Checkpoint-Skript stoppt jetzt bei fehlgeschlagenen Checks.

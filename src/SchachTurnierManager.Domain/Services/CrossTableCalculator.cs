@@ -112,10 +112,12 @@ public sealed class CrossTableCalculator
         return kind switch
         {
             GameResultKind.NotPlayed => "offen",
-            GameResultKind.WhiteWin or GameResultKind.WhiteForfeitWin => isWhitePerspective ? "1" : "0",
-            GameResultKind.BlackWin or GameResultKind.BlackForfeitWin => isWhitePerspective ? "0" : "1",
+            GameResultKind.WhiteWin => isWhitePerspective ? "1" : "0",
+            GameResultKind.BlackWin => isWhitePerspective ? "0" : "1",
+            GameResultKind.WhiteForfeitWin => isWhitePerspective ? "+/-" : "-/+",
+            GameResultKind.BlackForfeitWin => isWhitePerspective ? "-/+" : "+/-",
             GameResultKind.Draw => "½",
-            GameResultKind.DoubleForfeit => "0",
+            GameResultKind.DoubleForfeit => "-/-",
             GameResultKind.Bye => "+",
             GameResultKind.ArmageddonWhiteWin => isWhitePerspective ? "A+" : "A-",
             GameResultKind.ArmageddonBlackWin => isWhitePerspective ? "A-" : "A+",

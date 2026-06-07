@@ -46,6 +46,13 @@ public enum TwzSource
     ManualThenRapidThenBlitzThenDwzThenElo = 2
 }
 
+public enum ForfeitTiebreakPolicy
+{
+    ExcludeForfeitsFromTiebreaks = 0,
+    CountForfeitOpponentForBuchholzOnly = 1,
+    CountForfeitsAsNormalGames = 2
+}
+
 public enum TiebreakType
 {
     DirectEncounter = 0,

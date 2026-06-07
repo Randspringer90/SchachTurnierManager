@@ -26,9 +26,9 @@ public sealed class StandingsCalculator
             row.Buchholz = opponentScores.Sum();
             row.BuchholzCutOne = opponentScores.Count > 1 ? opponentScores.Skip(1).Sum() : row.Buchholz;
             row.AverageOpponentRating = row.OpponentRatings.Count == 0 ? 0m : Math.Round(row.OpponentRatings.Average(), 2);
-            row.TournamentPerformance = row.PerformanceGames == 0 || row.OpponentRatings.Count == 0
+            row.TournamentPerformance = row.PerformanceGames == 0 || row.PerformanceOpponentRatings.Count == 0
                 ? null
-                : RatingCalculator.ApproximatePerformanceRating((int)Math.Round(row.OpponentRatings.Average()), (double)(row.NormalizedPerformancePoints / row.PerformanceGames));
+                : RatingCalculator.ApproximatePerformanceRating((int)Math.Round(row.PerformanceOpponentRatings.Average()), (double)(row.NormalizedPerformancePoints / row.PerformanceGames));
         }
 
         foreach (var row in rows.Values)
@@ -99,7 +99,10 @@ public sealed class StandingsCalculator
         if (pairing.IsBye || pairing.BlackPlayerId is null)
         {
             white.Points += ScoringRules.ScoreFor(pairing.Result, isWhite: true, tournament.Settings.ScoringSystem);
-            white.Wins++;
+            if (ScoringRules.IsWinFor(pairing.Result, isWhite: true, countForfeitWins: true, countByeAsWin: tournament.Settings.CountByeAsWin))
+            {
+                white.Wins++;
+            }
             return;
         }
 
@@ -116,24 +119,33 @@ public sealed class StandingsCalculator
         if (ScoringRules.IsWinFor(pairing.Result, isWhite: true)) white.Wins++;
         if (ScoringRules.IsWinFor(pairing.Result, isWhite: false)) black.Wins++;
 
-        white.OpponentIds.Add(black.Player.Id);
-        black.OpponentIds.Add(white.Player.Id);
-        if (black.Twz > 0) white.OpponentRatings.Add(black.Twz);
-        if (white.Twz > 0) black.OpponentRatings.Add(white.Twz);
-
         var whiteNormalized = ScoringRules.NormalizedClassicalScore(pairing.Result.Kind, isWhite: true);
         var blackNormalized = ScoringRules.NormalizedClassicalScore(pairing.Result.Kind, isWhite: false);
-        white.DirectResults.Add(new DirectResult(black.Player.Id, whiteNormalized));
-        black.DirectResults.Add(new DirectResult(white.Player.Id, blackNormalized));
-        white.SonnebornContributions.Add(new DirectResult(black.Player.Id, whiteNormalized));
-        black.SonnebornContributions.Add(new DirectResult(white.Player.Id, blackNormalized));
 
-        if (pairing.Result.CountsForPerformance)
+        if (ResultPolicy.CountsAsOpponentForBuchholz(pairing.Result.Kind, tournament.Settings))
+        {
+            white.OpponentIds.Add(black.Player.Id);
+            black.OpponentIds.Add(white.Player.Id);
+            if (black.Twz > 0) white.OpponentRatings.Add(black.Twz);
+            if (white.Twz > 0) black.OpponentRatings.Add(white.Twz);
+        }
+
+        if (ResultPolicy.CountsAsGameForDirectAndSonneborn(pairing.Result.Kind, tournament.Settings))
+        {
+            white.DirectResults.Add(new DirectResult(black.Player.Id, whiteNormalized));
+            black.DirectResults.Add(new DirectResult(white.Player.Id, blackNormalized));
+            white.SonnebornContributions.Add(new DirectResult(black.Player.Id, whiteNormalized));
+            black.SonnebornContributions.Add(new DirectResult(white.Player.Id, blackNormalized));
+        }
+
+        if (ResultPolicy.CountsForPerformance(pairing.Result.Kind))
         {
             white.NormalizedPerformancePoints += whiteNormalized;
             black.NormalizedPerformancePoints += blackNormalized;
             white.PerformanceGames++;
             black.PerformanceGames++;
+            if (black.Twz > 0) white.PerformanceOpponentRatings.Add(black.Twz);
+            if (white.Twz > 0) black.PerformanceOpponentRatings.Add(white.Twz);
         }
     }
 
@@ -152,6 +164,7 @@ public sealed class StandingsCalculator
         public decimal HeroScore { get; set; }
         public List<Guid> OpponentIds { get; } = new();
         public List<decimal> OpponentRatings { get; } = new();
+        public List<decimal> PerformanceOpponentRatings { get; } = new();
         public List<DirectResult> DirectResults { get; } = new();
         public List<DirectResult> SonnebornContributions { get; } = new();
         public decimal NormalizedPerformancePoints { get; set; }

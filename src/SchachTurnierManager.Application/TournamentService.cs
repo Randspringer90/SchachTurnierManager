@@ -12,6 +12,7 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly CrossTableCalculator _crossTable = new();
     private readonly CategoryStandingsCalculator _categoryStandings = new();
     private readonly HeroCupCalculator _heroCup = new();
+    private readonly RoundDiagnosticsCalculator _roundDiagnostics = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -362,6 +363,18 @@ public sealed class TournamentService(ITournamentStore store)
     public IReadOnlyList<PairingAudit> GetAudit(Guid tournamentId)
     {
         return RequireTournament(tournamentId).Rounds.Select(r => r.Audit).ToList();
+    }
+
+    public IReadOnlyList<RoundDiagnostics> GetRoundDiagnostics(Guid tournamentId)
+    {
+        return _roundDiagnostics.Calculate(RequireTournament(tournamentId));
+    }
+
+    public RoundDiagnostics GetRoundDiagnostics(Guid tournamentId, int roundNumber)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        return _roundDiagnostics.Calculate(tournament, tournament.Rounds[roundIndex]);
     }
 
     public TournamentState RequireTournament(Guid tournamentId)

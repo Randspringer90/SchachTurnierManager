@@ -103,6 +103,8 @@ type Tournament = {
     plannedRounds: number;
     seniorBirthYearOrEarlier?: number | null;
     heroCupMinimumRatedGames: number;
+    forfeitTiebreakPolicy: number;
+    countByeAsWin: boolean;
   };
   players: Player[];
   rounds: TournamentRound[];
@@ -161,6 +163,33 @@ type HeroCupRow = {
   reason: string;
 };
 
+type BoardDiagnostic = {
+  boardNumber: number;
+  white: string;
+  black: string;
+  result: number;
+  resultLabel: string;
+  isOpen: boolean;
+  isForfeit: boolean;
+  countsForBuchholz: boolean;
+  countsForDirectAndSonneborn: boolean;
+  countsForPerformance: boolean;
+  note: string;
+};
+
+type RoundDiagnostics = {
+  roundNumber: number;
+  resultStatus: number;
+  isComplete: boolean;
+  isLocked: boolean;
+  isVerified: boolean;
+  openBoards: number;
+  forfeitBoards: number;
+  byeBoards: number;
+  warnings: string[];
+  boards: BoardDiagnostic[];
+};
+
 type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
 type PlayerForm = {
@@ -183,9 +212,9 @@ const resultOptions = [
   { value: 1, label: '1-0' },
   { value: 2, label: '½-½' },
   { value: 3, label: '0-1' },
-  { value: 4, label: '+/-' },
-  { value: 5, label: '-/+' },
-  { value: 6, label: '-/-' },
+  { value: 4, label: '+/- kampflos Weiß' },
+  { value: 5, label: '-/+ kampflos Schwarz' },
+  { value: 6, label: '-/- kampflos beide' },
   { value: 7, label: 'Bye' },
   { value: 8, label: 'Armageddon Weiß' },
   { value: 9, label: 'Armageddon Schwarz' }
@@ -341,6 +370,7 @@ function App() {
   const [categories, setCategories] = React.useState<CategoryStandingTable[]>([]);
   const [crossTable, setCrossTable] = React.useState<CrossTable | null>(null);
   const [heroCup, setHeroCup] = React.useState<HeroCupRow[]>([]);
+  const [roundDiagnostics, setRoundDiagnostics] = React.useState<RoundDiagnostics[]>([]);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
@@ -368,19 +398,22 @@ function App() {
       setCategories([]);
       setCrossTable(null);
       setHeroCup([]);
+      setRoundDiagnostics([]);
       return;
     }
 
-    const [standingData, categoryData, crossTableData, heroCupData] = await Promise.all([
+    const [standingData, categoryData, crossTableData, heroCupData, diagnosticsData] = await Promise.all([
       requestJson<StandingRow[]>(`/api/tournaments/${id}/standings`),
       requestJson<CategoryStandingTable[]>(`/api/tournaments/${id}/categories`),
       requestJson<CrossTable>(`/api/tournaments/${id}/cross-table`),
-      requestJson<HeroCupRow[]>(`/api/tournaments/${id}/hero-cup`)
+      requestJson<HeroCupRow[]>(`/api/tournaments/${id}/hero-cup`),
+      requestJson<RoundDiagnostics[]>(`/api/tournaments/${id}/round-diagnostics`)
     ]);
     setStandings(standingData);
     setCategories(categoryData);
     setCrossTable(crossTableData);
     setHeroCup(heroCupData);
+    setRoundDiagnostics(diagnosticsData);
   }, []);
 
   const refresh = React.useCallback(async (preferredId?: string) => {
@@ -417,6 +450,8 @@ function App() {
           twzSource: 0,
           plannedRounds: 5,
           allowManualPairingOverrides: true,
+          forfeitTiebreakPolicy: 0,
+          countByeAsWin: false,
           heroCupMinimumRatedGames: 1
         }
       })
@@ -626,13 +661,17 @@ function App() {
     setPlayerForm(playerToForm(player));
   }
 
+  function diagnosticsFor(roundNumber: number): RoundDiagnostics | undefined {
+    return roundDiagnostics.find(item => item.roundNumber === roundNumber);
+  }
+
   return (
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.5.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.6.0</p>
           <h1>SchachTurnierManager</h1>
-          <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, Kategorien, Kreuztabelle und Im-/Export.</p>
+          <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
         <div className="status-card">
           <strong>Backend</strong>
@@ -851,6 +890,30 @@ function App() {
                         <strong>Farben</strong>
                         <ul>{round.audit.colorNotes.map((message, index) => <li key={`c-${index}`}>{message}</li>)}</ul>
                       </section>
+                    </div>
+                  </details>
+                )}
+                {diagnosticsFor(round.roundNumber) && (
+                  <details className="diagnostics-box" open={diagnosticsFor(round.roundNumber)?.warnings.length !== 0}>
+                    <summary>Rundenprüfung · {diagnosticsFor(round.roundNumber)?.openBoards ?? 0} offen · {diagnosticsFor(round.roundNumber)?.forfeitBoards ?? 0} kampflos · {diagnosticsFor(round.roundNumber)?.byeBoards ?? 0} Bye</summary>
+                    {(diagnosticsFor(round.roundNumber)?.warnings.length ?? 0) === 0 && <p className="ok">Keine Warnungen.</p>}
+                    <ul>{diagnosticsFor(round.roundNumber)?.warnings.map((warning, index) => <li key={`w-${round.roundNumber}-${index}`}>{warning}</li>)}</ul>
+                    <div className="table-scroll compact">
+                      <table>
+                        <thead><tr><th>Brett</th><th>Ergebnis</th><th>BH</th><th>SB/Direkt</th><th>TPR</th><th>Hinweis</th></tr></thead>
+                        <tbody>
+                          {diagnosticsFor(round.roundNumber)?.boards.map(board => (
+                            <tr key={`d-${round.roundNumber}-${board.boardNumber}`} className={board.isForfeit ? 'manual-row' : board.isOpen ? 'warning-row' : ''}>
+                              <td>{board.boardNumber}</td>
+                              <td>{board.resultLabel}</td>
+                              <td>{board.countsForBuchholz ? 'ja' : 'nein'}</td>
+                              <td>{board.countsForDirectAndSonneborn ? 'ja' : 'nein'}</td>
+                              <td>{board.countsForPerformance ? 'ja' : 'nein'}</td>
+                              <td>{board.note}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </details>
                 )}
