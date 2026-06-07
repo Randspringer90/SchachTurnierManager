@@ -163,10 +163,10 @@ public sealed class TournamentExportFormatter
     {
         builder.AppendLine("<div class=\"diagnostics\">");
         builder.AppendLine($"<strong>Rundenprüfung:</strong> offen {diagnostics.OpenBoards}, kampflos {diagnostics.ForfeitBoards}, Byes {diagnostics.ByeBoards}");
-        if (diagnostics.Messages.Count > 0)
+        if (diagnostics.Warnings.Count > 0)
         {
             builder.AppendLine("<ul>");
-            foreach (var message in diagnostics.Messages)
+            foreach (var message in diagnostics.Warnings)
             {
                 builder.AppendLine($"<li>{Html(message)}</li>");
             }

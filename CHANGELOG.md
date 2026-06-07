@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 - Stabilisierung Druckansichten
+
+- Korrigiert Buildfehler im HTML-Export: Rundenprüfung nutzt `RoundDiagnostics.Warnings` statt einer nicht existierenden `Messages`-Eigenschaft.
+- Ergänzt Handoff und Nachkontrollskript für den grünen v0.7.1-Stand.
+
 ## 0.7.0 - Druckansichten und Exportpaket
 
 - CSV-Export für Gesamtwertung ergänzt.

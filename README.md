@@ -60,7 +60,7 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen bis 0.7.0
+## Funktionen bis 0.7.1
 
 - Turniere lokal anlegen und dauerhaft speichern.
 - Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.

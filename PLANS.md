@@ -67,7 +67,7 @@
 - Erweiterte Ergebnisvalidierung und Rundenabschluss-Workflow.
 
 
-## Abgeschlossen in 0.7.0
+## Abgeschlossen in 0.7.1
 
 - Tabellen-CSV und Paarungs-CSV ergänzt.
 - HTML-Druckansicht für Turnierbericht und einzelne Rundenblätter ergänzt.
