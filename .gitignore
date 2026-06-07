@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+node_modules/
+dist/
+coverage/
+logs/
+output/
+tmp/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
