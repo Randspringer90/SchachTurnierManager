@@ -11,19 +11,32 @@ D:\Schach\SchachTurnierManager
 ## Architektur
 
 - `SchachTurnierManager.Domain`: fachliche Regeln und Algorithmen.
-- `SchachTurnierManager.Application`: Use Cases und In-Memory-MVP-Store.
-- `SchachTurnierManager.Infrastructure`: spätere SQLite-/EF-Core- und Import-/Export-Anbindung.
+- `SchachTurnierManager.Application`: Use Cases und Store-Abstraktion.
+- `SchachTurnierManager.Infrastructure`: SQLite-/EF-Core-Persistenz und spätere Import-/Export-Anbindung.
 - `SchachTurnierManager.WebApi`: lokale ASP.NET-Core-API.
 - `SchachTurnierManager.WebApp`: React/TypeScript/Vite-Dashboard.
-- `tests`: Unit- und Golden Tests.
+- `tests`: Unit-, Persistenz- und Golden Tests.
 
 ## Erste Prüfung
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; dotnet restore; dotnet build; dotnet test
+Set-Location "D:\Schach\SchachTurnierManager"; .\scripts\Test-All.ps1
 ```
 
-## Backend starten
+Alternativ einzeln:
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; dotnet restore; dotnet build; dotnet test
+Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"; npm install; npm run build
+```
+
+## Entwicklung starten
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; .\scripts\Start-Dev.ps1
+```
+
+Backend:
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"; dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj
@@ -35,7 +48,7 @@ Healthcheck:
 http://localhost:5088/api/health
 ```
 
-## Frontend starten
+Frontend:
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"; npm install; npm run dev
@@ -47,14 +60,20 @@ Dashboard:
 http://localhost:5173
 ```
 
+## Lokale Datenbank
+
+Die API legt die SQLite-Datenbank standardmäßig unter `%LOCALAPPDATA%\SchachTurnierManager\SchachTurnierManager.sqlite` an.
+
+Optional kann der Datenordner per Konfiguration `SchachTurnierManager:DataDirectory` angepasst werden.
+
 ## GitHub
 
-Das Repository wurde lokal bereits als `Randspringer90/SchachTurnierManager` vorbereitet. In dieser ZIP ist bewusst kein `.git` enthalten. Inhalte in dein bestehendes Repo kopieren, dann:
+Das Repository liegt als privates Repo unter `Randspringer90/SchachTurnierManager`. In ZIPs ist bewusst kein `.git` enthalten. Inhalte in das bestehende Repo kopieren, dann:
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit -m "Add initial application skeleton"; git push
+Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit -m "Update SchachTurnierManager"; git push
 ```
 
 ## Status
 
-Version 0.1.0: Architektur- und Codebasis, erste Algorithmen und Tests. Noch keine vollständige Turnierleiter-UI und noch kein vollständiges FIDE-Dutch-Swiss.
+Version 0.2.0: Persistentes MVP mit SQLite, API-Endpunkten, bedienbarem React-Dashboard, Frontend-Build-Fix, `.gitattributes`, erweitertem Testskript und Persistenztest. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.

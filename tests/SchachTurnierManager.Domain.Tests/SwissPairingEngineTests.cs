@@ -21,7 +21,7 @@ public sealed class SwissPairingEngineTests
 
         var round = new SwissPairingEngine().GenerateNextRound(tournament);
 
-        Assert.Single(round.Pairings.Where(p => p.IsBye));
+        Assert.Single(round.Pairings, p => p.IsBye);
         Assert.Equal(3, round.Pairings.Count);
     }
 }

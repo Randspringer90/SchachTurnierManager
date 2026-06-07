@@ -16,6 +16,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchachTurnierManager.Applic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchachTurnierManager.GoldenTests", "tests\\SchachTurnierManager.GoldenTests\\SchachTurnierManager.GoldenTests.csproj", "{3E3788E0-9EE5-4089-9CD3-6DBE72CD6505}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchachTurnierManager.Infrastructure.Tests", "tests\SchachTurnierManager.Infrastructure.Tests\SchachTurnierManager.Infrastructure.Tests.csproj", "{DBD789A3-1298-4D61-875B-4C75A137FDD8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +52,10 @@ Global
 		{3E3788E0-9EE5-4089-9CD3-6DBE72CD6505}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E3788E0-9EE5-4089-9CD3-6DBE72CD6505}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3E3788E0-9EE5-4089-9CD3-6DBE72CD6505}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBD789A3-1298-4D61-875B-4C75A137FDD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBD789A3-1298-4D61-875B-4C75A137FDD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBD789A3-1298-4D61-875B-4C75A137FDD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBD789A3-1298-4D61-875B-4C75A137FDD8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -3,7 +3,11 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SchachTurnierManager.Domain\SchachTurnierManager.Domain.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\SchachTurnierManager.Application\SchachTurnierManager.Application.csproj" />
+    <ProjectReference Include="..\SchachTurnierManager.Domain\SchachTurnierManager.Domain.csproj" />
   </ItemGroup>
 </Project>

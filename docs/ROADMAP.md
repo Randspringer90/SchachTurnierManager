@@ -1,17 +1,17 @@
 # Roadmap
 
 ## Kurzfristig
-1. Build/Test auf Marcos Laptop ausführen.
-2. In Git committen und pushen.
-3. Dashboard für Turnier- und Teilnehmeranlage bauen.
-4. Ergebniseingabe und Tabellenanzeige ergänzen.
+1. v0.2-ZIP einspielen.
+2. `scripts\Test-All.ps1` ausführen.
+3. Lokalen Smoke-Test: Backend + Dashboard starten, Turnier anlegen, Spieler eintragen, Runde auslosen, Ergebnis speichern.
+4. Commit und Push nach erfolgreichem Test.
 
 ## Mittelfristig
-1. SQLite-Persistenz.
+1. Teilnehmer bearbeiten/löschen im Dashboard.
 2. CSV/JSON Import/Export.
 3. Kreuztabelle.
 4. Kategorien und Heldenpokal im UI.
-5. Pairing-Golden-Tests.
+5. Pairing-Golden-Tests mit realistischen Schweizer-Turnierfällen.
 
 ## Langfristig
 1. FIDE-Dutch-Swiss so weit wie möglich regelkonform.
