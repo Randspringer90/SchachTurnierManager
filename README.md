@@ -87,7 +87,7 @@ Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit
 
 ## Status
 
-Version 0.5.1: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export und gehärteter Schweizer-System-Auslosung V2. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
+Version 0.5.2: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export und gehärteter Schweizer-System-Auslosung V2. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein produktiver Installer.
 
 
 ## Entwicklerstart-Hinweis

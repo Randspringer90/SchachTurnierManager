@@ -27,12 +27,12 @@ public sealed class RoundWorkflowTests
         var tournament = service.CreateTournament("Override Test", new TournamentSettings { Format = TournamentFormat.Swiss });
         AddPlayers(service, tournament.Id, 4);
         var round = service.GenerateNextRound(tournament.Id);
-        var boardBefore = Assert.Single(round.Pairings.Where(pairing => pairing.BoardNumber == 1));
+        var boardBefore = Assert.Single(round.Pairings, pairing => pairing.BoardNumber == 1);
         var white = boardBefore.WhitePlayerId;
         var black = boardBefore.BlackPlayerId;
 
         var updated = service.OverridePairing(tournament.Id, round.RoundNumber, 1, white, black, "Test-Override");
-        var board = Assert.Single(updated.Pairings.Where(pairing => pairing.BoardNumber == 1));
+        var board = Assert.Single(updated.Pairings, pairing => pairing.BoardNumber == 1);
 
         Assert.True(board.IsManualOverride);
         Assert.Equal(white, board.WhitePlayerId);
