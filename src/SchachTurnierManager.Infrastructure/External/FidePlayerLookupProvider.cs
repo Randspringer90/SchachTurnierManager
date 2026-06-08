@@ -8,15 +8,30 @@ namespace SchachTurnierManager.Infrastructure.External;
 public sealed class FidePlayerLookupProvider : IExternalPlayerLookupProvider
 {
     private static readonly Uri BaseUri = new("https://ratings.fide.com/");
-    private static readonly HttpClient HttpClient = new()
-    {
-        BaseAddress = BaseUri,
-        Timeout = TimeSpan.FromSeconds(12)
-    };
+    private readonly HttpClient _httpClient;
 
-    static FidePlayerLookupProvider()
+    public FidePlayerLookupProvider()
+        : this(CreateDefaultHttpClient())
     {
-        HttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SchachTurnierManager/0.10 (+https://github.com/Randspringer90/SchachTurnierManager)");
+    }
+
+    public FidePlayerLookupProvider(HttpClient httpClient)
+    {
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClient.BaseAddress ??= BaseUri;
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SchachTurnierManager/0.11 (+https://github.com/Randspringer90/SchachTurnierManager)");
+        }
+    }
+
+    private static HttpClient CreateDefaultHttpClient()
+    {
+        return new HttpClient
+        {
+            BaseAddress = BaseUri,
+            Timeout = TimeSpan.FromSeconds(12)
+        };
     }
 
     public ExternalPlayerSource Source => ExternalPlayerSource.Fide;
@@ -47,7 +62,7 @@ public sealed class FidePlayerLookupProvider : IExternalPlayerLookupProvider
         string html;
         try
         {
-            html = await HttpClient.GetStringAsync(profilePath, cancellationToken).ConfigureAwait(false);
+            html = await _httpClient.GetStringAsync(profilePath, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {

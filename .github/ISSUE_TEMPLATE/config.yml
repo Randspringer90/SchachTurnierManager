@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Diskussion oder allgemeine Frage
+    url: https://github.com/Randspringer90/SchachTurnierManager/discussions
+    about: Für allgemeine Fragen, Ideen und Diskussionen, sofern Discussions später aktiviert werden.

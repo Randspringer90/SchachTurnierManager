@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.11.3 - FIDE-Testassert endgültig stabilisiert
+
+- FIDE-Provider-Test prüft die Request-URI jetzt tolerant auf das Suffix `profile/4610563`.
+- Nachkontrollskript ersetzt alte Assert-Zeilen per Regex und bricht ab, falls der alte Assert weiterhin vorhanden ist.
+- Versionen auf `0.11.3` angehoben.
+
+## 0.11.2 - FIDE-Testassert robust fixiert
+
+- FIDE-Provider-Test endgültig auf absolute/relative Profil-URI tolerant gemacht.
+- Nachkontrollskript korrigiert die alte Assert-Zeile vorsorglich, falls ein vorheriger Patch nicht sauber überschrieben wurde.
+- Versionen auf `0.11.2` angehoben.
+
+## 0.11.1 - FIDE-Test und Ticket-Vorbereitung stabilisiert
+
+- Korrigiert den FIDE-Provider-Test: `HttpClient` liefert bei gesetzter BaseAddress eine absolute `RequestUri`; der Test prüft nun robust auf `/profile/4610563`.
+- GitHub-Issue-Templates für Bugreports und Feature-Wünsche ergänzt.
+- Ticket-/Feedback-Workflow dokumentiert: GitHub Issues für öffentliche Nutzer, optional später In-App-Link mit Diagnosepaket.
+- Versionen auf `0.11.1` angehoben.
+
+## 0.11.0 - FIDE-Adapter testbar gemacht
+
+- FIDE-Provider akzeptiert jetzt einen injizierten `HttpClient`, bleibt aber per Standardkonstruktor produktiv nutzbar.
+- Offline-Parser-Test für FIDE-ID `4610563` ergänzt.
+- Invalid-ID-Test für den FIDE-Provider ergänzt.
+- Externe Lookup-Tests sind damit stabiler und weniger abhängig von Live-Webseiten.
+
 ## 0.10.4 - Stabilisierung externe Lookup-Tests
 
 - Infrastructure-Live-Tests entkoppelt von konkreter DSB-/ThSB-Provider-Sichtbarkeit.

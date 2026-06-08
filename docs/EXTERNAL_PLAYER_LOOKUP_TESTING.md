@@ -29,6 +29,17 @@ tests/SchachTurnierManager.Application.Tests/KnownExternalPlayerSnapshotTests.cs
 
 Diese Tests prüfen Mapping und Datenmodell, ohne Internetzugriff.
 
+
+## Offline-FIDE-Parser-Test
+
+Datei:
+
+```text
+tests/SchachTurnierManager.Infrastructure.Tests/FidePlayerLookupProviderTests.cs
+```
+
+Dieser Test nutzt einen injizierten `HttpClient` mit statischem HTML und prüft, ob der FIDE-Parser Name, ID, Geburtsjahr, Geschlecht sowie Standard-/Rapid-/Blitz-Elo korrekt extrahiert. Dadurch bleibt der Parser auch ohne Internetzugriff testbar.
+
 ## Live-FIDE-Test
 
 Datei:
