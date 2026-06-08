@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.4 - Stabilisierung externe Lookup-Tests
+
+- Infrastructure-Live-Tests entkoppelt von konkreter DSB-/ThSB-Provider-Sichtbarkeit.
+- FIDE-Live-Test bleibt optional über `STM_RUN_LIVE_LOOKUP_TESTS=1`.
+- Offline-Snapshots für FIDE/DSB/ThSB bleiben als stabiler Testanker erhalten.
+- Versionsanzeige auf `0.10.4` vereinheitlicht.
+
 ## 0.10.0 - Externe Spielersuche (FIDE-Grundlage)
 
 - Provider-Struktur für externe Spielerdatenquellen ergänzt.

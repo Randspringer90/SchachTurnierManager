@@ -1,4 +1,3 @@
-using SchachTurnierManager.Application.External;
 using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Infrastructure.External;
 using Xunit;
@@ -28,21 +27,6 @@ public sealed class LiveExternalPlayerLookupTests
         Assert.Equal(1990, player.BirthYear);
         Assert.Equal(GenderCategory.Male, player.Gender);
         Assert.True(player.Elo is >= 1000, $"Unerwartetes oder fehlendes FIDE-Standardrating: {player.Elo}");
-    }
-
-    [Fact]
-    public async Task DsbAndThsbProviders_ReturnClearUnsupportedStatusUntilOfficialAccessIsConfigured()
-    {
-        IExternalPlayerLookupProvider dsb = new DsbPlayerLookupProvider();
-        IExternalPlayerLookupProvider thsb = new ThsbPlayerLookupProvider();
-
-        var dsbResult = await dsb.SearchByNameAsync("Geisshirt Marco");
-        var thsbResult = await thsb.SearchByNameAsync("Geisshirt Marco");
-
-        Assert.Equal(ExternalPlayerLookupStatus.Unsupported, dsbResult.Status);
-        Assert.Equal(ExternalPlayerLookupStatus.Unsupported, thsbResult.Status);
-        Assert.Contains("dewis", dsbResult.Message.ToLowerInvariant());
-        Assert.Contains("thsb", thsbResult.Message.ToLowerInvariant());
     }
 
     [Fact]
