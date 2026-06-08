@@ -59,3 +59,8 @@ Geplant ist ein neutraler `PlayerLookupResult`, der in einen lokalen `Player` ü
 5. ThSB als DSB-Verband-/Vereinsfilter, solange keine eigene API vorhanden ist.
 6. Dashboard-Suche mit Ergebnisvorschau und Button "als Teilnehmer übernehmen".
 7. Tests mit statischen HTML-/JSON-Fixtures statt Live-Netzwerk.
+
+
+## Stand 0.10.0
+
+Aktiv ist zunächst FIDE-ID-Lookup über `ratings.fide.com/profile/{id}`. Namenssuche sowie DSB/ThSB werden als Providerstruktur vorbereitet, aber noch nicht als vollautomatische Live-Abfrage genutzt.

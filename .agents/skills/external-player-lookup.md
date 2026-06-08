@@ -25,3 +25,10 @@ Spielerinformationen aus externen Schachquellen in den SchachTurnierManager übe
 - Namenssuche ist providerübergreifend vorbereitet.
 - UI kann Suchergebnis in das Teilnehmerformular übernehmen.
 - Tests prüfen Mapping und Fehlerfälle ohne Internet.
+
+## Stand 0.10.0
+
+- FIDE-ID-Lookup ist technisch aktiv (`/api/external-players/search?source=0&query=<FIDE-ID>`).
+- Treffer können im Dashboard in das Teilnehmerformular übernommen werden.
+- DSB/DeWIS und ThSB sind als Provider registriert und liefern bewusst eine Unsupported-Antwort, bis der offizielle API-/Registrierungsweg geklärt ist.
+- Keine inoffiziellen Scraper für DSB/ThSB ohne erneute Prüfung und explizite Entscheidung.

@@ -131,3 +131,8 @@ Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -Exec
 ## Externe Spielerdaten
 
 Geplant ist eine providerbasierte Anbindung an FIDE, DSB/DeWIS/DWZ und den ThSB-Kontext. Details stehen in `docs/EXTERNAL_PLAYER_LOOKUP.md`.
+
+
+## Externe Spielerdaten
+
+Ab Version 0.10.0 gibt es eine erste externe Spielersuche. Aktiv ist zunächst der FIDE-Profilabruf per FIDE-ID. DSB/DeWIS und ThSB sind als Provider vorbereitet, werden aber erst nach Klärung einer stabilen offiziellen Schnittstelle vollständig aktiviert.

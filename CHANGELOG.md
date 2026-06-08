@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0 - Externe Spielersuche (FIDE-Grundlage)
+
+- Provider-Struktur für externe Spielerdatenquellen ergänzt.
+- FIDE-ID-Suche über `ratings.fide.com/profile/{id}` als erster aktiver Adapter.
+- DSB/DeWIS und ThSB als vorbereitete Provider mit klarer Unsupported-Rückmeldung.
+- Dashboard-Bereich „Spielerdaten suchen“ ergänzt; Treffer können ins Teilnehmerformular übernommen werden.
+- Teilnehmerformular um Federation, Land, Rapid-/Blitz-Elo und DWZ-Index erweitert.
+- Tests für Lookup-Routing und Profil-zu-Teilnehmer-Mapping ergänzt.
+
 ## 0.9.2 - Versions-/Packaging-Fix und externe Spielerdatenplanung
 
 - Portable-Paket liest Version automatisch aus `package.json`.

@@ -192,6 +192,47 @@ type RoundDiagnostics = {
   boards: BoardDiagnostic[];
 };
 
+type ExternalPlayerProviderInfo = {
+  source: number;
+  name: string;
+  supportsIdLookup: boolean;
+  supportsNameSearch: boolean;
+  description: string;
+  url?: string | null;
+};
+
+type ExternalPlayerProfile = {
+  source: number;
+  externalId: string;
+  name: string;
+  club?: string | null;
+  federation?: string | null;
+  country?: string | null;
+  birthYear?: number | null;
+  gender: number;
+  fideId?: string | null;
+  nationalId?: string | null;
+  title?: string | null;
+  elo?: number | null;
+  rapidElo?: number | null;
+  blitzElo?: number | null;
+  dwz?: number | null;
+  dwzIndex?: number | null;
+  profileUrl?: string | null;
+  retrievedAt: string;
+  confidence: number;
+  notes?: string | null;
+  warnings: string[];
+};
+
+type ExternalPlayerLookupResult = {
+  source: number;
+  query: string;
+  status: number;
+  message: string;
+  players: ExternalPlayerProfile[];
+};
+
 type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
 type SettingsForm = {
@@ -210,10 +251,15 @@ type SettingsForm = {
 type PlayerForm = {
   name: string;
   club: string;
+  federation: string;
+  country: string;
   birthYear: string;
   gender: number;
   dwz: string;
+  dwzIndex: string;
   elo: string;
+  rapidElo: string;
+  blitzElo: string;
   manualTwz: string;
   fideId: string;
   nationalId: string;
@@ -283,13 +329,24 @@ const playerStatusOptions = [
   { value: 2, label: 'zurückgezogen' }
 ];
 
+const externalSourceOptions = [
+  { value: 0, label: 'FIDE' },
+  { value: 1, label: 'DSB / DeWIS' },
+  { value: 2, label: 'ThSB' }
+];
+
 const emptyPlayerForm: PlayerForm = {
   name: '',
   club: '',
+  federation: '',
+  country: '',
   birthYear: '',
   gender: 0,
   dwz: '',
+  dwzIndex: '',
   elo: '',
+  rapidElo: '',
+  blitzElo: '',
   manualTwz: '',
   fideId: '',
   nationalId: '',
@@ -373,10 +430,15 @@ function playerToForm(player: Player): PlayerForm {
   return {
     name: player.name,
     club: player.club ?? '',
+    federation: player.federation ?? '',
+    country: player.country ?? '',
     birthYear: player.birthYear?.toString() ?? '',
     gender: player.gender,
     dwz: player.rating.dwz?.toString() ?? '',
+    dwzIndex: player.rating.dwzIndex?.toString() ?? '',
     elo: player.rating.elo?.toString() ?? '',
+    rapidElo: player.rating.rapidElo?.toString() ?? '',
+    blitzElo: player.rating.blitzElo?.toString() ?? '',
     manualTwz: player.rating.manualTwz?.toString() ?? '',
     fideId: player.fideId ?? '',
     nationalId: player.nationalId ?? '',
@@ -390,15 +452,15 @@ function formToRequest(form: PlayerForm, startingRank?: number): unknown {
   return {
     name: form.name,
     club: form.club || null,
-    federation: null,
-    country: null,
+    federation: form.federation || null,
+    country: form.country || null,
     birthYear: numberOrNull(form.birthYear),
     gender: form.gender,
     elo: numberOrNull(form.elo),
-    rapidElo: null,
-    blitzElo: null,
+    rapidElo: numberOrNull(form.rapidElo),
+    blitzElo: numberOrNull(form.blitzElo),
     dwz: numberOrNull(form.dwz),
-    dwzIndex: null,
+    dwzIndex: numberOrNull(form.dwzIndex),
     manualTwz: numberOrNull(form.manualTwz),
     fideId: form.fideId || null,
     nationalId: form.nationalId || null,
@@ -407,6 +469,33 @@ function formToRequest(form: PlayerForm, startingRank?: number): unknown {
     notes: form.notes || null,
     startingRank: startingRank ?? null
   };
+}
+
+function applyExternalProfileToForm(profile: ExternalPlayerProfile): PlayerForm {
+  return {
+    ...emptyPlayerForm,
+    name: profile.name ?? '',
+    club: profile.club ?? '',
+    federation: profile.federation ?? '',
+    country: profile.country ?? '',
+    birthYear: profile.birthYear?.toString() ?? '',
+    gender: profile.gender ?? 0,
+    dwz: profile.dwz?.toString() ?? '',
+    dwzIndex: profile.dwzIndex?.toString() ?? '',
+    elo: profile.elo?.toString() ?? '',
+    rapidElo: profile.rapidElo?.toString() ?? '',
+    blitzElo: profile.blitzElo?.toString() ?? '',
+    manualTwz: '',
+    fideId: profile.fideId ?? (profile.source === 0 ? profile.externalId : ''),
+    nationalId: profile.nationalId ?? '',
+    title: profile.title ?? '',
+    status: 0,
+    notes: profile.notes ?? ''
+  };
+}
+
+function externalSourceLabel(value: number): string {
+  return externalSourceOptions.find(option => option.value === value)?.label ?? String(value);
 }
 
 function settingsToForm(tournament?: Tournament): SettingsForm {
@@ -486,6 +575,10 @@ function App() {
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
+  const [externalProviders, setExternalProviders] = React.useState<ExternalPlayerProviderInfo[]>([]);
+  const [externalSource, setExternalSource] = React.useState(0);
+  const [externalQuery, setExternalQuery] = React.useState('');
+  const [externalLookup, setExternalLookup] = React.useState<ExternalPlayerLookupResult | null>(null);
   const [editingPlayerId, setEditingPlayerId] = React.useState<string | null>(null);
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
@@ -539,6 +632,9 @@ function App() {
   React.useEffect(() => {
     requestJson<Health>('/api/health')
       .then(setHealth)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+    requestJson<ExternalPlayerProviderInfo[]>('/api/external-players/providers')
+      .then(setExternalProviders)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
     loadTournaments().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
   }, [loadTournaments]);
@@ -739,6 +835,26 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  async function searchExternalPlayers(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    setError(null);
+    const query = externalQuery.trim();
+    if (!query) {
+      setError('Bitte FIDE-ID oder Suchbegriff eingeben.');
+      return;
+    }
+
+    const result = await requestJson<ExternalPlayerLookupResult>(`/api/external-players/search?source=${externalSource}&query=${encodeURIComponent(query)}`);
+    setExternalLookup(result);
+    setStatus(result.message);
+  }
+
+  function applyExternalPlayer(profile: ExternalPlayerProfile): void {
+    setPlayerForm(applyExternalProfileToForm(profile));
+    setEditingPlayerId(null);
+    setStatus(`${profile.name} aus ${externalSourceLabel(profile.source)} in das Teilnehmerformular übernommen.`);
+  }
+
   async function importPlayers() {
     if (!selectedTournament) {
       return;
@@ -819,7 +935,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.9.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.10.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -931,17 +1047,56 @@ function App() {
           </article>
 
           <div className="grid two">
+            <article className="card external-lookup-card">
+              <h3>Spielerdaten suchen</h3>
+              <p className="muted">FIDE-ID-Suche ist aktiv. DSB/DeWIS und ThSB sind als Adapter vorbereitet und werden nach Klärung der offiziellen Schnittstelle aktiviert.</p>
+              <form onSubmit={(event) => void searchExternalPlayers(event)} className="external-lookup-form">
+                <select value={externalSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setExternalSource(Number(event.target.value))}>
+                  {externalSourceOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <input value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder="FIDE-ID oder Name" />
+                <button type="submit">Suchen</button>
+              </form>
+              {externalProviders.length > 0 && (
+                <details className="provider-info">
+                  <summary>Quellenstatus</summary>
+                  <ul>{externalProviders.map(provider => <li key={provider.source}><strong>{provider.name}:</strong> {provider.description}</li>)}</ul>
+                </details>
+              )}
+              {externalLookup && (
+                <div className="lookup-results">
+                  <strong>{externalSourceLabel(externalLookup.source)} · {externalLookup.message}</strong>
+                  {externalLookup.players.length === 0 && <p className="muted">{externalLookup.message}</p>}
+                  {externalLookup.players.map(profile => (
+                    <div key={`${profile.source}-${profile.externalId}`} className="lookup-result">
+                      <div>
+                        <strong>{profile.name}</strong>
+                        <small>{profile.fideId ? `FIDE ${profile.fideId}` : profile.externalId} · {profile.federation ?? profile.country ?? 'ohne Verband'} · Elo {profile.elo ?? '—'} · {profile.birthYear ?? 'Jahr ?'}</small>
+                        {profile.profileUrl && <small><a href={profile.profileUrl} target="_blank" rel="noreferrer">Profil öffnen</a></small>}
+                      </div>
+                      <button type="button" className="small" onClick={() => applyExternalPlayer(profile)}>Übernehmen</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+
             <article className="card">
               <h3>{editingPlayerId ? 'Teilnehmer bearbeiten' : 'Teilnehmer erfassen'}</h3>
               <form onSubmit={(event) => void savePlayer(event)} className="player-form wide">
                 <input value={playerForm.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, name: event.target.value })} placeholder="Name *" />
                 <input value={playerForm.club} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, club: event.target.value })} placeholder="Verein" />
+                <input value={playerForm.federation} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, federation: event.target.value })} placeholder="Verband/Federation" />
+                <input value={playerForm.country} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, country: event.target.value })} placeholder="Land" />
                 <input value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder="Geburtsjahr" type="number" min="1900" max="2100" />
                 <select value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
                   {genderOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <input value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
-                <input value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo" type="number" min="0" />
+                <input value={playerForm.dwzIndex} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwzIndex: event.target.value })} placeholder="DWZ-Index" type="number" min="0" />
+                <input value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo Standard" type="number" min="0" />
+                <input value={playerForm.rapidElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, rapidElo: event.target.value })} placeholder="Elo Rapid" type="number" min="0" />
+                <input value={playerForm.blitzElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, blitzElo: event.target.value })} placeholder="Elo Blitz" type="number" min="0" />
                 <input value={playerForm.manualTwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, manualTwz: event.target.value })} placeholder="TWZ manuell" type="number" min="0" />
                 <input value={playerForm.fideId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, fideId: event.target.value })} placeholder="FIDE-ID" />
                 <input value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
@@ -959,13 +1114,14 @@ function App() {
               <h3>Teilnehmerliste</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>TWZ</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
+                  <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>FIDE</th><th>TWZ</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
                   <tbody>
                     {selectedTournament?.players.map(player => (
                       <tr key={player.id} className={player.status === 2 ? 'muted-row' : ''}>
                         <td>{player.startingRank}</td>
                         <td>{player.name}</td>
                         <td>{player.club ?? '—'}</td>
+                        <td>{player.fideId ?? '—'}</td>
                         <td>{twzOf(player)}</td>
                         <td>{genderLabel(player.gender)} {player.birthYear ? `· ${player.birthYear}` : ''}</td>
                         <td>{statusLabel(player.status)}</td>

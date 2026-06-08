@@ -1,9 +1,11 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SchachTurnierManager.Application;
+using SchachTurnierManager.Application.External;
 using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Infrastructure;
 using SchachTurnierManager.Infrastructure.Persistence;
+using SchachTurnierManager.Infrastructure.External;
 using SchachTurnierManager.WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,7 @@ var connectionString = builder.Configuration.GetConnectionString("SchachTurnierM
     ?? $"Data Source={databasePath}";
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
+builder.Services.AddExternalPlayerLookupAdapters();
 builder.Services.AddScoped<TournamentService>();
 builder.Services.AddCors(options =>
 {
@@ -64,11 +67,31 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.9.2",
+    version = "0.10.0",
     time = DateTimeOffset.UtcNow,
     database = databasePath,
     embeddedDashboard = embeddedDashboardAvailable
 }));
+
+
+app.MapGet("/api/external-players/providers", (ExternalPlayerLookupService service) => Results.Ok(service.Providers));
+
+app.MapGet("/api/external-players/search", async (string? source, string? query, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
+{
+    if (!TryParseExternalPlayerSource(source, out var parsedSource))
+    {
+        return Results.BadRequest(new { error = $"Unbekannte Quelle: {source ?? "<leer>"}." });
+    }
+
+    var result = await service.SearchAsync(parsedSource, query ?? string.Empty, cancellationToken);
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/external-players/fide/{fideId}", async (string fideId, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
+{
+    var result = await service.LookupByIdAsync(ExternalPlayerSource.Fide, fideId, cancellationToken);
+    return Results.Ok(result);
+});
 
 app.MapGet("/api/tournaments", (TournamentService service) => Results.Ok(service.ListTournaments()));
 
@@ -427,6 +450,24 @@ if (embeddedDashboardAvailable)
 }
 
 app.Run();
+
+
+static bool TryParseExternalPlayerSource(string? value, out ExternalPlayerSource source)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        source = ExternalPlayerSource.Fide;
+        return true;
+    }
+
+    if (int.TryParse(value, out var numeric) && Enum.IsDefined(typeof(ExternalPlayerSource), numeric))
+    {
+        source = (ExternalPlayerSource)numeric;
+        return true;
+    }
+
+    return Enum.TryParse(value, ignoreCase: true, out source);
+}
 
 static IResult ToDownload(ExportDocument document)
 {

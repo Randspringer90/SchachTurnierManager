@@ -47,3 +47,11 @@ Klassischer Windows-Installer, Update-Workflow, Release-Checkliste und FIDE-Dutc
 ## Externe Spielerdaten-Anbindung
 
 Kurzfristig: FIDE-ID-Direktabruf und Mapping in Teilnehmerdaten. Danach DSB/DWZ-Anbindung über offizielle Schnittstellen und ThSB-Kontext über Verband-/Vereinsfilter.
+
+
+## Nächste Schritte nach v0.10.0
+
+- FIDE-Namenssuche sauber prüfen und ggf. aktivieren.
+- DSB/DeWIS-API-Zugang klären.
+- ThSB über DSB/DeWIS-Verbands-/Vereinsfilter integrieren.
+- Import-Vorschau und Dublettenprüfung für externe Treffer ergänzen.

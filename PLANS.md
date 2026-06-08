@@ -111,3 +111,10 @@
 - DSB/DWZ über offizielle API/Wertungsportal vorbereiten.
 - UI-Vorschau und Übernahme ins Teilnehmerformular.
 - Tests mit Fixtures statt Live-Netzwerk.
+
+
+## v0.10.0 umgesetzt
+
+- FIDE-ID-Lookup-Grundlage aktiv.
+- DSB/ThSB-Provider vorbereitet.
+- Nächster Schritt: robuste DSB/DeWIS-Klärung, FIDE-Namenssuche und Import-Vorschau verbessern.
