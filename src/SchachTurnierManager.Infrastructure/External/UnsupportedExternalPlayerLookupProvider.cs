@@ -3,7 +3,7 @@ using SchachTurnierManager.Domain.Models;
 
 namespace SchachTurnierManager.Infrastructure.External;
 
-internal abstract class UnsupportedExternalPlayerLookupProvider : IExternalPlayerLookupProvider
+public abstract class UnsupportedExternalPlayerLookupProvider : IExternalPlayerLookupProvider
 {
     protected UnsupportedExternalPlayerLookupProvider(ExternalPlayerSource source, string name, string description, string? url)
     {
@@ -26,13 +26,13 @@ internal abstract class UnsupportedExternalPlayerLookupProvider : IExternalPlaye
     }
 }
 
-internal sealed class DsbPlayerLookupProvider() : UnsupportedExternalPlayerLookupProvider(
+public sealed class DsbPlayerLookupProvider() : UnsupportedExternalPlayerLookupProvider(
     ExternalPlayerSource.Dsb,
     "DSB / DeWIS",
     "DSB-/DWZ-Abfragen sind vorbereitet, aber noch nicht aktiviert. Für eine robuste Integration muss die offizielle DeWIS-/DWZ-Schnittstelle samt Registrierung/API-Zugriff geklärt werden.",
     "https://www.schachbund.de/dwz.html");
 
-internal sealed class ThsbPlayerLookupProvider() : UnsupportedExternalPlayerLookupProvider(
+public sealed class ThsbPlayerLookupProvider() : UnsupportedExternalPlayerLookupProvider(
     ExternalPlayerSource.Thsb,
     "Thüringer Schachbund",
     "ThSB-Spielerdaten werden zunächst über DSB/DeWIS mit Verbands-/Vereinsfilter vorbereitet. Eine eigene öffentliche ThSB-Spieler-API ist in diesem Stand nicht hinterlegt.",
