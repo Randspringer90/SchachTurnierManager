@@ -15,6 +15,7 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly RoundDiagnosticsCalculator _roundDiagnostics = new();
     private readonly TournamentExportFormatter _exports = new();
     private readonly ExternalPlayerImportService _externalPlayerImport = new();
+    private readonly PlayerImportPreviewService _playerImportPreview = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -119,6 +120,10 @@ public sealed class TournamentService(ITournamentStore store)
         return normalized;
     }
 
+    public PlayerImportPreview PreviewPlayersCsv(Guid tournamentId, string csv, bool replaceExisting)
+    {
+        return _playerImportPreview.Preview(RequireTournament(tournamentId), csv, replaceExisting);
+    }
     public IReadOnlyList<Player> ImportPlayersCsv(Guid tournamentId, string csv, bool replaceExisting)
     {
         var tournament = RequireTournament(tournamentId);
@@ -629,3 +634,4 @@ public sealed class TournamentService(ITournamentStore store)
         return string.IsNullOrWhiteSpace(existing) ? note : existing.Trim() + Environment.NewLine + note;
     }
 }
+

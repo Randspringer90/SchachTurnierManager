@@ -70,6 +70,8 @@ public sealed record UpdatePlayerStatusRequest(PlayerStatus Status);
 
 public sealed record ImportPlayersCsvRequest(string Content, bool ReplaceExisting = false);
 
+public sealed record PreviewPlayersCsvRequest(string Content, bool ReplaceExisting = false);
+
 public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = true);
 
 public sealed record ExternalPlayerDuplicateRequest(ExternalPlayerProfile Profile);
@@ -79,3 +81,4 @@ public sealed record ApplyExternalPlayerRequest(
     Guid? TargetPlayerId,
     bool CreateIfNoTarget = true,
     bool OverwriteExistingValues = false);
+
