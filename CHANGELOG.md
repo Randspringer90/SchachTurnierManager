@@ -1,5 +1,12 @@
 # Changelog
 
+
+## 0.17.0 - Pairing-Qualitätsbericht
+
+- Pairing-Qualitätsmodell für Schweizer-System-Runden ergänzt.
+- Analyzer erkennt Rematches, Scoregruppen-Unterschiede, dritte gleiche Farbe in Folge und Bye/Spielfrei.
+- Qualitätswert und Schweregrad für spätere UI-Erklärung „Warum wurde so gelost?“ ergänzt.
+- Golden-nahe Tests für Pairing-Qualität ergänzt.
 ## 0.16.1 - CSV-Import bewusst bestätigen und Vorlagen
 
 - CSV-Import mit Warnungen muss im Dashboard bewusst bestätigt werden, bevor der Import ausgeführt werden kann.
@@ -127,6 +134,13 @@
 
 # CHANGELOG
 
+
+## 0.17.0 - Pairing-Qualitätsbericht
+
+- Pairing-Qualitätsmodell für Schweizer-System-Runden ergänzt.
+- Analyzer erkennt Rematches, Scoregruppen-Unterschiede, dritte gleiche Farbe in Folge und Bye/Spielfrei.
+- Qualitätswert und Schweregrad für spätere UI-Erklärung „Warum wurde so gelost?“ ergänzt.
+- Golden-nahe Tests für Pairing-Qualität ergänzt.
 ## 0.4.0 – 2026-06-07
 
 ### Added
