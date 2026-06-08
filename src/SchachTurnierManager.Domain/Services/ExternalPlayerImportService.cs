@@ -15,10 +15,24 @@ public sealed class ExternalPlayerImportService
             .ThenBy(match => match.PlayerName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        var likelyMatchIds = matches
+            .Where(match => match.Score >= 80)
+            .Select(match => match.PlayerId)
+            .ToHashSet();
+
+        var conflicts = tournament.Players
+            .Where(player => likelyMatchIds.Contains(player.Id))
+            .SelectMany(player => BuildConflicts(player, profile, overwriteExistingValues: false))
+            .OrderByDescending(conflict => conflict.Severity)
+            .ThenBy(conflict => conflict.PlayerName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(conflict => conflict.FieldName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
         return new ExternalPlayerDuplicateCheck
         {
             Profile = profile,
-            Matches = matches
+            Matches = matches,
+            Conflicts = conflicts
         };
     }
 
@@ -40,6 +54,7 @@ public sealed class ExternalPlayerImportService
             Created = true,
             Updated = false,
             DuplicateCheck = duplicateCheck,
+            Conflicts = duplicateCheck.Conflicts,
             ChangedFields = ChangedFieldsForCreate(player),
             Message = duplicateCheck.HasLikelyDuplicate
                 ? $"{profile.Name} wurde als neuer Teilnehmer vorbereitet; mögliche Dublette bitte prüfen."
@@ -52,6 +67,11 @@ public sealed class ExternalPlayerImportService
         ValidateProfile(profile);
         var existing = tournament.Players.FirstOrDefault(player => player.Id == playerId)
             ?? throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
+
+        var conflicts = BuildConflicts(existing, profile, overwriteExistingValues)
+            .OrderByDescending(conflict => conflict.Severity)
+            .ThenBy(conflict => conflict.FieldName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         var changedFields = new List<string>();
         var rating = existing.Rating;
@@ -85,6 +105,7 @@ public sealed class ExternalPlayerImportService
             Created = false,
             Updated = true,
             DuplicateCheck = CheckDuplicates(tournament, profile, playerId),
+            Conflicts = conflicts,
             ChangedFields = changedFields.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
             Message = changedFields.Count == 0
                 ? $"{existing.Name} war bereits aktuell; Quellenhinweis wurde ergänzt."
@@ -143,6 +164,59 @@ public sealed class ExternalPlayerImportService
                 Reason = "Name ist sehr ähnlich; Geburtsjahr oder externe ID fehlen für sichere Zuordnung."
             };
         }
+    }
+
+    private static IReadOnlyList<ExternalPlayerDataConflict> BuildConflicts(Player player, ExternalPlayerProfile profile, bool overwriteExistingValues)
+    {
+        var conflicts = new List<ExternalPlayerDataConflict>();
+
+        AddConflict(conflicts, player, "Name", player.Name, profile.Name, ExternalPlayerConflictSeverity.Warning, overwriteExistingValues);
+        AddConflict(conflicts, player, "Verein", player.Club, profile.Club, ExternalPlayerConflictSeverity.Information, overwriteExistingValues);
+        AddConflict(conflicts, player, "Verband/Federation", player.Federation, profile.Federation, ExternalPlayerConflictSeverity.Information, overwriteExistingValues);
+        AddConflict(conflicts, player, "Land", player.Country, profile.Country, ExternalPlayerConflictSeverity.Information, overwriteExistingValues);
+        AddConflict(conflicts, player, "Geburtsjahr", Format(player.BirthYear), Format(profile.BirthYear), ExternalPlayerConflictSeverity.Critical, overwriteExistingValues);
+        AddConflict(conflicts, player, "Geschlecht", Format(player.Gender), Format(profile.Gender), ExternalPlayerConflictSeverity.Warning, overwriteExistingValues);
+        AddConflict(conflicts, player, "FIDE-ID", player.FideId, profile.FideId, ExternalPlayerConflictSeverity.Critical, overwriteExistingValues);
+        AddConflict(conflicts, player, "DSB-ID/National-ID", player.NationalId, profile.NationalId, ExternalPlayerConflictSeverity.Critical, overwriteExistingValues);
+        AddConflict(conflicts, player, "Titel", player.Title, profile.Title, ExternalPlayerConflictSeverity.Information, overwriteExistingValues);
+        AddConflict(conflicts, player, "Elo", Format(player.Rating.Elo), Format(profile.Elo), ExternalPlayerConflictSeverity.Warning, overwriteExistingValues);
+        AddConflict(conflicts, player, "Rapid-Elo", Format(player.Rating.RapidElo), Format(profile.RapidElo), ExternalPlayerConflictSeverity.Warning, overwriteExistingValues);
+        AddConflict(conflicts, player, "Blitz-Elo", Format(player.Rating.BlitzElo), Format(profile.BlitzElo), ExternalPlayerConflictSeverity.Warning, overwriteExistingValues);
+        AddConflict(conflicts, player, "DWZ", Format(player.Rating.Dwz), Format(profile.Dwz), ExternalPlayerConflictSeverity.Warning, overwriteExistingValues);
+        AddConflict(conflicts, player, "DWZ-Index", Format(player.Rating.DwzIndex), Format(profile.DwzIndex), ExternalPlayerConflictSeverity.Information, overwriteExistingValues);
+
+        return conflicts;
+    }
+
+    private static void AddConflict(
+        ICollection<ExternalPlayerDataConflict> conflicts,
+        Player player,
+        string fieldName,
+        string? localValue,
+        string? externalValue,
+        ExternalPlayerConflictSeverity severity,
+        bool overwriteExistingValues)
+    {
+        var local = NormalizeDisplayValue(localValue);
+        var external = NormalizeDisplayValue(externalValue);
+        if (local is null || external is null || string.Equals(local, external, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        conflicts.Add(new ExternalPlayerDataConflict
+        {
+            PlayerId = player.Id,
+            PlayerName = player.Name,
+            FieldName = fieldName,
+            LocalValue = local,
+            ExternalValue = external,
+            Severity = severity,
+            WillOverwrite = overwriteExistingValues,
+            Recommendation = overwriteExistingValues
+                ? "Überschreiben ist aktiviert: externer Wert wird beim Anwenden übernommen. Vorher prüfen."
+                : "Lokaler Wert bleibt erhalten. Zum Übernehmen externer Daten Überschreiben aktivieren."
+        });
     }
 
     private static string? MergeValue(string? current, string? incoming, bool overwriteExistingValues, ICollection<string> changedFields, string fieldName)
@@ -251,4 +325,13 @@ public sealed class ExternalPlayerImportService
             .Select(token => token.ToUpperInvariant())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
+
+    private static string? NormalizeDisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? Format(int? value) => value is null or <= 0 ? null : value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string? Format(GenderCategory gender) => gender == GenderCategory.Unknown ? null : gender.ToString();
 }
