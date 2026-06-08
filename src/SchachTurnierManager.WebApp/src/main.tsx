@@ -256,6 +256,28 @@ type ExternalPlayerApplyResult = {
   message: string;
 };
 
+type PlayerImportPreview = {
+  replaceExisting: boolean;
+  rows: PlayerImportPreviewRow[];
+  globalWarnings: string[];
+  totalRows: number;
+  importableRows: number;
+  warningRows: number;
+  blockingRows: number;
+  likelyDuplicateRows: number;
+  hasBlockingIssues: boolean;
+};
+
+type PlayerImportPreviewRow = {
+  rowNumber: number;
+  player: Player;
+  profile: ExternalPlayerProfile;
+  duplicateCheck: ExternalPlayerDuplicateCheck;
+  warnings: string[];
+  blockingIssues: string[];
+  status: number;
+};
+
 type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
 type SettingsForm = {
@@ -535,6 +557,28 @@ function duplicateKindLabel(kind: number): string {
   }
 }
 
+function importPreviewStatusLabel(status: number): string {
+  switch (status) {
+    case 0: return 'bereit';
+    case 1: return 'Warnung';
+    case 2: return 'blockiert';
+    default: return String(status);
+  }
+}
+
+function importPreviewStatusClass(status: number): string {
+  switch (status) {
+    case 0: return 'preview-ready';
+    case 1: return 'preview-warning-row';
+    case 2: return 'preview-blocked-row';
+    default: return '';
+  }
+}
+
+function importPreviewMessages(row: PlayerImportPreviewRow): string[] {
+  return [...row.blockingIssues, ...row.warnings];
+}
+
 function settingsToForm(tournament?: Tournament): SettingsForm {
   if (!tournament) {
     return emptySettingsForm;
@@ -620,6 +664,7 @@ function App() {
   const [editingPlayerId, setEditingPlayerId] = React.useState<string | null>(null);
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
+  const [importPreview, setImportPreview] = React.useState<PlayerImportPreview | null>(null);
   const [backupJson, setBackupJson] = React.useState('');
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [status, setStatus] = React.useState('Bereit.');
@@ -935,8 +980,39 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  async function previewPlayersImport() {
+    if (!selectedTournament) {
+      setError('Bitte zuerst ein Turnier auswählen.');
+      return;
+    }
+
+    setError(null);
+    const preview = await requestJson<PlayerImportPreview>(`/api/tournaments/${selectedTournament.id}/players/preview-import.csv`, {
+      method: 'POST',
+      body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
+    });
+    setImportPreview(preview);
+    const blockerText = preview.hasBlockingIssues ? ' Blockierende Probleme müssen vor dem Import behoben werden.' : '';
+    setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
+  }
+
   async function importPlayers() {
     if (!selectedTournament) {
+      return;
+    }
+
+    if (!importPreview) {
+      setError('Bitte CSV zuerst prüfen.');
+      return;
+    }
+
+    if (importPreview.replaceExisting !== replacePlayers) {
+      setError('Die Importoption wurde seit der Vorschau geändert. Bitte CSV erneut prüfen.');
+      return;
+    }
+
+    if (importPreview.hasBlockingIssues) {
+      setError('CSV enthält blockierende Probleme. Bitte zuerst korrigieren und erneut prüfen.');
       return;
     }
 
@@ -945,6 +1021,7 @@ function App() {
       method: 'POST',
       body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
     });
+    setImportPreview(null);
     setStatus(`${imported.length} Teilnehmer importiert.`);
     await refresh(selectedTournament.id);
   }
@@ -1015,7 +1092,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.14.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.15.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1435,12 +1512,42 @@ function App() {
             <div className="grid two">
               <section>
                 <h4>Teilnehmer-CSV</h4>
-                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setCsvContent(event.target.value)} rows={7} />
-                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setReplacePlayers(event.target.checked)} /> vorhandene Teilnehmer ersetzen</label>
+                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => { setCsvContent(event.target.value); setImportPreview(null); }} rows={7} />
+                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setReplacePlayers(event.target.checked); setImportPreview(null); }} /> vorhandene Teilnehmer ersetzen</label>
                 <div className="actions">
-                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament}>CSV importieren</button>
+                  <button type="button" onClick={() => void previewPlayersImport()} disabled={!selectedTournament || !csvContent.trim()}>Import prüfen</button>
+                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || importPreview.hasBlockingIssues}>CSV importieren</button>
                   <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>CSV exportieren</button>
                 </div>
+                {importPreview && (
+                  <div className="import-preview">
+                    <div className={`preview-summary ${importPreview.hasBlockingIssues ? 'blocked' : importPreview.warningRows > 0 ? 'warning' : 'ready'}`}>
+                      <strong>{importPreview.hasBlockingIssues ? 'Import blockiert' : importPreview.warningRows > 0 ? 'Import mit Warnungen möglich' : 'Import bereit'}</strong>
+                      <span>{importPreview.totalRows} Zeilen · {importPreview.importableRows} importierbar · {importPreview.warningRows} Warnung(en) · {importPreview.blockingRows} blockiert · {importPreview.likelyDuplicateRows} mögliche Dublette(n)</span>
+                    </div>
+                    {importPreview.globalWarnings.length > 0 && (
+                      <ul className="message-list critical">
+                        {importPreview.globalWarnings.map((warning, index) => <li key={`import-global-${index}`}>{warning}</li>)}
+                      </ul>
+                    )}
+                    <div className="table-scroll compact import-preview-table">
+                      <table>
+                        <thead><tr><th>Zeile</th><th>Teilnehmer</th><th>Status</th><th>Dubletten</th><th>Hinweise</th></tr></thead>
+                        <tbody>
+                          {importPreview.rows.map(row => (
+                            <tr key={`import-preview-${row.rowNumber}`} className={importPreviewStatusClass(row.status)}>
+                              <td>{row.rowNumber}</td>
+                              <td>{row.player.name}<small>{row.player.fideId ? `FIDE ${row.player.fideId}` : row.player.nationalId ? `DSB ${row.player.nationalId}` : row.player.club ?? ''}</small></td>
+                              <td>{importPreviewStatusLabel(row.status)}</td>
+                              <td>{row.duplicateCheck.matches.length === 0 ? '—' : row.duplicateCheck.matches.map(match => `${match.playerName} (${duplicateKindLabel(match.kind)}, ${match.score})`).join('; ')}</td>
+                              <td>{importPreviewMessages(row).length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{importPreviewMessages(row).map((message, index) => <li key={`import-row-${row.rowNumber}-${index}`}>{message}</li>)}</ul>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </section>
               <section>
                 <h4>JSON-Backup</h4>
@@ -1473,5 +1580,6 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+
 
 
