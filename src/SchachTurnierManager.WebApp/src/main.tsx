@@ -400,6 +400,11 @@ const emptyPlayerForm: PlayerForm = {
   notes: ''
 };
 
+const sampleCsvTemplate = `Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen
+Geisshirt, Marco;Ilmenauer SV;1990;männlich;1987;;1968;;4610563;;CM;Active;Beispielzeile bitte vor Import prüfen
+Musterfrau, Anna;Beispielverein;2012;weiblich;1200;;1300;;;;Active;U14-Beispiel
+`;
+
 const defaultTiebreaks = [0, 1, 2, 4, 6, 99];
 
 const emptySettingsForm: SettingsForm = {
@@ -665,6 +670,7 @@ function App() {
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
   const [importPreview, setImportPreview] = React.useState<PlayerImportPreview | null>(null);
+  const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [status, setStatus] = React.useState('Bereit.');
@@ -980,6 +986,14 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  function useSampleCsvTemplate(): void {
+    setCsvContent(sampleCsvTemplate);
+    setReplacePlayers(false);
+    setImportPreview(null);
+    setConfirmWarningImport(false);
+    setStatus('CSV-Beispielvorlage eingefügt. Bitte Daten anpassen und danach Import prüfen.');
+  }
+
   async function previewPlayersImport() {
     if (!selectedTournament) {
       setError('Bitte zuerst ein Turnier auswählen.');
@@ -992,6 +1006,7 @@ function App() {
       body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
     });
     setImportPreview(preview);
+    setConfirmWarningImport(false);
     const blockerText = preview.hasBlockingIssues ? ' Blockierende Probleme müssen vor dem Import behoben werden.' : '';
     setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
   }
@@ -1016,12 +1031,18 @@ function App() {
       return;
     }
 
+    if (importPreview.warningRows > 0 && !confirmWarningImport) {
+      setError('CSV enthält Warnungen oder mögliche Dubletten. Bitte Warnungen bewusst bestätigen oder CSV korrigieren und erneut prüfen.');
+      return;
+    }
+
     setError(null);
     const imported = await requestJson<Player[]>(`/api/tournaments/${selectedTournament.id}/players/import.csv`, {
       method: 'POST',
       body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
     });
     setImportPreview(null);
+    setConfirmWarningImport(false);
     setStatus(`${imported.length} Teilnehmer importiert.`);
     await refresh(selectedTournament.id);
   }
@@ -1092,7 +1113,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.15.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.16.1</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1512,11 +1533,12 @@ function App() {
             <div className="grid two">
               <section>
                 <h4>Teilnehmer-CSV</h4>
-                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => { setCsvContent(event.target.value); setImportPreview(null); }} rows={7} />
-                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setReplacePlayers(event.target.checked); setImportPreview(null); }} /> vorhandene Teilnehmer ersetzen</label>
+                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => { setCsvContent(event.target.value); setImportPreview(null); setConfirmWarningImport(false); }} rows={7} />
+                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setReplacePlayers(event.target.checked); setImportPreview(null); setConfirmWarningImport(false); }} /> vorhandene Teilnehmer ersetzen</label>
                 <div className="actions">
+                  <button type="button" className="secondary" onClick={() => useSampleCsvTemplate()}>CSV-Vorlage einsetzen</button>
                   <button type="button" onClick={() => void previewPlayersImport()} disabled={!selectedTournament || !csvContent.trim()}>Import prüfen</button>
-                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || importPreview.hasBlockingIssues}>CSV importieren</button>
+                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || importPreview.hasBlockingIssues || (importPreview.warningRows > 0 && !confirmWarningImport)}>CSV importieren</button>
                   <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>CSV exportieren</button>
                 </div>
                 {importPreview && (
@@ -1530,6 +1552,13 @@ function App() {
                         {importPreview.globalWarnings.map((warning, index) => <li key={`import-global-${index}`}>{warning}</li>)}
                       </ul>
                     )}
+                    {importPreview.warningRows > 0 && !importPreview.hasBlockingIssues && (
+                      <label className="checkbox import-confirm">
+                        <input type="checkbox" checked={confirmWarningImport} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfirmWarningImport(event.target.checked)} />
+                        Ich habe Warnungen und mögliche Dubletten geprüft und möchte den Import trotzdem ausführen.
+                      </label>
+                    )}
+                    {importPreview.hasBlockingIssues && <p className="error">Blockierende Probleme müssen vor dem Import behoben werden.</p>}
                     <div className="table-scroll compact import-preview-table">
                       <table>
                         <thead><tr><th>Zeile</th><th>Teilnehmer</th><th>Status</th><th>Dubletten</th><th>Hinweise</th></tr></thead>
@@ -1580,6 +1609,15 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+
+
+
+
+
+
+
+
+
 
 
 

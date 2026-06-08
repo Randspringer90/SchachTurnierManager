@@ -605,3 +605,15 @@ th {
 .message-list.critical {
   color: var(--danger);
 }
+
+.import-confirm {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 0.75rem;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.preview-summary.ready + .import-confirm {
+  display: none;
+}

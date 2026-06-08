@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.1 - CSV-Import bewusst bestätigen und Vorlagen
+
+- CSV-Import mit Warnungen muss im Dashboard bewusst bestätigt werden, bevor der Import ausgeführt werden kann.
+- CSV-Beispielvorlage kann direkt im Dashboard eingefügt werden.
+- Änderungen an CSV-Inhalt oder Ersetzen-Option verwerfen Vorschau und Warnungsbestätigung automatisch.
+- Importstatus und Bedienhinweise im Dashboard präzisiert.
 ## 0.12.0 - Externe Spielerdaten anwenden und Dublettenprüfung
 
 - Dublettenprüfung für externe Spielerdaten ergänzt: FIDE-ID, DSB-/National-ID, Name+Geburtsjahr und Name-only-Hinweis.
@@ -202,4 +208,5 @@
 - Unit-Test-Projekte und erste Tests.
 - Codex-/Agenten-/Skill-Dokumente.
 - Build-/Test-/Run-/Portable-Pack-Skripte.
+
 
