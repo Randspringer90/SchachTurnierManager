@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.1 - Stabilisierung Turniereinstellungen
+
+- Fix-Forward für den v0.9.0-Patch: `TournamentService.UpdateSettings(...)` ist in der Application-Schicht enthalten.
+- Nachkontrollskript `After-Apply-V0.9.1.ps1` ergänzt.
+
+
+
+## 0.9.1 - Turniereinstellungen und Wertungskette
+
+- Turniereinstellungen im Dashboard bearbeitbar gemacht.
+- Punktesystem, TWZ-Quelle, Forfeit-Policy, Bye-als-Sieg, Seniorenjahr und Heldenpokal-Mindestpartien konfigurierbar gemacht.
+- Wertungskette im Dashboard auswählbar und sortierbar gemacht.
+- Backend-Endpunkt zum Speichern der Turniereinstellungen ergänzt.
+- Tabellenberechnung nutzt jetzt die konfigurierte Wertungskette nach Punkten.
+- Tests für Settings-Workflow und konfigurierbare Wertungskette ergänzt.
+
 ## 0.8.0 - Portable App / lokale Auslieferung
 
 - Backend kann das gebaute React-Dashboard direkt aus `wwwroot` ausliefern.

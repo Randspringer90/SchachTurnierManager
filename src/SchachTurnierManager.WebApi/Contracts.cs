@@ -4,6 +4,8 @@ namespace SchachTurnierManager.WebApi;
 
 public sealed record CreateTournamentRequest(string Name, TournamentSettings? Settings);
 
+public sealed record UpdateTournamentSettingsRequest(TournamentSettings Settings);
+
 public sealed record PlayerRequest(
     string Name,
     string? Club,

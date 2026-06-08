@@ -60,7 +60,7 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen bis 0.8.0
+## Funktionen bis 0.9.1
 
 - Turniere lokal anlegen und dauerhaft speichern.
 - Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
@@ -84,7 +84,7 @@ Ergebnis:
 
 ```text
 output\portable\Start-SchachTurnierManager.bat
-output\SchachTurnierManager_Portable_0.8.0.zip
+output\SchachTurnierManager_Portable_0.9.1.zip
 ```
 
 Die portable Variante öffnet das Dashboard über:
@@ -111,7 +111,7 @@ Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit
 
 ## Status
 
-Version 0.8.0: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export, Druckansichten, gehärteter Schweizer-System-Auslosung V2 und portablem lokalen Paket. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein klassischer Windows-Installer.
+Version 0.9.1: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export, Druckansichten, gehärteter Schweizer-System-Auslosung V2 und portablem lokalen Paket. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein klassischer Windows-Installer.
 
 
 ## Entwicklerstart-Hinweis

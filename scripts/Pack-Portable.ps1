@@ -15,7 +15,7 @@ $appOutput = Join-Path $portableRoot "app"
 $dataDir = Join-Path $portableRoot "data"
 $webApp = Join-Path $root "src\SchachTurnierManager.WebApp"
 $webApiProject = Join-Path $root "src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj"
-$version = "0.8.0"
+$version = "0.9.0"
 
 function Invoke-Checked {
     param(

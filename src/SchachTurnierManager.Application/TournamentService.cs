@@ -33,6 +33,21 @@ public sealed class TournamentService(ITournamentStore store)
         return tournament;
     }
 
+    public TournamentState UpdateSettings(Guid tournamentId, TournamentSettings settings)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var normalized = NormalizeSettings(settings);
+
+        if (tournament.Rounds.Count > 0 && normalized.Format != tournament.Settings.Format)
+        {
+            throw new InvalidOperationException("Das Turnierformat kann nach bereits ausgelosten Runden nicht mehr geändert werden.");
+        }
+
+        tournament.Settings = normalized;
+        _store.Save(tournament);
+        return tournament;
+    }
+
     public TournamentState SaveImportedTournament(TournamentState tournament, bool overwriteExisting)
     {
         if (string.IsNullOrWhiteSpace(tournament.Name))
@@ -410,6 +425,32 @@ public sealed class TournamentService(ITournamentStore store)
     public TournamentState RequireTournament(Guid tournamentId)
     {
         return _store.Get(tournamentId) ?? throw new InvalidOperationException($"Turnier {tournamentId} wurde nicht gefunden.");
+    }
+
+    private static TournamentSettings NormalizeSettings(TournamentSettings settings)
+    {
+        var tiebreaks = settings.Tiebreaks
+            .Where(tiebreak => Enum.IsDefined(tiebreak))
+            .Distinct()
+            .ToList();
+
+        if (tiebreaks.Count == 0)
+        {
+            tiebreaks.Add(TiebreakType.StartingRank);
+        }
+
+        if (!tiebreaks.Contains(TiebreakType.StartingRank))
+        {
+            tiebreaks.Add(TiebreakType.StartingRank);
+        }
+
+        return settings with
+        {
+            PlannedRounds = Math.Max(1, settings.PlannedRounds),
+            HeroCupMinimumRatedGames = Math.Max(1, settings.HeroCupMinimumRatedGames),
+            SeniorBirthYearOrEarlier = settings.SeniorBirthYearOrEarlier is <= 0 ? null : settings.SeniorBirthYearOrEarlier,
+            Tiebreaks = tiebreaks
+        };
     }
 
     private static int RequireRoundIndex(TournamentState tournament, int roundNumber)

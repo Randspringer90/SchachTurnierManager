@@ -105,6 +105,8 @@ type Tournament = {
     heroCupMinimumRatedGames: number;
     forfeitTiebreakPolicy: number;
     countByeAsWin: boolean;
+    allowManualPairingOverrides: boolean;
+    tiebreaks: number[];
   };
   players: Player[];
   rounds: TournamentRound[];
@@ -192,6 +194,19 @@ type RoundDiagnostics = {
 
 type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
+type SettingsForm = {
+  format: number;
+  scoringSystem: number;
+  twzSource: number;
+  plannedRounds: string;
+  forfeitTiebreakPolicy: number;
+  countByeAsWin: boolean;
+  allowManualPairingOverrides: boolean;
+  seniorBirthYearOrEarlier: string;
+  heroCupMinimumRatedGames: string;
+  tiebreaks: number[];
+};
+
 type PlayerForm = {
   name: string;
   club: string;
@@ -225,6 +240,35 @@ const formatOptions = [
   { value: 0, label: 'Jeder gegen Jeden' }
 ];
 
+const scoringOptions = [
+  { value: 0, label: 'Klassisch: Sieg 1 · Remis ½ · Niederlage 0' },
+  { value: 1, label: '3-1-0: Sieg 3 · Remis 1 · Niederlage 0' },
+  { value: 2, label: 'Norway/Armageddon: Klassiksieg 3 · Armageddon 1½/1' }
+];
+
+const twzSourceOptions = [
+  { value: 0, label: 'Manuelle TWZ → DWZ → Elo' },
+  { value: 1, label: 'Manuelle TWZ → Elo → DWZ' },
+  { value: 2, label: 'Manuelle TWZ → Rapid → Blitz → DWZ → Elo' }
+];
+
+const forfeitPolicyOptions = [
+  { value: 0, label: 'Kampflose Partien nicht für Buchholz/SB/Direktwertung' },
+  { value: 1, label: 'Kampflose Gegner nur für Buchholz/Gegnerschnitt' },
+  { value: 2, label: 'Kampflose Partien wie normale Partien behandeln' }
+];
+
+const tiebreakOptions = [
+  { value: 0, label: 'Direkter Vergleich' },
+  { value: 1, label: 'Anzahl Siege' },
+  { value: 2, label: 'Buchholz' },
+  { value: 3, label: 'Buchholz Cut-1' },
+  { value: 4, label: 'Sonneborn-Berger' },
+  { value: 5, label: 'Gegnerschnitt' },
+  { value: 6, label: 'Turnierleistung' },
+  { value: 99, label: 'Startnummer' }
+];
+
 const genderOptions = [
   { value: 0, label: 'unbekannt' },
   { value: 1, label: 'offen' },
@@ -252,6 +296,21 @@ const emptyPlayerForm: PlayerForm = {
   title: '',
   status: 0,
   notes: ''
+};
+
+const defaultTiebreaks = [0, 1, 2, 4, 6, 99];
+
+const emptySettingsForm: SettingsForm = {
+  format: 1,
+  scoringSystem: 0,
+  twzSource: 0,
+  plannedRounds: '5',
+  forfeitTiebreakPolicy: 0,
+  countByeAsWin: false,
+  allowManualPairingOverrides: true,
+  seniorBirthYearOrEarlier: '',
+  heroCupMinimumRatedGames: '1',
+  tiebreaks: defaultTiebreaks
 };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -350,6 +409,58 @@ function formToRequest(form: PlayerForm, startingRank?: number): unknown {
   };
 }
 
+function settingsToForm(tournament?: Tournament): SettingsForm {
+  if (!tournament) {
+    return emptySettingsForm;
+  }
+
+  const settings = tournament.settings;
+  return {
+    format: settings.format,
+    scoringSystem: settings.scoringSystem,
+    twzSource: settings.twzSource,
+    plannedRounds: settings.plannedRounds.toString(),
+    forfeitTiebreakPolicy: settings.forfeitTiebreakPolicy,
+    countByeAsWin: settings.countByeAsWin,
+    allowManualPairingOverrides: settings.allowManualPairingOverrides,
+    seniorBirthYearOrEarlier: settings.seniorBirthYearOrEarlier?.toString() ?? '',
+    heroCupMinimumRatedGames: settings.heroCupMinimumRatedGames.toString(),
+    tiebreaks: settings.tiebreaks?.length ? settings.tiebreaks : defaultTiebreaks
+  };
+}
+
+function formToSettings(form: SettingsForm) {
+  const tiebreaks = Array.from(new Set([...form.tiebreaks, 99]));
+  return {
+    format: form.format,
+    scoringSystem: form.scoringSystem,
+    twzSource: form.twzSource,
+    plannedRounds: Math.max(1, numberOrNull(form.plannedRounds) ?? 1),
+    forfeitTiebreakPolicy: form.forfeitTiebreakPolicy,
+    countByeAsWin: form.countByeAsWin,
+    allowManualPairingOverrides: form.allowManualPairingOverrides,
+    seniorBirthYearOrEarlier: numberOrNull(form.seniorBirthYearOrEarlier),
+    heroCupMinimumRatedGames: Math.max(1, numberOrNull(form.heroCupMinimumRatedGames) ?? 1),
+    tiebreaks
+  };
+}
+
+function moveTiebreak(list: number[], index: number, direction: -1 | 1): number[] {
+  const target = index + direction;
+  if (target < 0 || target >= list.length) {
+    return list;
+  }
+
+  const copy = [...list];
+  const [item] = copy.splice(index, 1);
+  copy.splice(target, 0, item);
+  return copy;
+}
+
+function tiebreakLabel(value: number): string {
+  return tiebreakOptions.find(option => option.value === value)?.label ?? String(value);
+}
+
 function downloadText(filename: string, content: string, type: string): void {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -373,6 +484,7 @@ function App() {
   const [roundDiagnostics, setRoundDiagnostics] = React.useState<RoundDiagnostics[]>([]);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
+  const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
   const [editingPlayerId, setEditingPlayerId] = React.useState<string | null>(null);
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
@@ -437,6 +549,10 @@ function App() {
     }
   }, [loadDerived, selectedTournament?.id]);
 
+  React.useEffect(() => {
+    setSettingsForm(settingsToForm(selectedTournament));
+  }, [selectedTournament?.id]);
+
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -445,20 +561,38 @@ function App() {
       body: JSON.stringify({
         name: newTournamentName,
         settings: {
-          format,
-          scoringSystem: 0,
-          twzSource: 0,
-          plannedRounds: 5,
-          allowManualPairingOverrides: true,
-          forfeitTiebreakPolicy: 0,
-          countByeAsWin: false,
-          heroCupMinimumRatedGames: 1
+          ...formToSettings(emptySettingsForm),
+          format
         }
       })
     });
     setSelectedId(created.id);
     setStatus(`Turnier angelegt: ${created.name}`);
     await refresh(created.id);
+  }
+
+  async function saveSettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedTournament) {
+      return;
+    }
+
+    setError(null);
+    const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify({ settings: formToSettings(settingsForm) })
+    });
+    setSelectedId(updated.id);
+    setStatus('Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
+    await refresh(updated.id);
+  }
+
+  function toggleTiebreak(value: number, enabled: boolean): void {
+    setSettingsForm(previous => {
+      const without = previous.tiebreaks.filter(item => item !== value);
+      const next = enabled ? [...without, value] : without;
+      return { ...previous, tiebreaks: next.length === 0 ? [99] : next };
+    });
   }
 
   async function savePlayer(event: React.FormEvent<HTMLFormElement>) {
@@ -685,7 +819,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.7.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.9.1</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -734,6 +868,67 @@ function App() {
             </div>
             <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Nächste Runde auslosen</button>
           </div>
+
+          <article className="card settings-card">
+            <h3>Turniereinstellungen</h3>
+            <form onSubmit={(event) => void saveSettings(event)} className="settings-form">
+              <div className="settings-grid">
+                <label>Format
+                  <select value={settingsForm.format} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, format: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                    {formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>Punktesystem
+                  <select value={settingsForm.scoringSystem} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, scoringSystem: Number(event.target.value) })}>
+                    {scoringOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>TWZ-Quelle
+                  <select value={settingsForm.twzSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, twzSource: Number(event.target.value) })}>
+                    {twzSourceOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>Geplante Runden
+                  <input type="number" min="1" max="99" value={settingsForm.plannedRounds} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, plannedRounds: event.target.value })} />
+                </label>
+                <label>Kampflose Partien
+                  <select value={settingsForm.forfeitTiebreakPolicy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, forfeitTiebreakPolicy: Number(event.target.value) })}>
+                    {forfeitPolicyOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>Senioren: Geburtsjahr oder älter
+                  <input type="number" min="1900" max="2100" value={settingsForm.seniorBirthYearOrEarlier} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, seniorBirthYearOrEarlier: event.target.value })} placeholder="z. B. 1966" />
+                </label>
+                <label>Heldenpokal: Mindestpartien
+                  <input type="number" min="1" max="99" value={settingsForm.heroCupMinimumRatedGames} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, heroCupMinimumRatedGames: event.target.value })} />
+                </label>
+              </div>
+              <div className="checkbox-row">
+                <label className="checkbox"><input type="checkbox" checked={settingsForm.countByeAsWin} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, countByeAsWin: event.target.checked })} /> Bye als Sieg zählen</label>
+                <label className="checkbox"><input type="checkbox" checked={settingsForm.allowManualPairingOverrides} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, allowManualPairingOverrides: event.target.checked })} /> manuelle Paarungen erlauben</label>
+              </div>
+              <div className="tiebreak-editor">
+                <strong>Wertungskette</strong>
+                <p className="muted">Die Reihenfolge entscheidet nach Punkten über die Platzierung. Startnummer bleibt als letzter Notanker enthalten.</p>
+                <div className="tiebreak-list">
+                  {settingsForm.tiebreaks.map((value, index) => (
+                    <div key={`${value}-${index}`} className="tiebreak-item">
+                      <span>{index + 1}. {tiebreakLabel(value)}</span>
+                      <button type="button" className="small secondary" onClick={() => setSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, -1) })} disabled={index === 0}>↑</button>
+                      <button type="button" className="small secondary" onClick={() => setSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, 1) })} disabled={index === settingsForm.tiebreaks.length - 1}>↓</button>
+                      <button type="button" className="small danger" onClick={() => toggleTiebreak(value, false)} disabled={value === 99 && settingsForm.tiebreaks.length === 1}>Entfernen</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="tiebreak-add">
+                  {tiebreakOptions.filter(option => !settingsForm.tiebreaks.includes(option.value)).map(option => (
+                    <button key={option.value} type="button" className="small" onClick={() => toggleTiebreak(option.value, true)}>+ {option.label}</button>
+                  ))}
+                </div>
+              </div>
+              <button type="submit" disabled={!selectedTournament}>Einstellungen speichern</button>
+            </form>
+          </article>
 
           <div className="grid two">
             <article className="card">

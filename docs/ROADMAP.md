@@ -32,3 +32,13 @@ Portable lokale Anwendung: Backend hostet Dashboard, Pack-Skript erzeugt `output
 ## Danach
 
 Klassischer Windows-Installer, Update-Workflow, Release-Checkliste und FIDE-Dutch-Swiss-Annäherung.
+
+
+## 0.9.1
+
+- Konfigurierbare Turniereinstellungen und Wertungskette.
+- Punktesysteme, TWZ-Quelle, Forfeit-/Bye-Policy und Heldenpokal-Mindestpartien im UI.
+
+## 0.10.0 geplant
+
+- Turnierassistent, Importvorschau, Validierungen und Exportcenter.

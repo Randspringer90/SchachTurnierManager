@@ -86,8 +86,19 @@
 - Portable Paket unter `output\portable` mit Start-BAT, app-Ordner, data-Ordner und README.
 - Optional später: Self-contained Paket und echter Windows-Installer.
 
-## v0.9.0 - Nächster Vorschlag
+## v0.9.1 - Nächster Vorschlag
 
 - Installations-/Update-Erlebnis verbessern.
 - Datenbank-Backup/Restore im Portable-Kontext sichtbarer machen.
 - Erste Release-Checkliste und manuelle QA-Szenarien.
+
+
+## Abgeschlossen in 0.9.1
+
+- Turniereinstellungen im Dashboard bearbeitbar.
+- Wertungskette konfigurierbar und in der Tabellenberechnung wirksam.
+- Punktesystem/TWZ/Forfeit-/Bye-/Kategorie-/Heldenpokal-Regeln im UI.
+
+## Nächster Fokus 0.10.0
+
+- UI-Qualität: Turnierassistent, bessere Validierung, Importvorschau und Exportcenter.

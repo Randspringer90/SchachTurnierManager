@@ -55,12 +55,7 @@ public sealed class StandingsCalculator
 
         var ordered = rows.Values
             .OrderByDescending(r => r.Points)
-            .ThenByDescending(r => r.DirectEncounter)
-            .ThenByDescending(r => r.Wins)
-            .ThenByDescending(r => r.Buchholz)
-            .ThenByDescending(r => r.SonnebornBerger)
-            .ThenByDescending(r => r.TournamentPerformance ?? int.MinValue)
-            .ThenBy(r => r.Player.StartingRank == 0 ? int.MaxValue : r.Player.StartingRank)
+            .ThenBy(r => r, new TiebreakComparer(tournament.Settings.Tiebreaks))
             .ThenBy(r => r.Player.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -147,6 +142,65 @@ public sealed class StandingsCalculator
             if (black.Twz > 0) white.PerformanceOpponentRatings.Add(black.Twz);
             if (white.Twz > 0) black.PerformanceOpponentRatings.Add(white.Twz);
         }
+    }
+
+
+    private sealed class TiebreakComparer(IReadOnlyList<TiebreakType> configuredTiebreaks) : IComparer<MutableStanding>
+    {
+        private readonly IReadOnlyList<TiebreakType> _configuredTiebreaks = configuredTiebreaks.Count == 0
+            ? new[] { TiebreakType.StartingRank }
+            : configuredTiebreaks;
+
+        public int Compare(MutableStanding? x, MutableStanding? y)
+        {
+            if (ReferenceEquals(x, y))
+            {
+                return 0;
+            }
+
+            if (x is null)
+            {
+                return 1;
+            }
+
+            if (y is null)
+            {
+                return -1;
+            }
+
+            foreach (var tiebreak in _configuredTiebreaks)
+            {
+                var comparison = CompareByTiebreak(x, y, tiebreak);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+            }
+
+            return 0;
+        }
+
+        private static int CompareByTiebreak(MutableStanding x, MutableStanding y, TiebreakType tiebreak)
+        {
+            return tiebreak switch
+            {
+                TiebreakType.DirectEncounter => Desc(x.DirectEncounter, y.DirectEncounter),
+                TiebreakType.NumberOfWins => Desc(x.Wins, y.Wins),
+                TiebreakType.Buchholz => Desc(x.Buchholz, y.Buchholz),
+                TiebreakType.BuchholzCutOne => Desc(x.BuchholzCutOne, y.BuchholzCutOne),
+                TiebreakType.SonnebornBerger => Desc(x.SonnebornBerger, y.SonnebornBerger),
+                TiebreakType.AverageOpponentRating => Desc(x.AverageOpponentRating, y.AverageOpponentRating),
+                TiebreakType.TournamentPerformance => Desc(x.TournamentPerformance ?? int.MinValue, y.TournamentPerformance ?? int.MinValue),
+                TiebreakType.StartingRank => Asc(StartingRankOrMax(x), StartingRankOrMax(y)),
+                _ => 0
+            };
+        }
+
+        private static int Desc<T>(T x, T y) where T : IComparable<T> => y.CompareTo(x);
+
+        private static int Asc<T>(T x, T y) where T : IComparable<T> => x.CompareTo(y);
+
+        private static int StartingRankOrMax(MutableStanding row) => row.Player.StartingRank <= 0 ? int.MaxValue : row.Player.StartingRank;
     }
 
     private sealed class MutableStanding(Player player, int twz)
