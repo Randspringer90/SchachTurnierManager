@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 - Externe Spielerdaten anwenden und Dublettenprüfung
+
+- Dublettenprüfung für externe Spielerdaten ergänzt: FIDE-ID, DSB-/National-ID, Name+Geburtsjahr und Name-only-Hinweis.
+- Externe Treffer können direkt als neuer Teilnehmer gespeichert oder auf bestehende Teilnehmer angewendet werden.
+- Dashboard zeigt mögliche Dubletten und bietet Aktionen zum Ergänzen oder Überschreiben bestehender Teilnehmer.
+- API-Endpunkte für Dublettenprüfung und Apply-Workflow ergänzt.
+- Tests für FIDE-ID `4610563`, Name+Geburtsjahr-Matching und externe Aktualisierung ergänzt.
+
 ## 0.11.3 - FIDE-Testassert endgültig stabilisiert
 
 - FIDE-Provider-Test prüft die Request-URI jetzt tolerant auf das Suffix `profile/4610563`.

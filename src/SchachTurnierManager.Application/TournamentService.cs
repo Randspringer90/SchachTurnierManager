@@ -14,6 +14,7 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly HeroCupCalculator _heroCup = new();
     private readonly RoundDiagnosticsCalculator _roundDiagnostics = new();
     private readonly TournamentExportFormatter _exports = new();
+    private readonly ExternalPlayerImportService _externalPlayerImport = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -63,6 +64,49 @@ public sealed class TournamentService(ITournamentStore store)
         EnsureUniquePlayerNames(tournament);
         _store.Save(tournament);
         return tournament;
+    }
+
+
+    public ExternalPlayerDuplicateCheck CheckExternalPlayerDuplicates(Guid tournamentId, ExternalPlayerProfile profile)
+    {
+        return _externalPlayerImport.CheckDuplicates(RequireTournament(tournamentId), profile);
+    }
+
+    public ExternalPlayerApplyResult ApplyExternalPlayer(Guid tournamentId, ExternalPlayerProfile profile, Guid? targetPlayerId, bool createIfNoTarget, bool overwriteExistingValues)
+    {
+        var tournament = RequireTournament(tournamentId);
+        ExternalPlayerApplyResult result;
+
+        if (targetPlayerId is not null)
+        {
+            result = _externalPlayerImport.UpdatePlayer(tournament, targetPlayerId.Value, profile, overwriteExistingValues);
+            var index = tournament.Players.FindIndex(player => player.Id == targetPlayerId.Value);
+            if (index < 0)
+            {
+                throw new InvalidOperationException($"Spieler {targetPlayerId} wurde nicht gefunden.");
+            }
+
+            var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: true);
+            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+            tournament.Players[index] = normalized;
+            result = result with { Player = normalized };
+        }
+        else
+        {
+            if (!createIfNoTarget)
+            {
+                throw new InvalidOperationException("Kein Zielspieler angegeben. Wähle einen vorhandenen Teilnehmer oder erlaube das Neuanlegen.");
+            }
+
+            result = _externalPlayerImport.CreatePlayer(tournament, profile);
+            var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: false);
+            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+            tournament.Players.Add(normalized);
+            result = result with { Player = normalized };
+        }
+
+        _store.Save(tournament);
+        return result;
     }
 
     public Player AddPlayer(Guid tournamentId, Player player)

@@ -60,7 +60,7 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen bis 0.9.1
+## Funktionen bis 0.12.0
 
 - Turniere lokal anlegen und dauerhaft speichern.
 - Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
@@ -73,6 +73,8 @@ http://localhost:5173
 - Tabelle und Paarungen als CSV exportieren.
 - Turnierbericht und Rundenblätter als HTML-Druckansicht erzeugen.
 - Portable Paket mit eingebettetem Dashboard erzeugen und per Start-BAT lokal ausführen.
+- Externe Spielerdaten per FIDE-ID suchen, ins Teilnehmerformular übernehmen, als Teilnehmer speichern und gegen bestehende Teilnehmer auf Dubletten prüfen.
+- GitHub-Issue-Templates für Bugreports und Feature-Wünsche vorbereitet.
 
 ## Portable Paket erstellen
 

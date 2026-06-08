@@ -67,7 +67,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.11.3",
+    version = "0.12.0",
     time = DateTimeOffset.UtcNow,
     database = databasePath,
     embeddedDashboard = embeddedDashboardAvailable
@@ -91,6 +91,30 @@ app.MapGet("/api/external-players/fide/{fideId}", async (string fideId, External
 {
     var result = await service.LookupByIdAsync(ExternalPlayerSource.Fide, fideId, cancellationToken);
     return Results.Ok(result);
+});
+
+app.MapPost("/api/tournaments/{id:guid}/external-players/check-duplicates", (Guid id, ExternalPlayerDuplicateRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.CheckExternalPlayerDuplicates(id, request.Profile));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/external-players/apply", (Guid id, ApplyExternalPlayerRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.ApplyExternalPlayer(id, request.Profile, request.TargetPlayerId, request.CreateIfNoTarget, request.OverwriteExistingValues));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 });
 
 app.MapGet("/api/tournaments", (TournamentService service) => Results.Ok(service.ListTournaments()));

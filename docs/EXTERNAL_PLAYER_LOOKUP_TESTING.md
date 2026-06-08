@@ -1,3 +1,8 @@
+# Aktueller Zusatz 0.12.0
+
+- Externe Profile können auf Dubletten geprüft und als neuer oder bestehender Teilnehmer angewendet werden.
+- DSB/DeWIS bleibt nächster Integrationsblock nach Klärung der offiziellen Schnittstelle.
+
 # Externe Spielersuche testen
 
 ## Grundsatz

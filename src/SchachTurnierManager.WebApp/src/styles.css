@@ -518,3 +518,38 @@ th {
     display: grid;
   }
 }
+
+.lookup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 11rem;
+}
+
+.duplicate-box {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+  padding: 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(120, 53, 15, 0.18);
+}
+
+.duplicate-match {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 0.65rem;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.duplicate-match span {
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .lookup-actions {
+    min-width: 0;
+  }
+}

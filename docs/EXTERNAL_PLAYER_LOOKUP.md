@@ -1,3 +1,8 @@
+# Aktueller Zusatz 0.12.0
+
+- Externe Profile können auf Dubletten geprüft und als neuer oder bestehender Teilnehmer angewendet werden.
+- DSB/DeWIS bleibt nächster Integrationsblock nach Klärung der offiziellen Schnittstelle.
+
 # Externe Spielerdaten-Anbindung
 
 Ziel: Spielerinformationen direkt aus FIDE, DSB/DWZ und Thüringen/ThSB-Kontext übernehmen, ohne Turnierleiter zu manueller Doppeleingabe zu zwingen.

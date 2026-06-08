@@ -233,6 +233,29 @@ type ExternalPlayerLookupResult = {
   players: ExternalPlayerProfile[];
 };
 
+type ExternalPlayerDuplicateMatch = {
+  playerId: string;
+  playerName: string;
+  kind: number;
+  score: number;
+  reason: string;
+};
+
+type ExternalPlayerDuplicateCheck = {
+  profile: ExternalPlayerProfile;
+  matches: ExternalPlayerDuplicateMatch[];
+  hasLikelyDuplicate: boolean;
+};
+
+type ExternalPlayerApplyResult = {
+  player: Player;
+  created: boolean;
+  updated: boolean;
+  duplicateCheck: ExternalPlayerDuplicateCheck;
+  changedFields: string[];
+  message: string;
+};
+
 type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
 type SettingsForm = {
@@ -498,6 +521,20 @@ function externalSourceLabel(value: number): string {
   return externalSourceOptions.find(option => option.value === value)?.label ?? String(value);
 }
 
+function externalProfileKey(profile: ExternalPlayerProfile): string {
+  return `${profile.source}-${profile.externalId || profile.fideId || profile.nationalId || profile.name}`;
+}
+
+function duplicateKindLabel(kind: number): string {
+  switch (kind) {
+    case 0: return 'FIDE-ID';
+    case 1: return 'DSB-ID/National-ID';
+    case 2: return 'Name + Geburtsjahr';
+    case 3: return 'Name';
+    default: return String(kind);
+  }
+}
+
 function settingsToForm(tournament?: Tournament): SettingsForm {
   if (!tournament) {
     return emptySettingsForm;
@@ -579,6 +616,7 @@ function App() {
   const [externalSource, setExternalSource] = React.useState(0);
   const [externalQuery, setExternalQuery] = React.useState('');
   const [externalLookup, setExternalLookup] = React.useState<ExternalPlayerLookupResult | null>(null);
+  const [externalDuplicateChecks, setExternalDuplicateChecks] = React.useState<Record<string, ExternalPlayerDuplicateCheck>>({});
   const [editingPlayerId, setEditingPlayerId] = React.useState<string | null>(null);
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
@@ -846,6 +884,7 @@ function App() {
 
     const result = await requestJson<ExternalPlayerLookupResult>(`/api/external-players/search?source=${externalSource}&query=${encodeURIComponent(query)}`);
     setExternalLookup(result);
+    setExternalDuplicateChecks({});
     setStatus(result.message);
   }
 
@@ -853,6 +892,47 @@ function App() {
     setPlayerForm(applyExternalProfileToForm(profile));
     setEditingPlayerId(null);
     setStatus(`${profile.name} aus ${externalSourceLabel(profile.source)} in das Teilnehmerformular übernommen.`);
+  }
+
+  async function checkExternalDuplicates(profile: ExternalPlayerProfile): Promise<ExternalPlayerDuplicateCheck | null> {
+    if (!selectedTournament) {
+      setError('Bitte zuerst ein Turnier auswählen.');
+      return null;
+    }
+
+    setError(null);
+    const duplicateCheck = await requestJson<ExternalPlayerDuplicateCheck>(`/api/tournaments/${selectedTournament.id}/external-players/check-duplicates`, {
+      method: 'POST',
+      body: JSON.stringify({ profile })
+    });
+    setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: duplicateCheck }));
+    setStatus(duplicateCheck.hasLikelyDuplicate
+      ? `${duplicateCheck.matches.length} mögliche Dublette(n) für ${profile.name} gefunden.`
+      : `Keine sichere Dublette für ${profile.name} gefunden.`);
+    return duplicateCheck;
+  }
+
+  async function applyExternalProfile(profile: ExternalPlayerProfile, targetPlayerId?: string, overwriteExistingValues = false): Promise<void> {
+    if (!selectedTournament) {
+      setError('Bitte zuerst ein Turnier auswählen.');
+      return;
+    }
+
+    setError(null);
+    const result = await requestJson<ExternalPlayerApplyResult>(`/api/tournaments/${selectedTournament.id}/external-players/apply`, {
+      method: 'POST',
+      body: JSON.stringify({
+        profile,
+        targetPlayerId: targetPlayerId || null,
+        createIfNoTarget: !targetPlayerId,
+        overwriteExistingValues
+      })
+    });
+    setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: result.duplicateCheck }));
+    setEditingPlayerId(result.player.id);
+    setPlayerForm(playerToForm(result.player));
+    setStatus(`${result.message} Geänderte Felder: ${result.changedFields.length ? result.changedFields.join(', ') : 'keine'}.`);
+    await refresh(selectedTournament.id);
   }
 
   async function importPlayers() {
@@ -935,7 +1015,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.11.3</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.12.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1073,8 +1153,28 @@ function App() {
                         <strong>{profile.name}</strong>
                         <small>{profile.fideId ? `FIDE ${profile.fideId}` : profile.externalId} · {profile.federation ?? profile.country ?? 'ohne Verband'} · Elo {profile.elo ?? '—'} · {profile.birthYear ?? 'Jahr ?'}</small>
                         {profile.profileUrl && <small><a href={profile.profileUrl} target="_blank" rel="noreferrer">Profil öffnen</a></small>}
+                        {externalDuplicateChecks[externalProfileKey(profile)] && (
+                          <div className="duplicate-box">
+                            <strong>{externalDuplicateChecks[externalProfileKey(profile)].hasLikelyDuplicate ? 'Mögliche Dubletten' : 'Keine sichere Dublette'}</strong>
+                            {externalDuplicateChecks[externalProfileKey(profile)].matches.length === 0 && <small>Kein bestehender Teilnehmer passt sicher zu diesem externen Treffer.</small>}
+                            {externalDuplicateChecks[externalProfileKey(profile)].matches.map(match => (
+                              <div key={`${profile.source}-${profile.externalId}-${match.playerId}`} className="duplicate-match">
+                                <span>{match.playerName} · {duplicateKindLabel(match.kind)} · Score {match.score}</span>
+                                <small>{match.reason}</small>
+                                <div className="actions">
+                                  <button type="button" className="small" onClick={() => void applyExternalProfile(profile, match.playerId, false)}>Teilnehmer ergänzen</button>
+                                  <button type="button" className="small secondary" onClick={() => void applyExternalProfile(profile, match.playerId, true)}>mit externen Daten überschreiben</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <button type="button" className="small" onClick={() => applyExternalPlayer(profile)}>Übernehmen</button>
+                      <div className="lookup-actions">
+                        <button type="button" className="small" onClick={() => applyExternalPlayer(profile)}>Ins Formular</button>
+                        <button type="button" className="small secondary" onClick={() => void checkExternalDuplicates(profile)} disabled={!selectedTournament}>Dubletten prüfen</button>
+                        <button type="button" className="small" onClick={() => void applyExternalProfile(profile)} disabled={!selectedTournament}>Als neuen Teilnehmer speichern</button>
+                      </div>
                     </div>
                   ))}
                 </div>
