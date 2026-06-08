@@ -42,3 +42,8 @@ Klassischer Windows-Installer, Update-Workflow, Release-Checkliste und FIDE-Dutc
 ## 0.10.0 geplant
 
 - Turnierassistent, Importvorschau, Validierungen und Exportcenter.
+
+
+## Externe Spielerdaten-Anbindung
+
+Kurzfristig: FIDE-ID-Direktabruf und Mapping in Teilnehmerdaten. Danach DSB/DWZ-Anbindung über offizielle Schnittstellen und ThSB-Kontext über Verband-/Vereinsfilter.

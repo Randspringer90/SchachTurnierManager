@@ -102,3 +102,12 @@
 ## Nächster Fokus 0.10.0
 
 - UI-Qualität: Turnierassistent, bessere Validierung, Importvorschau und Exportcenter.
+
+
+## v0.10.0 - Externe Spielerdaten
+
+- Provider-Modell für FIDE, DSB/DWZ und ThSB-Kontext.
+- FIDE-ID-Direktabruf als erster realer Provider.
+- DSB/DWZ über offizielle API/Wertungsportal vorbereiten.
+- UI-Vorschau und Übernahme ins Teilnehmerformular.
+- Tests mit Fixtures statt Live-Netzwerk.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2 - Versions-/Packaging-Fix und externe Spielerdatenplanung
+
+- Portable-Paket liest Version automatisch aus `package.json`.
+- Nachkontrollskript `After-Apply-V0.9.2.ps1` ergänzt.
+- Planungsdokument und Agenten-Skill für FIDE-/DSB-/ThSB-Spielerdaten-Anbindung ergänzt.
+
 ## 0.9.1 - Stabilisierung Turniereinstellungen
 
 - Fix-Forward für den v0.9.0-Patch: `TournamentService.UpdateSettings(...)` ist in der Application-Schicht enthalten.

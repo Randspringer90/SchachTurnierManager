@@ -126,3 +126,8 @@ Nach einem grünen Stand kann ein geprüfter Commit mit folgendem Skript erstell
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-Checkpoint.ps1" -Message "Checkpoint: Beschreibung" -Push
 ```
+
+
+## Externe Spielerdaten
+
+Geplant ist eine providerbasierte Anbindung an FIDE, DSB/DeWIS/DWZ und den ThSB-Kontext. Details stehen in `docs/EXTERNAL_PLAYER_LOOKUP.md`.

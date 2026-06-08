@@ -15,7 +15,14 @@ $appOutput = Join-Path $portableRoot "app"
 $dataDir = Join-Path $portableRoot "data"
 $webApp = Join-Path $root "src\SchachTurnierManager.WebApp"
 $webApiProject = Join-Path $root "src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj"
-$version = "0.9.0"
+$packageJsonPath = Join-Path $webApp "package.json"
+$version = "dev"
+if (Test-Path $packageJsonPath) {
+    $packageJson = Get-Content -Raw -Path $packageJsonPath | ConvertFrom-Json
+    if ($packageJson.version) {
+        $version = [string]$packageJson.version
+    }
+}
 
 function Invoke-Checked {
     param(
