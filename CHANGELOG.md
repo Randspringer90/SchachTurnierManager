@@ -1,3 +1,9 @@
+## 0.24.1
+
+- Vervollständigt die Dashboard-Integration der Auslosungsvorschau-Exports.
+- Ergänzt die fehlenden Buttons für Druckansicht und CSV-Export in der Vorschaukarte.
+- Ergänzt deutliche Warnboxen für kritische oder nicht speicherbare Vorschauen.
+- Baut das Portable-Paket nach der Korrektur neu.
 ## 0.23.0 - Auslosungsvorschau im Dashboard
 
 - Die Next-Round-Auslosungsvorschau ist jetzt direkt im Dashboard sichtbar.

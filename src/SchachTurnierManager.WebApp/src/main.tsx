@@ -1236,7 +1236,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.24.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.24.1</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1311,6 +1311,8 @@ function App() {
                 <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} Farbfolge-Risiken</span>
                 <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
               </div>
+              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>Kritische Vorschau:</strong> Bitte Paarungen, Rematches und Farbfolge prüfen, bevor die Runde wirklich ausgelost wird.</div>}
+              {!nextRoundPreview.isSavable && <div className="preview-warning critical"><strong>Nicht speicherbar:</strong> Diese Vorschau darf nicht übernommen werden. Bitte Hinweise prüfen.</div>}
               {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-message-${index}`}>{message}</li>)}</ul>}
               {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-quality-${index}`}>{finding}</li>)}</ul>}
               <div className="table-scroll compact preview-pairings">
@@ -1340,6 +1342,8 @@ function App() {
               </details>
               <div className="actions preview-actions">
                 <button type="button" onClick={() => void generateRound()} disabled={!nextRoundPreview.isSavable}>Diese Runde jetzt auslosen</button>
+                <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>Druckansicht öffnen</button>
+                <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>CSV exportieren</button>
                 <button type="button" className="secondary" onClick={() => setNextRoundPreview(null)}>Vorschau schließen</button>
               </div>
             </article>
