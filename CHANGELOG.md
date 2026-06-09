@@ -1,4 +1,9 @@
 # Changelog
+## 0.20.5 - Export-Test für erweiterte Wertungen stabilisiert
+
+- CSV-Export-Test auf den tatsächlich exportierten erweiterten Tabellenkopf angepasst.
+- Fehlgeschlagene lokale Zwischenstandsartefakte aus v0.20.3/v0.20.4 werden beim Fix-Forward entfernt.
+- Nachkontrolle bricht weiterhin hart ab, wenn Build, Tests, Frontend-Build oder Portable-Paket fehlschlagen.
 
 ## 0.20.2 - Teststabilisierung erweiterte Wertungen
 
@@ -150,6 +155,11 @@
 - Startskript wartet länger und protokolliert den letzten Verbindungsfehler, falls Backend oder Frontend nicht rechtzeitig erreichbar sind.
 
 # Changelog
+## 0.20.5 - Export-Test für erweiterte Wertungen stabilisiert
+
+- CSV-Export-Test auf den tatsächlich exportierten erweiterten Tabellenkopf angepasst.
+- Fehlgeschlagene lokale Zwischenstandsartefakte aus v0.20.3/v0.20.4 werden beim Fix-Forward entfernt.
+- Nachkontrolle bricht weiterhin hart ab, wenn Build, Tests, Frontend-Build oder Portable-Paket fehlschlagen.
 
 ## 0.20.2 - Teststabilisierung erweiterte Wertungen
 
