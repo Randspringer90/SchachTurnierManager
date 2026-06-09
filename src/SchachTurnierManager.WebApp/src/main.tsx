@@ -192,6 +192,42 @@ type RoundDiagnostics = {
   boards: BoardDiagnostic[];
 };
 
+type PairingQualityBoard = {
+  boardNumber: number;
+  whitePlayerId?: string | null;
+  blackPlayerId?: string | null;
+  whiteName: string;
+  blackName: string;
+  whiteScoreBeforeRound: number;
+  blackScoreBeforeRound: number;
+  scoreDifference: number;
+  isBye: boolean;
+  isRematch: boolean;
+  isCrossScoreGroupPairing: boolean;
+  wouldGiveWhiteThirdSameColor: boolean;
+  wouldGiveBlackThirdSameColor: boolean;
+  findings: string[];
+};
+
+type PairingQualityReport = {
+  roundNumber: number;
+  boardCount: number;
+  gameCount: number;
+  byeCount: number;
+  rematchCount: number;
+  crossScoreGroupPairingCount: number;
+  thirdSameColorRiskCount: number;
+  maxScoreDifference: number;
+  averageScoreDifference: number;
+  qualityScore: number;
+  severity: number;
+  findings: string[];
+  boards: PairingQualityBoard[];
+  hasCriticalIssues: boolean;
+  hasWarnings: boolean;
+  findingCount: number;
+};
+
 type ExternalPlayerProviderInfo = {
   source: number;
   name: string;
@@ -584,6 +620,25 @@ function importPreviewMessages(row: PlayerImportPreviewRow): string[] {
   return [...row.blockingIssues, ...row.warnings];
 }
 
+function pairingQualitySeverityLabel(severity: number): string {
+  switch (severity) {
+    case 0: return 'gut';
+    case 1: return 'Hinweis';
+    case 2: return 'Warnung';
+    case 3: return 'kritisch';
+    default: return String(severity);
+  }
+}
+
+function pairingQualitySeverityClass(severity: number): string {
+  switch (severity) {
+    case 0: return 'quality-good';
+    case 1: return 'quality-notice';
+    case 2: return 'quality-warning';
+    case 3: return 'quality-critical';
+    default: return '';
+  }
+}
 function settingsToForm(tournament?: Tournament): SettingsForm {
   if (!tournament) {
     return emptySettingsForm;
@@ -657,6 +712,7 @@ function App() {
   const [crossTable, setCrossTable] = React.useState<CrossTable | null>(null);
   const [heroCup, setHeroCup] = React.useState<HeroCupRow[]>([]);
   const [roundDiagnostics, setRoundDiagnostics] = React.useState<RoundDiagnostics[]>([]);
+  const [pairingQualityReports, setPairingQualityReports] = React.useState<Record<number, PairingQualityReport>>({});
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
@@ -693,6 +749,7 @@ function App() {
       setCrossTable(null);
       setHeroCup([]);
       setRoundDiagnostics([]);
+      setPairingQualityReports({});
       return;
     }
 
@@ -736,6 +793,10 @@ function App() {
 
   React.useEffect(() => {
     setSettingsForm(settingsToForm(selectedTournament));
+  }, [selectedTournament?.id]);
+
+  React.useEffect(() => {
+    setPairingQualityReports({});
   }, [selectedTournament?.id]);
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
@@ -1011,6 +1072,21 @@ function App() {
     setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
   }
 
+  function pairingQualityFor(roundNumber: number): PairingQualityReport | undefined {
+    return pairingQualityReports[roundNumber];
+  }
+
+  async function loadPairingQuality(roundNumber: number) {
+    if (!selectedTournament) {
+      setError('Bitte zuerst ein Turnier auswählen.');
+      return;
+    }
+
+    setError(null);
+    const report = await requestJson<PairingQualityReport>(`/api/tournaments/${selectedTournament.id}/rounds/${roundNumber}/pairing-quality`);
+    setPairingQualityReports(previous => ({ ...previous, [roundNumber]: report }));
+    setStatus(`Pairing-Qualität Runde ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity)}.`);
+  }
   async function importPlayers() {
     if (!selectedTournament) {
       return;
@@ -1113,7 +1189,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.17.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.18.1</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1482,7 +1558,40 @@ function App() {
                     </div>
                   </details>
                 )}
-                <div className="table-scroll">
+                <div className={`quality-box ${pairingQualityFor(round.roundNumber) ? pairingQualitySeverityClass(pairingQualityFor(round.roundNumber)!.severity) : 'quality-empty'}`}>
+                  <div className="quality-header">
+                    <div>
+                      <strong>Pairing-Qualität</strong>
+                      {pairingQualityFor(round.roundNumber)
+                        ? <span>{pairingQualityFor(round.roundNumber)!.qualityScore}/100 · {pairingQualitySeverityLabel(pairingQualityFor(round.roundNumber)!.severity)}</span>
+                        : <span>noch nicht berechnet</span>}
+                    </div>
+                    <button type="button" className="small secondary" onClick={() => void loadPairingQuality(round.roundNumber)}>Qualität prüfen</button>
+                  </div>
+                  {pairingQualityFor(round.roundNumber) && (
+                    <details open={pairingQualityFor(round.roundNumber)!.severity >= 2}>
+                      <summary>{pairingQualityFor(round.roundNumber)!.findingCount} Hinweis(e) · {pairingQualityFor(round.roundNumber)!.rematchCount} Rematch · {pairingQualityFor(round.roundNumber)!.crossScoreGroupPairingCount} Scoregruppen-Abweichung(en) · {pairingQualityFor(round.roundNumber)!.thirdSameColorRiskCount} Farbfolge-Risiko/Risiken</summary>
+                      <ul className="message-list">
+                        {pairingQualityFor(round.roundNumber)!.findings.map((finding, index) => <li key={`quality-finding-${round.roundNumber}-${index}`}>{finding}</li>)}
+                      </ul>
+                      <div className="table-scroll compact">
+                        <table>
+                          <thead><tr><th>Brett</th><th>Paarung</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead>
+                          <tbody>
+                            {pairingQualityFor(round.roundNumber)!.boards.map(board => (
+                              <tr key={`quality-board-${round.roundNumber}-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
+                                <td>{board.boardNumber}</td>
+                                <td>{board.whiteName} – {board.blackName}</td>
+                                <td>{board.isBye ? 'Bye' : `${board.whiteScoreBeforeRound} : ${board.blackScoreBeforeRound}`}</td>
+                                <td>{board.findings.length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{board.findings.map((finding, index) => <li key={`quality-board-finding-${round.roundNumber}-${board.boardNumber}-${index}`}>{finding}</li>)}</ul>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  )}
+                </div>                <div className="table-scroll">
                   <table>
                     <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Manuelle Paarung</th></tr></thead>
                     <tbody>

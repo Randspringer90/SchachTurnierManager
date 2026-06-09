@@ -13,6 +13,7 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly CategoryStandingsCalculator _categoryStandings = new();
     private readonly HeroCupCalculator _heroCup = new();
     private readonly RoundDiagnosticsCalculator _roundDiagnostics = new();
+    private readonly PairingQualityAnalyzer _pairingQuality = new();
     private readonly TournamentExportFormatter _exports = new();
     private readonly ExternalPlayerImportService _externalPlayerImport = new();
     private readonly PlayerImportPreviewService _playerImportPreview = new();
@@ -469,6 +470,13 @@ public sealed class TournamentService(ITournamentStore store)
         var tournament = RequireTournament(tournamentId);
         var roundIndex = RequireRoundIndex(tournament, roundNumber);
         return _roundDiagnostics.Calculate(tournament, tournament.Rounds[roundIndex]);
+    }
+
+    public PairingQualityReport GetPairingQuality(Guid tournamentId, int roundNumber)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        return _pairingQuality.Analyze(tournament, tournament.Rounds[roundIndex]);
     }
 
     public TournamentState RequireTournament(Guid tournamentId)

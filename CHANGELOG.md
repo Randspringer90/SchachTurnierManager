@@ -1,6 +1,12 @@
 # Changelog
 
+## 0.18.1 - Pairing-Qualität im Dashboard
 
+- Fix-Forward für das v0.18.0-Nachkontrollskript.
+- Application-Endpunkt für Pairing-Qualität pro Runde ergänzt.
+- WebApi-Endpunkt `/api/tournaments/{id}/rounds/{roundNumber}/pairing-quality` ergänzt.
+- Dashboard zeigt Pairing-Qualitätswert, Schweregrad, Rundenhinweise und brettweise Erklärungen.
+- Tests für den Application-Workflow der Pairing-Qualitätsberichte ergänzt.
 ## 0.17.0 - Pairing-Qualitätsbericht
 
 - Pairing-Qualitätsmodell für Schweizer-System-Runden ergänzt.
@@ -132,9 +138,15 @@
 - CORS erlaubt zusätzlich `http://127.0.0.1:5173`.
 - Startskript wartet länger und protokolliert den letzten Verbindungsfehler, falls Backend oder Frontend nicht rechtzeitig erreichbar sind.
 
-# CHANGELOG
+# Changelog
 
+## 0.18.1 - Pairing-Qualität im Dashboard
 
+- Fix-Forward für das v0.18.0-Nachkontrollskript.
+- Application-Endpunkt für Pairing-Qualität pro Runde ergänzt.
+- WebApi-Endpunkt `/api/tournaments/{id}/rounds/{roundNumber}/pairing-quality` ergänzt.
+- Dashboard zeigt Pairing-Qualitätswert, Schweregrad, Rundenhinweise und brettweise Erklärungen.
+- Tests für den Application-Workflow der Pairing-Qualitätsberichte ergänzt.
 ## 0.17.0 - Pairing-Qualitätsbericht
 
 - Pairing-Qualitätsmodell für Schweizer-System-Runden ergänzt.

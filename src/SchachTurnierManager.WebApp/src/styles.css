@@ -617,3 +617,63 @@ th {
 .preview-summary.ready + .import-confirm {
   display: none;
 }
+
+.quality-box {
+  margin: 0.75rem 0;
+  padding: 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.quality-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.45rem;
+}
+
+.quality-header div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.quality-header span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.quality-good {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: rgba(22, 101, 52, 0.14);
+}
+
+.quality-notice,
+.quality-empty {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(30, 64, 175, 0.12);
+}
+
+.quality-warning {
+  border-color: rgba(245, 158, 11, 0.65);
+  background: rgba(146, 64, 14, 0.16);
+}
+
+.quality-critical {
+  border-color: rgba(239, 68, 68, 0.7);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.quality-board-critical {
+  background: rgba(127, 29, 29, 0.22);
+}
+
+.quality-board-warning {
+  background: rgba(146, 64, 14, 0.18);
+}
+
+.quality-board-notice {
+  background: rgba(30, 64, 175, 0.16);
+}
