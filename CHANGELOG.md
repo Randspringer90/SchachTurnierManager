@@ -1,3 +1,10 @@
+## 0.25.0
+
+- Ergänzt ein Turnierleiter-Exportcenter im Dashboard.
+- Bündelt Aushänge, Tabellen-, Paarungs-, Vorschau- und Backup-Exporte an einer Stelle.
+- Zeigt Schnellkennzahlen zu Teilnehmern, aktiven Spielern, Runden, offenen Brettern und kampflosen Partien.
+- Ergänzt Warnhinweise für offene Ergebnisse und kritische Auslosungsvorschauen.
+- Baut das Portable-Paket als `SchachTurnierManager_Portable_0.25.0.zip`.
 ## 0.24.1
 
 - Vervollständigt die Dashboard-Integration der Auslosungsvorschau-Exports.

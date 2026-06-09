@@ -1792,7 +1792,53 @@ function App() {
             ))}
           </article>
 
-          <article className="card">
+                      <article className="card export-center-card">
+              <div className="export-center-header">
+                <div>
+                  <h3>Turnierleiter-Exportcenter</h3>
+                  <p className="muted">Schnellzugriff auf Aushänge, Tabellen, Paarungen, Vorschau und Backup. Ideal vor, während und nach einer Runde.</p>
+                </div>
+                <span className="export-center-badge">v0.25</span>
+              </div>
+
+              <div className="export-center-metrics">
+                <div><strong>{selectedTournament?.players.length ?? 0}</strong><span>Teilnehmer</span></div>
+                <div><strong>{activePlayerCount()}</strong><span>aktiv</span></div>
+                <div><strong>{inactivePlayerCount()}</strong><span>inaktiv</span></div>
+                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>Runden</span></div>
+                <div><strong>{totalOpenBoardCount()}</strong><span>offene Bretter</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
+              </div>
+
+              {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>Offene Ergebnisse:</strong> Vor Finaltabellen oder Veröffentlichungen bitte offene Bretter prüfen.</div>}
+              {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>Kritische Vorschau:</strong> Pairing-Hinweise vor Aushang oder Auslosung prüfen.</div>}
+
+              <div className="export-center-grid">
+                <section>
+                  <h4>Aushänge</h4>
+                  <div className="export-center-actions">
+                    <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Gesamt-Druckansicht</button>
+                    <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
+                    <button type="button" onClick={openNextRoundPreviewPrint} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau drucken</button>
+                  </div>
+                </section>
+                <section>
+                  <h4>CSV / Daten</h4>
+                  <div className="export-center-actions">
+                    <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>Teilnehmer CSV</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle CSV</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen CSV</button>
+                    <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Paarungen CSV</button>
+                    <button type="button" className="secondary" onClick={openNextRoundPreviewCsv} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau CSV</button>
+                    <button type="button" className="secondary" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup JSON</button>
+                  </div>
+                </section>
+              </div>
+
+              <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.</p>
+            </article>
+
+<article className="card">
             <h3>Import / Export</h3>
             <div className="grid two">
               <section>
