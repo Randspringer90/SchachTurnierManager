@@ -1,3 +1,10 @@
+## 0.31.0 - Swiss-Regression-Szenarien
+
+- Zusätzliche Application-Regressionstests für echte Schweizer-System-Turniersituationen ergänzt.
+- Ungerade Teilnehmerzahl mit Bye und temporärer Auslosungsvorschau abgesichert.
+- Kampflose Ergebnisse werden inklusive Rundenabschluss und Diagnosewirkung geprüft.
+- Rückzug nach gespielter Runde wird abgesichert: zurückgezogene Spieler dürfen in der nächsten Vorschau nicht gepaart werden.
+- Keine Änderung an Auslosungslogik, Wertungsberechnung oder Speicherformat.
 ## 0.30.0 - Release-Gate und Commit-Guard
 
 - Release-Gate `scripts/Invoke-ReleaseGate.ps1` ergaenzt.
