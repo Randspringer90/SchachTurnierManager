@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.2 - Teststabilisierung erweiterte Wertungen
+
+- Stabilisiert den CSV-Export-Test nach der Erweiterung der Tabellenwertungsspalten in 0.20.1.
+- Versionen auf `0.20.2` angehoben.
+- Nachkontrollskript bricht nun hart ab, sobald `dotnet test`, Frontend-Build oder Packaging fehlschlagen.
 
 ## 0.19.0 - Swiss-Chess-Paritätsroadmap
 
@@ -146,6 +151,11 @@
 
 # Changelog
 
+## 0.20.2 - Teststabilisierung erweiterte Wertungen
+
+- Stabilisiert den CSV-Export-Test nach der Erweiterung der Tabellenwertungsspalten in 0.20.1.
+- Versionen auf `0.20.2` angehoben.
+- Nachkontrollskript bricht nun hart ab, sobald `dotnet test`, Frontend-Build oder Packaging fehlschlagen.
 
 ## 0.19.0 - Swiss-Chess-Paritätsroadmap
 

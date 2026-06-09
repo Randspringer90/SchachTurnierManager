@@ -14,7 +14,7 @@ public sealed class TournamentExportFormatterTests
         var document = new TournamentExportFormatter().ExportStandingsCsv(tournament, standings);
 
         Assert.EndsWith("_Tabelle.csv", document.FileName);
-        Assert.Contains("Rang;Name;TWZ;Punkte;Siege;Direktvergleich;Buchholz", document.Content);
+        Assert.Contains("Rang;Name;TWZ;Punkte;Siege;Schwarzsiege;Direktvergleich;Buchholz;Buchholz Cut-1;Buchholz Cut-2;Median-Buchholz;Sonneborn-Berger;Progressiv;Koya;Gegnerschnitt;TPR;Heldenwert", document.Content);
         Assert.Contains("Alpha", document.Content);
         Assert.Contains("Beta", document.Content);
     }
