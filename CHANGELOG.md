@@ -1,3 +1,10 @@
+## v0.27.0
+
+- Dashboard um ein Bye- und Kampflos-Audit erweitert.
+- Spielfreie und kampflose Bretter werden inklusive Wertungswirkung sichtbar gemacht.
+- Anzeige für Buchholz-, Direkt-/Sonneborn-Berger- und Performance-Wertung ergänzt.
+- Schnellaktionen für aktuelle Runde, Paarungen-CSV und Turnierbericht ergänzt.
+- Version auf 0.27.0 angehoben.
 ## v0.26.0
 
 - Dashboard um eine Rundenabschluss-Checkliste erweitert.

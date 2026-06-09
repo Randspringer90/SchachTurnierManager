@@ -1330,11 +1330,67 @@ function App() {
     }
     return 'result-review-status warn';
   }
+  function totalByeBoardCount(): number {
+    return roundDiagnostics.reduce((sum, item) => sum + item.byeBoards, 0);
+  }
+
+  function byeForfeitAffectedRoundCount(): number {
+    return new Set(roundDiagnostics
+      .filter(item => item.byeBoards > 0 || item.forfeitBoards > 0)
+      .map(item => item.roundNumber)).size;
+  }
+
+  function byeForfeitRows() {
+    return roundDiagnostics
+      .flatMap(round => round.boards
+        .filter(board => board.isForfeit
+          || board.note.toLowerCase().includes('bye')
+          || board.note.toLowerCase().includes('spielfrei')
+          || board.black.toLowerCase().includes('spielfrei'))
+        .map(board => ({
+          roundNumber: round.roundNumber,
+          boardNumber: board.boardNumber,
+          white: board.white,
+          black: board.black,
+          resultLabel: board.resultLabel,
+          note: board.note,
+          isForfeit: board.isForfeit,
+          countsForBuchholz: board.countsForBuchholz,
+          countsForDirectAndSonneborn: board.countsForDirectAndSonneborn,
+          countsForPerformance: board.countsForPerformance,
+          kind: board.note.toLowerCase().includes('bye') || board.note.toLowerCase().includes('spielfrei') || board.black.toLowerCase().includes('spielfrei') ? 'Bye/spielfrei' : 'kampflos'
+        })))
+      .slice(0, 20);
+  }
+
+  function byeForfeitAuditStatusLabel(): string {
+    if (!selectedTournament || selectedTournament.rounds.length === 0) {
+      return 'noch keine Runde';
+    }
+    if (totalForfeitBoardCount() > 0) {
+      return 'kampflos prüfen';
+    }
+    if (totalByeBoardCount() > 0) {
+      return 'Bye sichtbar';
+    }
+    return 'keine Fälle';
+  }
+
+  function byeForfeitAuditStatusClass(): string {
+    const label = byeForfeitAuditStatusLabel();
+    if (label === 'keine Fälle') {
+      return 'bye-forfeit-status ok';
+    }
+    if (label === 'kampflos prüfen') {
+      return 'bye-forfeit-status warn';
+    }
+    return 'bye-forfeit-status info';
+  }
   return (
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.26.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.27.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1869,6 +1925,62 @@ function App() {
     }
     return 'result-review-status warn';
   }
+  function totalByeBoardCount(): number {
+    return roundDiagnostics.reduce((sum, item) => sum + item.byeBoards, 0);
+  }
+
+  function byeForfeitAffectedRoundCount(): number {
+    return new Set(roundDiagnostics
+      .filter(item => item.byeBoards > 0 || item.forfeitBoards > 0)
+      .map(item => item.roundNumber)).size;
+  }
+
+  function byeForfeitRows() {
+    return roundDiagnostics
+      .flatMap(round => round.boards
+        .filter(board => board.isForfeit
+          || board.note.toLowerCase().includes('bye')
+          || board.note.toLowerCase().includes('spielfrei')
+          || board.black.toLowerCase().includes('spielfrei'))
+        .map(board => ({
+          roundNumber: round.roundNumber,
+          boardNumber: board.boardNumber,
+          white: board.white,
+          black: board.black,
+          resultLabel: board.resultLabel,
+          note: board.note,
+          isForfeit: board.isForfeit,
+          countsForBuchholz: board.countsForBuchholz,
+          countsForDirectAndSonneborn: board.countsForDirectAndSonneborn,
+          countsForPerformance: board.countsForPerformance,
+          kind: board.note.toLowerCase().includes('bye') || board.note.toLowerCase().includes('spielfrei') || board.black.toLowerCase().includes('spielfrei') ? 'Bye/spielfrei' : 'kampflos'
+        })))
+      .slice(0, 20);
+  }
+
+  function byeForfeitAuditStatusLabel(): string {
+    if (!selectedTournament || selectedTournament.rounds.length === 0) {
+      return 'noch keine Runde';
+    }
+    if (totalForfeitBoardCount() > 0) {
+      return 'kampflos prüfen';
+    }
+    if (totalByeBoardCount() > 0) {
+      return 'Bye sichtbar';
+    }
+    return 'keine Fälle';
+  }
+
+  function byeForfeitAuditStatusClass(): string {
+    const label = byeForfeitAuditStatusLabel();
+    if (label === 'keine Fälle') {
+      return 'bye-forfeit-status ok';
+    }
+    if (label === 'kampflos prüfen') {
+      return 'bye-forfeit-status warn';
+    }
+    return 'bye-forfeit-status info';
+  }
   return (
                           <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
                             <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
@@ -1908,7 +2020,62 @@ function App() {
             ))}
           </article>
 
-                                  <article className="card result-review-card">
+                                              <article className="card bye-forfeit-card">
+              <div className="bye-forfeit-header">
+                <div>
+                  <h3>Bye- und Kampflos-Audit</h3>
+                  <p className="muted">Macht spielfreie und kampflose Bretter inklusive Wertungswirkung sichtbar. Das hilft vor Tabelle, Export und nächster Auslosung.</p>
+                </div>
+                <span className={byeForfeitAuditStatusClass()}>{byeForfeitAuditStatusLabel()}</span>
+              </div>
+
+              <div className="bye-forfeit-metrics">
+                <div><strong>{totalByeBoardCount()}</strong><span>Bye/spielfrei</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
+                <div><strong>{byeForfeitAffectedRoundCount()}</strong><span>betroffene Runden</span></div>
+                <div><strong>{byeForfeitRows().length}</strong><span>sichtbare Fälle</span></div>
+              </div>
+
+              {!selectedTournament && <p className="muted">Bitte zuerst ein Turnier auswählen.</p>}
+              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="bye-forfeit-empty">Noch keine Runde vorhanden. Bye- und Kampflos-Fälle werden nach der ersten Auslosung angezeigt.</div>}
+              {selectedTournament && selectedTournament.rounds.length > 0 && byeForfeitRows().length === 0 && <div className="bye-forfeit-ok">Keine Bye- oder kampflosen Bretter in den aktuellen Diagnosen gefunden.</div>}
+              {totalForfeitBoardCount() > 0 && <div className="bye-forfeit-warning"><strong>Kampflos-Fälle prüfen:</strong> Bitte vor Veröffentlichung kontrollieren, ob Buchholz, Sonneborn-Berger, Direktwertung und Performance korrekt behandelt werden.</div>}
+              {totalByeBoardCount() > 0 && <div className="bye-forfeit-warning info"><strong>Bye/spielfrei vorhanden:</strong> Aushänge und Exporte sollten eindeutig zeigen, wer spielfrei war und wie dies gewertet wurde.</div>}
+
+              {byeForfeitRows().length > 0 && (
+                <div className="table-wrap bye-forfeit-table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Runde</th><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Art</th><th>Ergebnis</th><th>BH</th><th>Direkt/SB</th><th>Perf.</th><th>Hinweis</th></tr>
+                    </thead>
+                    <tbody>
+                      {byeForfeitRows().map(row => (
+                        <tr key={`${row.roundNumber}-${row.boardNumber}-${row.kind}`}>
+                          <td>{row.roundNumber}</td>
+                          <td>{row.boardNumber}</td>
+                          <td>{row.white}</td>
+                          <td>{row.black}</td>
+                          <td><span className={`bye-forfeit-chip ${row.isForfeit ? 'warn' : 'info'}`}>{row.kind}</span></td>
+                          <td>{row.resultLabel}</td>
+                          <td>{row.countsForBuchholz ? 'ja' : 'nein'}</td>
+                          <td>{row.countsForDirectAndSonneborn ? 'ja' : 'nein'}</td>
+                          <td>{row.countsForPerformance ? 'ja' : 'nein'}</td>
+                          <td>{row.note || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="bye-forfeit-actions">
+                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Paarungen CSV</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
+              </div>
+            </article>
+
+<article className="card result-review-card">
               <div className="result-review-header">
                 <div>
                   <h3>Rundenabschluss-Checkliste</h3>
