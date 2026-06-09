@@ -838,3 +838,133 @@ th {
 .export-center-note {
   margin-top: 0.85rem;
 }
+
+.result-review-card {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: linear-gradient(180deg, rgba(20, 83, 45, 0.2), rgba(15, 23, 42, 0.76));
+}
+
+.result-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.result-review-status {
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e5e7eb;
+  background: rgba(71, 85, 105, 0.35);
+  white-space: nowrap;
+}
+
+.result-review-status.ok {
+  color: #bbf7d0;
+  background: rgba(22, 101, 52, 0.28);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.result-review-status.warn {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.32);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.result-review-status.danger {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.36);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.result-review-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.result-review-metrics div {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.85rem;
+  padding: 0.7rem;
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.result-review-metrics strong {
+  display: block;
+  font-size: 1.35rem;
+}
+
+.result-review-metrics span {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+}
+
+.result-review-empty,
+.result-review-ok,
+.result-review-warning {
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  margin: 0.8rem 0;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.result-review-ok {
+  color: #bbf7d0;
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(22, 101, 52, 0.2);
+}
+
+.result-review-warning {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.36);
+  background: rgba(120, 53, 15, 0.22);
+}
+
+.result-review-warning.danger {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(127, 29, 29, 0.24);
+}
+
+.result-review-table-wrap {
+  margin-top: 0.8rem;
+}
+
+.result-review-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  background: rgba(51, 65, 85, 0.4);
+}
+
+.result-review-chip.warn {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(120, 53, 15, 0.24);
+}
+
+.result-review-chip.danger {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(127, 29, 29, 0.24);
+}
+
+.result-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}

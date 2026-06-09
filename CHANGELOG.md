@@ -1,3 +1,9 @@
+## v0.26.0
+
+- Dashboard um eine Rundenabschluss-Checkliste erweitert.
+- Offene Ergebnisse, kampflose Bretter, ungeprüfte vollständige Runden und Diagnosehinweise werden zentral sichtbar.
+- Schnellaktionen für aktuelle Runde, Turnierbericht und Tabellen-CSV ergänzt.
+- Version auf 0.26.0 angehoben.
 ## 0.25.0
 
 - Ergänzt ein Turnierleiter-Exportcenter im Dashboard.

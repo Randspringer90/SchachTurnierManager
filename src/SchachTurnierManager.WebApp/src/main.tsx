@@ -1272,11 +1272,69 @@ function App() {
     return roundDiagnostics.find(item => item.roundNumber === roundNumber);
   }
 
+  function completedRoundCount(): number {
+    return roundDiagnostics.filter(item => item.isComplete).length;
+  }
+
+  function unverifiedCompleteRoundCount(): number {
+    return roundDiagnostics.filter(item => item.isComplete && !item.isVerified).length;
+  }
+
+  function lockedRoundCount(): number {
+    return selectedTournament?.rounds.filter(round => round.isLocked).length ?? 0;
+  }
+
+  function diagnosticWarningCount(): number {
+    return roundDiagnostics.reduce((sum, item) => sum + item.warnings.length, 0);
+  }
+
+  function resultReviewRows() {
+    return roundDiagnostics
+      .flatMap(round => round.boards
+        .filter(board => board.isOpen || board.isForfeit || board.note.trim().length > 0)
+        .map(board => ({
+          roundNumber: round.roundNumber,
+          boardNumber: board.boardNumber,
+          white: board.white,
+          black: board.black,
+          resultLabel: board.resultLabel,
+          note: board.note,
+          kind: board.isOpen ? 'offen' : board.isForfeit ? 'kampflos' : 'Hinweis'
+        })))
+      .slice(0, 12);
+  }
+
+  function resultReviewStatusLabel(): string {
+    if (!selectedTournament || selectedTournament.rounds.length === 0) {
+      return 'noch keine Runde';
+    }
+    if (totalOpenBoardCount() > 0) {
+      return 'offene Ergebnisse';
+    }
+    if (unverifiedCompleteRoundCount() > 0) {
+      return 'Prüfung offen';
+    }
+    if (diagnosticWarningCount() > 0) {
+      return 'Hinweise prüfen';
+    }
+    return 'bereit';
+  }
+
+  function resultReviewStatusClass(): string {
+    const label = resultReviewStatusLabel();
+    if (label === 'bereit') {
+      return 'result-review-status ok';
+    }
+    if (label === 'offene Ergebnisse') {
+      return 'result-review-status danger';
+    }
+    return 'result-review-status warn';
+  }
   return (
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.25.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.26.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1753,7 +1811,65 @@ function App() {
                       {round.pairings.map(pairing => {
                         const edit = pairingEdit(round, pairing);
                         const roundClosed = round.isLocked || round.isVerified;
-                        return (
+                        function completedRoundCount(): number {
+    return roundDiagnostics.filter(item => item.isComplete).length;
+  }
+
+  function unverifiedCompleteRoundCount(): number {
+    return roundDiagnostics.filter(item => item.isComplete && !item.isVerified).length;
+  }
+
+  function lockedRoundCount(): number {
+    return selectedTournament?.rounds.filter(round => round.isLocked).length ?? 0;
+  }
+
+  function diagnosticWarningCount(): number {
+    return roundDiagnostics.reduce((sum, item) => sum + item.warnings.length, 0);
+  }
+
+  function resultReviewRows() {
+    return roundDiagnostics
+      .flatMap(round => round.boards
+        .filter(board => board.isOpen || board.isForfeit || board.note.trim().length > 0)
+        .map(board => ({
+          roundNumber: round.roundNumber,
+          boardNumber: board.boardNumber,
+          white: board.white,
+          black: board.black,
+          resultLabel: board.resultLabel,
+          note: board.note,
+          kind: board.isOpen ? 'offen' : board.isForfeit ? 'kampflos' : 'Hinweis'
+        })))
+      .slice(0, 12);
+  }
+
+  function resultReviewStatusLabel(): string {
+    if (!selectedTournament || selectedTournament.rounds.length === 0) {
+      return 'noch keine Runde';
+    }
+    if (totalOpenBoardCount() > 0) {
+      return 'offene Ergebnisse';
+    }
+    if (unverifiedCompleteRoundCount() > 0) {
+      return 'Prüfung offen';
+    }
+    if (diagnosticWarningCount() > 0) {
+      return 'Hinweise prüfen';
+    }
+    return 'bereit';
+  }
+
+  function resultReviewStatusClass(): string {
+    const label = resultReviewStatusLabel();
+    if (label === 'bereit') {
+      return 'result-review-status ok';
+    }
+    if (label === 'offene Ergebnisse') {
+      return 'result-review-status danger';
+    }
+    return 'result-review-status warn';
+  }
+  return (
                           <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
                             <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
                             <td>{playerNameById(pairing.whitePlayerId)}</td>
@@ -1792,7 +1908,61 @@ function App() {
             ))}
           </article>
 
-                      <article className="card export-center-card">
+                                  <article className="card result-review-card">
+              <div className="result-review-header">
+                <div>
+                  <h3>Rundenabschluss-Checkliste</h3>
+                  <p className="muted">Prüft offene Ergebnisse, kampflose Bretter, ungeprüfte Runden und Diagnosehinweise vor Aushang oder nächster Auslosung.</p>
+                </div>
+                <span className={resultReviewStatusClass()}>{resultReviewStatusLabel()}</span>
+              </div>
+
+              <div className="result-review-metrics">
+                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>Runden</span></div>
+                <div><strong>{completedRoundCount()}</strong><span>vollständig</span></div>
+                <div><strong>{totalOpenBoardCount()}</strong><span>offen</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
+                <div><strong>{unverifiedCompleteRoundCount()}</strong><span>ungeprüft</span></div>
+                <div><strong>{lockedRoundCount()}</strong><span>gesperrt</span></div>
+                <div><strong>{diagnosticWarningCount()}</strong><span>Hinweise</span></div>
+              </div>
+
+              {!selectedTournament && <p className="muted">Bitte zuerst ein Turnier auswählen.</p>}
+              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="result-review-empty">Noch keine Runde ausgelost. Die Checkliste wird aktiv, sobald Paarungen vorhanden sind.</div>}
+              {selectedTournament && selectedTournament.rounds.length > 0 && totalOpenBoardCount() === 0 && unverifiedCompleteRoundCount() === 0 && diagnosticWarningCount() === 0 && <div className="result-review-ok">Alle bekannten Runden sind vollständig, geprüft oder ohne Diagnosewarnung. Der Turnierbericht kann veröffentlicht werden.</div>}
+              {totalOpenBoardCount() > 0 && <div className="result-review-warning danger"><strong>Offene Ergebnisse:</strong> Vor Tabelle, Aushang oder nächster Auslosung bitte alle offenen Bretter erfassen.</div>}
+              {unverifiedCompleteRoundCount() > 0 && totalOpenBoardCount() === 0 && <div className="result-review-warning"><strong>Prüfung offen:</strong> Mindestens eine vollständige Runde ist noch nicht als geprüft markiert.</div>}
+
+              {resultReviewRows().length > 0 && (
+                <div className="table-wrap result-review-table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Runde</th><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Status</th><th>Hinweis</th></tr>
+                    </thead>
+                    <tbody>
+                      {resultReviewRows().map(row => (
+                        <tr key={`${row.roundNumber}-${row.boardNumber}-${row.kind}`}>
+                          <td>{row.roundNumber}</td>
+                          <td>{row.boardNumber}</td>
+                          <td>{row.white}</td>
+                          <td>{row.black}</td>
+                          <td><span className={`result-review-chip ${row.kind === 'offen' ? 'danger' : row.kind === 'kampflos' ? 'warn' : ''}`}>{row.kind}</span></td>
+                          <td>{row.note || row.resultLabel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="result-review-actions">
+                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle CSV</button>
+              </div>
+            </article>
+
+<article className="card export-center-card">
               <div className="export-center-header">
                 <div>
                   <h3>Turnierleiter-Exportcenter</h3>
