@@ -41,7 +41,7 @@ public sealed class SwissRegressionScenarioTests
         service.RecordResult(tournament.Id, round.RoundNumber, 2, GameResultKind.Draw);
 
         var diagnostics = service.GetRoundDiagnostics(tournament.Id, round.RoundNumber);
-        var forfeitBoard = Assert.Single(diagnostics.Boards.Where(board => board.IsForfeit));
+        var forfeitBoard = Assert.Single(diagnostics.Boards, board => board.IsForfeit);
 
         Assert.True(diagnostics.IsComplete);
         Assert.Equal(RoundResultStatus.Complete, service.RequireTournament(tournament.Id).Rounds.Single().ResultStatus);

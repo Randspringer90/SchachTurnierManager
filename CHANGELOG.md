@@ -1,3 +1,10 @@
+## 0.32.0 - Swiss-Regression-Gate
+
+- Zusätzliche Domain-Regressionstests für grundlegende Swiss-Pairing-Invarianten ergänzt.
+- Gerade und ungerade erste Runde prüfen jetzt eindeutige Spielerzuordnung, Bye-Anzahl und fortlaufende Brettnummern.
+- Zweite Runde nach entschiedener erster Runde prüft keine direkten Rematches und keine kritische Pairing-Qualität.
+- xUnit2031-Warnung aus `SwissRegressionScenarioTests` bereinigt.
+- Keine Änderung an Auslosungslogik, Wertungsberechnung oder Speicherformat.
 ## 0.31.0 - Swiss-Regression-Szenarien
 
 - Zusätzliche Application-Regressionstests für echte Schweizer-System-Turniersituationen ergänzt.
