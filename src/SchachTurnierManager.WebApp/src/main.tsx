@@ -233,6 +233,15 @@ type PairingQualityReport = {
   findingCount: number;
 };
 
+type NextRoundPreview = {
+  roundNumber: number;
+  boardCount: number;
+  isSavable: boolean;
+  summary: string;
+  round: TournamentRound;
+  pairingQuality: PairingQualityReport;
+  messages: string[];
+};
 type ExternalPlayerProviderInfo = {
   source: number;
   name: string;
@@ -723,6 +732,7 @@ function App() {
   const [heroCup, setHeroCup] = React.useState<HeroCupRow[]>([]);
   const [roundDiagnostics, setRoundDiagnostics] = React.useState<RoundDiagnostics[]>([]);
   const [pairingQualityReports, setPairingQualityReports] = React.useState<Record<number, PairingQualityReport>>({});
+  const [nextRoundPreview, setNextRoundPreview] = React.useState<NextRoundPreview | null>(null);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
@@ -760,6 +770,7 @@ function App() {
       setHeroCup([]);
       setRoundDiagnostics([]);
       setPairingQualityReports({});
+      setNextRoundPreview(null);
       return;
     }
 
@@ -807,6 +818,7 @@ function App() {
 
   React.useEffect(() => {
     setPairingQualityReports({});
+    setNextRoundPreview(null);
   }, [selectedTournament?.id]);
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
@@ -902,6 +914,16 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  async function previewNextRound() {
+    if (!selectedTournament) {
+      return;
+    }
+
+    setError(null);
+    const preview = await requestJson<NextRoundPreview>(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round`);
+    setNextRoundPreview(preview);
+    setStatus(`Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
+  }
   async function generateRound() {
     if (!selectedTournament) {
       return;
@@ -909,6 +931,7 @@ function App() {
     setError(null);
     await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
     setStatus('Neue Runde ausgelost.');
+    setNextRoundPreview(null);
     await refresh(selectedTournament.id);
   }
 
@@ -1199,7 +1222,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.22.2</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.23.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1246,9 +1269,68 @@ function App() {
               <h2>{selectedTournament?.name ?? 'Noch kein Turnier'}</h2>
               <p>{selectedTournament ? `${selectedTournament.players.length} Teilnehmer · ${selectedTournament.rounds.length} Runden` : 'Lege zuerst ein Turnier an.'}</p>
             </div>
-            <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Nächste Runde auslosen</button>
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Auslosungsvorschau</button>
+              <div className="actions">
+              <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Auslosungsvorschau</button>
+              <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Nächste Runde auslosen</button>
+            </div>
+            </div>
           </div>
 
+          {nextRoundPreview && (
+            <article className={`card preview-card ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
+              <div className="preview-card-header">
+                <div>
+                  <p className="eyebrow">Vorschau · noch nicht gespeichert</p>
+                  <h3>Auslosungsvorschau Runde {nextRoundPreview.roundNumber}</h3>
+                  <p className="muted">{nextRoundPreview.summary}</p>
+                </div>
+                <div className="preview-score">
+                  <strong>{nextRoundPreview.pairingQuality.qualityScore}/100</strong>
+                  <span>{pairingQualitySeverityLabel(nextRoundPreview.pairingQuality.severity)}</span>
+                </div>
+              </div>
+              <div className="preview-metrics">
+                <span>{nextRoundPreview.boardCount} Bretter</span>
+                <span>{nextRoundPreview.pairingQuality.rematchCount} Rematches</span>
+                <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} Scoregruppen-Abweichungen</span>
+                <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} Farbfolge-Risiken</span>
+                <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
+              </div>
+              {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-message-${index}`}>{message}</li>)}</ul>}
+              {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-quality-${index}`}>{finding}</li>)}</ul>}
+              <div className="table-scroll compact preview-pairings">
+                <table>
+                  <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead>
+                  <tbody>
+                    {nextRoundPreview.pairingQuality.boards.map(board => (
+                      <tr key={`preview-board-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
+                        <td>{board.boardNumber}</td>
+                        <td>{board.whiteName}</td>
+                        <td>{board.isBye ? 'spielfrei' : board.blackName}</td>
+                        <td>{board.isBye ? 'Bye' : `${board.whiteScoreBeforeRound} : ${board.blackScoreBeforeRound}`}</td>
+                        <td>{board.findings.length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{board.findings.map((finding, index) => <li key={`preview-board-${board.boardNumber}-${index}`}>{finding}</li>)}</ul>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <details className="audit-box preview-audit">
+                <summary>Audit der Vorschau anzeigen</summary>
+                <div className="audit-grid">
+                  <section><strong>Hinweise</strong><ul>{nextRoundPreview.round.audit.messages.map((message, index) => <li key={`preview-audit-message-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>Scoregruppen</strong><ul>{nextRoundPreview.round.audit.scoreGroups.map((message, index) => <li key={`preview-audit-score-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>Floater</strong><ul>{nextRoundPreview.round.audit.floaters.length === 0 ? <li>keine</li> : nextRoundPreview.round.audit.floaters.map((message, index) => <li key={`preview-audit-floater-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>Farben</strong><ul>{nextRoundPreview.round.audit.colorNotes.map((message, index) => <li key={`preview-audit-color-${index}`}>{message}</li>)}</ul></section>
+                </div>
+              </details>
+              <div className="actions preview-actions">
+                <button type="button" onClick={() => void generateRound()} disabled={!nextRoundPreview.isSavable}>Diese Runde jetzt auslosen</button>
+                <button type="button" className="secondary" onClick={() => setNextRoundPreview(null)}>Vorschau schließen</button>
+              </div>
+            </article>
+          )}
           <article className="card settings-card">
             <h3>Turniereinstellungen</h3>
             <form onSubmit={(event) => void saveSettings(event)} className="settings-form">

@@ -1,3 +1,8 @@
+## 0.23.0 - Auslosungsvorschau im Dashboard
+
+- Die Next-Round-Auslosungsvorschau ist jetzt direkt im Dashboard sichtbar.
+- Die Vorschau zeigt Pairing-Qualität, Warnungen, Bretter, Byes, Rematches, Scoregruppen-Abweichungen, Farbfolge-Risiken und Audit-Details.
+- Turnierleiter können die Vorschau schließen oder danach bewusst die Runde wirklich auslosen.
 ## 0.22.2
 
 - Stabilisiert den abgebrochenen v0.22.1-Patchlauf.
