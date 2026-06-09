@@ -67,7 +67,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.33.0",
+    version = "0.34.1",
     time = DateTimeOffset.UtcNow,
     database = databasePath,
     embeddedDashboard = embeddedDashboardAvailable
@@ -435,6 +435,18 @@ app.MapGet("/api/tournaments/{id:guid}/audit", (Guid id, TournamentService servi
     try
     {
         return Results.Ok(service.GetAudit(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/audit-journal", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.GetAuditJournal(id));
     }
     catch (InvalidOperationException ex)
     {

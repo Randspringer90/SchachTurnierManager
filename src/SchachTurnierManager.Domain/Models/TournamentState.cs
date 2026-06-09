@@ -8,4 +8,5 @@ public sealed class TournamentState
     public TournamentSettings Settings { get; set; } = new();
     public List<Player> Players { get; init; } = new();
     public List<TournamentRound> Rounds { get; init; } = new();
+    public List<AuditJournalEntry> AuditJournal { get; init; } = new();
 }

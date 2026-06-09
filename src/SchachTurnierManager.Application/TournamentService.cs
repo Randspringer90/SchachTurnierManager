@@ -32,6 +32,7 @@ public sealed class TournamentService(ITournamentStore store)
             Name = name.Trim(),
             Settings = settings ?? new TournamentSettings()
         };
+        AddAuditEntry(tournament, AuditJournalAction.TournamentCreated, AuditJournalSeverity.Info, "Turnier angelegt.", $"Name: {tournament.Name}");
         _store.Save(tournament);
         return tournament;
     }
@@ -47,6 +48,7 @@ public sealed class TournamentService(ITournamentStore store)
         }
 
         tournament.Settings = normalized;
+        AddAuditEntry(tournament, AuditJournalAction.SettingsUpdated, AuditJournalSeverity.Info, "Turniereinstellungen aktualisiert.", $"Format: {normalized.Format}, Runden: {normalized.PlannedRounds}");
         _store.Save(tournament);
         return tournament;
     }
@@ -64,6 +66,7 @@ public sealed class TournamentService(ITournamentStore store)
         }
 
         EnsureUniquePlayerNames(tournament);
+        AddAuditEntry(tournament, AuditJournalAction.TournamentImported, AuditJournalSeverity.Warning, "Turnier importiert.", $"OverwriteExisting: {overwriteExisting}");
         _store.Save(tournament);
         return tournament;
     }
@@ -107,6 +110,7 @@ public sealed class TournamentService(ITournamentStore store)
             result = result with { Player = normalized };
         }
 
+        AddAuditEntry(tournament, AuditJournalAction.ExternalPlayerApplied, AuditJournalSeverity.Info, $"Externe Spielerdaten übernommen: {result.Player.Name}.", null, playerId: result.Player.Id, playerName: result.Player.Name);
         _store.Save(tournament);
         return result;
     }
@@ -117,6 +121,7 @@ public sealed class TournamentService(ITournamentStore store)
         var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
         EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
         tournament.Players.Add(normalized);
+        AddAuditEntry(tournament, AuditJournalAction.PlayerAdded, AuditJournalSeverity.Info, $"Spieler hinzugefügt: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
         _store.Save(tournament);
         return normalized;
     }
@@ -179,6 +184,7 @@ public sealed class TournamentService(ITournamentStore store)
         }, preserveExistingRank: true);
         EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
         tournament.Players[index] = normalized;
+        AddAuditEntry(tournament, AuditJournalAction.PlayerUpdated, AuditJournalSeverity.Info, $"Spieler aktualisiert: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
         _store.Save(tournament);
         return normalized;
     }
@@ -194,6 +200,7 @@ public sealed class TournamentService(ITournamentStore store)
 
         var existing = tournament.Players[index];
         tournament.Players[index] = existing with { Status = status };
+        AddAuditEntry(tournament, AuditJournalAction.PlayerStatusChanged, AuditJournalSeverity.Warning, $"Spielerstatus geändert: {existing.Name} -> {status}.", null, playerId: existing.Id, playerName: existing.Name);
         _store.Save(tournament);
         return tournament.Players[index];
     }
@@ -215,6 +222,7 @@ public sealed class TournamentService(ITournamentStore store)
         if (!hasPairings)
         {
             tournament.Players.RemoveAt(index);
+            AddAuditEntry(tournament, AuditJournalAction.PlayerRemoved, AuditJournalSeverity.Warning, $"Spieler entfernt: {existing.Name}.", "Spieler hatte noch keine Paarungen.", playerId: existing.Id, playerName: existing.Name);
             _store.Save(tournament);
             return existing;
         }
@@ -225,6 +233,7 @@ public sealed class TournamentService(ITournamentStore store)
             Notes = AppendNote(existing.Notes, "Automatisch zurückgezogen statt gelöscht, weil bereits Paarungen existieren.")
         };
         tournament.Players[index] = withdrawn;
+        AddAuditEntry(tournament, AuditJournalAction.PlayerWithdrawn, AuditJournalSeverity.Warning, $"Spieler zurückgezogen: {withdrawn.Name}.", "Entfernen war nicht möglich, weil bereits Paarungen existieren.", playerId: withdrawn.Id, playerName: withdrawn.Name);
         _store.Save(tournament);
         return withdrawn;
     }
@@ -299,6 +308,7 @@ public sealed class TournamentService(ITournamentStore store)
         nextRound = WithPairingQualityAudit(tournament, nextRound);
 
         tournament.Rounds.Add(nextRound);
+        AddAuditEntry(tournament, AuditJournalAction.RoundGenerated, AuditJournalSeverity.Info, $"Runde {nextRound.RoundNumber} ausgelost.", $"{nextRound.Pairings.Count} Brett(er).", roundNumber: nextRound.RoundNumber);
         _store.Save(tournament);
         return nextRound;
     }
@@ -365,6 +375,7 @@ public sealed class TournamentService(ITournamentStore store)
 
         var updated = WithCalculatedStatus(round with { Pairings = updatedPairings });
         tournament.Rounds[roundIndex] = updated;
+        AddAuditEntry(tournament, AuditJournalAction.ResultRecorded, AuditJournalSeverity.Info, $"Ergebnis eingetragen: Runde {roundNumber}, Brett {boardNumber}.", resultKind.ToString(), roundNumber: roundNumber, boardNumber: boardNumber);
         _store.Save(tournament);
         return updated;
     }
@@ -436,6 +447,7 @@ public sealed class TournamentService(ITournamentStore store)
         };
         var updated = WithCalculatedStatus(round with { Pairings = updatedPairings, Audit = audit });
         tournament.Rounds[roundIndex] = updated;
+        AddAuditEntry(tournament, AuditJournalAction.PairingOverridden, AuditJournalSeverity.Warning, $"Paarung manuell geändert: Runde {roundNumber}, Brett {boardNumber}.", normalizedNotes, roundNumber: roundNumber, boardNumber: boardNumber, reason: normalizedNotes);
         _store.Save(tournament);
         return updated;
     }
@@ -458,6 +470,7 @@ public sealed class TournamentService(ITournamentStore store)
             Audit = audit
         });
         tournament.Rounds[roundIndex] = updated;
+        AddAuditEntry(tournament, isLocked ? AuditJournalAction.RoundLocked : AuditJournalAction.RoundUnlocked, AuditJournalSeverity.Warning, isLocked ? $"Runde {roundNumber} gesperrt." : $"Runde {roundNumber} entsperrt.", null, roundNumber: roundNumber);
         _store.Save(tournament);
         return updated;
     }
@@ -488,6 +501,7 @@ public sealed class TournamentService(ITournamentStore store)
             Audit = audit
         });
         tournament.Rounds[roundIndex] = updated;
+        AddAuditEntry(tournament, isVerified ? AuditJournalAction.RoundVerified : AuditJournalAction.RoundUnverified, AuditJournalSeverity.Warning, isVerified ? $"Runde {roundNumber} geprüft." : $"Runde {roundNumber} als ungeprüft markiert.", null, roundNumber: roundNumber);
         _store.Save(tournament);
         return updated;
     }
@@ -546,6 +560,14 @@ public sealed class TournamentService(ITournamentStore store)
         return RequireTournament(tournamentId).Rounds.Select(r => r.Audit).ToList();
     }
 
+    public IReadOnlyList<AuditJournalEntry> GetAuditJournal(Guid tournamentId)
+    {
+        return RequireTournament(tournamentId).AuditJournal
+            .OrderByDescending(entry => entry.CreatedAt)
+            .ThenByDescending(entry => entry.Id)
+            .ToList();
+    }
+
     public IReadOnlyList<RoundDiagnostics> GetRoundDiagnostics(Guid tournamentId)
     {
         return _roundDiagnostics.Calculate(RequireTournament(tournamentId));
@@ -568,6 +590,32 @@ public sealed class TournamentService(ITournamentStore store)
     public TournamentState RequireTournament(Guid tournamentId)
     {
         return _store.Get(tournamentId) ?? throw new InvalidOperationException($"Turnier {tournamentId} wurde nicht gefunden.");
+    }
+
+    private static void AddAuditEntry(
+        TournamentState tournament,
+        AuditJournalAction action,
+        AuditJournalSeverity severity,
+        string summary,
+        string? details = null,
+        int? roundNumber = null,
+        int? boardNumber = null,
+        Guid? playerId = null,
+        string? playerName = null,
+        string? reason = null)
+    {
+        tournament.AuditJournal.Add(new AuditJournalEntry
+        {
+            Action = action,
+            Severity = severity,
+            Summary = summary,
+            Details = string.IsNullOrWhiteSpace(details) ? null : details.Trim(),
+            Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
+            RoundNumber = roundNumber,
+            BoardNumber = boardNumber,
+            PlayerId = playerId,
+            PlayerName = string.IsNullOrWhiteSpace(playerName) ? null : playerName.Trim()
+        });
     }
 
     private static TournamentSettings NormalizeSettings(TournamentSettings settings)

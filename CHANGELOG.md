@@ -1,3 +1,17 @@
+## 0.34.1 - Audit Journal Round Review Fix
+
+- Auditjournal-Einträge für `SetRoundLock` und `SetRoundVerified` ergänzt.
+- Runden-Sperren, Entsperren, Prüfen und Zurücksetzen werden nun dauerhaft im Auditjournal protokolliert.
+- Behebt den roten `AuditJournal_TracksManualCorrectionsAndRoundReview`-Regressionstest aus 0.34.0.
+- Keine Änderung an Auslosungslogik, Wertungsberechnung oder UI.
+## 0.34.0 - Persistent Audit Journal Foundation
+
+- Persistierbares Auditjournal im `TournamentState` ergänzt.
+- Neue Domain-Typen `AuditJournalEntry`, `AuditJournalAction` und `AuditJournalSeverity` ergänzt.
+- Zentrale Turnierleiteraktionen werden nun dauerhaft protokolliert: Turnier/Spieler/Runden/Ergebnisse/manuelle Paarungen/Rundenprüfung.
+- Neuer API-Endpunkt `GET /api/tournaments/{id}/audit-journal`.
+- Neue Application-Regressionstests für Kernworkflow, manuelle Korrekturen und Snapshot-Persistenz.
+- Keine Änderung an Auslosungslogik oder Wertungsberechnung.
 ## 0.33.0 - Forfeit/Bye Regression Gate
 
 - Zusätzliche Domain-Regressionstests für kampflose Ergebnisse und Bye/Spielfrei ergänzt.
