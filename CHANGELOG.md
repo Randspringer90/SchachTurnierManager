@@ -1,3 +1,8 @@
+## 0.29.1 - Korrekturjournal-Buildfix
+
+- Korrekturjournal-Helfer in den richtigen React-App-Scope verschoben.
+- TypeScript-Buildfehler aus v0.29.0 behoben.
+- Keine Änderung an Auslosungslogik, Wertungsberechnung oder Speicherformat.
 ## 0.29.0 - Korrektur- und Eingriffsübersicht
 
 - Dashboard-Panel fuer Turnierleiter-Korrekturen ergaenzt.
