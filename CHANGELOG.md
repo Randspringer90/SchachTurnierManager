@@ -1,3 +1,10 @@
+## 0.30.0 - Release-Gate und Commit-Guard
+
+- Release-Gate `scripts/Invoke-ReleaseGate.ps1` ergaenzt.
+- Commit-Guard `scripts/Commit-If-Green.ps1` ergaenzt.
+- Bekannte versehentliche Datei `tatus` wird vor Release/Commit geblockt.
+- Node.js-Engine-Hinweis fuer Vite/Rolldown integriert.
+- Ziel: rote Zwischenstaende wie 0.29.0/0.29.1 kuenftig vor Commit/Push erkennen.
 
 ## 0.29.2
 
