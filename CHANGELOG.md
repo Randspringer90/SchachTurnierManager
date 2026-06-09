@@ -1,5 +1,11 @@
 # Changelog
 
+
+## 0.19.0 - Swiss-Chess-Paritätsroadmap
+
+- Funktionsmatrix für Swiss-Chess-/Swiss-Manager-artige Turnierverwaltung ergänzt.
+- Offene Blöcke für Schweizer System, Mannschaftsturniere, Import/Export, Ratingauswertung, Druck, Betrieb und Support dokumentiert.
+- Priorisierte Roadmap für die nächsten Entwicklungsphasen ergänzt.
 ## 0.18.1 - Pairing-Qualität im Dashboard
 
 - Fix-Forward für das v0.18.0-Nachkontrollskript.
@@ -140,6 +146,12 @@
 
 # Changelog
 
+
+## 0.19.0 - Swiss-Chess-Paritätsroadmap
+
+- Funktionsmatrix für Swiss-Chess-/Swiss-Manager-artige Turnierverwaltung ergänzt.
+- Offene Blöcke für Schweizer System, Mannschaftsturniere, Import/Export, Ratingauswertung, Druck, Betrieb und Support dokumentiert.
+- Priorisierte Roadmap für die nächsten Entwicklungsphasen ergänzt.
 ## 0.18.1 - Pairing-Qualität im Dashboard
 
 - Fix-Forward für das v0.18.0-Nachkontrollskript.
@@ -234,5 +246,6 @@
 - Unit-Test-Projekte und erste Tests.
 - Codex-/Agenten-/Skill-Dokumente.
 - Build-/Test-/Run-/Portable-Pack-Skripte.
+
 
 

@@ -67,7 +67,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.18.1",
+    version = "0.19.0",
     time = DateTimeOffset.UtcNow,
     database = databasePath,
     embeddedDashboard = embeddedDashboardAvailable
@@ -520,6 +520,7 @@ static IResult ToDownload(ExportDocument document)
 {
     return Results.File(Encoding.UTF8.GetBytes(document.Content), document.ContentType, document.FileName);
 }
+
 
 
 
