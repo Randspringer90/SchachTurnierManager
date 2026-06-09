@@ -1,3 +1,9 @@
+## 0.33.0 - Forfeit/Bye Regression Gate
+
+- Zusätzliche Domain-Regressionstests für kampflose Ergebnisse und Bye/Spielfrei ergänzt.
+- Forfeit-Tiebreak-Policies `ExcludeForfeitsFromTiebreaks`, `CountForfeitOpponentForBuchholzOnly` und `CountForfeitsAsNormalGames` werden in Mehr-Runden-Szenarien abgesichert.
+- Bye mit `CountByeAsWin` wird als Sieg gezählt, bleibt aber ohne Gegnerwertung, Sonneborn-Berger, Gegnerschnitt und Performance.
+- Keine Änderung an Auslosungslogik, Wertungsberechnung, Speicherformat oder UI.
 ## 0.32.0 - Swiss-Regression-Gate
 
 - Zusätzliche Domain-Regressionstests für grundlegende Swiss-Pairing-Invarianten ergänzt.
