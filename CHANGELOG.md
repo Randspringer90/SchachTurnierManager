@@ -1,3 +1,8 @@
+
+## 0.29.2
+
+- Fix: doppelte `openLatestRoundPrint`-Funktion im Korrekturjournal-Stand entfernt.
+- Nachkontrolle: Backend-Build, Tests, Frontend-Build und Portable-Paket laufen wieder grün.
 ## 0.29.1 - Korrekturjournal-Buildfix
 
 - Korrekturjournal-Helfer in den richtigen React-App-Scope verschoben.

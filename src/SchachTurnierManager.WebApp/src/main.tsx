@@ -1586,20 +1586,11 @@ function App() {
         ? 'prüfen'
         : 'unauffällig';
 
-  function openLatestRoundPrint(): void {
-    const rounds = selectedTournament?.rounds ?? [];
-    if (rounds.length === 0) {
-      setStatus('Noch keine Runde zum Drucken vorhanden.');
-      return;
-    }
-
-    openRoundPrint(rounds[rounds.length - 1].roundNumber);
-  }
   return (
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.29.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.29.2</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
