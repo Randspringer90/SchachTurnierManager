@@ -1187,6 +1187,46 @@ function App() {
     window.open(`/api/tournaments/${selectedTournament.id}/${path}`, '_blank', 'noopener,noreferrer');
   }
 
+  function latestRoundNumber(): number | null {
+    if (!selectedTournament || selectedTournament.rounds.length === 0) {
+      return null;
+    }
+    return selectedTournament.rounds.reduce((max, round) => Math.max(max, round.roundNumber), 0);
+  }
+
+  function activePlayerCount(): number {
+    return selectedTournament?.players.filter(player => player.status === 0).length ?? 0;
+  }
+
+  function inactivePlayerCount(): number {
+    return selectedTournament?.players.filter(player => player.status !== 0).length ?? 0;
+  }
+
+  function totalOpenBoardCount(): number {
+    return roundDiagnostics.reduce((sum, item) => sum + item.openBoards, 0);
+  }
+
+  function totalForfeitBoardCount(): number {
+    return roundDiagnostics.reduce((sum, item) => sum + item.forfeitBoards, 0);
+  }
+
+  function openLatestRoundPrint() {
+    const roundNumber = latestRoundNumber();
+    if (roundNumber === null) {
+      setError('Es gibt noch keine Runde für den Rundenaushang.');
+      return;
+    }
+    openRoundPrint(roundNumber);
+  }
+
+  function openLatestPairingsCsv() {
+    const roundNumber = latestRoundNumber();
+    if (!selectedTournament || roundNumber === null) {
+      setError('Es gibt noch keine Runde für den Paarungsexport.');
+      return;
+    }
+    window.open(`/api/tournaments/${selectedTournament.id}/pairings/export.csv?roundNumber=${roundNumber}`, '_blank', 'noopener,noreferrer');
+  }
   function openRoundPrint(roundNumber: number) {
     if (!selectedTournament) {
       return;
@@ -1236,7 +1276,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.24.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.25.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
