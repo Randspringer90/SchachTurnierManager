@@ -1,4 +1,11 @@
 # Changelog
+
+## 0.21.0 - Pairing-Audit mit Qualitätsbericht
+
+- Pairing-Qualität wird nach jeder automatisch erzeugten Runde direkt in das Runden-Audit geschrieben.
+- Audit nennt Qualitätswert, Rematches, Scoregruppenabweichungen, Farbfolgenrisiken und Byes.
+- Zusätzliche Application-Workflow-Tests sichern die Verbindung von Rundenerzeugung, Qualitätsbericht und Audit.
+- Neue Swiss-Pairing-Golden-Szenarien prüfen Zwei-Runden-Verläufe und Bye-Audit.
 ## 0.20.5 - Export-Test für erweiterte Wertungen stabilisiert
 
 - CSV-Export-Test auf den tatsächlich exportierten erweiterten Tabellenkopf angepasst.

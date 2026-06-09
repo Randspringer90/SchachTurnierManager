@@ -246,11 +246,47 @@ public sealed class TournamentService(ITournamentStore store)
             _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
         };
 
+        nextRound = WithPairingQualityAudit(tournament, nextRound);
+
         tournament.Rounds.Add(nextRound);
         _store.Save(tournament);
         return nextRound;
     }
 
+    private TournamentRound WithPairingQualityAudit(TournamentState tournament, TournamentRound round)
+    {
+        var quality = _pairingQuality.Analyze(tournament, round);
+        var qualityMessages = new List<string>
+        {
+            $"Paarungsqualität: {quality.QualityScore}/100 ({PairingQualitySeverityLabel(quality.Severity)}). Rematches: {quality.RematchCount}, Scoregruppenabweichungen: {quality.CrossScoreGroupPairingCount}, Farbfolgenrisiken: {quality.ThirdSameColorRiskCount}, Byes: {quality.ByeCount}."
+        };
+
+        qualityMessages.AddRange(quality.Findings.Select(finding => $"Qualitätsprüfung: {finding}"));
+        qualityMessages.AddRange(quality.Boards
+            .SelectMany(board => board.Findings.Select(finding => $"Qualitätsprüfung Brett {board.BoardNumber}: {finding}")));
+
+        return round with
+        {
+            Audit = round.Audit with
+            {
+                Messages = round.Audit.Messages
+                    .Concat(qualityMessages)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+            }
+        };
+    }
+
+    private static string PairingQualitySeverityLabel(PairingQualitySeverity severity)
+    {
+        return severity switch
+        {
+            PairingQualitySeverity.Critical => "kritisch",
+            PairingQualitySeverity.Warning => "Warnung",
+            PairingQualitySeverity.Notice => "Hinweis",
+            _ => "gut"
+        };
+    }
     public TournamentRound RecordResult(Guid tournamentId, int roundNumber, int boardNumber, GameResultKind resultKind)
     {
         var tournament = RequireTournament(tournamentId);
