@@ -1272,7 +1272,6 @@ function App() {
             <div className="actions">
               <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Auslosungsvorschau</button>
               <div className="actions">
-              <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Auslosungsvorschau</button>
               <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Nächste Runde auslosen</button>
             </div>
             </div>
