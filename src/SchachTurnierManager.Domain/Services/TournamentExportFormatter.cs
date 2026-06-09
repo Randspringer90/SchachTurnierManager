@@ -10,7 +10,7 @@ public sealed class TournamentExportFormatter
     public ExportDocument ExportStandingsCsv(TournamentState tournament, IReadOnlyList<StandingRow> standings)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("Rang;Name;TWZ;Punkte;Siege;Direktvergleich;Buchholz;Buchholz Cut-1;Sonneborn-Berger;Gegnerschnitt;TPR;Heldenwert");
+        builder.AppendLine("Rang;Name;TWZ;Punkte;Siege;Schwarzsiege;Direktvergleich;Buchholz;Buchholz Cut-1;Buchholz Cut-2;Median Buchholz;Sonneborn-Berger;Koya;Progressiv;Gegnerschnitt;TPR;Heldenwert");
         foreach (var row in standings)
         {
             var values = new[]
@@ -20,10 +20,15 @@ public sealed class TournamentExportFormatter
                 row.Twz.ToString(CultureInfo.InvariantCulture),
                 FormatDecimal(row.Points),
                 row.Wins.ToString(CultureInfo.InvariantCulture),
+                row.BlackWins.ToString(CultureInfo.InvariantCulture),
                 FormatDecimal(row.DirectEncounter),
                 FormatDecimal(row.Buchholz),
                 FormatDecimal(row.BuchholzCutOne),
+                FormatDecimal(row.BuchholzCutTwo),
+                FormatDecimal(row.MedianBuchholz),
                 FormatDecimal(row.SonnebornBerger),
+                FormatDecimal(row.KoyaScore),
+                FormatDecimal(row.ProgressiveScore),
                 FormatDecimal(row.AverageOpponentRating),
                 row.TournamentPerformance?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 FormatDecimal(row.HeroScore)
@@ -129,10 +134,10 @@ public sealed class TournamentExportFormatter
 
     private static void AppendStandings(StringBuilder builder, IReadOnlyList<StandingRow> standings)
     {
-        builder.AppendLine("<section><h2>Tabelle</h2><table><thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>Buchholz</th><th>SB</th><th>TPR</th></tr></thead><tbody>");
+        builder.AppendLine("<section><h2>Tabelle</h2><table><thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>Schwarzsiege</th><th>Buchholz</th><th>BH Cut-1</th><th>BH Cut-2</th><th>Median</th><th>SB</th><th>Koya</th><th>Progressiv</th><th>TPR</th></tr></thead><tbody>");
         foreach (var row in standings)
         {
-            builder.AppendLine($"<tr><td>{row.Rank}</td><td>{Html(row.Name)}</td><td>{FormatDecimal(row.Points)}</td><td>{row.Wins}</td><td>{FormatDecimal(row.Buchholz)}</td><td>{FormatDecimal(row.SonnebornBerger)}</td><td>{(row.TournamentPerformance?.ToString(CultureInfo.InvariantCulture) ?? "—")}</td></tr>");
+            builder.AppendLine($"<tr><td>{row.Rank}</td><td>{Html(row.Name)}</td><td>{FormatDecimal(row.Points)}</td><td>{row.Wins}</td><td>{row.BlackWins}</td><td>{FormatDecimal(row.Buchholz)}</td><td>{FormatDecimal(row.BuchholzCutOne)}</td><td>{FormatDecimal(row.BuchholzCutTwo)}</td><td>{FormatDecimal(row.MedianBuchholz)}</td><td>{FormatDecimal(row.SonnebornBerger)}</td><td>{FormatDecimal(row.KoyaScore)}</td><td>{FormatDecimal(row.ProgressiveScore)}</td><td>{(row.TournamentPerformance?.ToString(CultureInfo.InvariantCulture) ?? "—")}</td></tr>");
         }
         builder.AppendLine("</tbody></table></section>");
     }

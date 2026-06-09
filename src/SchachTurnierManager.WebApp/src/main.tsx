@@ -83,9 +83,14 @@ type StandingRow = {
   twz: number;
   points: number;
   wins: number;
+  blackWins: number;
   buchholz: number;
   buchholzCutOne: number;
+  buchholzCutTwo: number;
+  medianBuchholz: number;
   sonnebornBerger: number;
+  koyaScore: number;
+  progressiveScore: number;
   averageOpponentRating: number;
   tournamentPerformance?: number | null;
   heroScore: number;
@@ -393,6 +398,11 @@ const tiebreakOptions = [
   { value: 4, label: 'Sonneborn-Berger' },
   { value: 5, label: 'Gegnerschnitt' },
   { value: 6, label: 'Turnierleistung' },
+  { value: 7, label: 'Buchholz Cut-2' },
+  { value: 8, label: 'Median-Buchholz' },
+  { value: 9, label: 'Progressiv' },
+  { value: 10, label: 'Koya' },
+  { value: 11, label: 'Schwarzsiege' },
   { value: 99, label: 'Startnummer' }
 ];
 
@@ -1189,7 +1199,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.19.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.20.1</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1419,7 +1429,7 @@ function App() {
               <h3>Live-Tabelle</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>BH</th><th>SB</th><th>TPR</th></tr></thead>
+                  <thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>Schwarz</th><th>BH</th><th>BH-1</th><th>BH-2</th><th>Median</th><th>SB</th><th>Koya</th><th>Prog.</th><th>TPR</th></tr></thead>
                   <tbody>
                     {standings.map(row => (
                       <tr key={row.playerId}>
@@ -1427,8 +1437,14 @@ function App() {
                         <td>{row.name}</td>
                         <td>{row.points}</td>
                         <td>{row.wins}</td>
+                        <td>{row.blackWins}</td>
                         <td>{row.buchholz}</td>
+                        <td>{row.buchholzCutOne}</td>
+                        <td>{row.buchholzCutTwo}</td>
+                        <td>{row.medianBuchholz}</td>
                         <td>{row.sonnebornBerger}</td>
+                        <td>{row.koyaScore}</td>
+                        <td>{row.progressiveScore}</td>
                         <td>{row.tournamentPerformance ?? '—'}</td>
                       </tr>
                     ))}

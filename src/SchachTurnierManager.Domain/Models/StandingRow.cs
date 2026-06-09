@@ -9,10 +9,15 @@ public sealed record StandingRow
     public int Twz { get; init; }
     public decimal Points { get; init; }
     public int Wins { get; init; }
+    public int BlackWins { get; init; }
     public decimal DirectEncounter { get; init; }
     public decimal Buchholz { get; init; }
     public decimal BuchholzCutOne { get; init; }
+    public decimal BuchholzCutTwo { get; init; }
+    public decimal MedianBuchholz { get; init; }
     public decimal SonnebornBerger { get; init; }
+    public decimal KoyaScore { get; init; }
+    public decimal ProgressiveScore { get; init; }
     public decimal AverageOpponentRating { get; init; }
     public int? TournamentPerformance { get; init; }
     public decimal HeroScore { get; init; }

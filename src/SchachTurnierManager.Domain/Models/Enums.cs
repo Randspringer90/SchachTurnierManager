@@ -62,6 +62,11 @@ public enum TiebreakType
     SonnebornBerger = 4,
     AverageOpponentRating = 5,
     TournamentPerformance = 6,
+    BuchholzCutTwo = 7,
+    MedianBuchholz = 8,
+    ProgressiveScore = 9,
+    KoyaScore = 10,
+    NumberOfBlackWins = 11,
     StartingRank = 99
 }
 
