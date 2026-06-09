@@ -1,3 +1,9 @@
+## 0.22.2
+
+- Stabilisiert den abgebrochenen v0.22.1-Patchlauf.
+- Entfernt defekte Zwischenstandsdateien aus v0.22.0 und v0.22.1.
+- Behält die Auslosungsvorschau ohne Persistenz aus v0.22 bei.
+- Nachkontrolle bricht bei fehlgeschlagenem Restore, Build, Test, Frontend-Build oder Portable-Packaging hart ab.
 # Changelog
 
 ## 0.21.0 - Pairing-Audit mit Qualitätsbericht

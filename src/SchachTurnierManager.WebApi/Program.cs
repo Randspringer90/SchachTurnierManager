@@ -67,7 +67,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.21.0",
+    version = "0.22.2",
     time = DateTimeOffset.UtcNow,
     database = databasePath,
     embeddedDashboard = embeddedDashboardAvailable
@@ -263,6 +263,17 @@ app.MapPost("/api/tournaments/{id:guid}/players/import.csv", (Guid id, ImportPla
     }
 });
 
+app.MapGet("/api/tournaments/{id:guid}/pairings/preview-next-round", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.PreviewNextRound(id));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
 app.MapPost("/api/tournaments/{id:guid}/pairings/next-round", (Guid id, TournamentService service) =>
 {
     try

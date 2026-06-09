@@ -1,4 +1,4 @@
-using SchachTurnierManager.Domain.Models;
+﻿using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Domain.Services;
 
 namespace SchachTurnierManager.Application;
@@ -229,6 +229,42 @@ public sealed class TournamentService(ITournamentStore store)
         return withdrawn;
     }
 
+    public NextRoundPreview PreviewNextRound(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        if (tournament.Players.Count(p => p.IsActive) < 2)
+        {
+            throw new InvalidOperationException("Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.");
+        }
+
+        EnsurePreviousRoundComplete(tournament);
+
+        TournamentRound previewRound = tournament.Settings.Format switch
+        {
+            TournamentFormat.RoundRobin => GetNextRoundRobinRound(tournament),
+            TournamentFormat.Swiss => _swiss.GenerateNextRound(tournament),
+            _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
+        };
+
+        var quality = _pairingQuality.Analyze(tournament, previewRound);
+        var messages = new List<string>
+        {
+            $"Vorschau für Runde {previewRound.RoundNumber}: {previewRound.Pairings.Count} Brett(er), Qualitätswert {quality.QualityScore}/100, Status {quality.Severity}.",
+            "Diese Vorschau wurde nicht gespeichert. Erst 'Nächste Runde auslosen' übernimmt die Paarungen ins Turnier."
+        };
+        messages.AddRange(quality.Findings);
+
+        return new NextRoundPreview
+        {
+            RoundNumber = previewRound.RoundNumber,
+            BoardCount = previewRound.Pairings.Count,
+            IsSavable = true,
+            Summary = $"Runde {previewRound.RoundNumber}: {previewRound.Pairings.Count} Brett(er), Qualität {quality.QualityScore}/100 ({quality.Severity}).",
+            Round = previewRound,
+            PairingQuality = quality,
+            Messages = messages
+        };
+    }
     public TournamentRound GenerateNextRound(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
