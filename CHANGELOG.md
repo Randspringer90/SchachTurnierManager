@@ -1,3 +1,8 @@
+## v0.28.0
+- Dashboard um eine Auslosungsfreigabe erweitert.
+- Offene Ergebnisse, ungeprüfte vollständige Runden, aktive Spielerzahl und kritische Vorschauhinweise werden vor der nächsten Auslosung zentral geprüft.
+- Schnellaktionen für Auslosungsvorschau, nächste Runde, aktuelle Runde und Turnierbericht ergänzt.
+- Version auf 0.28.0 angehoben.
 ## v0.27.0
 
 - Dashboard um ein Bye- und Kampflos-Audit erweitert.

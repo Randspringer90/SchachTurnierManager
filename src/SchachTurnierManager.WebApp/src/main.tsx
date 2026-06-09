@@ -1386,11 +1386,97 @@ function App() {
     }
     return 'bye-forfeit-status info';
   }
+  function pairingReadinessOpenResultCount(): number {
+    return totalOpenBoardCount();
+  }
+
+  function pairingReadinessUnverifiedRoundCount(): number {
+    if (!selectedTournament) {
+      return 0;
+    }
+
+    return selectedTournament.rounds.filter(round => {
+      const diagnostics = diagnosticsFor(round.roundNumber);
+      return diagnostics !== undefined && diagnostics.openBoards === 0 && !round.isVerified;
+    }).length;
+  }
+
+  function pairingReadinessIssues(): string[] {
+    const issues: string[] = [];
+
+    if (!selectedTournament) {
+      issues.push('Kein Turnier ausgewählt.');
+      return issues;
+    }
+
+    const activePlayers = selectedTournament.players.filter(player => player.status === 0).length;
+    if (activePlayers < 2) {
+      issues.push('Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
+    }
+
+    const openResults = pairingReadinessOpenResultCount();
+    if (openResults > 0) {
+      issues.push(`${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
+    }
+
+    const unverifiedRounds = pairingReadinessUnverifiedRoundCount();
+    if (unverifiedRounds > 0) {
+      issues.push(`${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
+    }
+
+    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      issues.push('Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bitte vor dem Speichern prüfen.');
+    }
+
+    return issues;
+  }
+
+  function pairingReadinessStatusLabel(): string {
+    if (!selectedTournament) {
+      return 'kein Turnier';
+    }
+
+    if (pairingReadinessOpenResultCount() > 0 || selectedTournament.players.filter(player => player.status === 0).length < 2) {
+      return 'blockiert';
+    }
+
+    if (pairingReadinessUnverifiedRoundCount() > 0 || nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      return 'prüfen';
+    }
+
+    return 'bereit';
+  }
+
+  function pairingReadinessStatusClass(): string {
+    const label = pairingReadinessStatusLabel();
+    if (label === 'bereit') {
+      return 'pairing-readiness-status ok';
+    }
+    if (label === 'prüfen') {
+      return 'pairing-readiness-status warn';
+    }
+    if (label === 'blockiert') {
+      return 'pairing-readiness-status danger';
+    }
+    return 'pairing-readiness-status neutral';
+  }
+
+  function pairingReadinessCanCreatePreview(): boolean {
+    if (!selectedTournament) {
+      return false;
+    }
+
+    return selectedTournament.players.filter(player => player.status === 0).length >= 2 && pairingReadinessOpenResultCount() === 0;
+  }
+
+  function pairingReadinessCanGenerateRound(): boolean {
+    return pairingReadinessCanCreatePreview() && pairingReadinessUnverifiedRoundCount() === 0 && !nextRoundPreview?.pairingQuality.hasCriticalIssues;
+  }
   return (
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.27.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.28.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -1981,6 +2067,92 @@ function App() {
     }
     return 'bye-forfeit-status info';
   }
+  function pairingReadinessOpenResultCount(): number {
+    return totalOpenBoardCount();
+  }
+
+  function pairingReadinessUnverifiedRoundCount(): number {
+    if (!selectedTournament) {
+      return 0;
+    }
+
+    return selectedTournament.rounds.filter(round => {
+      const diagnostics = diagnosticsFor(round.roundNumber);
+      return diagnostics !== undefined && diagnostics.openBoards === 0 && !round.isVerified;
+    }).length;
+  }
+
+  function pairingReadinessIssues(): string[] {
+    const issues: string[] = [];
+
+    if (!selectedTournament) {
+      issues.push('Kein Turnier ausgewählt.');
+      return issues;
+    }
+
+    const activePlayers = selectedTournament.players.filter(player => player.status === 0).length;
+    if (activePlayers < 2) {
+      issues.push('Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
+    }
+
+    const openResults = pairingReadinessOpenResultCount();
+    if (openResults > 0) {
+      issues.push(`${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
+    }
+
+    const unverifiedRounds = pairingReadinessUnverifiedRoundCount();
+    if (unverifiedRounds > 0) {
+      issues.push(`${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
+    }
+
+    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      issues.push('Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bitte vor dem Speichern prüfen.');
+    }
+
+    return issues;
+  }
+
+  function pairingReadinessStatusLabel(): string {
+    if (!selectedTournament) {
+      return 'kein Turnier';
+    }
+
+    if (pairingReadinessOpenResultCount() > 0 || selectedTournament.players.filter(player => player.status === 0).length < 2) {
+      return 'blockiert';
+    }
+
+    if (pairingReadinessUnverifiedRoundCount() > 0 || nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      return 'prüfen';
+    }
+
+    return 'bereit';
+  }
+
+  function pairingReadinessStatusClass(): string {
+    const label = pairingReadinessStatusLabel();
+    if (label === 'bereit') {
+      return 'pairing-readiness-status ok';
+    }
+    if (label === 'prüfen') {
+      return 'pairing-readiness-status warn';
+    }
+    if (label === 'blockiert') {
+      return 'pairing-readiness-status danger';
+    }
+    return 'pairing-readiness-status neutral';
+  }
+
+  function pairingReadinessCanCreatePreview(): boolean {
+    if (!selectedTournament) {
+      return false;
+    }
+
+    return selectedTournament.players.filter(player => player.status === 0).length >= 2 && pairingReadinessOpenResultCount() === 0;
+  }
+
+  function pairingReadinessCanGenerateRound(): boolean {
+    return pairingReadinessCanCreatePreview() && pairingReadinessUnverifiedRoundCount() === 0 && !nextRoundPreview?.pairingQuality.hasCriticalIssues;
+  }
   return (
                           <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
                             <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
@@ -2020,7 +2192,44 @@ function App() {
             ))}
           </article>
 
-                                              <article className="card bye-forfeit-card">
+                                                          <article className="card pairing-readiness-card">
+              <div className="pairing-readiness-header">
+                <div>
+                  <h3>Auslosungsfreigabe</h3>
+                  <p className="muted">Prüft vor der nächsten Auslosung, ob Ergebnisse, Rundenprüfung und Vorschauqualität zusammenpassen.</p>
+                </div>
+                <span className={pairingReadinessStatusClass()}>{pairingReadinessStatusLabel()}</span>
+              </div>
+
+              <div className="pairing-readiness-metrics">
+                <div><strong>{pairingReadinessOpenResultCount()}</strong><span>offene Ergebnisse</span></div>
+                <div><strong>{pairingReadinessUnverifiedRoundCount()}</strong><span>ungeprüfte Runden</span></div>
+                <div><strong>{selectedTournament?.players.filter(player => player.status === 0).length ?? 0}</strong><span>aktive Spieler</span></div>
+                <div><strong>{nextRoundPreview ? nextRoundPreview.pairingQuality.qualityScore : '—'}</strong><span>Vorschauqualität</span></div>
+              </div>
+
+              {pairingReadinessIssues().length === 0 ? (
+                <div className="pairing-readiness-ok"><strong>Bereit:</strong> Es sind keine blockierenden Punkte für die nächste Auslosung sichtbar.</div>
+              ) : (
+                <div className="pairing-readiness-warning">
+                  <strong>Vor der nächsten Auslosung prüfen:</strong>
+                  <ul>
+                    {pairingReadinessIssues().map((issue, index) => <li key={index}>{issue}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              <div className="pairing-readiness-actions">
+                <button type="button" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>Auslosungsvorschau erzeugen</button>
+                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Nächste Runde auslosen</button>
+                <button type="button" className="secondary" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
+              </div>
+
+              <p className="muted small">Hinweis: Diese Freigabe ergänzt die bestehenden Aktionen im Kopfbereich. Sie ist als bewusster Turnierleiter-Check vor der nächsten Runde gedacht.</p>
+            </article>
+
+<article className="card bye-forfeit-card">
               <div className="bye-forfeit-header">
                 <div>
                   <h3>Bye- und Kampflos-Audit</h3>
