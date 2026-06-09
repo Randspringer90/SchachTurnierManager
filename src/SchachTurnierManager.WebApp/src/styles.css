@@ -1207,3 +1207,32 @@ th {
 .small {
   font-size: 0.82rem;
 }
+
+.correction-journal-card .card-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.correction-metrics {
+  margin: 1rem 0;
+}
+
+.correction-journal-table td:nth-child(3),
+.correction-journal-table td:nth-child(4),
+.correction-journal-table td:nth-child(5) {
+  min-width: 12rem;
+}
+
+.journal-row.critical {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.journal-row.warning {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.journal-row.info {
+  background: rgba(59, 130, 246, 0.06);
+}

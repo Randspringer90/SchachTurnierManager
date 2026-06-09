@@ -1,3 +1,9 @@
+## 0.29.0 - Korrektur- und Eingriffsübersicht
+
+- Dashboard-Panel fuer Turnierleiter-Korrekturen ergaenzt.
+- Manuelle Paarungen, gesperrte/gepruefte Runden, inaktive Teilnehmer und Sonderergebnisse werden zentral sichtbar.
+- Status-Badges und Schnellzugriffe auf letzte Runde, Turnierbericht und Paarungs-CSV ergaenzt.
+- Keine Aenderung an Auslosungslogik, Wertungsberechnung oder Speicherformat.
 ## v0.28.0
 - Dashboard um eine Auslosungsfreigabe erweitert.
 - Offene Ergebnisse, ungeprüfte vollständige Runden, aktive Spielerzahl und kritische Vorschauhinweise werden vor der nächsten Auslosung zentral geprüft.
