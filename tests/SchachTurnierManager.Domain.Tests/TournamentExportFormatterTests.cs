@@ -46,6 +46,93 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("Rundenprüfung", document.Content);
     }
 
+    [Fact]
+    public void ExportNextRoundPreviewCsv_ContainsQualityFields()
+    {
+        var tournament = CreateTournament();
+        var preview = CreatePreview(tournament);
+        var document = new TournamentExportFormatter().ExportNextRoundPreviewCsv(tournament, preview);
+
+        Assert.EndsWith("_Vorschau_Runde_02.csv", document.FileName);
+        Assert.Contains("Runde;Brett;Weiß;Schwarz;Weiß Punkte vorher;Schwarz Punkte vorher;Score-Differenz", document.Content);
+        Assert.Contains("Alpha", document.Content);
+        Assert.Contains("Beta", document.Content);
+        Assert.Contains("Scoregruppen-Test", document.Content);
+    }
+
+    [Fact]
+    public void ExportPrintableNextRoundPreviewHtml_ContainsAuditAndEscapesContent()
+    {
+        var tournament = CreateTournament();
+        tournament.Name = "Vorschau <Finale>";
+        var preview = CreatePreview(tournament);
+        var document = new TournamentExportFormatter().ExportPrintableNextRoundPreviewHtml(tournament, preview);
+
+        Assert.Equal("text/html; charset=utf-8", document.ContentType);
+        Assert.Contains("Vorschau &lt;Finale&gt;", document.Content);
+        Assert.Contains("Auslosungsvorschau Runde 2", document.Content);
+        Assert.Contains("Scoregruppen-Test", document.Content);
+        Assert.Contains("Algorithmus", document.Content);
+    }
+
+    private static NextRoundPreview CreatePreview(TournamentState tournament)
+    {
+        var alpha = tournament.Players[0];
+        var beta = tournament.Players[1];
+        var round = new TournamentRound
+        {
+            RoundNumber = 2,
+            Pairings = new[]
+            {
+                Pairing.Game(1, beta.Id, alpha.Id)
+            },
+            Audit = new PairingAudit
+            {
+                Algorithm = "Test",
+                RulesetVersion = "Test-1",
+                Messages = new[] { "Audit-Test" },
+                ScoreGroups = new[] { "Scoregruppen-Test" },
+                Floaters = Array.Empty<string>(),
+                ColorNotes = new[] { "Farb-Test" }
+            }
+        };
+
+        return new NextRoundPreview
+        {
+            RoundNumber = 2,
+            BoardCount = 1,
+            IsSavable = true,
+            Summary = "Testvorschau",
+            Round = round,
+            PairingQuality = new PairingQualityReport
+            {
+                RoundNumber = 2,
+                BoardCount = 1,
+                GameCount = 1,
+                QualityScore = 88,
+                Severity = PairingQualitySeverity.Notice,
+                Findings = new[] { "Scoregruppen-Test" },
+                Boards = new[]
+                {
+                    new PairingQualityBoard
+                    {
+                        BoardNumber = 1,
+                        WhitePlayerId = beta.Id,
+                        BlackPlayerId = alpha.Id,
+                        WhiteName = beta.Name,
+                        BlackName = alpha.Name,
+                        WhiteScoreBeforeRound = 0,
+                        BlackScoreBeforeRound = 1,
+                        ScoreDifference = 1,
+                        IsCrossScoreGroupPairing = true,
+                        Findings = new[] { "Scoregruppen-Test" }
+                    }
+                }
+            },
+            Messages = new[] { "Audit-Test" }
+        };
+    }
+
     private static TournamentState CreateTournament()
     {
         var alpha = new Player

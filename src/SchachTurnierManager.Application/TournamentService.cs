@@ -1,4 +1,4 @@
-﻿using SchachTurnierManager.Domain.Models;
+using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Domain.Services;
 
 namespace SchachTurnierManager.Application;
@@ -265,6 +265,20 @@ public sealed class TournamentService(ITournamentStore store)
             Messages = messages
         };
     }
+    public ExportDocument ExportNextRoundPreviewCsv(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var preview = PreviewNextRound(tournamentId);
+        return _exports.ExportNextRoundPreviewCsv(tournament, preview);
+    }
+
+    public ExportDocument ExportPrintableNextRoundPreviewHtml(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var preview = PreviewNextRound(tournamentId);
+        return _exports.ExportPrintableNextRoundPreviewHtml(tournament, preview);
+    }
+
     public TournamentRound GenerateNextRound(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);

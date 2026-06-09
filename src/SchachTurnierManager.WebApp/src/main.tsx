@@ -1165,6 +1165,20 @@ function App() {
     downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
   }
 
+  function openNextRoundPreviewCsv() {
+    if (!selectedTournament) {
+      return;
+    }
+    window.open(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round/export.csv`, '_blank', 'noopener,noreferrer');
+  }
+
+  function openNextRoundPreviewPrint() {
+    if (!selectedTournament) {
+      return;
+    }
+    window.open(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round/print/html`, '_blank', 'noopener,noreferrer');
+  }
+
   function openTournamentExport(path: string) {
     if (!selectedTournament) {
       return;
@@ -1222,7 +1236,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.23.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.24.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>

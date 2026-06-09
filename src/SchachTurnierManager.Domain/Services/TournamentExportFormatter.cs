@@ -112,6 +112,118 @@ public sealed class TournamentExportFormatter
         return HtmlDocument($"{SafeFileName(tournament.Name)}_Runde_{round.RoundNumber:D2}.html", builder.ToString());
     }
 
+    public ExportDocument ExportNextRoundPreviewCsv(TournamentState tournament, NextRoundPreview preview)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("Runde;Brett;Weiß;Schwarz;Weiß Punkte vorher;Schwarz Punkte vorher;Score-Differenz;Bye;Rematch;Scoregruppen-Abweichung;Farbfolge-Risiko;Hinweise");
+        foreach (var board in preview.PairingQuality.Boards.OrderBy(b => b.BoardNumber))
+        {
+            var hasColorRisk = board.WouldGiveWhiteThirdSameColor || board.WouldGiveBlackThirdSameColor;
+            var values = new[]
+            {
+                preview.RoundNumber.ToString(CultureInfo.InvariantCulture),
+                board.BoardNumber.ToString(CultureInfo.InvariantCulture),
+                board.WhiteName,
+                board.IsBye ? "spielfrei" : board.BlackName,
+                FormatDecimal(board.WhiteScoreBeforeRound),
+                board.IsBye ? string.Empty : FormatDecimal(board.BlackScoreBeforeRound),
+                board.IsBye ? string.Empty : FormatDecimal(board.ScoreDifference),
+                board.IsBye ? "ja" : "nein",
+                board.IsRematch ? "ja" : "nein",
+                board.IsCrossScoreGroupPairing ? "ja" : "nein",
+                hasColorRisk ? "ja" : "nein",
+                string.Join(" | ", board.Findings)
+            };
+            builder.AppendLine(string.Join(';', values.Select(EscapeCsv)));
+        }
+
+        return CsvDocument($"{SafeFileName(tournament.Name)}_Vorschau_Runde_{preview.RoundNumber:D2}.csv", builder.ToString());
+    }
+
+    public ExportDocument ExportPrintableNextRoundPreviewHtml(TournamentState tournament, NextRoundPreview preview)
+    {
+        var builder = new StringBuilder();
+        AppendHtmlStart(builder, tournament.Name, $"Auslosungsvorschau Runde {preview.RoundNumber}");
+        builder.AppendLine($"<h1>{Html(tournament.Name)} · Auslosungsvorschau Runde {preview.RoundNumber}</h1>");
+        builder.AppendLine("<p class=\"muted\">Diese Vorschau wurde nicht gespeichert. Erst die echte Auslosung übernimmt die Paarungen ins Turnier.</p>");
+        AppendPreviewSummary(builder, preview);
+        AppendPreviewPairings(builder, preview);
+        AppendPreviewAudit(builder, preview);
+        AppendHtmlEnd(builder);
+        return HtmlDocument($"{SafeFileName(tournament.Name)}_Vorschau_Runde_{preview.RoundNumber:D2}.html", builder.ToString());
+    }
+
+    private static void AppendPreviewSummary(StringBuilder builder, NextRoundPreview preview)
+    {
+        builder.AppendLine("<section><h2>Qualität</h2>");
+        builder.AppendLine("<dl>");
+        builder.AppendLine($"<dt>Zusammenfassung</dt><dd>{Html(preview.Summary)}</dd>");
+        builder.AppendLine($"<dt>Speicherbar</dt><dd>{(preview.IsSavable ? "ja" : "nein")}</dd>");
+        builder.AppendLine($"<dt>Qualitätswert</dt><dd>{preview.PairingQuality.QualityScore}/100 · {Html(preview.PairingQuality.Severity.ToString())}</dd>");
+        builder.AppendLine($"<dt>Bretter</dt><dd>{preview.BoardCount}</dd>");
+        builder.AppendLine($"<dt>Rematches</dt><dd>{preview.PairingQuality.RematchCount}</dd>");
+        builder.AppendLine($"<dt>Scoregruppen-Abweichungen</dt><dd>{preview.PairingQuality.CrossScoreGroupPairingCount}</dd>");
+        builder.AppendLine($"<dt>Farbfolge-Risiken</dt><dd>{preview.PairingQuality.ThirdSameColorRiskCount}</dd>");
+        builder.AppendLine($"<dt>Byes</dt><dd>{preview.PairingQuality.ByeCount}</dd>");
+        builder.AppendLine("</dl>");
+        if (preview.Messages.Count > 0 || preview.PairingQuality.Findings.Count > 0)
+        {
+            builder.AppendLine("<div class=\"diagnostics\"><strong>Hinweise:</strong><ul>");
+            foreach (var message in preview.Messages.Concat(preview.PairingQuality.Findings).Distinct())
+            {
+                builder.AppendLine($"<li>{Html(message)}</li>");
+            }
+            builder.AppendLine("</ul></div>");
+        }
+        builder.AppendLine("</section>");
+    }
+
+    private static void AppendPreviewPairings(StringBuilder builder, NextRoundPreview preview)
+    {
+        builder.AppendLine("<section><h2>Paarungen</h2><table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead><tbody>");
+        foreach (var board in preview.PairingQuality.Boards.OrderBy(b => b.BoardNumber))
+        {
+            var score = board.IsBye ? "Bye" : $"{FormatDecimal(board.WhiteScoreBeforeRound)} : {FormatDecimal(board.BlackScoreBeforeRound)}";
+            var notes = board.Findings.Count == 0 ? "ok" : string.Join(" | ", board.Findings);
+            builder.Append("<tr>");
+            builder.Append($"<td>{board.BoardNumber}</td>");
+            builder.Append($"<td>{Html(board.WhiteName)}</td>");
+            builder.Append($"<td>{Html(board.IsBye ? "spielfrei" : board.BlackName)}</td>");
+            builder.Append($"<td>{Html(score)}</td>");
+            builder.Append($"<td>{Html(notes)}</td>");
+            builder.AppendLine("</tr>");
+        }
+        builder.AppendLine("</tbody></table></section>");
+    }
+
+    private static void AppendPreviewAudit(StringBuilder builder, NextRoundPreview preview)
+    {
+        builder.AppendLine("<section><h2>Audit</h2>");
+        builder.AppendLine($"<p class=\"muted\">Algorithmus: {Html(preview.Round.Audit.Algorithm)} · Ruleset: {Html(preview.Round.Audit.RulesetVersion)}</p>");
+        AppendAuditList(builder, "Hinweise", preview.Round.Audit.Messages);
+        AppendAuditList(builder, "Scoregruppen", preview.Round.Audit.ScoreGroups);
+        AppendAuditList(builder, "Floater", preview.Round.Audit.Floaters);
+        AppendAuditList(builder, "Farben", preview.Round.Audit.ColorNotes);
+        builder.AppendLine("</section>");
+    }
+
+    private static void AppendAuditList(StringBuilder builder, string title, IReadOnlyList<string> items)
+    {
+        builder.AppendLine($"<h3>{Html(title)}</h3><ul>");
+        if (items.Count == 0)
+        {
+            builder.AppendLine("<li>keine</li>");
+        }
+        else
+        {
+            foreach (var item in items)
+            {
+                builder.AppendLine($"<li>{Html(item)}</li>");
+            }
+        }
+        builder.AppendLine("</ul>");
+    }
+
     private static void AppendTournamentMeta(StringBuilder builder, TournamentState tournament)
     {
         builder.AppendLine("<section><h2>Turnierdaten</h2><dl>");
