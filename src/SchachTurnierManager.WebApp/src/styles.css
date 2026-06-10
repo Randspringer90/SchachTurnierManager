@@ -1236,3 +1236,83 @@ th {
 .journal-row.info {
   background: rgba(59, 130, 246, 0.06);
 }
+
+.audit-journal-card {
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.audit-journal-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.audit-journal-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.audit-journal-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.audit-journal-summary div {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.audit-journal-summary strong {
+  display: block;
+  font-size: 1.35rem;
+}
+
+.audit-journal-summary span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.audit-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.audit-info {
+  background: rgba(59, 130, 246, 0.14);
+  color: #bfdbfe;
+}
+
+.audit-warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
+}
+
+.audit-critical {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+}
+
+.audit-journal-table td {
+  vertical-align: top;
+}
+
+.audit-journal-table small {
+  display: block;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.warning-text {
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}

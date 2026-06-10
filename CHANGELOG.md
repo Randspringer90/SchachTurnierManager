@@ -1,3 +1,9 @@
+## 0.35.3 - Audit Journal Dashboard Fix 2
+
+- Repariert den teilweise angewendeten Audit-Journal-Dashboard-Stand nach 0.35.0 bis 0.35.2.
+- Fügt Audit-Exportfunktionen über tokenbasierte Einfügepunkte ein statt über zeilenbasierte Spezialanker.
+- Ergänzt Audit-Journal-Dashboardkarte und Styles idempotent.
+- Keine Änderung an Auslosungslogik, Wertungsberechnung oder Speicherformat.
 ## 0.34.1 - Audit Journal Round Review Fix
 
 - Auditjournal-Einträge für `SetRoundLock` und `SetRoundVerified` ergänzt.

@@ -117,6 +117,21 @@ type Tournament = {
   rounds: TournamentRound[];
 };
 
+type AuditJournalEntry = {
+  id: string;
+  createdAt: string;
+  action: number | string;
+  severity: number | string;
+  actor: string;
+  summary: string;
+  details?: string | null;
+  reason?: string | null;
+  roundNumber?: number | null;
+  boardNumber?: number | null;
+  playerId?: string | null;
+  playerName?: string | null;
+};
+
 type CategoryStandingTable = {
   category: string;
   rows: StandingRow[];
@@ -658,6 +673,84 @@ function pairingQualitySeverityClass(severity: number): string {
     default: return '';
   }
 }
+
+function auditSeverityKey(severity: number | string): 'info' | 'warning' | 'critical' {
+  switch (String(severity)) {
+    case '1':
+    case 'Warning':
+      return 'warning';
+    case '2':
+    case 'Critical':
+      return 'critical';
+    default:
+      return 'info';
+  }
+}
+
+function auditSeverityLabel(severity: number | string): string {
+  switch (auditSeverityKey(severity)) {
+    case 'warning': return 'Warnung';
+    case 'critical': return 'kritisch';
+    default: return 'Info';
+  }
+}
+
+function auditSeverityClass(severity: number | string): string {
+  return `audit-${auditSeverityKey(severity)}`;
+}
+
+function auditActionLabel(action: number | string): string {
+  switch (String(action)) {
+    case '0':
+    case 'TournamentCreated': return 'Turnier angelegt';
+    case '1':
+    case 'SettingsUpdated': return 'Einstellungen geändert';
+    case '2':
+    case 'TournamentImported': return 'Turnier importiert';
+    case '3':
+    case 'ExternalPlayerApplied': return 'Externe Spielerdaten';
+    case '10':
+    case 'PlayerAdded': return 'Spieler hinzugefügt';
+    case '11':
+    case 'PlayerUpdated': return 'Spieler geändert';
+    case '12':
+    case 'PlayerStatusChanged': return 'Spielerstatus geändert';
+    case '13':
+    case 'PlayerRemoved': return 'Spieler entfernt';
+    case '14':
+    case 'PlayerWithdrawn': return 'Spieler zurückgezogen';
+    case '20':
+    case 'RoundGenerated': return 'Runde ausgelost';
+    case '21':
+    case 'ResultRecorded': return 'Ergebnis erfasst';
+    case '22':
+    case 'PairingOverridden': return 'Paarung korrigiert';
+    case '23':
+    case 'RoundLocked': return 'Runde gesperrt';
+    case '24':
+    case 'RoundUnlocked': return 'Runde entsperrt';
+    case '25':
+    case 'RoundVerified': return 'Runde geprüft';
+    case '26':
+    case 'RoundUnverified': return 'Prüfung zurückgenommen';
+    default: return String(action);
+  }
+}
+
+function auditDateLabel(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value || '—';
+  }
+
+  return parsed.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function auditCsvCell(value: unknown): string {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
 function settingsToForm(tournament?: Tournament): SettingsForm {
   if (!tournament) {
     return emptySettingsForm;
@@ -731,6 +824,7 @@ function App() {
   const [crossTable, setCrossTable] = React.useState<CrossTable | null>(null);
   const [heroCup, setHeroCup] = React.useState<HeroCupRow[]>([]);
   const [roundDiagnostics, setRoundDiagnostics] = React.useState<RoundDiagnostics[]>([]);
+  const [auditJournal, setAuditJournal] = React.useState<AuditJournalEntry[]>([]);
   const [pairingQualityReports, setPairingQualityReports] = React.useState<Record<number, PairingQualityReport>>({});
   const [nextRoundPreview, setNextRoundPreview] = React.useState<NextRoundPreview | null>(null);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
@@ -752,6 +846,12 @@ function App() {
   const [status, setStatus] = React.useState('Bereit.');
   const [error, setError] = React.useState<string | null>(null);
   const selectedTournament = tournaments.find(tournament => tournament.id === selectedId) ?? tournaments[0];
+  const auditJournalRecentEntries = auditJournal.slice(0, 15);
+  const auditJournalWarningCount = auditJournal.filter(entry => auditSeverityKey(entry.severity) === 'warning').length;
+  const auditJournalCriticalCount = auditJournal.filter(entry => auditSeverityKey(entry.severity) === 'critical').length;
+  const auditJournalInfoCount = auditJournal.length - auditJournalWarningCount - auditJournalCriticalCount;
+  const auditJournalRoundEntryCount = auditJournal.filter(entry => entry.roundNumber !== null && entry.roundNumber !== undefined).length;
+  const auditJournalPlayerEntryCount = auditJournal.filter(entry => Boolean(entry.playerId || entry.playerName)).length;
 
   const loadTournaments = React.useCallback(async (): Promise<Tournament[]> => {
     const data = await requestJson<Tournament[]>('/api/tournaments');
@@ -769,23 +869,26 @@ function App() {
       setCrossTable(null);
       setHeroCup([]);
       setRoundDiagnostics([]);
+      setAuditJournal([]);
       setPairingQualityReports({});
       setNextRoundPreview(null);
       return;
     }
 
-    const [standingData, categoryData, crossTableData, heroCupData, diagnosticsData] = await Promise.all([
+    const [standingData, categoryData, crossTableData, heroCupData, diagnosticsData, auditJournalData] = await Promise.all([
       requestJson<StandingRow[]>(`/api/tournaments/${id}/standings`),
       requestJson<CategoryStandingTable[]>(`/api/tournaments/${id}/categories`),
       requestJson<CrossTable>(`/api/tournaments/${id}/cross-table`),
       requestJson<HeroCupRow[]>(`/api/tournaments/${id}/hero-cup`),
-      requestJson<RoundDiagnostics[]>(`/api/tournaments/${id}/round-diagnostics`)
+      requestJson<RoundDiagnostics[]>(`/api/tournaments/${id}/round-diagnostics`),
+      requestJson<AuditJournalEntry[]>(`/api/tournaments/${id}/audit-journal`)
     ]);
     setStandings(standingData);
     setCategories(categoryData);
     setCrossTable(crossTableData);
     setHeroCup(heroCupData);
     setRoundDiagnostics(diagnosticsData);
+    setAuditJournal(auditJournalData);
   }, []);
 
   const refresh = React.useCallback(async (preferredId?: string) => {
@@ -1227,7 +1330,38 @@ function App() {
     }
     window.open(`/api/tournaments/${selectedTournament.id}/pairings/export.csv?roundNumber=${roundNumber}`, '_blank', 'noopener,noreferrer');
   }
-  function openRoundPrint(roundNumber: number) {
+
+  function exportAuditJournalCsv(): void {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const header = ['Zeitpunkt', 'Schweregrad', 'Aktion', 'Akteur', 'Runde', 'Brett', 'Spieler', 'Zusammenfassung', 'Details', 'Grund'];
+    const rows = auditJournal.map(entry => [
+      auditDateLabel(entry.createdAt),
+      auditSeverityLabel(entry.severity),
+      auditActionLabel(entry.action),
+      entry.actor,
+      entry.roundNumber ?? '',
+      entry.boardNumber ?? '',
+      entry.playerName ?? entry.playerId ?? '',
+      entry.summary,
+      entry.details ?? '',
+      entry.reason ?? ''
+    ].map(auditCsvCell).join(';'));
+
+    downloadText(`${selectedTournament.name}-auditjournal.csv`, [header.join(';'), ...rows].join('\r\n'), 'text/csv;charset=utf-8');
+  }
+
+  function exportAuditJournalJson(): void {
+    if (!selectedTournament) {
+      return;
+    }
+
+    downloadText(`${selectedTournament.name}-auditjournal.json`, JSON.stringify(auditJournal, null, 2), 'application/json;charset=utf-8');
+  }
+
+function openRoundPrint(roundNumber: number) {
     if (!selectedTournament) {
       return;
     }
@@ -1590,7 +1724,7 @@ function App() {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.34.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.35.3</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -2553,7 +2687,54 @@ function App() {
 
               <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.</p>
             </article>
-
+          <article className="card audit-journal-card">
+            <div className="audit-journal-heading">
+              <div>
+                <h3>Audit-Journal</h3>
+                <p>Persistentes Protokoll wichtiger Turnierleiter-Aktionen. Hilft bei Ergebnis-Korrekturen, Rundenprüfung und späteren Nachfragen.</p>
+              </div>
+              <span className={`status-pill ${auditJournalCriticalCount > 0 ? 'audit-critical' : auditJournalWarningCount > 0 ? 'audit-warning' : 'audit-info'}`}>
+                {auditJournal.length} Einträge
+              </span>
+            </div>
+            <div className="audit-journal-summary">
+              <div><strong>{auditJournalInfoCount}</strong><span>Info</span></div>
+              <div><strong>{auditJournalWarningCount}</strong><span>Warnung</span></div>
+              <div><strong>{auditJournalCriticalCount}</strong><span>kritisch</span></div>
+              <div><strong>{auditJournalRoundEntryCount}</strong><span>Rundenbezug</span></div>
+              <div><strong>{auditJournalPlayerEntryCount}</strong><span>Spielerbezug</span></div>
+            </div>
+            {!selectedTournament && <p>Bitte zuerst ein Turnier auswählen.</p>}
+            {selectedTournament && auditJournal.length === 0 && <p className="ok">Noch keine Audit-Einträge vorhanden.</p>}
+            {auditJournalCriticalCount > 0 && <p className="warning-text">Kritische Audit-Einträge vorhanden: Bitte vor Veröffentlichung oder nächster Auslosung prüfen.</p>}
+            {selectedTournament && auditJournal.length > 0 && (
+              <>
+                <div className="table-scroll compact audit-journal-table">
+                  <table>
+                    <thead><tr><th>Zeit</th><th>Stufe</th><th>Aktion</th><th>Bezug</th><th>Zusammenfassung</th><th>Details</th><th>Grund</th></tr></thead>
+                    <tbody>
+                      {auditJournalRecentEntries.map(entry => (
+                        <tr key={entry.id} className={auditSeverityClass(entry.severity)}>
+                          <td>{auditDateLabel(entry.createdAt)}</td>
+                          <td><span className={`audit-pill ${auditSeverityClass(entry.severity)}`}>{auditSeverityLabel(entry.severity)}</span></td>
+                          <td>{auditActionLabel(entry.action)}<small>{entry.actor}</small></td>
+                          <td>{entry.roundNumber ? `R${entry.roundNumber}` : '—'}{entry.boardNumber ? ` · Brett ${entry.boardNumber}` : ''}{entry.playerName ? <small>{entry.playerName}</small> : null}</td>
+                          <td>{entry.summary}</td>
+                          <td>{entry.details || '—'}</td>
+                          <td>{entry.reason || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {auditJournal.length > auditJournalRecentEntries.length && <p className="muted">Anzeige begrenzt auf die letzten {auditJournalRecentEntries.length} von {auditJournal.length} Einträgen. Für vollständige Auswertung bitte CSV/JSON exportieren.</p>}
+              </>
+            )}
+            <div className="actions">
+              <button type="button" onClick={() => exportAuditJournalCsv()} disabled={!selectedTournament || auditJournal.length === 0}>Audit CSV</button>
+              <button type="button" className="secondary" onClick={() => exportAuditJournalJson()} disabled={!selectedTournament || auditJournal.length === 0}>Audit JSON</button>
+            </div>
+          </article>
 <article className="card">
             <h3>Import / Export</h3>
             <div className="grid two">
