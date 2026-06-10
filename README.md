@@ -1,42 +1,16 @@
 # SchachTurnierManager
 
-Lokaler Schachturnier-Manager mit Dashboard, Backend, Turnierlogik, Paarungsalgorithmen, Wertungen, Rating-Prognosen und späteren Import-/Export-Adaptern.
+Lokaler Turniermanager fuer Schachturniere mit WebApi, React-Dashboard, Schweizer-System-Fokus, Exporten, Audit-Funktionen und portablem Windows-Paket.
 
-## Zielpfad beim Nutzer
+## Aktueller Stand
 
-```powershell
-D:\Schach\SchachTurnierManager
-```
+**Version:** 0.38.0
 
-## Architektur
+Der aktuelle Entwicklungsstand enthaelt die Funktionen bis 0.37.6 plus diesen Doku-/Sicherheitsbaustein fuer sichere Commits.
 
-- `SchachTurnierManager.Domain`: fachliche Regeln und Algorithmen.
-- `SchachTurnierManager.Application`: Use Cases und Store-Abstraktion.
-- `SchachTurnierManager.Infrastructure`: SQLite-/EF-Core-Persistenz und spätere Import-/Export-Anbindung.
-- `SchachTurnierManager.WebApi`: lokale ASP.NET-Core-API.
-- `SchachTurnierManager.WebApp`: React/TypeScript/Vite-Dashboard.
-- `tests`: Unit-, Persistenz- und Golden Tests.
+## Schnellstart
 
-## Erste Prüfung
-
-```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; .\scripts\Test-All.ps1
-```
-
-Alternativ einzeln:
-
-```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; dotnet restore; dotnet build; dotnet test
-Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"; npm install; npm run build
-```
-
-## Entwicklung starten
-
-```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; .\scripts\Start-Dev.ps1
-```
-
-Backend:
+Backend starten:
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"; dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj
@@ -48,7 +22,7 @@ Healthcheck:
 http://localhost:5088/api/health
 ```
 
-Frontend:
+Frontend starten:
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"; npm install; npm run dev
@@ -60,81 +34,65 @@ Dashboard:
 http://localhost:5173
 ```
 
-## Funktionen bis 0.12.0
+Release-Gate ausfuehren:
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1"
+```
+
+Sicher committen und pushen:
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "<Commit-Nachricht>" -Push
+```
+
+## Funktionen bis 0.37.6
 
 - Turniere lokal anlegen und dauerhaft speichern.
-- Teilnehmer erfassen, bearbeiten, löschen oder zurückziehen.
-- Schweizer-System-V2 mit Scoregruppen-Audit, Floater-Hinweisen, Bye-Schutz und Farbhistorie sowie Rundenturnier-Runden erzeugen.
-- Ergebnisse erfassen und Live-Tabelle berechnen.
-- Kategorieauswertungen für Frauen, Jugendklassen und Senioren anzeigen.
-- Kreuztabelle, Heldenpokal und Rundenaudit anzeigen.
-- Teilnehmer per CSV importieren/exportieren.
-- Turnier per JSON sichern und wiederherstellen.
-- Tabelle und Paarungen als CSV exportieren.
-- Turnierbericht und Rundenblätter als HTML-Druckansicht erzeugen.
-- Portable Paket mit eingebettetem Dashboard erzeugen und per Start-BAT lokal ausführen.
-- Externe Spielerdaten per FIDE-ID suchen, ins Teilnehmerformular übernehmen, als Teilnehmer speichern und gegen bestehende Teilnehmer auf Dubletten prüfen.
-- GitHub-Issue-Templates für Bugreports und Feature-Wünsche vorbereitet.
+- Teilnehmer erfassen, bearbeiten, loeschen oder zurueckziehen.
+- Externe Spielerdaten per FIDE-ID suchen, ins Teilnehmerformular uebernehmen und speichern.
+- Schweizer-System-V2 mit Scoregruppen-Audit, Floater-Hinweisen, Bye-Schutz, Farbhistorie und Rundenintervall-Historie.
+- Ergebnisverwaltung mit normalen Ergebnissen, Remis, kampflosen Ergebnissen, Bye und Spielfrei.
+- Live-Tabelle, Kreuztabelle, Heldenpokal, Kategorieauswertungen und Runden-/Paarungsdiagnosen.
+- Naechste-Runde-Vorschau vor verbindlicher Auslosung.
+- Auslosungsfreigabe mit Blocker-/Warnhinweisen.
+- Bye-/kampflos-/Spielfrei-Audit im Dashboard.
+- Korrektur- und Eingriffsuebersicht.
+- Persistentes Audit-Journal fuer zentrale Turnierleitungsaktionen.
+- Audit-Journal-Dashboardkarte mit Kennzahlen, letzten Eintraegen und CSV-/JSON-Export.
+- Audit-Journal-Query-Service mit Filterung, Sortierung, Paging und Statistikzaehlung.
+- Audit-Journal-Query-API fuer serverseitige Filter.
+- Tabellen, Paarungen, Rundenblaetter, Ergebnisuebersichten und Turnierdaten als CSV/JSON/HTML exportieren.
+- Portable Paket mit eingebettetem Dashboard erzeugen und per Start-BAT lokal ausfuehren.
+- Release-Gate fuer Restore, Build, Tests, Frontend-Build und Paketierung.
+- Safe Commit Guard gegen Artefakte und typische Secrets vor Git-Commits.
 
-## Portable Paket erstellen
+## Sicherheit und Git-Regeln
 
-```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Pack-Portable.ps1"
-```
+Nicht einchecken:
 
-Ergebnis:
+- Build-Artefakte: `bin/`, `obj/`, `dist/`, `output/`, `node_modules/`
+- Archive und Pakete: `*.zip`, `*.7z`, `*.nupkg`
+- Logs/Dumps/Reports: `*.log`, `*.dmp`, `logs/`, `reports/`
+- Datenbanken und lokale Turnierdaten: `*.db`, `*.sqlite`, `*.sqlite3`
+- lokale Konfiguration und Secrets: `.env*`, `*.key`, `*.pem`, `*.pfx`, `*.p12`, `secrets.*`
+
+Vor einem Commit laeuft `scripts/Test-GitCommitSafety.ps1`. Der Guard bricht ab, wenn verbotene Artefakte, grosse Dateien oder typische Secret-Muster in geaenderten Dateien gefunden werden.
+
+## Repository-Struktur
 
 ```text
-output\portable\Start-SchachTurnierManager.bat
-output\SchachTurnierManager_Portable_0.9.1.zip
+src/SchachTurnierManager.Domain          Fachmodell und Domain-Services
+src/SchachTurnierManager.Application     Turnierlogik und Anwendungsservices
+src/SchachTurnierManager.Infrastructure  Persistenz/Infrastruktur
+src/SchachTurnierManager.WebApi          HTTP-API und statisches Dashboard-Hosting
+src/SchachTurnierManager.WebApp          React/Vite-Frontend
+tests/                                   Domain-, Application-, Infrastructure- und Golden-Tests
+scripts/                                 Release-, Paketierungs- und Sicherheits-Skripte
+docs/                                    Handoffs und technische Notizen
 ```
 
-Die portable Variante öffnet das Dashboard über:
+## Bekannte Hinweise
 
-```text
-http://127.0.0.1:5088/
-```
-
-Die portable Datenbank liegt im Paketordner unter `data\SchachTurnierManager.sqlite`.
-
-## Lokale Datenbank
-
-Die API legt die SQLite-Datenbank standardmäßig unter `%LOCALAPPDATA%\SchachTurnierManager\SchachTurnierManager.sqlite` an.
-
-Optional kann der Datenordner per Konfiguration `SchachTurnierManager:DataDirectory` angepasst werden.
-
-## GitHub
-
-Das Repository liegt als privates Repo unter `Randspringer90/SchachTurnierManager`. In ZIPs ist bewusst kein `.git` enthalten. Inhalte in das bestehende Repo kopieren, dann:
-
-```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; git status; git add .; git commit -m "Update SchachTurnierManager"; git push
-```
-
-## Status
-
-Version 0.9.1: Turnierleiter-MVP mit SQLite-Persistenz, Teilnehmerpflege, Kategorieauswertungen, Kreuztabelle, Heldenpokal, CSV-/JSON-Import/Export, Druckansichten, gehärteter Schweizer-System-Auslosung V2 und portablem lokalen Paket. Noch kein vollständiges FIDE-Dutch-Swiss und noch kein klassischer Windows-Installer.
-
-
-## Entwicklerstart-Hinweis
-
-`scripts/Start-Dev.ps1` öffnet das Dashboard bewusst über `http://127.0.0.1:5173`, weil Vite lokal an IPv4 gebunden ist und `localhost` je nach Windows-/Browser-Konfiguration zuerst IPv6 auflösen kann.
-
-
-## Regelmäßige Checkpoint-Commits
-
-Nach einem grünen Stand kann ein geprüfter Commit mit folgendem Skript erstellt werden:
-
-```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-Checkpoint.ps1" -Message "Checkpoint: Beschreibung" -Push
-```
-
-
-## Externe Spielerdaten
-
-Geplant ist eine providerbasierte Anbindung an FIDE, DSB/DeWIS/DWZ und den ThSB-Kontext. Details stehen in `docs/EXTERNAL_PLAYER_LOOKUP.md`.
-
-
-## Externe Spielerdaten
-
-Ab Version 0.10.0 gibt es eine erste externe Spielersuche. Aktiv ist zunächst der FIDE-Profilabruf per FIDE-ID. DSB/DeWIS und ThSB sind als Provider vorbereitet, werden aber erst nach Klärung einer stabilen offiziellen Schnittstelle vollständig aktiviert.
+- Node.js `v20.20.0` erzeugt aktuell eine EBADENGINE-Warnung fuer Vite/Rolldown. Der Build laeuft bislang trotzdem, empfohlen ist ein Update auf eine passende Node-Version.
+- GitHub-README und Changelog sollen ab jetzt bei groesseren Feature-Bloecken zeitnah nachgezogen werden.

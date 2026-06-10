@@ -1,0 +1,144 @@
+HEAD:.agents/skills/external-player-lookup.md:15:- Keine Zugangsdaten oder Tokens committen.
+HEAD:AGENTS.md:10:- Keine Secrets, Tokens, privaten Datenbanken oder Logs committen.
+HEAD:CHANGELOG.md:11:- Query-Endpunkt wird robust vor stabilen WebApi-Tokens eingef├╝gt, notfalls vor app.Run().
+HEAD:CHANGELOG.md:25:- F├╝gt Audit-Exportfunktionen ├╝ber tokenbasierte Einf├╝gepunkte ein statt ├╝ber zeilenbasierte Spezialanker.
+HEAD:docs/EXTERNAL_PLAYER_LOOKUP.md:56:- Kein Token, API-Key oder Zugangsdaten im Repository speichern.
+HEAD:docs/HANDOFF_0_35_3.md:10:- Fehlende Auditjournal-Exportfunktionen tokenbasiert erg├ñnzt.
+HEAD:scripts/After-Apply-V0.35.3.ps1:53:function Insert-TextBeforeFirstToken {
+HEAD:scripts/After-Apply-V0.35.3.ps1:56:        [Parameter(Mandatory = $true)][string[]]$Tokens,
+HEAD:scripts/After-Apply-V0.35.3.ps1:69:    $bestToken = $null
+HEAD:scripts/After-Apply-V0.35.3.ps1:70:    foreach ($token in $Tokens) {
+HEAD:scripts/After-Apply-V0.35.3.ps1:71:        $idx = $text.IndexOf($token, [System.StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.35.3.ps1:74:            $bestToken = $token
+HEAD:scripts/After-Apply-V0.35.3.ps1:79:        throw "Kein stabiler Einf├╝gepunkt f├╝r $Description in $RelativePath gefunden. Gesuchte Tokens: $($Tokens -join ', ')"
+HEAD:scripts/After-Apply-V0.35.3.ps1:86:    Write-Step "$Description erg├ñnzt vor Token '$bestToken'"
+HEAD:scripts/After-Apply-V0.35.3.ps1:123:    Insert-TextBeforeFirstToken $relativePath @(
+HEAD:scripts/After-Apply-V0.35.3.ps1:319:- F├╝gt Audit-Exportfunktionen ├╝ber tokenbasierte Einf├╝gepunkte ein statt ├╝ber zeilenbasierte Spezialanker.
+HEAD:scripts/After-Apply-V0.35.3.ps1:361:- Fehlende Auditjournal-Exportfunktionen tokenbasiert erg├ñnzt.
+HEAD:scripts/After-Apply-V0.37.1.ps1:92:            $fallbackToken = 'app.MapGet("/api/tournaments/{id:guid}/round-diagnostics"'
+HEAD:scripts/After-Apply-V0.37.1.ps1:93:            if ($program.Contains($fallbackToken)) {
+HEAD:scripts/After-Apply-V0.37.1.ps1:94:                $program = $program.Replace($fallbackToken, $queryEndpoint + $fallbackToken)
+HEAD:scripts/After-Apply-V0.37.1.ps1:98:                $fallbackToken = 'if (embeddedDashboardAvailable) {'
+HEAD:scripts/After-Apply-V0.37.1.ps1:99:                if ($program.Contains($fallbackToken)) {
+HEAD:scripts/After-Apply-V0.37.1.ps1:100:                    $program = $program.Replace($fallbackToken, $queryEndpoint + $fallbackToken)
+HEAD:scripts/After-Apply-V0.37.2.ps1:131:        $tokens = @(
+HEAD:scripts/After-Apply-V0.37.2.ps1:141:        foreach ($token in $tokens) {
+HEAD:scripts/After-Apply-V0.37.2.ps1:142:            $index = $program.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.2.ps1:144:                if ($token -like 'app.MapGet*' -and $token.Contains('audit-journal')) {
+HEAD:scripts/After-Apply-V0.37.2.ps1:156:                Step "Audit-Journal-Query-Endpunkt vor/nach Token '$token' erg├ñnzt"
+HEAD:scripts/After-Apply-V0.37.2.ps1:177:- Query-Endpunkt wird robust vor stabilen WebApi-Tokens eingef├╝gt, notfalls vor app.Run().
+HEAD:scripts/After-Apply-V0.37.3.ps1:218:    $tokens = @(
+HEAD:scripts/After-Apply-V0.37.3.ps1:226:    foreach ($token in $tokens) {
+HEAD:scripts/After-Apply-V0.37.3.ps1:227:        $index = $content.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.3.ps1:229:            Step "Audit-Journal-Query-Endpunkt vor Token '$token' erg├ñnzt"
+HEAD:scripts/After-Apply-V0.37.4.ps1:89:    $tokens = @(
+HEAD:scripts/After-Apply-V0.37.4.ps1:96:    foreach ($token in $tokens) {
+HEAD:scripts/After-Apply-V0.37.4.ps1:97:        $index = $content.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.4.ps1:99:            Step "Audit-Journal-Query-Map vor Token '$token' ergaenzt"
+HEAD:scripts/After-Apply-V0.37.4.ps1:169:    $token = 'static bool TryParseExternalPlayerSource'
+HEAD:scripts/After-Apply-V0.37.4.ps1:170:    $index = $content.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.5.ps1:146:    $tokens = @(
+HEAD:scripts/After-Apply-V0.37.5.ps1:152:    foreach ($token in $tokens) {
+HEAD:scripts/After-Apply-V0.37.5.ps1:153:        $index = $content.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.5.ps1:155:            Step "Audit-Journal-Query-Endpunkt vor Token '$token' ergaenzt"
+HEAD:scripts/After-Apply-V0.37.5.ps1:194:    $token = 'static bool TryParseExternalPlayerSource'
+HEAD:scripts/After-Apply-V0.37.5.ps1:195:    $index = $content.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.6.ps1:151:    $token = 'app.MapGet("/api/tournaments/{id:guid}/round-diagnostics"'
+HEAD:scripts/After-Apply-V0.37.6.ps1:152:    $index = $content.IndexOf($token, [StringComparison]::Ordinal)
+HEAD:scripts/After-Apply-V0.37.6.ps1:157:    Step "Audit-Journal-Query-Endpunkt vor Token '$token' ergaenzt"
+HEAD:scripts/After-Apply-V0.37.ps1:81:        $token = 'using SchachTurnierManager.Domain.Models;'
+HEAD:scripts/After-Apply-V0.37.ps1:82:        if (-not $text.Contains($token)) { throw "Using-Anker nicht gefunden in $relativePath" }
+HEAD:scripts/After-Apply-V0.37.ps1:83:        $text = $text.Replace($token, $token + ' using SchachTurnierManager.Domain.Services;')
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:16:    public Task<ExternalPlayerLookupResult> LookupByIdAsync(ExternalPlayerSource source, string externalId, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:23:        return provider.LookupByIdAsync(externalId, cancellationToken);
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:26:    public Task<ExternalPlayerLookupResult> SearchByNameAsync(ExternalPlayerSource source, string name, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:33:        return provider.SearchByNameAsync(name, cancellationToken);
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:36:    public Task<ExternalPlayerLookupResult> SearchAsync(ExternalPlayerSource source, string query, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:45:            ? LookupByIdAsync(source, normalized, cancellationToken)
+HEAD:src/SchachTurnierManager.Application/External/ExternalPlayerLookupService.cs:46:            : SearchByNameAsync(source, normalized, cancellationToken);
+HEAD:src/SchachTurnierManager.Application/External/IExternalPlayerLookupProvider.cs:10:    Task<ExternalPlayerLookupResult> LookupByIdAsync(string externalId, CancellationToken cancellationToken = default);
+HEAD:src/SchachTurnierManager.Application/External/IExternalPlayerLookupProvider.cs:12:    Task<ExternalPlayerLookupResult> SearchByNameAsync(string name, CancellationToken cancellationToken = default);
+HEAD:src/SchachTurnierManager.Application/TournamentService.cs:77:        return _externalPlayerImport.CheckDuplicates(RequireTournament(tournamentId), profile);
+HEAD:src/SchachTurnierManager.Domain/Services/ArmageddonBiddingService.cs:9:    public string CreateCommitment(string playerSecret, TimeSpan bidTime, string salt)
+HEAD:src/SchachTurnierManager.Domain/Services/ArmageddonBiddingService.cs:11:        var payload = $"{playerSecret}|{bidTime.TotalMilliseconds}|{salt}";
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:7:    public ExternalPlayerDuplicateCheck CheckDuplicates(TournamentState tournament, ExternalPlayerProfile profile, Guid? ignorePlayerId = null)
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:42:        var duplicateCheck = CheckDuplicates(tournament, profile);
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:107:            DuplicateCheck = CheckDuplicates(tournament, profile, playerId),
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:316:        var leftTokens = NormalizeName(left);
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:317:        var rightTokens = NormalizeName(right);
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:318:        return leftTokens.Count > 0 && leftTokens.SetEquals(rightTokens);
+HEAD:src/SchachTurnierManager.Domain/Services/ExternalPlayerImportService.cs:325:            .Select(token => token.ToUpperInvariant())
+HEAD:src/SchachTurnierManager.Domain/Services/PlayerImportPreviewService.cs:35:                : _externalPlayerImport.CheckDuplicates(tournament, profile);
+HEAD:src/SchachTurnierManager.Infrastructure/External/FidePlayerLookupProvider.cs:47:    public async Task<ExternalPlayerLookupResult> LookupByIdAsync(string externalId, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Infrastructure/External/FidePlayerLookupProvider.cs:65:            html = await _httpClient.GetStringAsync(profilePath, cancellationToken).ConfigureAwait(false);
+HEAD:src/SchachTurnierManager.Infrastructure/External/FidePlayerLookupProvider.cs:83:    public Task<ExternalPlayerLookupResult> SearchByNameAsync(string name, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Infrastructure/External/UnsupportedExternalPlayerLookupProvider.cs:18:    public Task<ExternalPlayerLookupResult> LookupByIdAsync(string externalId, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Infrastructure/External/UnsupportedExternalPlayerLookupProvider.cs:23:    public Task<ExternalPlayerLookupResult> SearchByNameAsync(string name, CancellationToken cancellationToken = default)
+HEAD:src/SchachTurnierManager.Infrastructure/InfrastructureServiceCollectionExtensions.cs:10:    public static IServiceCollection AddSchachTurnierPersistence(this IServiceCollection services, string sqliteConnectionString)
+HEAD:src/SchachTurnierManager.Infrastructure/InfrastructureServiceCollectionExtensions.cs:12:        services.AddDbContext<TournamentDbContext>(options => options.UseSqlite(sqliteConnectionString));
+HEAD:src/SchachTurnierManager.WebApi/Program.cs:17:var connectionString = builder.Configuration.GetConnectionString("SchachTurnierManager")
+HEAD:src/SchachTurnierManager.WebApi/Program.cs:20:builder.Services.AddSchachTurnierPersistence(connectionString);
+HEAD:src/SchachTurnierManager.WebApi/Program.cs:79:app.MapGet("/api/external-players/search", async (string? source, string? query, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
+HEAD:src/SchachTurnierManager.WebApi/Program.cs:86:    var result = await service.SearchAsync(parsedSource, query ?? string.Empty, cancellationToken);
+HEAD:src/SchachTurnierManager.WebApi/Program.cs:90:app.MapGet("/api/external-players/fide/{fideId}", async (string fideId, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
+HEAD:src/SchachTurnierManager.WebApi/Program.cs:92:    var result = await service.LookupByIdAsync(ExternalPlayerSource.Fide, fideId, cancellationToken);
+HEAD:src/SchachTurnierManager.WebApi/SchachTurnierManager.WebApi.csproj:4:    <UserSecretsId>SchachTurnierManager.WebApi-LocalOnly</UserSecretsId>
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:24:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@emnapi/core/-/core-1.10.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:35:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@emnapi/runtime/-/runtime-1.10.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:45:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:55:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:73:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@oxc-project/types/-/types-0.133.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:82:      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:98:      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:114:      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-x64/-/binding-darwin-x64-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:130:      "resolved": "https://registry.npmjs.org/@rolldown/binding-freebsd-x64/-/binding-freebsd-x64-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:146:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:162:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:178:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:194:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:210:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:226:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:242:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:258:      "resolved": "https://registry.npmjs.org/@rolldown/binding-openharmony-arm64/-/binding-openharmony-arm64-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:274:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@rolldown/binding-wasm32-wasi/-/binding-wasm32-wasi-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:292:      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:308:      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:324:      "resolved": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:330:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/@tybys/wasm-util/-/wasm-util-0.10.2.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:340:      "resolved": "https://registry.npmjs.org/@types/react/-/react-19.2.17.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:350:      "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.2.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:360:      "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:384:      "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:391:      "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:399:      "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:415:      "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:429:      "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:458:      "resolved": "https://registry.npmjs.org/lightningcss-android-arm64/-/lightningcss-android-arm64-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:478:      "resolved": "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:498:      "resolved": "https://registry.npmjs.org/lightningcss-darwin-x64/-/lightningcss-darwin-x64-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:518:      "resolved": "https://registry.npmjs.org/lightningcss-freebsd-x64/-/lightningcss-freebsd-x64-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:538:      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm-gnueabihf/-/lightningcss-linux-arm-gnueabihf-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:558:      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-gnu/-/lightningcss-linux-arm64-gnu-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:578:      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-musl/-/lightningcss-linux-arm64-musl-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:598:      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:618:      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:638:      "resolved": "https://registry.npmjs.org/lightningcss-win32-arm64-msvc/-/lightningcss-win32-arm64-msvc-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:658:      "resolved": "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.32.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:678:      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:696:      "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:702:      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.4.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:713:      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.15.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:741:      "resolved": "https://registry.npmjs.org/react/-/react-19.2.7.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:750:      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.7.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:761:      "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:794:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/scheduler/-/scheduler-0.37.0.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:800:      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:809:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/tinyglobby/-/tinyglobby-0.2.17.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:825:      "resolved": "https://tfs.fwdev.eckdservice.de/SWE/ITM/_packaging/ITM_KFM/npm/registry/tslib/-/tslib-2.8.1.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:832:      "resolved": "https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz",
+HEAD:src/SchachTurnierManager.WebApp/package-lock.json:845:      "resolved": "https://registry.npmjs.org/vite/-/vite-8.0.16.tgz",
+HEAD:tests/SchachTurnierManager.Application.Tests/ExternalPlayerLookupServiceTests.cs:74:        public Task<ExternalPlayerLookupResult> LookupByIdAsync(string externalId, CancellationToken cancellationToken = default)
+HEAD:tests/SchachTurnierManager.Application.Tests/ExternalPlayerLookupServiceTests.cs:86:        public Task<ExternalPlayerLookupResult> SearchByNameAsync(string name, CancellationToken cancellationToken = default)
+HEAD:tests/SchachTurnierManager.Infrastructure.Tests/FidePlayerLookupProviderTests.cs:75:        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+HEAD:tests/SchachTurnierManager.Infrastructure.Tests/SqliteTournamentStoreTests.cs:53:        var connectionString = new SqliteConnectionStringBuilder
+HEAD:tests/SchachTurnierManager.Infrastructure.Tests/SqliteTournamentStoreTests.cs:60:            .UseSqlite(connectionString)

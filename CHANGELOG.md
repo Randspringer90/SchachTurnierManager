@@ -1,4 +1,9 @@
+## 0.38.0 - README und Safe Commit Guard
 
+- README/GitHub-Startseite auf den aktuellen Funktionsstand bis 0.37.6 aktualisiert.
+- `.gitignore` um typische Build-Artefakte, lokale Daten, Logs, Dumps, Archive und Secret-Dateien erweitert.
+- `scripts/Test-GitCommitSafety.ps1` ergänzt: prüft geänderte Dateien vor Commit auf Artefakte, große Dateien und typische Secret-Muster.
+- `scripts/Commit-If-Green.ps1` ersetzt: Release-Gate, Sicherheitsprüfung vor/nach Stage, Dateiübersicht und erst danach Commit/Push.
 ## 0.37.3
 
 - Fix: fehlerhaft eingefügten Audit-Journal-Query-Endpunkt entfernt und syntaktisch robust neu eingefügt.

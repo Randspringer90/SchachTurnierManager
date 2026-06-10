@@ -1,0 +1,20 @@
+873b16f Fix audit journal query API
+M	CHANGELOG.md
+A	docs/HANDOFF_0_37_0.md
+A	docs/HANDOFF_0_37_1.md
+A	docs/HANDOFF_0_37_2.md
+A	docs/HANDOFF_0_37_3.md
+A	docs/HANDOFF_0_37_4.md
+A	docs/HANDOFF_0_37_5.md
+A	docs/HANDOFF_0_37_6.md
+A	scripts/After-Apply-V0.37.1.ps1
+A	scripts/After-Apply-V0.37.2.ps1
+A	scripts/After-Apply-V0.37.3.ps1
+A	scripts/After-Apply-V0.37.4.ps1
+A	scripts/After-Apply-V0.37.5.ps1
+A	scripts/After-Apply-V0.37.6.ps1
+A	scripts/After-Apply-V0.37.ps1
+M	src/SchachTurnierManager.WebApi/Program.cs
+M	src/SchachTurnierManager.WebApp/package-lock.json
+M	src/SchachTurnierManager.WebApp/package.json
+M	src/SchachTurnierManager.WebApp/src/main.tsx
