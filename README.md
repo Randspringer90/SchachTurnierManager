@@ -13,6 +13,15 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
 
+## Projektstruktur
+
+- `src/`, `tests/`: .NET-Solution (Domain, Application, Infrastructure, WebApi) und React/TypeScript-WebApp; Architektur in `docs/architecture/ARCHITECTURE.md`.
+- `docs/architecture/`: dauerhafte Architektur- und Fachkonzepte, inkl. `AI_AGENT_ARCHITECTURE.md`.
+- `docs/planning/`: Roadmaps, Tickets und Abläufe, inkl. `PROJECT_ORCHESTRATION.md` (welche Aufgabe über welches Skript läuft).
+- `docs/handoffs/`: historisches Handoff-Archiv (nicht mehr gepflegt, nicht im Public Snapshot).
+- `scripts/`: aktive Skripte mit Übersicht in `scripts/README.md`; historische After-Apply-Skripte unter `scripts/archive/after-apply/`.
+- `AGENTS.md`: verbindliche, providerneutrale Regeln für KI-Agenten; `.agents/skills/` enthält wiederverwendbare Skills, `.claude/` nur einen Adapter.
+
 ## Start
 
 Backend:

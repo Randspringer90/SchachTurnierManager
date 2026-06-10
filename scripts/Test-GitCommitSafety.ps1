@@ -26,7 +26,20 @@ $contentPattern = @(
     (('refresh' + '[_-]?' + 'token') + '\s*[:=]\s*[''\"][^''\"]{8,}'),
     ('(_auth' + 'Token|npm[_-]?token)' + '\s*=\s*[^\s]+')
 ) -join '|'
-$patternSourceRegex = '(?i)(^|/)scripts/(Test-GitCommitSafety|Test-RepositoryOpenSourceSafety|After-Apply-V0\.38\.5)\.ps1$'
+# SECURITY-PATTERN-FILE: Diese Datei enthaelt bewusst Detection-/Blocklist-Regexe, keine echten Secrets.
+# Bekannte Security-/Detection-Quellen, die Blocklist-/Credential-Regexe dokumentieren duerfen.
+$patternSourceRegex = '(?i)(^|/)(scripts/(Test-GitCommitSafety|Test-RepositoryOpenSourceSafety|New-OpenSourceSnapshot)\.ps1|scripts/(archive/after-apply/)?After-Apply-V0\.38\.5\.ps1|\.agents/skills/repository-security\.md)$'
+# Zusaetzlicher Marker: weitere Security-Tooling-Dateien unter scripts/ oder .agents/skills/
+# duerfen Detection-Patterns enthalten, wenn sie diesen Marker klar tragen.
+$patternSourceMarker = 'SECURITY-' + 'PATTERN-FILE'
+$patternSourceDirRegex = '(?i)^(scripts|\.agents/skills)/'
+
+function Test-IsPatternSource([string]$NormalizedPath, [string]$Content) {
+    if ([string]::IsNullOrWhiteSpace($NormalizedPath)) { return $false }
+    if ($NormalizedPath -match $patternSourceRegex) { return $true }
+    if (($NormalizedPath -match $patternSourceDirRegex) -and $Content -and ($Content -match $patternSourceMarker)) { return $true }
+    return $false
+}
 
 function Test-RepositoryKind {
     $remoteText = (git remote -v 2>$null | Out-String)
@@ -83,7 +96,8 @@ function Get-StagedAddedText([string[]]$Files) {
     foreach ($file in $Files) {
         $normalized = Normalize-GitPath $file
         if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
-        if ($normalized -match $patternSourceRegex) { continue }
+        $worktreeContent = Get-Content -Raw -LiteralPath $file -ErrorAction SilentlyContinue
+        if (Test-IsPatternSource $normalized $worktreeContent) { continue }
         $diffLines = git diff --cached --unified=0 -- $normalized
         $addedText = ($diffLines | Where-Object { $_ -like '+*' -and $_ -notlike '+++ *' }) -join "`n"
         if (-not [string]::IsNullOrEmpty($addedText)) { $chunks.Add($addedText) }
@@ -117,19 +131,23 @@ if ($Staged) {
 
 $statusItems = @(Get-StatusPaths)
 Info 'Geaenderte Dateien:'
-if ($statusItems.Count -eq 0) { Info '  <leer>'; exit 0 }
-$statusItems | ForEach-Object { Info ("  {0} {1}" -f $_.Status, $_.Path) }
-Test-PathList $statusItems -AllowDeletes
+if ($statusItems.Count -eq 0) {
+    Info '  <leer> (keine Worktree-Aenderungen); Tracked-Scan laeuft trotzdem.'
+}
+else {
+    $statusItems | ForEach-Object { Info ("  {0} {1}" -f $_.Status, $_.Path) }
+    Test-PathList $statusItems -AllowDeletes
+}
 
 $trackedFiles = git ls-files
 $hits = New-Object System.Collections.Generic.List[string]
 foreach ($file in $trackedFiles) {
     $normalized = Normalize-GitPath $file
     if ($normalized -match $blockedPathRegex) { Stop-GitSafety "Verbotener getrackter Pfad im Repository: $normalized" }
-    if ($normalized -match $patternSourceRegex) { continue }
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
     $content = Get-Content -Raw -LiteralPath $file -ErrorAction SilentlyContinue
     if ($null -eq $content) { continue }
+    if (Test-IsPatternSource $normalized $content) { continue }
     if ($content -match $internalPattern) { $hits.Add("internal:$normalized") }
     if ($content -match $contentPattern) { $hits.Add("credential-pattern:$normalized") }
 }

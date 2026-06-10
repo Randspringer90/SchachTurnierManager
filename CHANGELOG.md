@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.38.7 - Projektstruktur und KI-Agentenarchitektur
+
+- Gliedert `docs/` in `architecture/`, `planning/` und `handoffs/`; verschiebt 67 historische Handoff-Dokumente nach `docs/handoffs/` (per `git mv`, nichts gelöscht).
+- Verschiebt 70 historische After-Apply-Skripte nach `scripts/archive/after-apply/`; aktive Skripte bleiben bewusst flach unter `scripts/` (Zielstruktur `dev/test/release/git/security/maintenance` dokumentiert).
+- Zieht die Pfadmuster in `Test-GitCommitSafety.ps1`, `Test-RepositoryOpenSourceSafety.ps1` und `New-OpenSourceSnapshot.ps1` auf die neuen Archivpfade nach; `docs/handoffs/` und `scripts/archive/` sind vollständig vom Public Snapshot ausgeschlossen.
+- Ergänzt `docs/architecture/AI_AGENT_ARCHITECTURE.md` (providerneutrale Agentenregeln, austauschbare Ausführende, Skills als Wissensebene, Security-Gate, Clean-Snapshot-Pflicht) und `docs/planning/PROJECT_ORCHESTRATION.md` (Aufgaben→Skripte/Skills, Release-Gate, CommitGuard, Clean Snapshot, Handoff-Erzeugung).
+- Macht `AGENTS.md` explizit providerneutral und ergänzt eine Projektstruktur-Sektion; `.claude/CLAUDE.md` als reiner Adapter ohne eigene Regeln.
+- Ergänzt Übersichts-READMEs für `docs/`, `docs/handoffs/`, `scripts/` und `scripts/archive/after-apply/`; README um Projektstruktur erweitert.
+
 ## 0.38.6 - CommitGuard ohne blindes Stage und Clean Snapshot
 
 - Härtet `scripts/Commit-If-Green.ps1`: kein blindes `git add --all` mehr, sondern explizites Staging zuvor angezeigter und geprüfter Pfade.
@@ -8,6 +17,10 @@
 - Ergänzt Repository-Art-Prüfung, damit Arbeits-/TFS-Remotes nicht versehentlich mit dieser privaten Commit-Automation bearbeitet werden.
 - Ergänzt `scripts/New-OpenSourceSnapshot.ps1` als Grundlage für einen späteren Public Snapshot ohne Git-Historie.
 - Ergänzt Repository-Sicherheitsregeln in `AGENTS.md` und als Skill `.agents/skills/repository-security.md`.
+- Behebt einen False Positive: Eigene Security-/Detection-Skripte (Marker `SECURITY-PATTERN-FILE`, u. a. `scripts/New-OpenSourceSnapshot.ps1`) werden nicht mehr als Credential-Leak gemeldet; echte Secrets in normalen Projektdateien werden weiterhin erkannt.
+- `scripts/Test-GitCommitSafety.ps1` führt den Tracked-File-Scan jetzt auch bei sauberem Arbeitsbaum aus (kein Frühabbruch mehr).
+- `scripts/Test-RepositoryOpenSourceSafety.ps1` ist nun ein eigenständiger, strengerer Public-Snapshot-Auditor mit maschinen- und menschenlesbarem Report unter `output/repo-open-source-safety/`.
+- Dokumentiert, dass externe Toolfehler in PowerShell nicht über Semikolon-Ketten verdeckt werden dürfen (`a; git commit` committet trotz Fehler); für manuelle Abläufe einzelne Befehle, `&&` oder `Commit-If-Green.ps1` nutzen.
 
 ## 0.38.5 - Commit-Guard-Fix und Clean-Current-Baseline
 

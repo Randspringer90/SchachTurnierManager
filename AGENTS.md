@@ -1,7 +1,7 @@
 # AGENTS.md – SchachTurnierManager
 
 ## Rolle
-Codex arbeitet als vorsichtiger Entwicklungsagent für einen lokalen Schachturnier-Manager.
+Diese Datei ist die zentrale, providerneutrale Regeldatei für alle KI-Agenten (Codex, Claude Code, künftig Gemini oder lokale Modelle). Jeder Agent arbeitet als vorsichtiger Entwicklungsagent für einen lokalen Schachturnier-Manager. Provider-spezifische Dateien (z. B. `.claude/CLAUDE.md`, `.codex/config.toml`) sind reine Adapter und dürfen keine abweichenden Regeln enthalten; bei Widerspruch gilt diese Datei. Details: `docs/architecture/AI_AGENT_ARCHITECTURE.md`.
 
 ## Grundregeln
 - Qualität vor Geschwindigkeit.
@@ -10,6 +10,16 @@ Codex arbeitet als vorsichtiger Entwicklungsagent für einen lokalen Schachturni
 - Keine Secrets, Tokens, privaten Datenbanken oder Logs committen.
 - Lokale Commits sind erwünscht, wenn Build und Tests sauber sind.
 - `.git`, `logs`, `output`, `tmp`, Datenbanken und `.env` bleiben außerhalb von Austausch-ZIPs.
+
+## Projektstruktur – wo gehört was hin?
+- `AGENTS.md` (Root): verbindliche Agentenregeln, providerneutral.
+- `.agents/skills/`: wiederverwendbares Fachwissen für alle Agenten; neues wiederverwendbares Wissen gehört hierhin.
+- `.claude/`, `.codex/`: nur dünne Provider-Adapter/lokale Konfiguration, keine Regeln.
+- `docs/architecture/`: dauerhafte Architektur- und Fachkonzepte.
+- `docs/planning/`: Roadmaps, Tickets, Orchestrierung (`PROJECT_ORCHESTRATION.md`).
+- `docs/handoffs/`: historisches Handoff-Archiv, wird nicht mehr gepflegt.
+- `scripts/`: aktive Skripte flach (Übersicht in `scripts/README.md`); historische After-Apply-Skripte unter `scripts/archive/after-apply/`.
+- `output/`, `logs/`, `tmp/`: lokale Ausgaben, niemals committen; lange Ausgaben gehören nach `output/`.
 
 ## Architektur
 - Domain enthält alle fachlichen Regeln: Spieler, Turniere, Paarungen, Wertungen, Rating-Prognosen.
@@ -35,3 +45,5 @@ Codex arbeitet als vorsichtiger Entwicklungsagent für einen lokalen Schachturni
 - `.codex`, `.vs`, `output`, `bin`, `obj`, `dist`, `node_modules`, lokale Audits/Backups, Dumps, Logs, ZIPs, Datenbanken, `.env` und Zugangsdaten dürfen nicht in Commits.
 - Berufliche/TFS- oder interne Arbeits-Repositories sind besonders restriktiv zu behandeln; Commit-/Push-Automation darf dort nicht automatisch laufen.
 - Der wiederverwendbare Skill `.agents/skills/repository-security.md` ist vor Commit-, Push- und Public-Snapshot-Arbeiten zu beachten.
+- Externe Toolfehler in PowerShell nie mit Semikolon-Ketten (`a; b; c`) verdecken: Bei `cmd1; git commit` läuft das Commit auch dann, wenn `cmd1` (z. B. ein Safety-Check) fehlschlägt. Für manuelle Abläufe einzelne Befehle nacheinander oder `&&` (nur bei Erfolg weiter) verwenden, oder direkt `scripts/Commit-If-Green.ps1` nutzen, das nach jedem Schritt hart stoppt.
+- Security-/Detection-Skripte tragen den Marker `SECURITY-PATTERN-FILE` und dürfen Blocklist-/Credential-Regexe dokumentieren, ohne von den Safety-Checks als Leak gemeldet zu werden.

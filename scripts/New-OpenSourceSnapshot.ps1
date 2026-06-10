@@ -10,6 +10,8 @@ function Stop-Snapshot([string]$Message) { Write-Error "[OpenSourceSnapshot] $Me
 function Info([string]$Message) { Write-Host "[OpenSourceSnapshot] $Message" }
 function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"') -replace '\\', '/') }
 
+# SECURITY-PATTERN-FILE: Die folgenden Regexe sind Detection-/Blocklist-Patterns zum Aufspueren
+# von internen Referenzen und Zugangsdaten im Snapshot - es sind bewusst KEINE echten Secrets.
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
 $contentPattern = @(
     (('github') + '_pat_'),
@@ -24,7 +26,7 @@ $contentPattern = @(
     (('refresh' + '[_-]?' + 'token') + '\s*[:=]\s*[''\"][^''\"]{8,}'),
     ('(_auth' + 'Token|npm[_-]?token)' + '\s*=\s*[^\s]+')
 ) -join '|'
-$excludePathRegex = '(?i)(^|/)(\.git|\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)scripts/After-Apply-.*\.ps1$|(^|/)docs/HANDOFF_.*\.md$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$excludePathRegex = '(?i)(^|/)(\.git|\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)scripts/(archive/after-apply/)?After-Apply-.*\.ps1$|(^|/)scripts/archive(/|$)|(^|/)docs/(handoffs/)?HANDOFF_.*\.md$|(^|/)docs/handoffs(/|$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 
 $status = git status --porcelain=v1 --untracked-files=all
 if ($status) {

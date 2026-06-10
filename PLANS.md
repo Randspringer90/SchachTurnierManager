@@ -155,3 +155,14 @@ Security-Agent/Skill-Aufgabe:
 - [x] Safety-Checks gegen False Positives aus eigenen Patternquellen härten.
 - [x] Grundskript für Clean Snapshot ohne alte Git-Historie ergänzen.
 - [ ] Vor echtem Public Release Snapshot auf einem frischen Klon prüfen und Report manuell abnehmen.
+
+## v0.38.7 - Projektstruktur und KI-Agentenarchitektur
+
+Dateiablage-Regeln: dauerhafte Konzepte nach `docs/architecture/`, Planung/Prozesse nach `docs/planning/`, historische Übergaben nach `docs/handoffs/`, aktive Skripte flach unter `scripts/` (Übersicht: `scripts/README.md`), historische After-Apply-Skripte unter `scripts/archive/after-apply/`. Agentenregeln zentral in `AGENTS.md`, Skills unter `.agents/skills/`, Provider-Adapter unter `.claude/`/`.codex/`.
+
+- [x] `docs/` gegliedert in `architecture/`, `planning/`, `handoffs/` (Handoffs nur verschoben, nicht gelöscht).
+- [x] `scripts/archive/after-apply/` für historische After-Apply-Skripte; Snapshot-/Safety-Pfadmuster nachgezogen.
+- [x] `docs/architecture/AI_AGENT_ARCHITECTURE.md`: providerneutrale Agentenregeln, austauschbare Ausführende, Skills als Wissensebene, Security-Gate, Clean-Snapshot-Pflicht.
+- [x] `docs/planning/PROJECT_ORCHESTRATION.md`: Aufgaben→Skripte/Skills, Release-Gate, CommitGuard, Clean Snapshot, Handoff-Erzeugung.
+- [x] `.claude/CLAUDE.md` als reiner Adapter auf `AGENTS.md` und Skills.
+- [ ] Aktive Skripte in `scripts/dev|test|release|git|security|maintenance/` migrieren (Zielzustand dokumentiert; eigener Lauf mit gleichzeitiger Anpassung aller Pfadverweise und Release-Gate-Verifikation).

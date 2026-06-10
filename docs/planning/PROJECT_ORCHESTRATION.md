@@ -1,0 +1,65 @@
+# Projekt-Orchestrierung
+
+Stand: 0.38.7. Welche Aufgabe läuft über welches Skript, welchen Skill, welchen Agenten.
+
+## Aufgaben → Werkzeuge
+
+| Aufgabe | Werkzeug | Hinweise |
+|---|---|---|
+| Entwicklung starten | `scripts/Start-Dev.ps1`, `scripts/Run-Backend.ps1`, `scripts/Run-WebApp.ps1` | Backend `:5088`, Frontend `:5173` |
+| Tests | `scripts/Test-All.ps1`, `scripts/Run-ExternalLookupSmoke.ps1` | Lookup-Details: `docs/architecture/EXTERNAL_PLAYER_LOOKUP_TESTING.md` |
+| Build/Test/Release-Gate | `scripts/Invoke-ReleaseGate.ps1` | restore, build, test, npm install/build, Pack-Portable |
+| Paketierung | `scripts/Pack-Portable.ps1`, `scripts/Start-Portable.bat` | Ausgabe unter `output/portable` |
+| Commit | `scripts/Commit-If-Green.ps1` | CommitGuard, siehe unten |
+| Commit-Sicherheitsprüfung | `scripts/Test-GitCommitSafety.ps1` | wird vom CommitGuard automatisch aufgerufen |
+| Open-Source-Sicherheitsprüfung | `scripts/Test-RepositoryOpenSourceSafety.ps1` | Reports unter `output/repo-open-source-safety/` |
+| Open-Source-Clean-Snapshot | `scripts/New-OpenSourceSnapshot.ps1` | Snapshot + Report unter `output/open-source-snapshot/` |
+| Aufräumen | `scripts/Clean-Generated.ps1` | generierte Artefakte |
+
+Zugehörige Skills: `.agents/skills/repository-security.md` (vor Commit/Push/Snapshot verbindlich), fachliche Skills (`pairing-engine`, `tiebreaks`, `rating-performance`, `imports-exports`, `installer-packaging`, `ui-dashboard`, `external-player-lookup`) vor Arbeit am jeweiligen Thema.
+
+## Release-Gate
+
+`scripts/Invoke-ReleaseGate.ps1` ist das Pflicht-Gate vor jedem Commit: `dotnet restore` → `dotnet build` → `dotnet test` → `npm install` + `npm run build` (WebApp) → `Pack-Portable`. Schaltbare Abkürzungen (`-SkipPack`, `-NoNpmInstall`, `-NoDotnetTest`) sind nur für lokale Iteration gedacht, nicht für Commits.
+
+## CommitGuard
+
+`scripts/Commit-If-Green.ps1 -Message "..." [-Push]`:
+
+1. Release-Gate komplett ausführen.
+2. `Test-GitCommitSafety.ps1` vor dem Staging (Arbeitsbaum + getrackte Inhalte).
+3. Geänderte Dateien anzeigen und nur diese explizit stagen – kein `git add .`, kein `git add --all`.
+4. `Test-GitCommitSafety.ps1 -Staged` nach dem Staging (Pfade + neu hinzugefügte Zeilen).
+5. Staging anzeigen, dann Commit; Push nur mit explizitem `-Push` und nur nach Freigabe.
+
+Der Guard blockiert Artefakte (`output/`, `bin/`, `obj/`, `dist/`, `node_modules/`, Logs, Dumps, ZIPs, Datenbanken), lokale Audits/Backups, `.codex`, `.vs`, interne Registry-/TFS-Referenzen und typische Zugangsdaten-Muster. Bei Arbeits-/TFS-Remotes bricht er hart ab.
+
+## Clean Snapshot (Public Release)
+
+Das private Repo wird nie direkt öffentlich geschaltet. Ablauf für Open Source:
+
+1. Arbeitsbaum clean committen.
+2. Optional `scripts/Test-RepositoryOpenSourceSafety.ps1` (mit `-AllHistory` für Historien-Scan) und Report prüfen.
+3. `scripts/New-OpenSourceSnapshot.ps1` erzeugt Snapshot ohne `.git`-Historie unter `output/open-source-snapshot/`; ausgeschlossen sind u. a. `docs/handoffs/`, `scripts/archive/`, lokale Artefakte und Zugangsdaten-Muster.
+4. Snapshot-Report manuell abnehmen; offener Punkt laut `PLANS.md`: Prüfung auf frischem Klon vor echtem Release.
+
+## Handoff-Erzeugung
+
+Die frühere Praxis (pro Version `docs/HANDOFF_x_y_z.md` + `scripts/After-Apply-V*.ps1`) ist beendet; Bestände liegen archiviert unter `docs/handoffs/` und `scripts/archive/after-apply/`. Übergaben laufen heute über `PLANS.md` (offene Punkte), `CHANGELOG.md` (was wurde getan) und bei Bedarf ein kurzes Dokument unter `docs/handoffs/` – ohne begleitende Patch-Skripte.
+
+## Zielstruktur scripts/ (dokumentiert, noch nicht migriert)
+
+Geplante Gliederung, sobald eine Migration inklusive Anpassung aller Pfadverweise gefahrlos möglich ist:
+
+```text
+scripts/
+  dev/          Start-Dev, Run-Backend, Run-WebApp
+  test/         Test-All, Run-ExternalLookupSmoke
+  release/      Invoke-ReleaseGate, Pack-Portable, Start-Portable.bat
+  git/          Commit-If-Green, Commit-Checkpoint
+  security/     Test-GitCommitSafety, Test-RepositoryOpenSourceSafety, New-OpenSourceSnapshot
+  maintenance/  Clean-Generated
+  archive/      after-apply/ (bereits umgesetzt)
+```
+
+Bis dahin bleiben die aktiven Skripte bewusst flach unter `scripts/`, weil `Commit-If-Green.ps1`, `Invoke-ReleaseGate.ps1` und die Safety-Skripte sich gegenseitig über feste Pfade aufrufen und in README/Doku so referenziert sind. Eine Migration muss in einem eigenen Lauf alle Aufrufe, Doku-Verweise und Regex-Pfadmuster (`patternSourceRegex`, Snapshot-Excludes) gleichzeitig aktualisieren und über das Release-Gate abgesichert werden.
