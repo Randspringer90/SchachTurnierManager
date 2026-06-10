@@ -1,3 +1,12 @@
+## 0.36.1 - Audit-Journal Query Testfix
+
+- Fehlendes `using Xunit;` in den AuditJournalQueryServiceTests ergänzt.
+- v0.36.0-Query-Fundament bleibt fachlich unverändert; der Fix behebt nur den Test-Build.
+## 0.36.0 - Audit-Journal Query Foundation
+
+- AuditJournalQueryService ergänzt, um das persistente Audit-Journal nach Schweregrad, Aktion, Runde, Brett, Spieler und Freitext zu filtern.
+- AuditJournalStatistics ergänzt für Info-/Warn-/Kritisch-Zählungen sowie Runden-, Brett- und Spielerbezüge.
+- Regressionstests für Sortierung, Paging, Suche und Statistikzählungen ergänzt.
 ## 0.35.3 - Audit Journal Dashboard Fix 2
 
 - Repariert den teilweise angewendeten Audit-Journal-Dashboard-Stand nach 0.35.0 bis 0.35.2.
