@@ -67,7 +67,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.36.1",
+    version = "0.37.6",
     time = DateTimeOffset.UtcNow,
     database = databasePath,
     embeddedDashboard = embeddedDashboardAvailable
@@ -454,6 +454,89 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal", (Guid id, TournamentServi
     }
 });
 
+
+app.MapGet("/api/tournaments/{id:guid}/audit-journal/query", (Guid id, HttpRequest request, TournamentService service) =>
+{
+    try
+    {
+        var queryValues = request.Query;
+
+        AuditJournalSeverity? severity = null;
+        if (queryValues.TryGetValue("severity", out var severityValues) && !string.IsNullOrWhiteSpace(severityValues.ToString()))
+        {
+            var severityText = severityValues.ToString();
+            if (!Enum.TryParse<AuditJournalSeverity>(severityText, ignoreCase: true, out var parsedSeverity))
+            {
+                return Results.BadRequest(new { error = $"Unbekannter Audit-Schweregrad: {severityText}." });
+            }
+
+            severity = parsedSeverity;
+        }
+
+        AuditJournalAction? action = null;
+        if (queryValues.TryGetValue("action", out var actionValues) && !string.IsNullOrWhiteSpace(actionValues.ToString()))
+        {
+            var actionText = actionValues.ToString();
+            if (!Enum.TryParse<AuditJournalAction>(actionText, ignoreCase: true, out var parsedAction))
+            {
+                return Results.BadRequest(new { error = $"Unbekannte Audit-Aktion: {actionText}." });
+            }
+
+            action = parsedAction;
+        }
+
+        int? roundNumber = null;
+        if (queryValues.TryGetValue("roundNumber", out var roundNumberValues) && int.TryParse(roundNumberValues.ToString(), out var parsedRoundNumber))
+        {
+            roundNumber = parsedRoundNumber;
+        }
+
+        int? boardNumber = null;
+        if (queryValues.TryGetValue("boardNumber", out var boardNumberValues) && int.TryParse(boardNumberValues.ToString(), out var parsedBoardNumber))
+        {
+            boardNumber = parsedBoardNumber;
+        }
+
+        int? maxResults = null;
+        if (queryValues.TryGetValue("maxResults", out var maxResultsValues) && int.TryParse(maxResultsValues.ToString(), out var parsedMaxResults))
+        {
+            maxResults = parsedMaxResults;
+        }
+
+        Guid? playerId = null;
+        if (queryValues.TryGetValue("playerId", out var playerIdValues) && Guid.TryParse(playerIdValues.ToString(), out var parsedPlayerId))
+        {
+            playerId = parsedPlayerId;
+        }
+
+        var searchText = queryValues.TryGetValue("search", out var searchValues) ? searchValues.ToString() : null;
+        var sortText = queryValues.TryGetValue("sort", out var sortValues) ? sortValues.ToString() : null;
+        var sortDirection = string.Equals(sortText, "oldest", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(sortText, "asc", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(sortText, "oldestFirst", StringComparison.OrdinalIgnoreCase)
+                ? SchachTurnierManager.Domain.Services.AuditJournalSortDirection.OldestFirst
+                : SchachTurnierManager.Domain.Services.AuditJournalSortDirection.NewestFirst;
+
+        var query = new SchachTurnierManager.Domain.Services.AuditJournalQuery
+        {
+            Severity = severity,
+            Action = action,
+            RoundNumber = roundNumber,
+            BoardNumber = boardNumber,
+            PlayerId = playerId,
+            SearchText = searchText,
+            MaxResults = maxResults,
+            SortDirection = sortDirection
+        };
+
+        var result = new SchachTurnierManager.Domain.Services.AuditJournalQueryService().Query(service.GetAuditJournal(id), query);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
 app.MapGet("/api/tournaments/{id:guid}/round-diagnostics", (Guid id, TournamentService service) =>
 {
     try

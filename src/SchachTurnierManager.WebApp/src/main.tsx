@@ -1724,7 +1724,7 @@ function openRoundPrint(roundNumber: number) {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.36.1</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.37.6</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>

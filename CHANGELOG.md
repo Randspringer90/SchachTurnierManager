@@ -1,3 +1,15 @@
+
+## 0.37.3
+
+- Fix: fehlerhaft eingefügten Audit-Journal-Query-Endpunkt entfernt und syntaktisch robust neu eingefügt.
+- Queryparameter werden über HttpRequest gelesen, damit die Minimal-API-Signatur stabil bleibt.
+- Release-Gate bleibt verpflichtend: Restore, Build, Tests, Frontend-Build und Portable-Paket.
+
+## 0.37.2
+
+- Fix: Audit-Journal-Query-API-Fixscript repariert; keine PowerShell-Backtick-/Unicode-Escape-Falle mehr in eingebetteten Markdown-Texten.
+- Query-Endpunkt wird robust vor stabilen WebApi-Tokens eingefügt, notfalls vor app.Run().
+- Release-Gate bleibt verpflichtend: Restore, Build, Tests, Frontend-Build und Portable-Paket.
 ## 0.36.1 - Audit-Journal Query Testfix
 
 - Fehlendes `using Xunit;` in den AuditJournalQueryServiceTests ergänzt.
@@ -390,3 +402,19 @@
 
 
 
+
+## 0.37.4
+
+- Repariert den Audit-Journal-Query-API-Patch durch Wiederherstellung der Program.cs aus dem letzten gruenen Git-Stand.
+- Ergaenzt die Query-Route als kurze MapGet-Zeile und verlagert die Logik in einen statischen Handler, damit die einzeilige Program.cs nicht erneut syntaktisch zerstoert wird.
+- Behaelt das gruenes-Gate-vor-Commit-Prinzip bei.
+## 0.37.5
+
+- Repariert den Audit-Journal-Query-API-Patch durch Reset der Program.cs aus dem letzten gruenen Git-Stand.
+- Ergaenzt den Query-Endpunkt als Inline-Minimal-API-Handler mit HttpRequest-Query-Auswertung.
+- Fuegt kleine Parser-Helfer fuer optionale int- und Guid-Queryparameter hinzu.
+## 0.37.6
+
+- Repariert den Audit-Journal-Query-API-Patch erneut durch Reset der Program.cs aus dem letzten gruenen Git-Stand.
+- Entfernt die separate Helper-Funktionsstrategie der vorherigen Fixes.
+- Ergaenzt den Query-Endpunkt als eigenstaendigen Inline-Minimal-API-Handler ohne zusaetzliche lokale Helfer.
