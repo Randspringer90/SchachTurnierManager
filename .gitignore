@@ -54,3 +54,9 @@ secrets.*
 *.user
 *.suo
 *.cache
+
+# Local/private audit and backup files
+security-audit/.local-backups/
+.local-backups/
+*.backup_before_*
+*.before-v*.json
