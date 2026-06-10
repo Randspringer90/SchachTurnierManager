@@ -28,3 +28,10 @@ Codex arbeitet als vorsichtiger Entwicklungsagent für einen lokalen Schachturni
 - Vor fachlichen Algorithmusänderungen Tests ergänzen.
 - Pairing-Entscheidungen müssen auditierbar bleiben.
 - Manuelle Overrides später erlauben, aber immer protokollieren.
+
+## Repository-Sicherheit / Open Source
+- Dieses private GitHub-Repo bleibt privat; eine spätere öffentliche Veröffentlichung erfolgt nur über einen geprüften Clean Snapshot ohne alte Git-Historie.
+- Vor Commits immer staged Dateien anzeigen und prüfen; keine blinden `git add .`-, `git add --all`- oder Massen-Stage-Schritte ohne Sicherheitscheck.
+- `.codex`, `.vs`, `output`, `bin`, `obj`, `dist`, `node_modules`, lokale Audits/Backups, Dumps, Logs, ZIPs, Datenbanken, `.env` und Zugangsdaten dürfen nicht in Commits.
+- Berufliche/TFS- oder interne Arbeits-Repositories sind besonders restriktiv zu behandeln; Commit-/Push-Automation darf dort nicht automatisch laufen.
+- Der wiederverwendbare Skill `.agents/skills/repository-security.md` ist vor Commit-, Push- und Public-Snapshot-Arbeiten zu beachten.

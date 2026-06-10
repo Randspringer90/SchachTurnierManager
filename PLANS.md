@@ -146,3 +146,12 @@ Security-Agent/Skill-Aufgabe:
 - Zwischen lokalem Git, privatem GitHub und beruflichem TFS-Git unterscheiden.
 - Bei TFS-/Arbeitsrepos besonders restriktiv agieren.
 - Bei privaten GitHub-Open-Source-Repos Clean-Snapshot-Strategie bevorzugen.
+
+## v0.38.6 - CommitGuard und Clean-Snapshot-Folgearbeit
+
+- [x] Open-Source-Sicherheitsgate in `PLANS.md` auffindbar dokumentiert.
+- [x] Repository-Security-Regeln in `AGENTS.md` und als Skill ergänzt.
+- [x] CommitGuard auf explizites Staging geprüfter Pfade statt blindem `git add --all` umstellen.
+- [x] Safety-Checks gegen False Positives aus eigenen Patternquellen härten.
+- [x] Grundskript für Clean Snapshot ohne alte Git-Historie ergänzen.
+- [ ] Vor echtem Public Release Snapshot auf einem frischen Klon prüfen und Report manuell abnehmen.

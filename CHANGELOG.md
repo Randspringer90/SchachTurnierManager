@@ -1,3 +1,14 @@
+# Changelog
+
+## 0.38.6 - CommitGuard ohne blindes Stage und Clean Snapshot
+
+- Härtet `scripts/Commit-If-Green.ps1`: kein blindes `git add --all` mehr, sondern explizites Staging zuvor angezeigter und geprüfter Pfade.
+- Härtet `scripts/Test-GitCommitSafety.ps1` und `scripts/Test-RepositoryOpenSourceSafety.ps1` gegen False Positives aus eigenen Patternquellen.
+- Blockiert zusätzlich `.codex`, `.vs`, Logs, Reports und typische lokale Artefaktpfade.
+- Ergänzt Repository-Art-Prüfung, damit Arbeits-/TFS-Remotes nicht versehentlich mit dieser privaten Commit-Automation bearbeitet werden.
+- Ergänzt `scripts/New-OpenSourceSnapshot.ps1` als Grundlage für einen späteren Public Snapshot ohne Git-Historie.
+- Ergänzt Repository-Sicherheitsregeln in `AGENTS.md` und als Skill `.agents/skills/repository-security.md`.
+
 ## 0.38.5 - Commit-Guard-Fix und Clean-Current-Baseline
 
 - Entfernt fehlgeschlagene v0.38-Zwischenpatch-Dateien aus dem aktuellen Arbeitsstand.
