@@ -1,3 +1,17 @@
+## 0.38.5 - Commit-Guard-Fix und Clean-Current-Baseline
+
+- Entfernt fehlgeschlagene v0.38-Zwischenpatch-Dateien aus dem aktuellen Arbeitsstand.
+- Repariert den Git-Sicherheitscheck, damit er eigene Prüfpattern nicht mehr selbst als Treffer blockiert.
+- Prüft staged Diffs nur auf neu hinzugefügte Zeilen, damit Löschungen alter belasteter Dateien möglich bleiben.
+- Hält lokale Audit-/Backup-Verzeichnisse und Paket-Backups konsequent aus künftigen Commits heraus.
+- Bestätigt weiterhin: Das private Repo wird wegen der Historie nicht direkt öffentlich geschaltet; Open Source erfolgt später als Clean Snapshot.
+## 0.38.4 - Commit-Guard-Härtung und Lockfile-Fix
+
+- Repariert die v0.38.3-Anwendung bei package-lock.json-Dateien mit leerem Root-Package-Key.
+- Erzwingt public npm Registry im WebApp-Projekt und blockiert interne Registry-URLs im Lockfile.
+- Härtet Commit-If-Green und Git-Safety-Prüfungen gegen lokale Audits, Backups, Artefakte, interne URLs und typische Secret-Muster.
+- Aktualisiert README auf den aktuellen Stand und dokumentiert Clean-Snapshot-Empfehlung für Open Source.
+
 ## 0.38.0 - README und Safe Commit Guard
 
 - README/GitHub-Startseite auf den aktuellen Funktionsstand bis 0.37.6 aktualisiert.

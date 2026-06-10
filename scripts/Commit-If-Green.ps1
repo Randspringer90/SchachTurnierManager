@@ -1,53 +1,32 @@
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$Message,
-
-    [switch]$Push,
-
-    [switch]$SkipReleaseGate
+    [Parameter(Mandatory = $true)][string]$Message,
+    [switch]$Push
 )
-
-Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$repoRoot = (git rev-parse --show-toplevel).Trim()
+Set-Location $repoRoot
 
-$Root = Split-Path -Parent $PSScriptRoot
-Set-Location $Root
-
-function Invoke-Step([string]$Name, [scriptblock]$Action) {
+function Run-Step([string]$Name, [scriptblock]$Block) {
     Write-Host "[CommitGuard] $Name..."
-    & $Action
-    if ($LASTEXITCODE -ne 0) {
-        throw "$Name ist fehlgeschlagen mit Exitcode $LASTEXITCODE."
-    }
+    & $Block
+    if ($LASTEXITCODE -ne 0) { throw "$Name ist fehlgeschlagen mit Exitcode $LASTEXITCODE." }
 }
 
-if (-not $SkipReleaseGate) {
-    Invoke-Step 'Release-Gate' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Invoke-ReleaseGate.ps1') }
-}
+Run-Step 'Release-Gate' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Invoke-ReleaseGate.ps1' }
+Run-Step 'Git-Sicherheitspruefung vor Stage' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Test-GitCommitSafety.ps1' }
 
-Invoke-Step 'Git-Sicherheitspruefung vor Stage' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-GitCommitSafety.ps1') }
+Write-Host '[CommitGuard] git status vor add...'
+git status --short
 
-Invoke-Step 'git status vor add' { git status --short }
-
-Invoke-Step 'git add --all' { git add --all }
-
-Invoke-Step 'Git-Sicherheitspruefung nach Stage' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-GitCommitSafety.ps1') }
-
-$Cached = @(git diff --cached --name-status)
-if ($Cached.Count -eq 0) {
-    Write-Host '[CommitGuard] Nichts zu committen.'
-    exit 0
-}
+Run-Step 'git add --all' { git add --all }
+Run-Step 'Git-Sicherheitspruefung nach Stage' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Test-GitCommitSafety.ps1' -Staged }
 
 Write-Host '[CommitGuard] Dateien im Commit:'
-foreach ($Line in $Cached) {
-    Write-Host "  $Line"
-}
+git diff --cached --name-status
 
-Invoke-Step 'git commit' { git commit -m $Message }
+$pending = git diff --cached --name-only
+if (-not $pending) { Write-Host '[CommitGuard] Nichts zu committen.'; exit 0 }
 
-if ($Push) {
-    Invoke-Step 'git push' { git push }
-}
-
+Run-Step 'git commit' { git commit -m $Message }
+if ($Push) { Run-Step 'git push' { git push } }
 Write-Host '[CommitGuard] Fertig.'

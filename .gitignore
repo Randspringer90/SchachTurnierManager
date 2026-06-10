@@ -60,3 +60,10 @@ security-audit/.local-backups/
 .local-backups/
 *.backup_before_*
 *.before-v*.json
+.local-audits/
+src/SchachTurnierManager.WebApp/package-lock.json.backup*
+.tmp-*
+# Generated build artifacts
+
+# Local Codex configuration
+.codex/
