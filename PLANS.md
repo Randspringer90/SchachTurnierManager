@@ -123,3 +123,26 @@
 - FIDE-ID-Lookup-Grundlage aktiv.
 - DSB/ThSB-Provider vorbereitet.
 - Nächster Schritt: robuste DSB/DeWIS-Klärung, FIDE-Namenssuche und Import-Vorschau verbessern.
+
+## Open-Source-Sicherheitsfreigabe vor Veröffentlichung
+
+Status: OFFEN, vor Public Release zwingend erledigen.
+
+Dieses private Entwicklungsrepo darf nicht direkt öffentlich geschaltet werden, solange die bestehende Git-Historie nicht vollständig geprüft oder bereinigt wurde.
+
+Begründung:
+- In der privaten Historie gab es interne Registry-/Package-Feed-Referenzen.
+- Zwischenstände enthielten zeitweise lokale Audit-/Backup-Dateien.
+- Für ein öffentliches Open-Source-Projekt soll niemand über die Git-Historie interne, private oder unpraktische Informationen finden.
+
+Bevorzugter Zielweg:
+- Privates Entwicklungsrepo bleibt privat.
+- Öffentliches Repository wird später aus einem geprüften Clean Snapshot ohne alte Git-Historie erzeugt.
+- Snapshot darf keine .git-Historie, .codex, .vs, output, bin, obj, dist, node_modules, security-audit, .local-backups, Logs, Dumps, ZIPs, Datenbanken, lokale Configs oder interne Registry-/TFS-/ECKD-Begriffe enthalten.
+
+Security-Agent/Skill-Aufgabe:
+- Vor Commits/Pushes staged files prüfen.
+- Vor Public Release vollständige Repository-/History-/Snapshot-Prüfung durchführen.
+- Zwischen lokalem Git, privatem GitHub und beruflichem TFS-Git unterscheiden.
+- Bei TFS-/Arbeitsrepos besonders restriktiv agieren.
+- Bei privaten GitHub-Open-Source-Repos Clean-Snapshot-Strategie bevorzugen.
