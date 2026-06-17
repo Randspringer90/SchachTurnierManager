@@ -1,3 +1,14 @@
+## 0.38.6 - Tie-Break-Roadmap und Virtual-Opponent-Modell für ungespielte Runden
+
+- `docs/FEATURE_ROADMAP.md` (P1–P5) und `docs/IMPORT_EXPORT_ROADMAP.md` ergänzt.
+- Reines, getestetes Domain-Modell `UnplayedRoundTiebreak` mit `UnplayedRoundBuchholzMode`
+  für die FIDE-Behandlung eigener ungespielter Runden (C.07/2024 Art. 16.4, virtueller Gegner).
+- Unit-Tests für gespielte Partie, kampflosen Sieg, Bye, konfigurierbare Wertung und
+  vorbereitete Buchholz-Cut-Liste.
+- `docs/TIEBREAK_UNPLAYED_ROUNDS.md` dokumentiert Modell, Annahmen und Integrationspfad.
+- Bewusst noch nicht in `StandingsCalculator` verdrahtet (Default = bisheriges Verhalten,
+  keine Wertungs-Regression).
+
 ## 0.38.5 - Commit-Guard-Fix und Clean-Current-Baseline
 
 - Entfernt fehlgeschlagene v0.38-Zwischenpatch-Dateien aus dem aktuellen Arbeitsstand.

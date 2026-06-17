@@ -1,7 +1,21 @@
 # NEXT_PROMPTS.md
 
 Konsolidierte, vorbereitete Arbeitsaufträge für kommende Entwicklungsläufe.
-Stand: 2026-06-15 (Basis: 0.38.5, Build/Tests/Frontend grün, Open-Source-Safety grün).
+Stand: 2026-06-16 (Basis: 0.38.5, Build/Tests/Frontend grün, Open-Source-Safety grün).
+
+## Erledigt am 2026-06-16
+- Priorisierte `docs/FEATURE_ROADMAP.md` (P1–P5) angelegt.
+- P1-Erststück umgesetzt: reines FIDE-Virtual-Opponent-Modell für eigene ungespielte
+  Runden (`UnplayedRoundTiebreak`, `UnplayedRoundBuchholzMode`) mit Unit-Tests und
+  `docs/TIEBREAK_UNPLAYED_ROUNDS.md`. Noch nicht in `StandingsCalculator` verdrahtet
+  (Default-Modus = bisheriges Verhalten, keine Regression).
+- `docs/IMPORT_EXPORT_ROADMAP.md` mit Format-Stufen und Schnittstellen-Skizze angelegt.
+
+## Unmittelbar nächste Schritte (P1 fortsetzen)
+- `UnplayedRoundBuchholzMode` in `TournamentSettings` aufnehmen (Default = Ignore).
+- `UnplayedRoundTiebreak` opt-in in `StandingsCalculator` verdrahten; neue Bye-/Forfeit-
+  Regressionstests im FIDE-Modus, bestehende Default-Tests bleiben gültig.
+- Gegner-eigene ungespielte Runden nach FIDE Art. 16.2 (Kategorien) ergänzen.
 
 Jeder Block ist als eigenständiger, sicherer Folgelauf gedacht. Reihenfolge ist eine
 Empfehlung, keine harte Abhängigkeit. Vor fachlichen Algorithmusänderungen zuerst Tests
