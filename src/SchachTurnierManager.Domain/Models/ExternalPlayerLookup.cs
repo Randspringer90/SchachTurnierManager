@@ -4,7 +4,8 @@ public enum ExternalPlayerSource
 {
     Fide = 0,
     Dsb = 1,
-    Thsb = 2
+    Thsb = 2,
+    Local = 3
 }
 
 public enum ExternalPlayerLookupStatus

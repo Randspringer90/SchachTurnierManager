@@ -10,6 +10,8 @@ public static class ExternalPlayerLookupServiceCollectionExtensions
         services.AddSingleton<IExternalPlayerLookupProvider, FidePlayerLookupProvider>();
         services.AddSingleton<IExternalPlayerLookupProvider, DsbPlayerLookupProvider>();
         services.AddSingleton<IExternalPlayerLookupProvider, ThsbPlayerLookupProvider>();
+        // Lokale Quelle ist scoped, weil sie den ITournamentStore (scoped) nutzt.
+        services.AddScoped<IExternalPlayerLookupProvider, LocalRosterPlayerLookupProvider>();
         services.AddScoped<ExternalPlayerLookupService>();
         return services;
     }

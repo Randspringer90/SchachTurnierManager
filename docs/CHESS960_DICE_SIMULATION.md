@@ -33,10 +33,14 @@ Die Nummerierung folgt der üblichen Scharnagl-/Chess960-Nummerierung von `0` bi
 ## Bedienung im Dashboard
 
 1. Runde auslosen.
-2. Im Bereich **Runden und Ergebnisse** bei der gewünschten Runde auf **Startstellungen würfeln** klicken.
-3. Das Schachwürfel-Popup zeigt pro Brett Paarung, Startstellung, Positionsnummer und Seed.
-4. Bei Bedarf **Rundenblatt drucken** öffnen. Die Startstellungen stehen im Rundenblatt und in den Paarungs-CSV-Dateien.
-5. Wenn bereits Stellungen vorhanden sind, fragt das Dashboard vor dem Überschreiben nach.
+2. Im Bereich **Runden und Ergebnisse** bei der gewünschten Runde auf **🎲 Schachwürfel öffnen** klicken.
+3. Das Schachwürfel-Popup zeigt einen sichtbaren 3D-Holzwürfel mit Schachfiguren-Seiten (König, Dame, Turm, Läufer, Springer, Bauer).
+4. Auf **🎲 Würfeln** klicken: Der Würfel rollt/fliegt sichtbar über die Fläche und legt sich auf eine Ergebnisfigur. Anschließend wird pro regulärem Brett eine komplette, gültige Chess960-Startstellung erzeugt (Auslosung A) und am Brett gespeichert.
+5. Das Popup listet pro Brett Paarung, Startstellung (Weiß/Schwarz gespiegelt), Positionsnummer (SP) und Seed.
+6. Bei Bedarf **Rundenblatt drucken** öffnen. Die Startstellungen stehen im Rundenblatt und in den Paarungs-CSV-Dateien.
+7. Wenn bereits Stellungen vorhanden sind, fragt das Dashboard vor dem **Neu würfeln** nach. Gesperrte/geprüfte Runden lassen sich nicht würfeln.
+
+Die Animation ist rein visuell; die tatsächlich gespeicherte Stellung erzeugt weiterhin der validierte `Chess960PositionService` (Läufer verschiedenfarbig, König zwischen den Türmen, Schwarz spiegelt Weiß). Bei Reduced-Motion-Einstellung läuft die Animation verkürzt.
 
 ## Gleiche Stellung für alle Bretter vs. pro Brett
 

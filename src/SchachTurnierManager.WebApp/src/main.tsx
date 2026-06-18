@@ -475,7 +475,8 @@ const playerStatusOptions = [
 const externalSourceOptions = [
   { value: 0, label: 'FIDE' },
   { value: 1, label: 'DSB / DeWIS' },
-  { value: 2, label: 'ThSB' }
+  { value: 2, label: 'ThSB' },
+  { value: 3, label: 'Lokal/Import' }
 ];
 
 const emptyPlayerForm: PlayerForm = {
@@ -861,6 +862,32 @@ function downloadText(filename: string, content: string, type: string): void {
   URL.revokeObjectURL(url);
 }
 
+const diceFaceGlyphs = ['♔', '♕', '♖', '♗', '♘', '♙'];
+const diceFaceNames = ['König', 'Dame', 'Turm', 'Läufer', 'Springer', 'Bauer'];
+const diceRestTransforms = [
+  'rotateX(-18deg) rotateY(24deg)',
+  'rotateY(-90deg)',
+  'rotateY(180deg)',
+  'rotateY(90deg)',
+  'rotateX(-90deg)',
+  'rotateX(90deg)'
+];
+
+function ChessDie({ rolling, spin, face }: { rolling: boolean; spin: number; face: number }): React.ReactElement {
+  // Sichtbarer Holz-D6: tumbelt/fliegt beim Würfeln und legt sich danach auf die Ergebnisfigur.
+  // Rein visuell – die tatsächliche, gültige Chess960-Stellung erzeugt der Backend-Service.
+  const restStyle = rolling ? undefined : { transform: diceRestTransforms[face] ?? diceRestTransforms[0] };
+  return (
+    <div className="dice-stage">
+      <div className={`dice-cube${rolling ? ' rolling' : ''}`} key={spin} style={restStyle}>
+        {diceFaceGlyphs.map((glyph, index) => (
+          <div key={index} className={`dice-face dice-face-${index}`}>{glyph}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [health, setHealth] = React.useState<Health | null>(null);
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
@@ -875,6 +902,10 @@ function App() {
   const [nextRoundPreview, setNextRoundPreview] = React.useState<NextRoundPreview | null>(null);
   const [isNextRoundPreviewDialogOpen, setIsNextRoundPreviewDialogOpen] = React.useState(false);
   const [chess960DialogRound, setChess960DialogRound] = React.useState<TournamentRound | null>(null);
+  const [chess960Rolling, setChess960Rolling] = React.useState(false);
+  const [chess960HasRolled, setChess960HasRolled] = React.useState(false);
+  const [diceSpin, setDiceSpin] = React.useState(0);
+  const [diceFace, setDiceFace] = React.useState(0);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
@@ -1092,17 +1123,21 @@ function App() {
     setError(null);
     const existing = editingPlayerId ? selectedTournament.players.find(player => player.id === editingPlayerId) : undefined;
     const body = JSON.stringify(formToRequest(playerForm, existing?.startingRank));
-    if (editingPlayerId) {
-      await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${editingPlayerId}`, { method: 'PUT', body });
-      setStatus('Teilnehmer aktualisiert.');
-    } else {
-      await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players`, { method: 'POST', body });
-      setStatus('Teilnehmer gespeichert.');
-    }
+    try {
+      if (editingPlayerId) {
+        await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${editingPlayerId}`, { method: 'PUT', body });
+        setStatus('Teilnehmer aktualisiert.');
+      } else {
+        await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players`, { method: 'POST', body });
+        setStatus('Teilnehmer gespeichert.');
+      }
 
-    setPlayerForm(emptyPlayerForm);
-    setEditingPlayerId(null);
-    await refresh(selectedTournament.id);
+      setPlayerForm(emptyPlayerForm);
+      setEditingPlayerId(null);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+    }
   }
 
   async function deleteOrWithdrawPlayer(player: Player) {
@@ -1169,8 +1204,16 @@ function App() {
     }
   }
 
-  async function rollChess960StartPositions(round: TournamentRound) {
-    if (!selectedTournament) {
+  function openChess960Dice(round: TournamentRound) {
+    // Aktuellsten Rundenstand aus dem geladenen Turnier nehmen (zeigt vorhandene Stellungen).
+    const freshRound = selectedTournament?.rounds.find(item => item.roundNumber === round.roundNumber) ?? round;
+    setChess960DialogRound(freshRound);
+    setChess960Rolling(false);
+    setChess960HasRolled(false);
+  }
+
+  async function performChess960Roll(round: TournamentRound) {
+    if (!selectedTournament || chess960Rolling) {
       return;
     }
 
@@ -1183,16 +1226,26 @@ function App() {
     }
 
     setError(null);
+    setChess960Rolling(true);
+    setDiceSpin(previous => previous + 1);
+
+    // Sichtbare Wurfanimation; die gültige Stellung kommt anschließend vom validierten Backend-Service.
+    const animation = new Promise<void>(resolve => setTimeout(resolve, 1250));
     try {
-      const updated = await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/chess960/start-positions`, {
+      const rollRequest = requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/chess960/start-positions`, {
         method: 'POST',
         body: JSON.stringify({ overwriteExisting: hasExistingPositions })
       });
+      const [updated] = await Promise.all([rollRequest, animation]);
+      setDiceFace(Math.floor(Math.random() * diceFaceGlyphs.length));
       setChess960DialogRound(updated);
+      setChess960HasRolled(true);
       setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex));
+    } finally {
+      setChess960Rolling(false);
     }
   }
 
@@ -1307,6 +1360,28 @@ function App() {
     setStatus(`${profile.name} aus ${externalSourceLabel(profile.source)} in das Teilnehmerformular übernommen.`);
   }
 
+  // Findet einen bereits im aktuellen Turnier vorhandenen Teilnehmer mit gleicher FIDE-/DSB-ID.
+  // Grundlage für "Bereits Teilnehmer" und das Deaktivieren von "Als neuen Teilnehmer speichern".
+  function existingParticipantForProfile(profile: ExternalPlayerProfile): Player | undefined {
+    if (!selectedTournament) {
+      return undefined;
+    }
+    const normId = (value?: string | null): string => (value ? value.replace(/[^a-z0-9]/gi, '').toUpperCase() : '');
+    const fide = normId(profile.fideId);
+    const national = normId(profile.nationalId);
+    if (!fide && !national) {
+      return undefined;
+    }
+    return selectedTournament.players.find(player =>
+      (fide && normId(player.fideId) === fide) || (national && normId(player.nationalId) === national));
+  }
+
+  function editExistingFromProfile(player: Player): void {
+    setEditingPlayerId(player.id);
+    setPlayerForm(playerToForm(player));
+    setStatus(`Vorhandenen Teilnehmer ${player.name} zum Bearbeiten geladen.`);
+  }
+
   async function checkExternalDuplicates(profile: ExternalPlayerProfile): Promise<ExternalPlayerDuplicateCheck | null> {
     if (!selectedTournament) {
       setError('Bitte zuerst ein Turnier auswählen.');
@@ -1332,20 +1407,24 @@ function App() {
     }
 
     setError(null);
-    const result = await requestJson<ExternalPlayerApplyResult>(`/api/tournaments/${selectedTournament.id}/external-players/apply`, {
-      method: 'POST',
-      body: JSON.stringify({
-        profile,
-        targetPlayerId: targetPlayerId || null,
-        createIfNoTarget: !targetPlayerId,
-        overwriteExistingValues
-      })
-    });
-    setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: result.duplicateCheck }));
-    setEditingPlayerId(result.player.id);
-    setPlayerForm(playerToForm(result.player));
-    setStatus(`${result.message} Geänderte Felder: ${result.changedFields.length ? result.changedFields.join(', ') : 'keine'}.`);
-    await refresh(selectedTournament.id);
+    try {
+      const result = await requestJson<ExternalPlayerApplyResult>(`/api/tournaments/${selectedTournament.id}/external-players/apply`, {
+        method: 'POST',
+        body: JSON.stringify({
+          profile,
+          targetPlayerId: targetPlayerId || null,
+          createIfNoTarget: !targetPlayerId,
+          overwriteExistingValues
+        })
+      });
+      setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: result.duplicateCheck }));
+      setEditingPlayerId(result.player.id);
+      setPlayerForm(playerToForm(result.player));
+      setStatus(`${result.message} Geänderte Felder: ${result.changedFields.length ? result.changedFields.join(', ') : 'keine'}.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+    }
   }
 
   function useSampleCsvTemplate(): void {
@@ -2000,34 +2079,51 @@ function openRoundPrint(roundNumber: number) {
           <article className="card chess960-modal">
             <div className="preview-card-header">
               <div>
-                <p className="eyebrow">Schachwürfel · gespeichert</p>
+                <p className="eyebrow">Schachwürfel · Chess960</p>
                 <h3>Schachwürfel Runde {chess960DialogRound.roundNumber}</h3>
-                <p className="muted">Startstellungen sind am jeweiligen Brett gespeichert und bleiben nach Reload/Backup erhalten.</p>
+                <p className="muted">Pro regulärem Brett wird eine gültige Chess960-Startstellung ausgewürfelt (Läufer verschiedenfarbig, König zwischen den Türmen). Sie wird am Brett gespeichert und bleibt nach Reload/Backup erhalten.</p>
               </div>
               <div className="preview-score">
                 <strong>{chess960PositionCount(chess960DialogRound)}</strong>
-                <span>Stellungen</span>
+                <span>von {chess960GameBoardCount(chess960DialogRound)} Brettern</span>
               </div>
             </div>
-            <div className="table-scroll compact chess960-modal-table">
-              <table>
-                <thead><tr><th>Brett</th><th>Paarung</th><th>Startstellung Weiß</th><th>Startstellung Schwarz</th><th>ID / Seed</th></tr></thead>
-                <tbody>
-                  {chess960DialogRound.pairings.map(pairing => (
-                    <tr key={`chess960-modal-${chess960DialogRound.roundNumber}-${pairing.boardNumber}`}>
-                      <td>{pairing.boardNumber}</td>
-                      <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
-                      <td><strong>{pairing.chess960StartPosition?.whiteBackRank ?? '—'}</strong></td>
-                      <td>{pairing.chess960StartPosition?.blackBackRank ?? '—'}</td>
-                      <td>{pairing.chess960StartPosition ? `SP ${pairing.chess960StartPosition.positionNumber}${chess960SeedDisplay(pairing) ? ` · ${chess960SeedDisplay(pairing)}` : ''}` : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            <ChessDie rolling={chess960Rolling} spin={diceSpin} face={diceFace} />
+            <p className="dice-result-line">
+              {chess960Rolling
+                ? 'Der Würfel rollt …'
+                : chess960HasRolled
+                  ? `Gewürfelt: ${diceFaceNames[diceFace]} ${diceFaceGlyphs[diceFace]} · ${chess960PositionCount(chess960DialogRound)} gültige Startstellung(en) gespeichert.`
+                  : 'Bereit zum Würfeln. Eine komplette Chess960-Auslosung pro Brett wird erzeugt.'}
+            </p>
+            <div className="dice-modal-actions">
+              <button type="button" onClick={() => void performChess960Roll(chess960DialogRound)} disabled={chess960Rolling || chess960DialogRound.isLocked || chess960DialogRound.isVerified || chess960GameBoardCount(chess960DialogRound) === 0}>
+                {chess960Rolling ? 'Würfelt …' : chess960PositionCount(chess960DialogRound) > 0 ? '🎲 Neu würfeln' : '🎲 Würfeln'}
+              </button>
             </div>
+
+            {chess960PositionCount(chess960DialogRound) > 0 && (
+              <div className="table-scroll compact chess960-modal-table">
+                <table>
+                  <thead><tr><th>Brett</th><th>Paarung</th><th>Startstellung Weiß</th><th>Startstellung Schwarz</th><th>ID / Seed</th></tr></thead>
+                  <tbody>
+                    {chess960DialogRound.pairings.map(pairing => (
+                      <tr key={`chess960-modal-${chess960DialogRound.roundNumber}-${pairing.boardNumber}`}>
+                        <td>{pairing.boardNumber}</td>
+                        <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                        <td><strong>{pairing.chess960StartPosition?.whiteBackRank ?? '—'}</strong></td>
+                        <td>{pairing.chess960StartPosition?.blackBackRank ?? '—'}</td>
+                        <td>{pairing.chess960StartPosition ? `SP ${pairing.chess960StartPosition.positionNumber}${chess960SeedDisplay(pairing) ? ` · ${chess960SeedDisplay(pairing)}` : ''}` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div className="actions preview-actions">
-              <button type="button" className="secondary" onClick={() => openRoundPrint(chess960DialogRound.roundNumber)}>Rundenblatt drucken</button>
-              <button type="button" onClick={() => setChess960DialogRound(null)}>Schließen</button>
+              <button type="button" className="secondary" onClick={() => openRoundPrint(chess960DialogRound.roundNumber)} disabled={chess960PositionCount(chess960DialogRound) === 0}>Rundenblatt drucken</button>
+              <button type="button" onClick={() => setChess960DialogRound(null)} disabled={chess960Rolling}>Schließen</button>
             </div>
           </article>
         </div>
@@ -2213,11 +2309,13 @@ function openRoundPrint(roundNumber: number) {
                     </ul>
                   )}
                   {externalLookup.players.length === 0 && <p className="muted">Keine übernehmbaren Treffer. {externalLookup.mode === 'name' ? 'Tipp: FIDE-ID eingeben für direkten Abruf.' : ''}</p>}
-                  {externalLookup.players.map(profile => (
-                    <div key={`${profile.source}-${profile.externalId}`} className="lookup-result">
+                  {externalLookup.players.map(profile => {
+                    const existingParticipant = existingParticipantForProfile(profile);
+                    return (
+                    <div key={`${profile.source}-${profile.externalId}`} className={`lookup-result${existingParticipant ? ' lookup-result-existing' : ''}`}>
                       <div>
-                        <strong>{profile.name}</strong>
-                        <small>{profile.fideId ? `FIDE ${profile.fideId}` : profile.externalId} · {profile.federation ?? profile.country ?? 'ohne Verband'} · Elo {profile.elo ?? '—'} · {profile.birthYear ?? 'Jahr ?'}</small>
+                        <strong>{profile.name}{existingParticipant && <span className="participant-badge">bereits im Turnier</span>}</strong>
+                        <small>{profile.fideId ? `FIDE ${profile.fideId}` : profile.externalId} · {profile.federation ?? profile.country ?? 'ohne Verband'} · Elo {profile.elo ?? '—'} · DWZ {profile.dwz ?? '—'} · {profile.birthYear ?? 'Jahr ?'}</small>
                         {profile.profileUrl && <small><a href={profile.profileUrl} target="_blank" rel="noreferrer">Profil öffnen</a></small>}
                         {externalDuplicateChecks[externalProfileKey(profile)] && (
                           <div className="duplicate-box">
@@ -2239,10 +2337,15 @@ function openRoundPrint(roundNumber: number) {
                       <div className="lookup-actions">
                         <button type="button" className="small" onClick={() => applyExternalPlayer(profile)}>Ins Formular</button>
                         <button type="button" className="small secondary" onClick={() => void checkExternalDuplicates(profile)} disabled={!selectedTournament}>Dubletten prüfen</button>
-                        <button type="button" className="small" onClick={() => void applyExternalProfile(profile)} disabled={!selectedTournament}>Als neuen Teilnehmer speichern</button>
+                        {existingParticipant ? (
+                          <button type="button" className="small secondary" onClick={() => editExistingFromProfile(existingParticipant)}>Vorhandenen öffnen/bearbeiten</button>
+                        ) : (
+                          <button type="button" className="small" onClick={() => void applyExternalProfile(profile)} disabled={!selectedTournament}>Als neuen Teilnehmer speichern</button>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </article>
@@ -2501,7 +2604,7 @@ function openRoundPrint(roundNumber: number) {
                       <strong>Schachwürfel / Chess960</strong>
                       <span>{chess960PositionCount(round)} von {chess960GameBoardCount(round)} regulären Brettern haben eine Startstellung.</span>
                     </div>
-                    <button type="button" className="secondary" onClick={() => void rollChess960StartPositions(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>Startstellungen würfeln</button>
+                    <button type="button" className="secondary" onClick={() => openChess960Dice(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>🎲 Schachwürfel öffnen</button>
                   </div>
                   {chess960PositionCount(round) > 0 && (
                     <div className="table-scroll compact chess960-table">

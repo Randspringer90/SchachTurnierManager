@@ -115,6 +115,7 @@ public sealed class TournamentService(ITournamentStore store)
             }
 
             var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: true);
+            EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
             EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
             tournament.Players[index] = normalized;
             result = result with { Player = normalized };
@@ -142,6 +143,7 @@ public sealed class TournamentService(ITournamentStore store)
     {
         var tournament = RequireTournament(tournamentId);
         var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
+        EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
         EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
         tournament.Players.Add(normalized);
         AddAuditEntry(tournament, AuditJournalAction.PlayerAdded, AuditJournalSeverity.Info, $"Spieler hinzugefügt: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
@@ -176,7 +178,16 @@ public sealed class TournamentService(ITournamentStore store)
         foreach (var player in importedPlayers)
         {
             var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
-            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+
+            // Dedupe statt Abbruch: gleiche FIDE-/DSB-ID nicht doppelt importieren.
+            // Gleiche Namen ohne ID werden ebenfalls übersprungen (gewarnt, nicht blind gelöscht).
+            if (HasExternalIdClash(tournament, normalized.FideId, normalized.NationalId, normalized.Id)
+                || tournament.Players.Any(existing => existing.Id != normalized.Id
+                    && string.Equals(existing.Name, normalized.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
             tournament.Players.Add(normalized);
             added.Add(normalized);
         }
@@ -205,6 +216,7 @@ public sealed class TournamentService(ITournamentStore store)
             Id = existing.Id,
             StartingRank = player.StartingRank <= 0 ? existing.StartingRank : player.StartingRank
         }, preserveExistingRank: true);
+        EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
         EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
         tournament.Players[index] = normalized;
         AddAuditEntry(tournament, AuditJournalAction.PlayerUpdated, AuditJournalSeverity.Info, $"Spieler aktualisiert: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
@@ -850,6 +862,51 @@ public sealed class TournamentService(ITournamentStore store)
         {
             throw new InvalidOperationException($"Ein Spieler mit dem Namen '{name}' existiert bereits in diesem Turnier.");
         }
+    }
+
+    private static void EnsureUniqueExternalIds(TournamentState tournament, string? fideId, string? nationalId, Guid ownId)
+    {
+        var normalizedFide = NormalizeExternalId(fideId);
+        if (normalizedFide is not null)
+        {
+            var clash = tournament.Players.FirstOrDefault(p => p.Id != ownId && NormalizeExternalId(p.FideId) == normalizedFide);
+            if (clash is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Ein Teilnehmer mit FIDE-ID {fideId} ist bereits im Turnier vorhanden: {clash.Name}. Bitte den vorhandenen Teilnehmer bearbeiten statt eine Dublette anzulegen.");
+            }
+        }
+
+        var normalizedNational = NormalizeExternalId(nationalId);
+        if (normalizedNational is not null)
+        {
+            var clash = tournament.Players.FirstOrDefault(p => p.Id != ownId && NormalizeExternalId(p.NationalId) == normalizedNational);
+            if (clash is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Ein Teilnehmer mit DSB-ID {nationalId} ist bereits im Turnier vorhanden: {clash.Name}. Bitte den vorhandenen Teilnehmer bearbeiten statt eine Dublette anzulegen.");
+            }
+        }
+    }
+
+    private static bool HasExternalIdClash(TournamentState tournament, string? fideId, string? nationalId, Guid ownId)
+    {
+        var normalizedFide = NormalizeExternalId(fideId);
+        var normalizedNational = NormalizeExternalId(nationalId);
+        return tournament.Players.Any(p => p.Id != ownId
+            && ((normalizedFide is not null && NormalizeExternalId(p.FideId) == normalizedFide)
+                || (normalizedNational is not null && NormalizeExternalId(p.NationalId) == normalizedNational)));
+    }
+
+    private static string? NormalizeExternalId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = new string(value.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+        return normalized.Length == 0 ? null : normalized;
     }
 
     private static void EnsureUniquePlayerNames(TournamentState tournament)
