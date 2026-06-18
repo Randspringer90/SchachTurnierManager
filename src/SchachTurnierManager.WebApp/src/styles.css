@@ -203,6 +203,53 @@ textarea {
   overflow: auto;
 }
 
+/* Teilnehmerliste: volle Breite, horizontal scrollbar, lesbare Spalten */
+.participant-card {
+  width: 100%;
+}
+
+.participant-card h3 small {
+  font-weight: 400;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.participant-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-height: 60vh;
+}
+
+.participant-table {
+  min-width: 880px;
+}
+
+.participant-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #0f172a;
+}
+
+.participant-table th,
+.participant-table td {
+  white-space: nowrap;
+}
+
+.participant-table .col-name {
+  min-width: 180px;
+  white-space: normal;
+}
+
+.participant-table .col-club {
+  min-width: 160px;
+  white-space: normal;
+}
+
+.participant-table .col-actions {
+  white-space: nowrap;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -463,6 +510,49 @@ th {
   grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1.4fr) auto;
   gap: 0.5rem;
   align-items: center;
+}
+
+.external-lookup-form.single {
+  grid-template-columns: minmax(180px, 1fr) auto;
+}
+
+.source-status-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-status-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.source-status-list .source-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.source-status-list .source-active .source-badge {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.source-status-list .source-prepared {
+  color: #94a3b8;
+}
+
+.source-status-list .source-prepared .source-badge {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
 }
 
 .provider-info {

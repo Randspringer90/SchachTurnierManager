@@ -309,6 +309,23 @@ type ExternalPlayerLookupResult = {
   players: ExternalPlayerProfile[];
 };
 
+type ExternalPlayerAggregateSourceResult = {
+  source: number;
+  sourceName: string;
+  status: number;
+  isActive: boolean;
+  message: string;
+  count: number;
+};
+
+type ExternalPlayerAggregateResult = {
+  query: string;
+  mode: string;
+  message: string;
+  players: ExternalPlayerProfile[];
+  sources: ExternalPlayerAggregateSourceResult[];
+};
+
 type ExternalPlayerDuplicateMatch = {
   playerId: string;
   playerName: string;
@@ -862,10 +879,9 @@ function App() {
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
-  const [externalProviders, setExternalProviders] = React.useState<ExternalPlayerProviderInfo[]>([]);
-  const [externalSource, setExternalSource] = React.useState(0);
   const [externalQuery, setExternalQuery] = React.useState('');
-  const [externalLookup, setExternalLookup] = React.useState<ExternalPlayerLookupResult | null>(null);
+  const [externalLookup, setExternalLookup] = React.useState<ExternalPlayerAggregateResult | null>(null);
+  const [externalSearching, setExternalSearching] = React.useState(false);
   const [externalDuplicateChecks, setExternalDuplicateChecks] = React.useState<Record<string, ExternalPlayerDuplicateCheck>>({});
   const [editingPlayerId, setEditingPlayerId] = React.useState<string | null>(null);
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
@@ -934,9 +950,6 @@ function App() {
   React.useEffect(() => {
     requestJson<Health>('/api/health')
       .then(setHealth)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-    requestJson<ExternalPlayerProviderInfo[]>('/api/external-players/providers')
-      .then(setExternalProviders)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
     loadTournaments().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
   }, [loadTournaments]);
@@ -1013,19 +1026,24 @@ function App() {
       return;
     }
 
-    const confirmed = window.confirm(`Turnier "${selectedTournament.name}" wirklich auf Start zurücksetzen? Alle Runden und Ergebnisse werden entfernt, Teilnehmer und Einstellungen bleiben erhalten.`);
+    const target = selectedTournament;
+    const confirmed = window.confirm(`Turnier "${target.name}" wirklich auf Start zurücksetzen? Alle Runden und Ergebnisse werden entfernt, Teilnehmer und Einstellungen bleiben erhalten.`);
     if (!confirmed) {
       return;
     }
 
     setError(null);
-    const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/reset`, { method: 'POST' });
-    setNextRoundPreview(null);
-    setIsNextRoundPreviewDialogOpen(false);
-    setChess960DialogRound(null);
-    setPairingQualityReports({});
-    setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
-    await refresh(updated.id);
+    try {
+      const updated = await requestJson<Tournament>(`/api/tournaments/${target.id}/reset`, { method: 'POST' });
+      setNextRoundPreview(null);
+      setIsNextRoundPreviewDialogOpen(false);
+      setChess960DialogRound(null);
+      setPairingQualityReports({});
+      setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
+      await refresh(updated.id);
+    } catch (ex) {
+      setError(`Zurücksetzen fehlgeschlagen: ${ex instanceof Error ? ex.message : String(ex)}`);
+    }
   }
 
   async function deleteSelectedTournament() {
@@ -1033,23 +1051,28 @@ function App() {
       return;
     }
 
-    const confirmed = window.confirm(`Turnier "${selectedTournament.name}" wirklich löschen? Diese Aktion entfernt das Turnier aus der lokalen Datenbank.`);
+    const target = selectedTournament;
+    const confirmed = window.confirm(`Turnier "${target.name}" wirklich löschen? Diese Aktion entfernt das Turnier aus der lokalen Datenbank.`);
     if (!confirmed) {
       return;
     }
 
     setError(null);
-    await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${selectedTournament.id}`, { method: 'DELETE' });
-    setStatus(`Turnier gelöscht: ${selectedTournament.name}.`);
-    setSelectedId('');
-    setNextRoundPreview(null);
-    setIsNextRoundPreviewDialogOpen(false);
-    setChess960DialogRound(null);
-    setPairingQualityReports({});
-    const data = await loadTournaments();
-    const nextId = data[0]?.id ?? '';
-    setSelectedId(nextId);
-    await loadDerived(nextId);
+    try {
+      await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${target.id}`, { method: 'DELETE' });
+      setStatus(`Turnier gelöscht: ${target.name}.`);
+      setSelectedId('');
+      setNextRoundPreview(null);
+      setIsNextRoundPreviewDialogOpen(false);
+      setChess960DialogRound(null);
+      setPairingQualityReports({});
+      const data = await loadTournaments();
+      const nextId = data.find(item => item.id !== target.id)?.id ?? data[0]?.id ?? '';
+      setSelectedId(nextId);
+      await loadDerived(nextId);
+    } catch (ex) {
+      setError(`Löschen fehlgeschlagen: ${ex instanceof Error ? ex.message : String(ex)}`);
+    }
   }
 
   function toggleTiebreak(value: number, enabled: boolean): void {
@@ -1261,14 +1284,21 @@ function App() {
     setError(null);
     const query = externalQuery.trim();
     if (!query) {
-      setError('Bitte FIDE-ID oder Suchbegriff eingeben.');
+      setError('Bitte einen Namen oder eine FIDE-ID eingeben.');
       return;
     }
 
-    const result = await requestJson<ExternalPlayerLookupResult>(`/api/external-players/search?source=${externalSource}&query=${encodeURIComponent(query)}`);
-    setExternalLookup(result);
-    setExternalDuplicateChecks({});
-    setStatus(result.message);
+    setExternalSearching(true);
+    try {
+      const result = await requestJson<ExternalPlayerAggregateResult>(`/api/external-players/search-all?query=${encodeURIComponent(query)}`);
+      setExternalLookup(result);
+      setExternalDuplicateChecks({});
+      setStatus(result.message);
+    } catch (ex) {
+      setError(`Spielersuche fehlgeschlagen: ${ex instanceof Error ? ex.message : String(ex)}`);
+    } finally {
+      setExternalSearching(false);
+    }
   }
 
   function applyExternalPlayer(profile: ExternalPlayerProfile): void {
@@ -2162,25 +2192,27 @@ function openRoundPrint(roundNumber: number) {
 
           <div className="grid two">
             <article className="card external-lookup-card">
-              <h3>Spielerdaten suchen</h3>
-              <p className="muted">FIDE-ID-Suche ist aktiv. DSB/DeWIS und ThSB sind als Adapter vorbereitet und werden nach Klärung der offiziellen Schnittstelle aktiviert.</p>
-              <form onSubmit={(event) => void searchExternalPlayers(event)} className="external-lookup-form">
-                <select value={externalSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setExternalSource(Number(event.target.value))}>
-                  {externalSourceOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-                <input value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder="FIDE-ID oder Name" />
-                <button type="submit">Suchen</button>
+              <h3>Spieler suchen</h3>
+              <p className="muted">Eine Suche – alle verfügbaren Quellen werden automatisch geprüft und Treffer zusammengeführt. FIDE-ID-Abruf ist aktiv; DSB/DeWIS und ThSB sind vorbereitet und werden klar als „aktuell nicht aktiv" markiert.</p>
+              <form onSubmit={(event) => void searchExternalPlayers(event)} className="external-lookup-form single">
+                <input value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder="Name oder FIDE-ID (z. B. 4610563)" />
+                <button type="submit" disabled={externalSearching}>{externalSearching ? 'Suche läuft …' : 'Spieler suchen'}</button>
               </form>
-              {externalProviders.length > 0 && (
-                <details className="provider-info">
-                  <summary>Quellenstatus</summary>
-                  <ul>{externalProviders.map(provider => <li key={provider.source}><strong>{provider.name}:</strong> {provider.description}</li>)}</ul>
-                </details>
-              )}
               {externalLookup && (
                 <div className="lookup-results">
-                  <strong>{externalSourceLabel(externalLookup.source)} · {externalLookup.message}</strong>
-                  {externalLookup.players.length === 0 && <p className="muted">{externalLookup.message}</p>}
+                  <strong>{externalLookup.message}</strong>
+                  {externalLookup.sources.length > 0 && (
+                    <ul className="source-status-list">
+                      {externalLookup.sources.map(source => (
+                        <li key={source.source} className={source.isActive ? 'source-active' : 'source-prepared'}>
+                          <span className="source-badge">{source.isActive ? 'durchsucht' : 'vorbereitet'}</span>
+                          <strong>{source.sourceName}</strong>
+                          {source.isActive ? ` · ${source.count} Treffer` : ' · aktuell nicht aktiv'}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {externalLookup.players.length === 0 && <p className="muted">Keine übernehmbaren Treffer. {externalLookup.mode === 'name' ? 'Tipp: FIDE-ID eingeben für direkten Abruf.' : ''}</p>}
                   {externalLookup.players.map(profile => (
                     <div key={`${profile.source}-${profile.externalId}`} className="lookup-result">
                       <div>
@@ -2243,38 +2275,41 @@ function openRoundPrint(roundNumber: number) {
                 {editingPlayerId && <button type="button" className="secondary" onClick={() => { setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); }}>Abbrechen</button>}
               </form>
             </article>
-
-            <article className="card">
-              <h3>Teilnehmerliste</h3>
-              <div className="table-scroll">
-                <table>
-                  <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>FIDE</th><th>TWZ</th><th>Jg.</th><th>Alter ca.</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
-                  <tbody>
-                    {selectedTournament?.players.map(player => (
-                      <tr key={player.id} className={player.status === 2 ? 'muted-row' : ''}>
-                        <td>{player.startingRank}</td>
-                        <td>{player.name}</td>
-                        <td>{player.club ?? '—'}</td>
-                        <td>{player.fideId ?? '—'}</td>
-                        <td>{twzOf(player)}</td>
-                        <td>{player.birthYear ?? '—'}</td>
-                        <td>{approximateAgeLabel(player.birthYear)}</td>
-                        <td>{genderLabel(player.gender)}</td>
-                        <td>{statusLabel(player.status)}</td>
-                        <td className="actions">
-                          <button type="button" className="small" onClick={() => editPlayer(player)}>Bearbeiten</button>
-                          {player.status === 0
-                            ? <button type="button" className="small" onClick={() => void setPlayerStatus(player, 2)}>Zurückziehen</button>
-                            : <button type="button" className="small" onClick={() => void setPlayerStatus(player, 0)}>Aktivieren</button>}
-                          <button type="button" className="small danger" onClick={() => void deleteOrWithdrawPlayer(player)}>Löschen</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
           </div>
+
+          <article className="card participant-card">
+            <h3>Teilnehmerliste <small className="muted">{selectedTournament?.players.length ?? 0} Teilnehmer · horizontal scrollbar</small></h3>
+            <div className="table-scroll participant-scroll">
+              <table className="participant-table">
+                <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>FIDE</th><th>TWZ/DWZ</th><th>Jg.</th><th>Alter ca.</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
+                <tbody>
+                  {(selectedTournament?.players.length ?? 0) === 0 && (
+                    <tr><td colSpan={10} className="muted">Noch keine Teilnehmer erfasst.</td></tr>
+                  )}
+                  {selectedTournament?.players.map(player => (
+                    <tr key={player.id} className={player.status === 2 ? 'muted-row' : ''}>
+                      <td>{player.startingRank}</td>
+                      <td className="col-name">{player.name}</td>
+                      <td className="col-club">{player.club ?? '—'}</td>
+                      <td>{player.fideId ?? '—'}</td>
+                      <td>{twzOf(player)}</td>
+                      <td>{player.birthYear ?? '—'}</td>
+                      <td>{approximateAgeLabel(player.birthYear)}</td>
+                      <td>{genderLabel(player.gender)}</td>
+                      <td>{statusLabel(player.status)}</td>
+                      <td className="actions col-actions">
+                        <button type="button" className="small" onClick={() => editPlayer(player)}>Bearbeiten</button>
+                        {player.status === 0
+                          ? <button type="button" className="small" onClick={() => void setPlayerStatus(player, 2)}>Zurückziehen</button>
+                          : <button type="button" className="small" onClick={() => void setPlayerStatus(player, 0)}>Aktivieren</button>}
+                        <button type="button" className="small danger" onClick={() => void deleteOrWithdrawPlayer(player)}>Löschen</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
 
           <div className="grid two">
             <article className="card">

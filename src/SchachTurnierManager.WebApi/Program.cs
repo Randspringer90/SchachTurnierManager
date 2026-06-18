@@ -106,6 +106,12 @@ app.MapGet("/api/external-players/search", async (string? source, string? query,
     return Results.Ok(result);
 });
 
+app.MapGet("/api/external-players/search-all", async (string? query, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
+{
+    var result = await service.SearchAllAsync(query ?? string.Empty, cancellationToken);
+    return Results.Ok(result);
+});
+
 app.MapGet("/api/external-players/fide/{fideId}", async (string fideId, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
 {
     var result = await service.LookupByIdAsync(ExternalPlayerSource.Fide, fideId, cancellationToken);

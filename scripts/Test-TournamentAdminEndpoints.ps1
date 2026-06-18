@@ -52,6 +52,18 @@ if ($resetProbe.StatusCode -eq 405 -or $resetProbe.StatusCode -eq $null) {
     throw "RESET-Route ist nicht aktiv oder nicht erreichbar. Backend-Patch ist nicht geladen."
 }
 
+Write-Host "Pruefe Spielersuche (search-all) mit Namensquery. Erwartet: 200 und Quellenstatus je Quelle."
+$searchAll = Invoke-JsonStatus -Method GET -Url "$base/api/external-players/search-all?query=Mustermann"
+$searchAll | Format-List Method,StatusCode,Note
+if ($searchAll.StatusCode -ne 200) {
+    throw "search-all-Route funktioniert nicht: HTTP $($searchAll.StatusCode)."
+}
+$searchResult = $searchAll.Content | ConvertFrom-Json
+if (@($searchResult.sources).Count -lt 1) {
+    throw "search-all liefert keinen Quellenstatus. Erwartet: mindestens 1 Quelle."
+}
+Write-Host "search-all OK: $($searchResult.message)"
+
 if ($TournamentId -ne [Guid]::Empty) {
     if (-not $AllowDestructive) {
         Write-Host "TournamentId angegeben, aber ohne -AllowDestructive wird Reset/Delete nicht ausgefuehrt."
