@@ -60,6 +60,18 @@ Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"
 npm run dev
 ```
 
+Backend stoppen:
+```powershell
+Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Dashboard stoppen:
+```powershell
+Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
 Backup:
 ```powershell
 $tournamentId = Read-Host "Turnier-Id"

@@ -47,9 +47,19 @@ dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebA
 
 Fenster offen lassen. Strg+C beendet das Backend. Daten bleiben in SQLite erhalten.
 
+Backend gezielt stoppen, falls das Fenster nicht reagiert:
+```powershell
+Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Backend danach mit dem Startbefehl oben neu starten und Healthcheck erneut öffnen.
+
 Falls `dotnet run` wegen lokaler SDK-/Restore-Probleme nicht startet, keine Zeit verlieren:
 auf Papier weiterführen oder das zuletzt geprüfte lokale Paket/Release-Exe nur dann nutzen,
 wenn es vor Ort mit Healthcheck erfolgreich startet. Keine Experimente während laufender Runde.
+Das alte `output\portable`-Paket aus 0.8.0 ist kein Freitag-Fallback, solange es nicht
+frisch aus dem aktuellen Stand gebaut und mit Healthcheck geprüft wurde.
 
 ## 2. Frontend (Dashboard) starten
 
@@ -59,6 +69,14 @@ npm run dev
 ```
 
 - Dashboard: **http://localhost:5173**
+
+Dashboard gezielt stoppen, falls das Fenster nicht reagiert:
+```powershell
+Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Dashboard danach mit dem Startbefehl oben neu starten.
 
 Wenn `node_modules` fehlt, einmalig:
 ```powershell
