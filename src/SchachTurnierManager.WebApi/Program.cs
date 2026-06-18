@@ -9,6 +9,8 @@ using SchachTurnierManager.Infrastructure.External;
 using SchachTurnierManager.WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"]
     ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");

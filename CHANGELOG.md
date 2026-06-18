@@ -1,3 +1,13 @@
+## 0.38.7 - Bergfest-Operatorunterlagen und Dry-run-CLI-Fix
+
+- Freitag-Unterlagen ergänzt/geschärft: Operator Card, 09:30-Startcheck, Backup,
+  Papier-/CSV-Fallback und Vorgehen bei Rematch-Warnungen.
+- `scripts/New-DemoTournament.ps1` akzeptiert zusätzlich den freitags verwendeten
+  Parameteralias `-Players`.
+- WebApi-Start nutzt explizit Console-Logging, damit lokale Startfehler nicht vom
+  Windows-EventLog-Provider verdeckt werden.
+- Kleiner Testvertrag dokumentiert den `-Players`-Alias im Demo-Skript.
+
 ## 0.38.6 - Tie-Break-Roadmap und Virtual-Opponent-Modell für ungespielte Runden
 
 - `docs/FEATURE_ROADMAP.md` (P1–P5) und `docs/IMPORT_EXPORT_ROADMAP.md` ergänzt.

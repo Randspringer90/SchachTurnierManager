@@ -1,77 +1,89 @@
-# FRIDAY_BERGFEST_CHECKLIST.md
+# Friday Bergfest Checklist
 
-Kompakte Abhakliste für den Turniertag. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
+Kompakte Abhakliste für Freitag. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
+Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 
-## Vor dem Turnier (zu Hause / am Vorabend)
-- [ ] Generalprobe gelaufen: `pwsh -File .\scripts\New-DemoTournament.ps1 -PlayerCount 10 -PlayOut`
-- [ ] Tabelle + Rundenblatt einmal probegedruckt (CSV + HTML)
-- [ ] Backup-Ordner existiert: `D:\Schach\Backups\`
-- [ ] Backup-Export einmal getestet
-- [ ] Laptop geladen / Netzteil dabei, Drucker erreichbar
+## 09:30 Startcheck
 
-## Aufbau vor Ort (10–15 Min vor Start)
-- [ ] Backend gestartet → http://localhost:5088/api/health zeigt `status`
-- [ ] Dashboard offen → http://localhost:5173
-- [ ] Turnier angelegt: Name `Bergfest Freestyle-Würfelschach <Datum>`, Swiss, 5 Runden
-- [ ] Alle Teilnehmer erfasst, Anzahl notiert: ______
-- [ ] Turnier-Id notiert (aus URL/Dashboard): ______________________
+- [ ] Laptop am Netzteil, Browser/PowerShell offen.
+- [ ] Projekt geöffnet: `D:\Schach\SchachTurnierManager`.
+- [ ] Backup-Ordner vorhanden: `D:\Schach\Backups`.
+- [ ] Backend gestartet, Healthcheck zeigt `status`.
+- [ ] Dashboard geöffnet: http://localhost:5173.
+- [ ] Papier-Fallback bereit: leeres Paarungsblatt und Ergebnisliste.
+- [ ] Druckweg geprüft: HTML-Rundenblatt kann geöffnet/gedruckt werden.
 
-## Pro Runde (5×)
-- [ ] „Vorschau nächste Runde“ angesehen
-- [ ] Qualität geprüft — bei **kritisch/Rematch**: Brett per manueller Paarung korrigiert
-- [ ] Runde ausgelost
-- [ ] Rundenblatt gedruckt/ausgehängt
-- [ ] Alle Ergebnisse eingegeben (Korrektur = Ergebnis erneut setzen)
-- [ ] Backup gezogen → `bergfest_runde_<N>.json`
+## Turnier anlegen
+
+- [ ] Turniername: `Bergfest Freestyle-Würfelschach 2026`.
+- [ ] Format: Swiss / Schweizer System.
+- [ ] Geplante Runden: 5.
+- [ ] Teilnehmer erfasst oder CSV importiert.
+- [ ] Teilnehmerzahl notiert: ______.
+- [ ] Turnier-Id notiert: ______________________________.
+
+## Pro Runde
+
+- [ ] Vorschau nächste Runde geöffnet.
+- [ ] Pairings geprüft: jeder Spieler höchstens einmal.
+- [ ] Ungerade Teilnehmerzahl: genau ein Bye, Bye-Spieler notiert.
+- [ ] Rematch-/kritisch-Warnung geprüft.
+- [ ] Bei Rematch-Warnung: manuelle Paarung korrigiert und Notiz gesetzt.
+- [ ] Runde erzeugt.
+- [ ] Rundenblatt HTML gedruckt/ausgehängt.
+- [ ] Ergebnisse eingetragen.
+- [ ] Korrekturen geprüft: falsches Ergebnis am selben Brett erneut gesetzt.
+- [ ] Tabelle geprüft.
+- [ ] Backup gezogen: `bergfest_<runde>.json`.
 
 ## Turnierende
-- [ ] Letzte Ergebnisse eingegeben
-- [ ] Finale Tabelle als CSV + HTML exportiert/gedruckt
-- [ ] Abschluss-Backup → `bergfest_final.json`
 
----
+- [ ] Alle Ergebnisse der 5. Runde eingetragen.
+- [ ] Finale Tabelle als CSV exportiert.
+- [ ] Finale HTML-Druckansicht geöffnet/gedruckt.
+- [ ] Abschluss-Backup gezogen: `bergfest_final.json`.
+- [ ] Papiernotizen gegen App-Tabelle geprüft.
 
-## Wichtige Befehle (Copy & Paste)
+## Wichtige Befehle
 
-Backend starten:
+Backend:
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:DOTNET_ENVIRONMENT = "Development"
 dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj
 ```
 
-Dashboard starten:
+Dashboard:
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"
 npm run dev
 ```
 
-Backup ziehen (Platzhalter `{id}` und `<N>` ersetzen):
+Backup:
 ```powershell
-Invoke-RestMethod "http://localhost:5088/api/tournaments/{id}/export/json" |
+$tournamentId = Read-Host "Turnier-Id"
+$round = Read-Host "Runde oder final"
+Invoke-RestMethod "http://localhost:5088/api/tournaments/$tournamentId/export/json" |
   ConvertTo-Json -Depth 12 |
-  Set-Content -Encoding utf8 "D:\Schach\Backups\bergfest_runde_<N>.json"
+  Set-Content -Encoding utf8 "D:\Schach\Backups\bergfest_$round.json"
 ```
 
-## Wichtige Links (`{id}` ersetzen)
+## Links
+
 - Health: http://localhost:5088/api/health
 - Dashboard: http://localhost:5173
-- Tabelle CSV: http://localhost:5088/api/tournaments/{id}/standings/export.csv
-- Paarungen CSV: http://localhost:5088/api/tournaments/{id}/pairings/export.csv
-- Druckansicht: http://localhost:5088/api/tournaments/{id}/print/html
-- Rundenblatt R3: http://localhost:5088/api/tournaments/{id}/rounds/3/print/html
+- Tabelle CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/standings/export.csv`
+- Paarungen CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/pairings/export.csv`
+- Turnierdruck: `http://localhost:5088/api/tournaments/<Turnier-Id>/print/html`
+- Rundenblatt: `http://localhost:5088/api/tournaments/<Turnier-Id>/rounds/<Runde>/print/html`
 
----
+## Fallback
 
-## Fallback (wenn etwas klemmt)
-1. **Backend hängt** → im Backend-Fenster Strg+C, dann Backend neu starten.
-   Daten sind in SQLite gesichert (Autosave nach jeder Aktion).
-2. **Dashboard lädt nicht** → Export-/Druck-Links oben direkt im Browser nutzen;
-   Ergebnisse notfalls per API erfassen (siehe Runbook).
-3. **Rechner/App fällt ganz aus** → mit dem letzten **gedruckten Rundenblatt** und der
-   letzten gedruckten **Tabelle** auf **Papier** weiterspielen. Ergebnisse später
-   nacherfassen; letztes `bergfest_runde_<N>.json` ist der Wiederherstellungspunkt.
-4. **Datenbank kaputt/Turnier weg** → letztes JSON-Backup via
-   `POST /api/tournaments/import` (`overwriteExisting=true`) zurückspielen.
+1. Backend hängt: Strg+C, Backend neu starten. Autosave liegt in SQLite.
+2. Dashboard lädt nicht: Export-/Print-Links direkt im Browser öffnen.
+3. App fällt aus: mit letztem gedrucktem Rundenblatt und Tabelle auf Papier weiterspielen.
+4. Nach dem Turnier aus Papierbogen nacherfassen.
+5. Daten weg: letztes JSON-Backup importieren (`overwriteExisting=true`).
 
-> Grundregel: Lieber eine Runde mehr auf Papier dokumentieren als Ergebnisse verlieren.
-> Das gedruckte Rundenblatt ist immer die Quelle der Wahrheit am Brett.
+Grundregel: Das gedruckte Rundenblatt und der Papier-Ergebnisbogen sind im Notfall die Quelle der Wahrheit.

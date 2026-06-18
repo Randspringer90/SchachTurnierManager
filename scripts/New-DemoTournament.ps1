@@ -37,6 +37,7 @@
 [CmdletBinding()]
 param(
     [string]$BaseUrl = "http://localhost:5088",
+    [Alias("Players")]
     [ValidateRange(2, 200)][int]$PlayerCount = 10,
     [ValidateRange(1, 15)][int]$Rounds = 5,
     [string]$Name = "Bergfest Freestyle-Würfelschach (Demo)",
