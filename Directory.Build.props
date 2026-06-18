@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
+    <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
+    <DisableMsCoverageReferencedPathMaps>true</DisableMsCoverageReferencedPathMaps>
+    <UseAppHost>false</UseAppHost>
     <DefaultItemExcludes>$(DefaultItemExcludes);output/**;tmp/**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>

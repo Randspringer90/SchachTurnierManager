@@ -1,0 +1,17 @@
+<Project>
+  <ItemDefinitionGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <ProjectReference>
+      <SetTargetFramework>TargetFramework=net10.0</SetTargetFramework>
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <!--
+    coverlet.collector writes source-root mapping files through MSBuild's
+    WriteLinesToFile task. The local Codex workspace allows direct writes but
+    blocks the temp-file rename used by that task, so normal builds fail before
+    tests can run. The collector remains available; only this build-time mapping
+    target is disabled for test projects.
+  -->
+  <Target Name="ReferencedPathMaps" Condition="'$(IsTestProject)' == 'true'" />
+</Project>

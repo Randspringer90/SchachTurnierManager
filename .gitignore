@@ -55,6 +55,14 @@ secrets.*
 *.suo
 *.cache
 
+# Local tournament preset input. Real participant files stay private.
+*.local.json
+local-input/**
+!local-input/
+!local-input/README.md
+!local-input/examples/
+!local-input/examples/*.example.json
+
 # Local/private audit and backup files
 security-audit/.local-backups/
 .local-backups/
