@@ -1605,3 +1605,107 @@ th {
   border-color: rgba(94, 234, 212, 0.5);
   background: rgba(15, 118, 110, 0.12);
 }
+
+/* Operator-Bedienleiste / Event-Modus */
+.operator-bar {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.78);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  display: grid;
+  gap: 1rem;
+}
+
+.operator-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.operator-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.85);
+  border-left: 4px solid #475569;
+}
+
+.operator-chip.ok { border-left-color: #22c55e; }
+.operator-chip.danger { border-left-color: #ef4444; }
+
+.operator-chip-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.operator-chip strong {
+  font-size: 1.05rem;
+  color: #e5e7eb;
+  overflow-wrap: anywhere;
+}
+
+.operator-chip small {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.operator-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.operator-next.tone-ok { border-color: rgba(34, 197, 94, 0.55); }
+.operator-next.tone-warn { border-color: rgba(245, 158, 11, 0.6); }
+.operator-next.tone-danger { border-color: rgba(239, 68, 68, 0.6); }
+
+.operator-next-eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.operator-next strong {
+  display: block;
+  font-size: 1.15rem;
+  margin: 0.1rem 0 0.25rem;
+  color: #f8fafc;
+}
+
+.operator-next p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  max-width: 60ch;
+}
+
+.operator-next button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.operator-dbpath {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .operator-next {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

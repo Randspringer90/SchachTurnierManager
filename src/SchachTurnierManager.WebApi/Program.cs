@@ -21,6 +21,7 @@ builder.Logging.AddConsole();
 var configuredConnectionString = builder.Configuration.GetConnectionString("SchachTurnierManager");
 string connectionString;
 string databaseHealthLabel;
+string databaseFullPath;
 if (string.IsNullOrWhiteSpace(configuredConnectionString))
 {
     var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"]
@@ -29,11 +30,13 @@ if (string.IsNullOrWhiteSpace(configuredConnectionString))
     var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
     connectionString = $"Data Source={databasePath}";
     databaseHealthLabel = Path.GetFileName(databasePath);
+    databaseFullPath = databasePath;
 }
 else
 {
     connectionString = configuredConnectionString;
     databaseHealthLabel = "custom connection";
+    databaseFullPath = "custom connection";
 }
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
@@ -86,9 +89,10 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.38.5",
+    version = "0.39.0",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
+    databasePath = databaseFullPath,
     embeddedDashboard = embeddedDashboardAvailable
 }));
 

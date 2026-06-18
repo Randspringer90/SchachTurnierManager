@@ -81,7 +81,7 @@ public sealed class TournamentExportFormatter
         var builder = new StringBuilder();
         AppendHtmlStart(builder, tournament.Name, "Turnierbericht");
         builder.AppendLine($"<h1>{Html(tournament.Name)}</h1>");
-        builder.AppendLine("<p class=\"muted\">Druckansicht mit Teilnehmerliste, Tabelle, Runden, Paarungen und Prüfhinweisen.</p>");
+        builder.AppendLine($"<p class=\"muted\">Druckansicht mit Teilnehmerliste, Tabelle, Runden, Paarungen und Prüfhinweisen. · Gedruckt am {Html(PrintedAtLabel())}</p>");
         AppendTournamentMeta(builder, tournament);
         AppendPlayers(builder, tournament);
         AppendStandings(builder, standings);
@@ -96,7 +96,7 @@ public sealed class TournamentExportFormatter
         var builder = new StringBuilder();
         AppendHtmlStart(builder, tournament.Name, $"Runde {round.RoundNumber}");
         builder.AppendLine($"<h1>{Html(tournament.Name)} · Runde {round.RoundNumber}</h1>");
-        builder.AppendLine($"<p class=\"muted\">Rundenblatt für Aushang, Ergebniserfassung oder Kontrolle.</p>");
+        builder.AppendLine($"<p class=\"muted\">Rundenblatt für Aushang, Ergebniserfassung oder Kontrolle. · Gedruckt am {Html(PrintedAtLabel())}</p>");
         builder.AppendLine("<table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Chess960</th><th>Ergebnis</th><th>Hinweise</th></tr></thead><tbody>");
         foreach (var pairing in round.Pairings.OrderBy(p => p.BoardNumber))
         {
@@ -105,7 +105,7 @@ public sealed class TournamentExportFormatter
             builder.Append($"<td>{Html(PlayerDisplay(players, pairing.WhitePlayerId))}</td>");
             builder.Append($"<td>{Html(pairing.IsBye ? "spielfrei" : PlayerDisplay(players, pairing.BlackPlayerId))}</td>");
             builder.Append($"<td>{Html(Chess960Display(pairing))}</td>");
-            builder.Append($"<td>{Html(ResultLabel(pairing.Result.Kind))}</td>");
+            builder.Append($"<td class=\"result-cell\">{PrintResultCell(pairing)}</td>");
             builder.Append($"<td>{Html(pairing.Notes ?? string.Empty)}</td>");
             builder.AppendLine("</tr>");
         }
@@ -239,10 +239,10 @@ public sealed class TournamentExportFormatter
 
     private static void AppendPlayers(StringBuilder builder, TournamentState tournament)
     {
-        builder.AppendLine("<section><h2>Teilnehmerliste</h2><table><thead><tr><th>Startnr.</th><th>Name</th><th>Verein</th><th>TWZ</th><th>Status</th></tr></thead><tbody>");
+        builder.AppendLine("<section><h2>Teilnehmerliste</h2><table><thead><tr><th>Startnr.</th><th>Name</th><th>Verein</th><th>FIDE-ID</th><th>TWZ</th><th>Jg.</th><th>Alter</th><th>Status</th></tr></thead><tbody>");
         foreach (var player in tournament.Players.OrderBy(p => p.StartingRank).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
         {
-            builder.AppendLine($"<tr><td>{player.StartingRank}</td><td>{Html(player.Name)}</td><td>{Html(player.Club ?? string.Empty)}</td><td>{player.Twz(tournament.Settings.TwzSource)}</td><td>{Html(player.Status.ToString())}</td></tr>");
+            builder.AppendLine($"<tr><td>{player.StartingRank}</td><td>{Html(player.Name)}</td><td>{Html(player.Club ?? string.Empty)}</td><td>{Html(player.FideId ?? string.Empty)}</td><td>{player.Twz(tournament.Settings.TwzSource)}</td><td>{Html(BirthYearLabel(player))}</td><td>{Html(ApproxAgeLabel(player))}</td><td>{Html(player.Status.ToString())}</td></tr>");
         }
         builder.AppendLine("</tbody></table></section>");
     }
@@ -299,7 +299,7 @@ public sealed class TournamentExportFormatter
     {
         builder.AppendLine("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
         builder.AppendLine($"<title>{Html(tournamentName)} · {Html(title)}</title>");
-        builder.AppendLine("<style>body{font-family:Segoe UI,Arial,sans-serif;margin:32px;color:#111827}h1,h2,h3{color:#111827}.muted{color:#64748b}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#e2e8f0}.diagnostics{background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;margin:8px 0 24px}dl{display:grid;grid-template-columns:160px 1fr;gap:4px 12px}@media print{body{margin:12mm}.diagnostics{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid}}</style>");
+        builder.AppendLine("<style>body{font-family:Segoe UI,Arial,sans-serif;margin:32px;color:#111827}h1,h2,h3{color:#111827}.muted{color:#64748b}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#e2e8f0}.diagnostics{background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;margin:8px 0 24px}.result-cell{min-width:72px}dl{display:grid;grid-template-columns:160px 1fr;gap:4px 12px}@media print{body{margin:12mm}.diagnostics{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid}}</style>");
         builder.AppendLine("</head><body>");
     }
 
@@ -357,6 +357,22 @@ public sealed class TournamentExportFormatter
     }
 
     private static string FormatDecimal(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string PrintedAtLabel() => DateTime.Now.ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("de-DE"));
+
+    private static string BirthYearLabel(Player player) => player.BirthYear?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private static string ApproxAgeLabel(Player player)
+        => player.BirthYear is int year && year > 1900 && year <= DateTime.Now.Year
+            ? $"ca. {DateTime.Now.Year - year}"
+            : string.Empty;
+
+    // Offene Bretter bekommen ein leeres, beschreibbares Feld, damit das gedruckte
+    // Rundenblatt direkt am Brett von Hand ausgefüllt werden kann.
+    private static string PrintResultCell(Pairing pairing)
+        => pairing.Result.Kind == GameResultKind.NotPlayed && !pairing.IsBye
+            ? "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            : Html(ResultLabel(pairing.Result.Kind));
 
     private static string Chess960PositionLabel(Pairing pairing) => pairing.Chess960StartPosition?.WhiteBackRank ?? string.Empty;
 

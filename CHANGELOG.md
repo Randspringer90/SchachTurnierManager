@@ -1,3 +1,17 @@
+## 0.39.0 - Operator-Bedienleiste und Druck-/Backup-Polish
+
+- Neue Operator-Bedienleiste oben im Dashboard: Backend-Status, gewähltes Turnier,
+  aktuelle Runde, offene Ergebnisse und ein klarer „Nächster Schritt" mit Direkt-Aktion
+  (Runde 1 auslosen / Ergebnisse eintragen / Vorschau erzeugen / Abschluss prüfen).
+- Health-Endpunkt liefert zusätzlich den vollständigen Datenbankpfad; die Bedienleiste
+  zeigt Pfad, Autosave-Hinweis und Backup-Erinnerung vor Runde 1.
+- Rundenblatt-Druck und Turnierbericht zeigen jetzt das Druckdatum; offene Bretter
+  erhalten auf dem Rundenblatt ein leeres, beschreibbares Ergebnisfeld.
+- Teilnehmerliste in der Druckansicht enthält jetzt FIDE-ID, Jahrgang und ca.-Alter.
+- Neues lokales Backup-Skript `scripts/Backup-BergfestTournament.ps1` (nur lokaler
+  JSON-Export nach `D:\Schach\Backups`, keine Cloud, keine echten Beispieldaten).
+- Versionen auf `0.39.0` angehoben.
+
 ## 0.38.7 - Bergfest-Operatorunterlagen und Dry-run-CLI-Fix
 
 - Freitag-Unterlagen ergänzt/geschärft: Operator Card, 09:30-Startcheck, Backup,

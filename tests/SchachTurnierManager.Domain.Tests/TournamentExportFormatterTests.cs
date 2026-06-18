@@ -75,6 +75,60 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("Algorithmus", document.Content);
     }
 
+    [Fact]
+    public void ExportPrintableTournamentHtml_ParticipantListContainsFideIdBirthYearAndApproxAge()
+    {
+        var tournament = new TournamentState
+        {
+            Name = "Druck Turnier",
+            Settings = new TournamentSettings { Format = TournamentFormat.Swiss },
+            Players =
+            {
+                new Player
+                {
+                    Name = "Synth Spieler",
+                    StartingRank = 1,
+                    FideId = "99999999",
+                    BirthYear = 1990,
+                    Rating = new RatingProfile { ManualTwz = 1800 }
+                }
+            }
+        };
+        var standings = new StandingsCalculator().Calculate(tournament);
+        var diagnostics = new RoundDiagnosticsCalculator().Calculate(tournament);
+        var document = new TournamentExportFormatter().ExportPrintableTournamentHtml(tournament, standings, diagnostics);
+
+        Assert.Contains("<th>FIDE-ID</th>", document.Content);
+        Assert.Contains("<th>Jg.</th>", document.Content);
+        Assert.Contains("<th>Alter</th>", document.Content);
+        Assert.Contains("99999999", document.Content);
+        Assert.Contains("1990", document.Content);
+        Assert.Contains($"ca. {System.DateTime.Now.Year - 1990}", document.Content);
+        Assert.Contains("Gedruckt am", document.Content);
+    }
+
+    [Fact]
+    public void ExportPrintableRoundHtml_ShowsPrintDateAndWritableResultForOpenBoard()
+    {
+        var tournament = CreateTournament();
+        var openRound = new TournamentRound
+        {
+            RoundNumber = 2,
+            Pairings = new[]
+            {
+                Pairing.Game(1, tournament.Players[0].Id, tournament.Players[1].Id)
+            }
+        };
+        tournament.Rounds.Add(openRound);
+        var diagnostics = new RoundDiagnosticsCalculator().Calculate(tournament)
+            .First(d => d.RoundNumber == 2);
+        var document = new TournamentExportFormatter().ExportPrintableRoundHtml(tournament, openRound, diagnostics);
+
+        Assert.Contains("Gedruckt am", document.Content);
+        Assert.Contains("class=\"result-cell\"", document.Content);
+        Assert.DoesNotContain(">offen<", document.Content);
+    }
+
     private static NextRoundPreview CreatePreview(TournamentState tournament)
     {
         var alpha = tournament.Players[0];

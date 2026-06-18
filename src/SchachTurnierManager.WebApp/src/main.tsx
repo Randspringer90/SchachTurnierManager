@@ -8,6 +8,7 @@ type Health = {
   version: string;
   time: string;
   database?: string;
+  databasePath?: string;
 };
 
 type RatingProfile = {
@@ -1885,6 +1886,90 @@ function openRoundPrint(roundNumber: number) {
     // Auslosung nach bewusster Turnierleiter-Entscheidung nicht hart blockieren.
     return pairingReadinessCanCreatePreview();
   }
+
+  function operatorRoundLabel(): string {
+    const planned = selectedTournament?.settings.plannedRounds ?? 0;
+    const current = selectedTournament?.rounds.length ?? 0;
+    if (!selectedTournament) {
+      return '–';
+    }
+    if (current === 0) {
+      return `noch keine · geplant ${planned}`;
+    }
+    return `Runde ${current} von ${planned}`;
+  }
+
+  type OperatorStep = {
+    tone: 'ok' | 'warn' | 'danger' | 'neutral';
+    title: string;
+    detail: string;
+    actionLabel?: string;
+    action?: () => void;
+  };
+
+  function nextOperatorStep(): OperatorStep {
+    if (!selectedTournament) {
+      return {
+        tone: 'neutral',
+        title: 'Turnier anlegen oder auswählen',
+        detail: 'Links ein Turnier anlegen oder aus der Liste wählen.'
+      };
+    }
+
+    if (activePlayerCount() < 2) {
+      return {
+        tone: 'warn',
+        title: 'Teilnehmer erfassen',
+        detail: `Mindestens zwei aktive Spieler nötig (aktuell ${activePlayerCount()}). Manuell oder per CSV/FIDE-Suche.`
+      };
+    }
+
+    const rounds = selectedTournament.rounds.length;
+    const planned = selectedTournament.settings.plannedRounds;
+
+    if (rounds === 0) {
+      return {
+        tone: 'ok',
+        title: 'Runde 1 auslosen',
+        detail: 'Vorschau ansehen, prüfen, dann auslosen.',
+        actionLabel: 'Auslosungsvorschau',
+        action: () => void previewNextRound()
+      };
+    }
+
+    const openResults = totalOpenBoardCount();
+    if (openResults > 0) {
+      return {
+        tone: 'danger',
+        title: `Ergebnisse eintragen (${openResults} offen)`,
+        detail: `Runde ${latestRoundNumber()} läuft. Erst wenn alle Bretter ein Ergebnis haben, lässt sich die nächste Runde auslosen.`,
+        actionLabel: 'Rundenblatt drucken',
+        action: () => openLatestRoundPrint()
+      };
+    }
+
+    if (rounds >= planned) {
+      return {
+        tone: 'ok',
+        title: 'Abschluss / Tabelle prüfen',
+        detail: `Alle ${planned} geplanten Runden sind gespielt. Finale Tabelle prüfen, drucken und Abschluss-Backup ziehen.`,
+        actionLabel: 'Turnier-Druckansicht',
+        action: () => openTournamentExport('print/html')
+      };
+    }
+
+    const unverified = pairingReadinessUnverifiedRoundCount();
+    const detail = unverified > 0
+      ? `Alle Ergebnisse eingetragen. ${unverified} vollständige Runde(n) noch nicht als geprüft markiert.`
+      : 'Alle Ergebnisse eingetragen. Vorschau ansehen, prüfen, dann auslosen.';
+    return {
+      tone: unverified > 0 ? 'warn' : 'ok',
+      title: `Vorschau erzeugen / Runde ${rounds + 1} auslosen`,
+      detail,
+      actionLabel: 'Auslosungsvorschau',
+      action: () => void previewNextRound()
+    };
+  }
   function correctionJournalItems() {
     if (!selectedTournament) {
       return [];
@@ -2003,7 +2088,7 @@ function openRoundPrint(roundNumber: number) {
     <main className="shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.38.5</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.39.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -2019,6 +2104,49 @@ function openRoundPrint(roundNumber: number) {
         <span>{status}</span>
         {error && <strong className="error">{error}</strong>}
       </section>
+
+      {(() => {
+        const step = nextOperatorStep();
+        const backendOk = Boolean(health);
+        const formatLabel = formatOptions.find(option => option.value === selectedTournament?.settings.format)?.label ?? '–';
+        return (
+          <section className="operator-bar" aria-label="Operator-Status">
+            <div className="operator-chips">
+              <div className={`operator-chip ${backendOk ? 'ok' : 'danger'}`}>
+                <span className="operator-chip-label">Backend</span>
+                <strong>{backendOk ? `online · ${health?.version ?? ''}` : 'nicht erreichbar'}</strong>
+              </div>
+              <div className="operator-chip">
+                <span className="operator-chip-label">Turnier</span>
+                <strong>{selectedTournament ? selectedTournament.name : 'keins gewählt'}</strong>
+                {selectedTournament && <small>{formatLabel}</small>}
+              </div>
+              <div className="operator-chip">
+                <span className="operator-chip-label">Runde</span>
+                <strong>{operatorRoundLabel()}</strong>
+              </div>
+              <div className={`operator-chip ${totalOpenBoardCount() > 0 ? 'danger' : 'ok'}`}>
+                <span className="operator-chip-label">Offene Ergebnisse</span>
+                <strong>{totalOpenBoardCount()}</strong>
+                {selectedTournament && <small>{activePlayerCount()} aktiv · {inactivePlayerCount()} inaktiv</small>}
+              </div>
+            </div>
+            <div className={`operator-next tone-${step.tone}`}>
+              <div>
+                <span className="operator-next-eyebrow">Nächster Schritt</span>
+                <strong>{step.title}</strong>
+                <p>{step.detail}</p>
+              </div>
+              {step.action && step.actionLabel && (
+                <button type="button" onClick={step.action}>{step.actionLabel}</button>
+              )}
+            </div>
+            {health?.databasePath && (
+              <p className="operator-dbpath" title={health.databasePath}>Datenbank: {health.databasePath} · Autosave nach jeder Aktion · vor Runde 1 Backup ziehen</p>
+            )}
+          </section>
+        );
+      })()}
 
       {nextRoundPreview && isNextRoundPreviewDialogOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}>
