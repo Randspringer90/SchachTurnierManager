@@ -1,4 +1,10 @@
 <Project>
+  <PropertyGroup>
+    <RepositoryRoot>$(MSBuildThisFileDirectory)</RepositoryRoot>
+    <IntermediateOutputPath>$(RepositoryRoot)tmp\dotnet-obj\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
+    <OutputPath>$(RepositoryRoot)tmp\dotnet-bin\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</OutputPath>
+  </PropertyGroup>
+
   <ItemDefinitionGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <ProjectReference>
       <SetTargetFramework>TargetFramework=net10.0</SetTargetFramework>
@@ -14,4 +20,42 @@
     target is disabled for test projects.
   -->
   <Target Name="ReferencedPathMaps" Condition="'$(IsTestProject)' == 'true'" />
+
+  <!--
+    The local Codex workspace permits file creation but blocks the temp-file
+    replace path used by WriteLinesToFile when WriteOnlyWhenDifferent=true.
+    Keep the SDK defaults, but write these generated bookkeeping files directly.
+  -->
+  <Target Name="GenerateGlobalUsings"
+          BeforeTargets="BeforeCompile;CoreCompile"
+          AfterTargets="PrepareForBuild"
+          Condition="@(Using->Count()) != 0">
+    <GenerateGlobalUsings Usings="@(Using)">
+      <Output TaskParameter="Lines" ItemName="_GlobalUsingLines" />
+    </GenerateGlobalUsings>
+    <WriteLinesToFile File="$(GeneratedGlobalUsingsFile)" Lines="@(_GlobalUsingLines)" Overwrite="true" />
+    <ItemGroup>
+      <Compile Include="$(GeneratedGlobalUsingsFile)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CreateGeneratedAssemblyInfoInputsCacheFile"
+          DependsOnTargets="GetAssemblyAttributes">
+    <PropertyGroup>
+      <GeneratedAssemblyInfoInputsCacheFile>$(IntermediateOutputPath)$(MSBuildProjectName).AssemblyInfoInputs.cache</GeneratedAssemblyInfoInputsCacheFile>
+    </PropertyGroup>
+    <Hash ItemsToHash="@(AssemblyAttribute->'%(Identity)%(_Parameter1)%(_Parameter2)%(_Parameter3)%(_Parameter4)%(_Parameter5)%(_Parameter6)%(_Parameter7)%(_Parameter8)')">
+      <Output TaskParameter="HashResult" PropertyName="_AssemblyAttributesHash" />
+    </Hash>
+    <WriteLinesToFile Lines="$(_AssemblyAttributesHash)" File="$(GeneratedAssemblyInfoInputsCacheFile)" Overwrite="true" />
+    <ItemGroup>
+      <FileWrites Include="$(GeneratedAssemblyInfoInputsCacheFile)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="_GenerateCompileDependencyCache" />
+
+  <Target Name="IncrementalClean" />
+
+  <Target Name="_CleanRecordFileWrites" />
 </Project>

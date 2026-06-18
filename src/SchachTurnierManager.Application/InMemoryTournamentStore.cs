@@ -11,4 +11,6 @@ public sealed class InMemoryTournamentStore : ITournamentStore
     public TournamentState? Get(Guid id) => _tournaments.TryGetValue(id, out var tournament) ? tournament : null;
 
     public void Save(TournamentState tournament) => _tournaments[tournament.Id] = tournament;
+
+    public bool Delete(Guid id) => _tournaments.Remove(id);
 }

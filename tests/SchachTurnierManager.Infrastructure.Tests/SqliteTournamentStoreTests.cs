@@ -28,6 +28,7 @@ public sealed class SqliteTournamentStoreTests
                 var a = service.AddPlayer(tournament.Id, new Player { Name = "Alice", Rating = new RatingProfile { ManualTwz = 1900 } });
                 service.AddPlayer(tournament.Id, new Player { Name = "Bob", Rating = new RatingProfile { ManualTwz = 1800 } });
                 var round = service.GenerateNextRound(tournament.Id);
+                service.RollChess960StartPositions(tournament.Id, round.RoundNumber, overwriteExisting: false, seed: 518);
                 var result = round.Pairings[0].WhitePlayerId == a.Id ? GameResultKind.WhiteWin : GameResultKind.BlackWin;
                 service.RecordResult(tournament.Id, round.RoundNumber, round.Pairings[0].BoardNumber, result);
             }
@@ -40,6 +41,8 @@ public sealed class SqliteTournamentStoreTests
                 Assert.Equal(2, reloaded.Players.Count);
                 Assert.Single(reloaded.Rounds);
                 Assert.True(reloaded.Rounds[0].Pairings[0].Result.IsPlayed);
+                Assert.NotNull(reloaded.Rounds[0].Pairings[0].Chess960StartPosition);
+                Assert.InRange(reloaded.Rounds[0].Pairings[0].Chess960StartPosition!.PositionNumber, 0, 959);
             }
         }
         finally

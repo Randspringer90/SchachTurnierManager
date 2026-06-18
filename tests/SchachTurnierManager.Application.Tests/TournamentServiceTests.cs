@@ -22,4 +22,87 @@ public sealed class TournamentServiceTests
         Assert.Equal("Alice", standings[0].Name);
         Assert.Equal(1m, standings[0].Points);
     }
+
+    [Fact]
+    public void ResetTournament_RemovesRoundsAndRoundAuditButKeepsPlayersAndSettings()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Reset Test", new TournamentSettings { Format = TournamentFormat.Swiss, PlannedRounds = 3 });
+        AddPlayers(service, tournament.Id, 4, "Reset Spieler");
+        var round = service.GenerateNextRound(tournament.Id);
+        service.RollChess960StartPositions(tournament.Id, round.RoundNumber, overwriteExisting: false, seed: 100);
+        service.RecordResult(tournament.Id, round.RoundNumber, 1, GameResultKind.WhiteWin);
+
+        var reset = service.ResetTournament(tournament.Id);
+
+        Assert.Empty(reset.Rounds);
+        Assert.Equal(4, reset.Players.Count);
+        Assert.Equal(3, reset.Settings.PlannedRounds);
+        Assert.Contains(reset.AuditJournal, entry => entry.Action == AuditJournalAction.TournamentReset);
+        Assert.DoesNotContain(reset.AuditJournal, entry => entry.Action == AuditJournalAction.RoundGenerated);
+        Assert.DoesNotContain(reset.AuditJournal, entry => entry.Action == AuditJournalAction.ResultRecorded);
+        Assert.DoesNotContain(reset.AuditJournal, entry => entry.Action == AuditJournalAction.Chess960StartPositionsRolled);
+    }
+
+    [Fact]
+    public void DeleteTournament_RemovesTournamentFromStore()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Delete Test");
+
+        Assert.True(service.DeleteTournament(tournament.Id));
+        Assert.False(service.DeleteTournament(tournament.Id));
+        Assert.DoesNotContain(service.ListTournaments(), item => item.Id == tournament.Id);
+    }
+
+    [Fact]
+    public void GenerateNextRound_StopsAtPlannedRounds()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Round Limit Test", new TournamentSettings { Format = TournamentFormat.Swiss, PlannedRounds = 1 });
+        AddPlayers(service, tournament.Id, 4, "Limit Spieler");
+        var round = service.GenerateNextRound(tournament.Id);
+        foreach (var pairing in round.Pairings)
+        {
+            service.RecordResult(tournament.Id, round.RoundNumber, pairing.BoardNumber, GameResultKind.Draw);
+        }
+
+        var ex = Assert.Throws<InvalidOperationException>(() => service.GenerateNextRound(tournament.Id));
+
+        Assert.Contains("maximale Rundenzahl", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RollChess960StartPositions_PersistsPerBoardAndDoesNotOverwriteResults()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Chess960 Test", new TournamentSettings { Format = TournamentFormat.Swiss });
+        AddPlayers(service, tournament.Id, 4, "Chess960 Spieler");
+        var round = service.GenerateNextRound(tournament.Id);
+        service.RecordResult(tournament.Id, round.RoundNumber, 1, GameResultKind.WhiteWin);
+
+        var updated = service.RollChess960StartPositions(tournament.Id, round.RoundNumber, overwriteExisting: false, seed: 123);
+        var reloaded = service.RequireTournament(tournament.Id).Rounds.Single();
+
+        Assert.Equal(GameResultKind.WhiteWin, reloaded.Pairings.Single(pairing => pairing.BoardNumber == 1).Result.Kind);
+        Assert.All(updated.Pairings.Where(pairing => !pairing.IsBye), pairing =>
+        {
+            Assert.NotNull(pairing.Chess960StartPosition);
+            Assert.InRange(pairing.Chess960StartPosition!.PositionNumber, 0, 959);
+        });
+        Assert.Throws<InvalidOperationException>(() => service.RollChess960StartPositions(tournament.Id, round.RoundNumber, overwriteExisting: false, seed: 123));
+        Assert.Contains(service.GetAuditJournal(tournament.Id), entry => entry.Action == AuditJournalAction.Chess960StartPositionsRolled);
+    }
+
+    private static void AddPlayers(TournamentService service, Guid tournamentId, int count, string prefix)
+    {
+        for (var i = 1; i <= count; i++)
+        {
+            service.AddPlayer(tournamentId, new Player
+            {
+                Name = $"{prefix} {i}",
+                Rating = new RatingProfile { ManualTwz = 2000 - i * 10 }
+            });
+        }
+    }
 }

@@ -17,6 +17,7 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly TournamentExportFormatter _exports = new();
     private readonly ExternalPlayerImportService _externalPlayerImport = new();
     private readonly PlayerImportPreviewService _playerImportPreview = new();
+    private readonly Chess960PositionService _chess960 = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -33,6 +34,28 @@ public sealed class TournamentService(ITournamentStore store)
             Settings = settings ?? new TournamentSettings()
         };
         AddAuditEntry(tournament, AuditJournalAction.TournamentCreated, AuditJournalSeverity.Info, "Turnier angelegt.", $"Name: {tournament.Name}");
+        _store.Save(tournament);
+        return tournament;
+    }
+
+
+    public bool DeleteTournament(Guid tournamentId)
+    {
+        return _store.Delete(tournamentId);
+    }
+
+    public TournamentState ResetTournament(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var removedRoundCount = tournament.Rounds.Count;
+        var removedAuditEntryCount = tournament.AuditJournal.RemoveAll(IsRoundRelatedAuditEntry);
+        tournament.Rounds.Clear();
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.TournamentReset,
+            AuditJournalSeverity.Warning,
+            "Turnier auf Start zurückgesetzt.",
+            $"Alle Runden, Ergebnisse, rundenbezogenen Audit-Einträge und Chess960-Startstellungen wurden entfernt. Entfernte Runden: {removedRoundCount}, entfernte Audit-Einträge: {removedAuditEntryCount}.");
         _store.Save(tournament);
         return tournament;
     }
@@ -241,12 +264,7 @@ public sealed class TournamentService(ITournamentStore store)
     public NextRoundPreview PreviewNextRound(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
-        if (tournament.Players.Count(p => p.IsActive) < 2)
-        {
-            throw new InvalidOperationException("Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.");
-        }
-
-        EnsurePreviousRoundComplete(tournament);
+        EnsureCanCreateNextRound(tournament);
 
         TournamentRound previewRound = tournament.Settings.Format switch
         {
@@ -291,12 +309,7 @@ public sealed class TournamentService(ITournamentStore store)
     public TournamentRound GenerateNextRound(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
-        if (tournament.Players.Count(p => p.IsActive) < 2)
-        {
-            throw new InvalidOperationException("Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.");
-        }
-
-        EnsurePreviousRoundComplete(tournament);
+        EnsureCanCreateNextRound(tournament);
 
         TournamentRound nextRound = tournament.Settings.Format switch
         {
@@ -311,6 +324,70 @@ public sealed class TournamentService(ITournamentStore store)
         AddAuditEntry(tournament, AuditJournalAction.RoundGenerated, AuditJournalSeverity.Info, $"Runde {nextRound.RoundNumber} ausgelost.", $"{nextRound.Pairings.Count} Brett(er).", roundNumber: nextRound.RoundNumber);
         _store.Save(tournament);
         return nextRound;
+    }
+
+    public TournamentRound RollChess960StartPositions(Guid tournamentId, int roundNumber, bool overwriteExisting, int? seed = null)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        var round = tournament.Rounds[roundIndex];
+        if (round.IsLocked || round.IsVerified)
+        {
+            throw new InvalidOperationException($"Runde {roundNumber} ist gesperrt oder geprüft. Startstellungen können nicht mehr geändert werden.");
+        }
+
+        var existingCount = round.Pairings.Count(pairing => pairing.Chess960StartPosition is not null);
+        if (existingCount > 0 && !overwriteExisting)
+        {
+            throw new InvalidOperationException("Für diese Runde existieren bereits Chess960-Startstellungen. Zum Überschreiben muss overwriteExisting=true gesetzt werden.");
+        }
+
+        var baseSeed = seed ?? Random.Shared.Next(1, int.MaxValue);
+        var generatedCount = 0;
+        var updatedPairings = round.Pairings
+            .OrderBy(pairing => pairing.BoardNumber)
+            .Select(pairing =>
+            {
+                if (pairing.IsBye)
+                {
+                    return overwriteExisting ? pairing with { Chess960StartPosition = null } : pairing;
+                }
+
+                generatedCount++;
+                var boardSeed = DeriveChess960Seed(baseSeed, roundNumber, pairing.BoardNumber);
+                return pairing with
+                {
+                    Chess960StartPosition = _chess960.GenerateRandomPosition(boardSeed),
+                    Notes = AppendNote(pairing.Notes, $"Chess960-Startstellung gewürfelt: Seed {boardSeed}.")
+                };
+            })
+            .ToList();
+
+        if (generatedCount == 0)
+        {
+            throw new InvalidOperationException($"Runde {roundNumber} enthält kein reguläres Brett für eine Chess960-Startstellung.");
+        }
+
+        var audit = round.Audit with
+        {
+            Messages = round.Audit.Messages
+                .Concat(new[]
+                {
+                    $"Chess960-Startstellungen für Runde {roundNumber} gewürfelt: {generatedCount} Brett(er), Basis-Seed {baseSeed}, Überschreiben: {(overwriteExisting ? "ja" : "nein")}."
+                })
+                .ToList()
+        };
+        var updated = round with { Pairings = updatedPairings, Audit = audit };
+        tournament.Rounds[roundIndex] = updated;
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.Chess960StartPositionsRolled,
+            overwriteExisting && existingCount > 0 ? AuditJournalSeverity.Warning : AuditJournalSeverity.Info,
+            $"Chess960-Startstellungen gewürfelt: Runde {roundNumber}.",
+            $"Bretter: {generatedCount}, Basis-Seed: {baseSeed}, vorhandene überschrieben: {(overwriteExisting && existingCount > 0 ? "ja" : "nein")}.",
+            roundNumber: roundNumber);
+        _store.Save(tournament);
+        return updated;
     }
 
     private TournamentRound WithPairingQualityAudit(TournamentState tournament, TournamentRound round)
@@ -672,6 +749,21 @@ public sealed class TournamentService(ITournamentStore store)
         }
     }
 
+    private static void EnsureCanCreateNextRound(TournamentState tournament)
+    {
+        if (tournament.Players.Count(p => p.IsActive) < 2)
+        {
+            throw new InvalidOperationException("Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.");
+        }
+
+        if (tournament.Rounds.Count >= tournament.Settings.PlannedRounds)
+        {
+            throw new InvalidOperationException($"Die geplante maximale Rundenzahl ({tournament.Settings.PlannedRounds}) ist bereits erreicht.");
+        }
+
+        EnsurePreviousRoundComplete(tournament);
+    }
+
     private static bool IsRoundComplete(TournamentRound round)
     {
         return round.Pairings.Count > 0 && round.Pairings.All(pairing => pairing.IsBye || pairing.Result.Kind != GameResultKind.NotPlayed);
@@ -775,5 +867,30 @@ public sealed class TournamentService(ITournamentStore store)
     {
         return string.IsNullOrWhiteSpace(existing) ? note : existing.Trim() + Environment.NewLine + note;
     }
-}
 
+    private static bool IsRoundRelatedAuditEntry(AuditJournalEntry entry)
+    {
+        return entry.RoundNumber is not null
+               || entry.BoardNumber is not null
+               || entry.Action is AuditJournalAction.RoundGenerated
+                   or AuditJournalAction.ResultRecorded
+                   or AuditJournalAction.PairingOverridden
+                   or AuditJournalAction.RoundLocked
+                   or AuditJournalAction.RoundUnlocked
+                   or AuditJournalAction.RoundVerified
+                   or AuditJournalAction.RoundUnverified
+                   or AuditJournalAction.Chess960StartPositionsRolled;
+    }
+
+    private static int DeriveChess960Seed(int baseSeed, int roundNumber, int boardNumber)
+    {
+        unchecked
+        {
+            var value = 17;
+            value = value * 31 + baseSeed;
+            value = value * 31 + roundNumber;
+            value = value * 31 + boardNumber;
+            return value & int.MaxValue;
+        }
+    }
+}

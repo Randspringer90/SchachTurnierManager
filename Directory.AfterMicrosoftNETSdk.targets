@@ -1,0 +1,3 @@
+<Project>
+  <Target Name="_GenerateRuntimeConfigurationFilesInputCache" />
+</Project>

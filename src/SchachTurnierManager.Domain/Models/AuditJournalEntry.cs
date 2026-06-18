@@ -6,6 +6,7 @@ public enum AuditJournalAction
     SettingsUpdated = 1,
     TournamentImported = 2,
     ExternalPlayerApplied = 3,
+    TournamentReset = 4,
     PlayerAdded = 10,
     PlayerUpdated = 11,
     PlayerStatusChanged = 12,
@@ -17,7 +18,8 @@ public enum AuditJournalAction
     RoundLocked = 23,
     RoundUnlocked = 24,
     RoundVerified = 25,
-    RoundUnverified = 26
+    RoundUnverified = 26,
+    Chess960StartPositionsRolled = 27
 }
 
 public enum AuditJournalSeverity

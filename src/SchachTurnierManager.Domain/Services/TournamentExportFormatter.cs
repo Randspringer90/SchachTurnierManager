@@ -51,7 +51,7 @@ public sealed class TournamentExportFormatter
 
         var players = tournament.Players.ToDictionary(p => p.Id, p => p.Name);
         var builder = new StringBuilder();
-        builder.AppendLine("Runde;Brett;Weiß;Schwarz;Ergebnis;Status;Hinweise");
+        builder.AppendLine("Runde;Brett;Weiß;Schwarz;Ergebnis;Chess960-Startstellung;Chess960-ID;Status;Hinweise");
         foreach (var round in rounds)
         {
             foreach (var pairing in round.Pairings.OrderBy(p => p.BoardNumber))
@@ -63,6 +63,8 @@ public sealed class TournamentExportFormatter
                     PlayerName(players, pairing.WhitePlayerId),
                     pairing.IsBye ? "spielfrei" : PlayerName(players, pairing.BlackPlayerId),
                     ResultLabel(pairing.Result.Kind),
+                    Chess960PositionLabel(pairing),
+                    Chess960PositionNumberLabel(pairing),
                     round.ResultStatus.ToString(),
                     pairing.Notes ?? string.Empty
                 };
@@ -95,13 +97,14 @@ public sealed class TournamentExportFormatter
         AppendHtmlStart(builder, tournament.Name, $"Runde {round.RoundNumber}");
         builder.AppendLine($"<h1>{Html(tournament.Name)} · Runde {round.RoundNumber}</h1>");
         builder.AppendLine($"<p class=\"muted\">Rundenblatt für Aushang, Ergebniserfassung oder Kontrolle.</p>");
-        builder.AppendLine("<table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Hinweise</th></tr></thead><tbody>");
+        builder.AppendLine("<table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Chess960</th><th>Ergebnis</th><th>Hinweise</th></tr></thead><tbody>");
         foreach (var pairing in round.Pairings.OrderBy(p => p.BoardNumber))
         {
             builder.Append("<tr>");
             builder.Append($"<td>{pairing.BoardNumber}</td>");
             builder.Append($"<td>{Html(PlayerDisplay(players, pairing.WhitePlayerId))}</td>");
             builder.Append($"<td>{Html(pairing.IsBye ? "spielfrei" : PlayerDisplay(players, pairing.BlackPlayerId))}</td>");
+            builder.Append($"<td>{Html(Chess960Display(pairing))}</td>");
             builder.Append($"<td>{Html(ResultLabel(pairing.Result.Kind))}</td>");
             builder.Append($"<td>{Html(pairing.Notes ?? string.Empty)}</td>");
             builder.AppendLine("</tr>");
@@ -261,10 +264,10 @@ public sealed class TournamentExportFormatter
         foreach (var round in tournament.Rounds.OrderBy(r => r.RoundNumber))
         {
             builder.AppendLine($"<h3>Runde {round.RoundNumber} · {Html(round.ResultStatus.ToString())}</h3>");
-            builder.AppendLine("<table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th></tr></thead><tbody>");
+            builder.AppendLine("<table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Chess960</th><th>Ergebnis</th></tr></thead><tbody>");
             foreach (var pairing in round.Pairings.OrderBy(p => p.BoardNumber))
             {
-                builder.AppendLine($"<tr><td>{pairing.BoardNumber}</td><td>{Html(PlayerDisplay(players, pairing.WhitePlayerId))}</td><td>{Html(pairing.IsBye ? "spielfrei" : PlayerDisplay(players, pairing.BlackPlayerId))}</td><td>{Html(ResultLabel(pairing.Result.Kind))}</td></tr>");
+                builder.AppendLine($"<tr><td>{pairing.BoardNumber}</td><td>{Html(PlayerDisplay(players, pairing.WhitePlayerId))}</td><td>{Html(pairing.IsBye ? "spielfrei" : PlayerDisplay(players, pairing.BlackPlayerId))}</td><td>{Html(Chess960Display(pairing))}</td><td>{Html(ResultLabel(pairing.Result.Kind))}</td></tr>");
             }
             builder.AppendLine("</tbody></table>");
             var diagnostic = diagnostics.FirstOrDefault(d => d.RoundNumber == round.RoundNumber);
@@ -354,6 +357,17 @@ public sealed class TournamentExportFormatter
     }
 
     private static string FormatDecimal(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string Chess960PositionLabel(Pairing pairing) => pairing.Chess960StartPosition?.WhiteBackRank ?? string.Empty;
+
+    private static string Chess960PositionNumberLabel(Pairing pairing) => pairing.Chess960StartPosition?.PositionNumber.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private static string Chess960Display(Pairing pairing)
+    {
+        return pairing.Chess960StartPosition is null
+            ? string.Empty
+            : $"{pairing.Chess960StartPosition.WhiteBackRank} (SP {pairing.Chess960StartPosition.PositionNumber})";
+    }
 
     private static string SafeFileName(string value)
     {

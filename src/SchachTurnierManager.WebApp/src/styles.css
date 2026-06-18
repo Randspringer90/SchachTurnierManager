@@ -1316,3 +1316,108 @@ th {
   border-radius: 0.75rem;
   padding: 0.75rem;
 }
+
+
+.round-bottom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(30, 64, 175, 0.18);
+}
+
+.round-bottom-actions > div {
+  display: flex;
+  flex: 1 1 18rem;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.round-bottom-actions span {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+}
+
+.round-bottom-actions button {
+  flex: 0 0 auto;
+}
+
+/* Round preview modal / operator workflow hotfix */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.preview-modal {
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.preview-modal-table {
+  max-height: 44vh;
+  overflow: auto;
+}
+
+.round-bottom-actions button:disabled,
+.pairing-readiness-actions button:disabled {
+  opacity: 0.55;
+}
+
+.round-bottom-blockers {
+  flex: 1 1 100%;
+  margin: 0.25rem 0 0;
+  color: #fecaca;
+}
+
+.chess960-dice-panel {
+  margin: 1rem 0;
+  padding: 0.9rem;
+  border: 1px solid rgba(20, 184, 166, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.chess960-dice-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chess960-dice-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chess960-dice-header span,
+.chess960-table small {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+}
+
+.chess960-table,
+.chess960-modal-table {
+  margin-top: 0.75rem;
+}
+
+.chess960-modal {
+  width: min(980px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}

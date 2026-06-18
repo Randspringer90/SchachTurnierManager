@@ -2,12 +2,19 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>false</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
     <DisableMsCoverageReferencedPathMaps>true</DisableMsCoverageReferencedPathMaps>
+    <DisableRarCache>true</DisableRarCache>
     <UseAppHost>false</UseAppHost>
+    <AfterMicrosoftNETSdkTargets>$(AfterMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)Directory.AfterMicrosoftNETSdk.targets</AfterMicrosoftNETSdkTargets>
     <DefaultItemExcludes>$(DefaultItemExcludes);output/**;tmp/**</DefaultItemExcludes>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Directory.GlobalUsings.cs" Link="Directory.GlobalUsings.cs" />
+  </ItemGroup>
 </Project>

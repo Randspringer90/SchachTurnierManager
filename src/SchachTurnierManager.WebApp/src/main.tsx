@@ -42,6 +42,16 @@ type GameResult = {
   isBye: boolean;
 };
 
+type Chess960StartPosition = {
+  whiteBackRank: string;
+  blackBackRank: string;
+  positionNumber: number;
+  seed?: number | null;
+  createdAt: string;
+  notation: string;
+  displayName: string;
+};
+
 type Pairing = {
   boardNumber: number;
   whitePlayerId?: string | null;
@@ -51,6 +61,7 @@ type Pairing = {
   isBye: boolean;
   isManualOverride: boolean;
   lastChangedAt?: string | null;
+  chess960StartPosition?: Chess960StartPosition | null;
 };
 
 type PairingAudit = {
@@ -632,6 +643,20 @@ function duplicateKindLabel(kind: number): string {
   }
 }
 
+function approximateAgeLabel(birthYear?: number | null): string {
+  if (!birthYear || birthYear < 1900 || birthYear > 2100) {
+    return '—';
+  }
+
+  const age = new Date().getFullYear() - birthYear;
+  if (age < 0 || age > 130) {
+    return '—';
+  }
+
+  // Nur das Geburtsjahr ist bekannt, daher als ca. markieren.
+  return `~${age}`;
+}
+
 function importPreviewStatusLabel(status: number): string {
   switch (status) {
     case 0: return 'bereit';
@@ -709,6 +734,8 @@ function auditActionLabel(action: number | string): string {
     case 'TournamentImported': return 'Turnier importiert';
     case '3':
     case 'ExternalPlayerApplied': return 'Externe Spielerdaten';
+    case '4':
+    case 'TournamentReset': return 'Turnier zurückgesetzt';
     case '10':
     case 'PlayerAdded': return 'Spieler hinzugefügt';
     case '11':
@@ -733,6 +760,8 @@ function auditActionLabel(action: number | string): string {
     case 'RoundVerified': return 'Runde geprüft';
     case '26':
     case 'RoundUnverified': return 'Prüfung zurückgenommen';
+    case '27':
+    case 'Chess960StartPositionsRolled': return 'Chess960-Startstellungen gewürfelt';
     default: return String(action);
   }
 }
@@ -827,6 +856,8 @@ function App() {
   const [auditJournal, setAuditJournal] = React.useState<AuditJournalEntry[]>([]);
   const [pairingQualityReports, setPairingQualityReports] = React.useState<Record<number, PairingQualityReport>>({});
   const [nextRoundPreview, setNextRoundPreview] = React.useState<NextRoundPreview | null>(null);
+  const [isNextRoundPreviewDialogOpen, setIsNextRoundPreviewDialogOpen] = React.useState(false);
+  const [chess960DialogRound, setChess960DialogRound] = React.useState<TournamentRound | null>(null);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
@@ -872,6 +903,7 @@ function App() {
       setAuditJournal([]);
       setPairingQualityReports({});
       setNextRoundPreview(null);
+      setChess960DialogRound(null);
       return;
     }
 
@@ -922,7 +954,25 @@ function App() {
   React.useEffect(() => {
     setPairingQualityReports({});
     setNextRoundPreview(null);
+    setIsNextRoundPreviewDialogOpen(false);
+    setChess960DialogRound(null);
   }, [selectedTournament?.id]);
+
+  React.useEffect(() => {
+    if (!isNextRoundPreviewDialogOpen && !chess960DialogRound) {
+      return undefined;
+    }
+
+    function closeOnEscape(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        setIsNextRoundPreviewDialogOpen(false);
+        setChess960DialogRound(null);
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isNextRoundPreviewDialogOpen, chess960DialogRound]);
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -956,6 +1006,50 @@ function App() {
     setSelectedId(updated.id);
     setStatus('Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
     await refresh(updated.id);
+  }
+
+  async function resetSelectedTournament() {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Turnier "${selectedTournament.name}" wirklich auf Start zurücksetzen? Alle Runden und Ergebnisse werden entfernt, Teilnehmer und Einstellungen bleiben erhalten.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/reset`, { method: 'POST' });
+    setNextRoundPreview(null);
+    setIsNextRoundPreviewDialogOpen(false);
+    setChess960DialogRound(null);
+    setPairingQualityReports({});
+    setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
+    await refresh(updated.id);
+  }
+
+  async function deleteSelectedTournament() {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Turnier "${selectedTournament.name}" wirklich löschen? Diese Aktion entfernt das Turnier aus der lokalen Datenbank.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${selectedTournament.id}`, { method: 'DELETE' });
+    setStatus(`Turnier gelöscht: ${selectedTournament.name}.`);
+    setSelectedId('');
+    setNextRoundPreview(null);
+    setIsNextRoundPreviewDialogOpen(false);
+    setChess960DialogRound(null);
+    setPairingQualityReports({});
+    const data = await loadTournaments();
+    const nextId = data[0]?.id ?? '';
+    setSelectedId(nextId);
+    await loadDerived(nextId);
   }
 
   function toggleTiebreak(value: number, enabled: boolean): void {
@@ -1025,17 +1119,58 @@ function App() {
     setError(null);
     const preview = await requestJson<NextRoundPreview>(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round`);
     setNextRoundPreview(preview);
+    setIsNextRoundPreviewDialogOpen(true);
     setStatus(`Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
   }
   async function generateRound() {
     if (!selectedTournament) {
       return;
     }
+
+    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      const confirmed = window.confirm('Die Vorschau enthält kritische Hinweise. Bei kleinen Turnieren können Rematches/Scoregruppen-Abweichungen unvermeidbar sein. Trotzdem Runde auslosen?');
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setError(null);
-    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
-    setStatus('Neue Runde ausgelost.');
-    setNextRoundPreview(null);
-    await refresh(selectedTournament.id);
+    try {
+      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
+      setStatus('Neue Runde ausgelost.');
+      setNextRoundPreview(null);
+      setIsNextRoundPreviewDialogOpen(false);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+    }
+  }
+
+  async function rollChess960StartPositions(round: TournamentRound) {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const hasExistingPositions = round.pairings.some(pairing => pairing.chess960StartPosition);
+    if (hasExistingPositions) {
+      const confirmed = window.confirm('Vorhandene Startstellungen überschreiben?');
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setError(null);
+    try {
+      const updated = await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/chess960/start-positions`, {
+        method: 'POST',
+        body: JSON.stringify({ overwriteExisting: hasExistingPositions })
+      });
+      setChess960DialogRound(updated);
+      setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+    }
   }
 
   async function recordResult(roundNumber: number, boardNumber: number, result: number) {
@@ -1397,6 +1532,28 @@ function openRoundPrint(roundNumber: number) {
     return selectedTournament.players.find(player => player.id === id)?.name ?? id.slice(0, 8);
   }
 
+  function chess960Display(pairing: Pairing): string {
+    if (!pairing.chess960StartPosition) {
+      return pairing.isBye ? 'spielfrei' : 'noch nicht gewürfelt';
+    }
+
+    return `${pairing.chess960StartPosition.whiteBackRank} · SP ${pairing.chess960StartPosition.positionNumber}`;
+  }
+
+  function chess960SeedDisplay(pairing: Pairing): string {
+    return pairing.chess960StartPosition?.seed === null || pairing.chess960StartPosition?.seed === undefined
+      ? ''
+      : `Seed ${pairing.chess960StartPosition.seed}`;
+  }
+
+  function chess960PositionCount(round: TournamentRound): number {
+    return round.pairings.filter(pairing => pairing.chess960StartPosition).length;
+  }
+
+  function chess960GameBoardCount(round: TournamentRound): number {
+    return round.pairings.filter(pairing => !pairing.isBye).length;
+  }
+
   function editPlayer(player: Player): void {
     setEditingPlayerId(player.id);
     setPlayerForm(playerToForm(player));
@@ -1536,6 +1693,25 @@ function openRoundPrint(roundNumber: number) {
   }
 
   function pairingReadinessIssues(): string[] {
+    const issues = pairingReadinessBlockingIssues();
+
+    if (!selectedTournament) {
+      return issues;
+    }
+
+    const unverifiedRounds = pairingReadinessUnverifiedRoundCount();
+    if (unverifiedRounds > 0) {
+      issues.push(`${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
+    }
+
+    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      issues.push('Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bei kleinen Turnieren kann das unvermeidbar sein; nach bewusster Prüfung darf trotzdem ausgelost werden.');
+    }
+
+    return issues;
+  }
+
+  function pairingReadinessBlockingIssues(): string[] {
     const issues: string[] = [];
 
     if (!selectedTournament) {
@@ -1543,7 +1719,7 @@ function openRoundPrint(roundNumber: number) {
       return issues;
     }
 
-    const activePlayers = selectedTournament.players.filter(player => player.status === 0).length;
+    const activePlayers = activePlayerCount();
     if (activePlayers < 2) {
       issues.push('Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
     }
@@ -1553,13 +1729,8 @@ function openRoundPrint(roundNumber: number) {
       issues.push(`${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
     }
 
-    const unverifiedRounds = pairingReadinessUnverifiedRoundCount();
-    if (unverifiedRounds > 0) {
-      issues.push(`${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
-    }
-
-    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      issues.push('Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bitte vor dem Speichern prüfen.');
+    if (selectedTournament.rounds.length >= selectedTournament.settings.plannedRounds) {
+      issues.push(`Die geplante Rundenzahl (${selectedTournament.settings.plannedRounds}) ist bereits erreicht.`);
     }
 
     return issues;
@@ -1570,7 +1741,7 @@ function openRoundPrint(roundNumber: number) {
       return 'kein Turnier';
     }
 
-    if (pairingReadinessOpenResultCount() > 0 || selectedTournament.players.filter(player => player.status === 0).length < 2) {
+    if (pairingReadinessBlockingIssues().length > 0) {
       return 'blockiert';
     }
 
@@ -1596,15 +1767,14 @@ function openRoundPrint(roundNumber: number) {
   }
 
   function pairingReadinessCanCreatePreview(): boolean {
-    if (!selectedTournament) {
-      return false;
-    }
-
-    return selectedTournament.players.filter(player => player.status === 0).length >= 2 && pairingReadinessOpenResultCount() === 0;
+    return pairingReadinessBlockingIssues().length === 0;
   }
 
   function pairingReadinessCanGenerateRound(): boolean {
-    return pairingReadinessCanCreatePreview() && pairingReadinessUnverifiedRoundCount() === 0 && !nextRoundPreview?.pairingQuality.hasCriticalIssues;
+    // Kleine Turniere können unvermeidbare Rematches, Scoregruppen-Abweichungen
+    // und ungeprüfte Warnhinweise haben. Diese Punkte sollen warnen, aber die
+    // Auslosung nach bewusster Turnierleiter-Entscheidung nicht hart blockieren.
+    return pairingReadinessCanCreatePreview();
   }
   function correctionJournalItems() {
     if (!selectedTournament) {
@@ -1741,6 +1911,98 @@ function openRoundPrint(roundNumber: number) {
         {error && <strong className="error">{error}</strong>}
       </section>
 
+      {nextRoundPreview && isNextRoundPreviewDialogOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}>
+          <article className={`card preview-card preview-modal ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
+            <div className="preview-card-header">
+              <div>
+                <p className="eyebrow">Popup-Vorschau · noch nicht gespeichert</p>
+                <h3>Auslosungsvorschau Runde {nextRoundPreview.roundNumber}</h3>
+                <p className="muted">{nextRoundPreview.summary}</p>
+              </div>
+              <div className="preview-score">
+                <strong>{nextRoundPreview.pairingQuality.qualityScore}/100</strong>
+                <span>{pairingQualitySeverityLabel(nextRoundPreview.pairingQuality.severity)}</span>
+              </div>
+            </div>
+            <div className="preview-metrics">
+              <span>{nextRoundPreview.boardCount} Bretter</span>
+              <span>{nextRoundPreview.pairingQuality.rematchCount} Rematches</span>
+              <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} Scoregruppen-Hinweise</span>
+              <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} Farbfolge-Risiken</span>
+              <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
+            </div>
+            {nextRoundPreview.pairingQuality.hasCriticalIssues && (
+              <div className="preview-warning critical">
+                <strong>Hinweise prüfen, aber nicht automatisch blockieren:</strong> Bei kleinen Turnieren sind Rematches und Scoregruppen-Abweichungen häufig unvermeidbar.
+              </div>
+            )}
+            {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-modal-message-${index}`}>{message}</li>)}</ul>}
+            {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-modal-quality-${index}`}>{finding}</li>)}</ul>}
+            <div className="table-scroll compact preview-pairings preview-modal-table">
+              <table>
+                <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead>
+                <tbody>
+                  {nextRoundPreview.pairingQuality.boards.map(board => (
+                    <tr key={`preview-modal-board-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
+                      <td>{board.boardNumber}</td>
+                      <td>{board.whiteName}</td>
+                      <td>{board.isBye ? 'spielfrei' : board.blackName}</td>
+                      <td>{board.isBye ? 'Bye' : `${board.whiteScoreBeforeRound} : ${board.blackScoreBeforeRound}`}</td>
+                      <td>{board.findings.length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{board.findings.map((finding, index) => <li key={`preview-modal-board-${board.boardNumber}-${index}`}>{finding}</li>)}</ul>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="actions preview-actions">
+              <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Diese Runde jetzt auslosen</button>
+              <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>Druckansicht öffnen</button>
+              <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>CSV exportieren</button>
+              <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(false)}>Schließen</button>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {chess960DialogRound && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Schachwürfel Runde ${chess960DialogRound.roundNumber}`}>
+          <article className="card chess960-modal">
+            <div className="preview-card-header">
+              <div>
+                <p className="eyebrow">Schachwürfel · gespeichert</p>
+                <h3>Schachwürfel Runde {chess960DialogRound.roundNumber}</h3>
+                <p className="muted">Startstellungen sind am jeweiligen Brett gespeichert und bleiben nach Reload/Backup erhalten.</p>
+              </div>
+              <div className="preview-score">
+                <strong>{chess960PositionCount(chess960DialogRound)}</strong>
+                <span>Stellungen</span>
+              </div>
+            </div>
+            <div className="table-scroll compact chess960-modal-table">
+              <table>
+                <thead><tr><th>Brett</th><th>Paarung</th><th>Startstellung Weiß</th><th>Startstellung Schwarz</th><th>ID / Seed</th></tr></thead>
+                <tbody>
+                  {chess960DialogRound.pairings.map(pairing => (
+                    <tr key={`chess960-modal-${chess960DialogRound.roundNumber}-${pairing.boardNumber}`}>
+                      <td>{pairing.boardNumber}</td>
+                      <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                      <td><strong>{pairing.chess960StartPosition?.whiteBackRank ?? '—'}</strong></td>
+                      <td>{pairing.chess960StartPosition?.blackBackRank ?? '—'}</td>
+                      <td>{pairing.chess960StartPosition ? `SP ${pairing.chess960StartPosition.positionNumber}${chess960SeedDisplay(pairing) ? ` · ${chess960SeedDisplay(pairing)}` : ''}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="actions preview-actions">
+              <button type="button" className="secondary" onClick={() => openRoundPrint(chess960DialogRound.roundNumber)}>Rundenblatt drucken</button>
+              <button type="button" onClick={() => setChess960DialogRound(null)}>Schließen</button>
+            </div>
+          </article>
+        </div>
+      )}
+
       <section className="layout">
         <aside className="panel">
           <h2>Turniere</h2>
@@ -1772,10 +2034,10 @@ function openRoundPrint(roundNumber: number) {
               <p>{selectedTournament ? `${selectedTournament.players.length} Teilnehmer · ${selectedTournament.rounds.length} Runden` : 'Lege zuerst ein Turnier an.'}</p>
             </div>
             <div className="actions">
-              <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Auslosungsvorschau</button>
-              <div className="actions">
-              <button type="button" onClick={() => void generateRound()} disabled={!selectedTournament || selectedTournament.players.filter(player => player.status === 0).length < 2}>Nächste Runde auslosen</button>
-            </div>
+              <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>Auslosungsvorschau</button>
+              <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Nächste Runde auslosen</button>
+              <button type="button" className="secondary" onClick={() => void resetSelectedTournament()} disabled={!selectedTournament}>Turnier zurücksetzen</button>
+              <button type="button" className="danger" onClick={() => void deleteSelectedTournament()} disabled={!selectedTournament}>Turnier löschen</button>
             </div>
           </div>
 
@@ -1799,7 +2061,7 @@ function openRoundPrint(roundNumber: number) {
                 <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} Farbfolge-Risiken</span>
                 <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
               </div>
-              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>Kritische Vorschau:</strong> Bitte Paarungen, Rematches und Farbfolge prüfen, bevor die Runde wirklich ausgelost wird.</div>}
+              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>Kritische Vorschau:</strong> Bitte Paarungen, Rematches und Farbfolge prüfen. Bei kleinen Turnieren kann das unvermeidbar sein; nach Bestätigung darf trotzdem ausgelost werden.</div>}
               {!nextRoundPreview.isSavable && <div className="preview-warning critical"><strong>Nicht speicherbar:</strong> Diese Vorschau darf nicht übernommen werden. Bitte Hinweise prüfen.</div>}
               {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-message-${index}`}>{message}</li>)}</ul>}
               {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-quality-${index}`}>{finding}</li>)}</ul>}
@@ -1829,10 +2091,11 @@ function openRoundPrint(roundNumber: number) {
                 </div>
               </details>
               <div className="actions preview-actions">
-                <button type="button" onClick={() => void generateRound()} disabled={!nextRoundPreview.isSavable}>Diese Runde jetzt auslosen</button>
+                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Diese Runde jetzt auslosen</button>
                 <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>Druckansicht öffnen</button>
                 <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>CSV exportieren</button>
-                <button type="button" className="secondary" onClick={() => setNextRoundPreview(null)}>Vorschau schließen</button>
+                <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(true)}>Als Popup öffnen</button>
+                <button type="button" className="secondary" onClick={() => { setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false); }}>Vorschau schließen</button>
               </div>
             </article>
           )}
@@ -1985,7 +2248,7 @@ function openRoundPrint(roundNumber: number) {
               <h3>Teilnehmerliste</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>FIDE</th><th>TWZ</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
+                  <thead><tr><th>#</th><th>Name</th><th>Verein</th><th>FIDE</th><th>TWZ</th><th>Jg.</th><th>Alter ca.</th><th>Kat.</th><th>Status</th><th>Aktion</th></tr></thead>
                   <tbody>
                     {selectedTournament?.players.map(player => (
                       <tr key={player.id} className={player.status === 2 ? 'muted-row' : ''}>
@@ -1994,7 +2257,9 @@ function openRoundPrint(roundNumber: number) {
                         <td>{player.club ?? '—'}</td>
                         <td>{player.fideId ?? '—'}</td>
                         <td>{twzOf(player)}</td>
-                        <td>{genderLabel(player.gender)} {player.birthYear ? `· ${player.birthYear}` : ''}</td>
+                        <td>{player.birthYear ?? '—'}</td>
+                        <td>{approximateAgeLabel(player.birthYear)}</td>
+                        <td>{genderLabel(player.gender)}</td>
                         <td>{statusLabel(player.status)}</td>
                         <td className="actions">
                           <button type="button" className="small" onClick={() => editPlayer(player)}>Bearbeiten</button>
@@ -2194,218 +2459,49 @@ function openRoundPrint(roundNumber: number) {
                       </div>
                     </details>
                   )}
-                </div>                <div className="table-scroll">
+                </div>
+                <div className="chess960-dice-panel">
+                  <div className="chess960-dice-header">
+                    <div>
+                      <strong>Schachwürfel / Chess960</strong>
+                      <span>{chess960PositionCount(round)} von {chess960GameBoardCount(round)} regulären Brettern haben eine Startstellung.</span>
+                    </div>
+                    <button type="button" className="secondary" onClick={() => void rollChess960StartPositions(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>Startstellungen würfeln</button>
+                  </div>
+                  {chess960PositionCount(round) > 0 && (
+                    <div className="table-scroll compact chess960-table">
+                      <table>
+                        <thead><tr><th>Brett</th><th>Paarung</th><th>Startstellung</th><th>ID / Seed</th></tr></thead>
+                        <tbody>
+                          {round.pairings.map(pairing => (
+                            <tr key={`chess960-${round.roundNumber}-${pairing.boardNumber}`}>
+                              <td>{pairing.boardNumber}</td>
+                              <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                              <td><strong>{chess960Display(pairing)}</strong></td>
+                              <td>{pairing.chess960StartPosition ? `SP ${pairing.chess960StartPosition.positionNumber}${chess960SeedDisplay(pairing) ? ` · ${chess960SeedDisplay(pairing)}` : ''}` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="table-scroll">
                   <table>
-                    <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Manuelle Paarung</th></tr></thead>
+                    <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Chess960</th><th>Ergebnis</th><th>Manuelle Paarung</th></tr></thead>
                     <tbody>
                       {round.pairings.map(pairing => {
                         const edit = pairingEdit(round, pairing);
                         const roundClosed = round.isLocked || round.isVerified;
-                        function completedRoundCount(): number {
-    return roundDiagnostics.filter(item => item.isComplete).length;
-  }
-
-  function unverifiedCompleteRoundCount(): number {
-    return roundDiagnostics.filter(item => item.isComplete && !item.isVerified).length;
-  }
-
-  function lockedRoundCount(): number {
-    return selectedTournament?.rounds.filter(round => round.isLocked).length ?? 0;
-  }
-
-  function diagnosticWarningCount(): number {
-    return roundDiagnostics.reduce((sum, item) => sum + item.warnings.length, 0);
-  }
-
-  function resultReviewRows() {
-    return roundDiagnostics
-      .flatMap(round => round.boards
-        .filter(board => board.isOpen || board.isForfeit || board.note.trim().length > 0)
-        .map(board => ({
-          roundNumber: round.roundNumber,
-          boardNumber: board.boardNumber,
-          white: board.white,
-          black: board.black,
-          resultLabel: board.resultLabel,
-          note: board.note,
-          kind: board.isOpen ? 'offen' : board.isForfeit ? 'kampflos' : 'Hinweis'
-        })))
-      .slice(0, 12);
-  }
-
-  function resultReviewStatusLabel(): string {
-    if (!selectedTournament || selectedTournament.rounds.length === 0) {
-      return 'noch keine Runde';
-    }
-    if (totalOpenBoardCount() > 0) {
-      return 'offene Ergebnisse';
-    }
-    if (unverifiedCompleteRoundCount() > 0) {
-      return 'Prüfung offen';
-    }
-    if (diagnosticWarningCount() > 0) {
-      return 'Hinweise prüfen';
-    }
-    return 'bereit';
-  }
-
-  function resultReviewStatusClass(): string {
-    const label = resultReviewStatusLabel();
-    if (label === 'bereit') {
-      return 'result-review-status ok';
-    }
-    if (label === 'offene Ergebnisse') {
-      return 'result-review-status danger';
-    }
-    return 'result-review-status warn';
-  }
-  function totalByeBoardCount(): number {
-    return roundDiagnostics.reduce((sum, item) => sum + item.byeBoards, 0);
-  }
-
-  function byeForfeitAffectedRoundCount(): number {
-    return new Set(roundDiagnostics
-      .filter(item => item.byeBoards > 0 || item.forfeitBoards > 0)
-      .map(item => item.roundNumber)).size;
-  }
-
-  function byeForfeitRows() {
-    return roundDiagnostics
-      .flatMap(round => round.boards
-        .filter(board => board.isForfeit
-          || board.note.toLowerCase().includes('bye')
-          || board.note.toLowerCase().includes('spielfrei')
-          || board.black.toLowerCase().includes('spielfrei'))
-        .map(board => ({
-          roundNumber: round.roundNumber,
-          boardNumber: board.boardNumber,
-          white: board.white,
-          black: board.black,
-          resultLabel: board.resultLabel,
-          note: board.note,
-          isForfeit: board.isForfeit,
-          countsForBuchholz: board.countsForBuchholz,
-          countsForDirectAndSonneborn: board.countsForDirectAndSonneborn,
-          countsForPerformance: board.countsForPerformance,
-          kind: board.note.toLowerCase().includes('bye') || board.note.toLowerCase().includes('spielfrei') || board.black.toLowerCase().includes('spielfrei') ? 'Bye/spielfrei' : 'kampflos'
-        })))
-      .slice(0, 20);
-  }
-
-  function byeForfeitAuditStatusLabel(): string {
-    if (!selectedTournament || selectedTournament.rounds.length === 0) {
-      return 'noch keine Runde';
-    }
-    if (totalForfeitBoardCount() > 0) {
-      return 'kampflos prüfen';
-    }
-    if (totalByeBoardCount() > 0) {
-      return 'Bye sichtbar';
-    }
-    return 'keine Fälle';
-  }
-
-  function byeForfeitAuditStatusClass(): string {
-    const label = byeForfeitAuditStatusLabel();
-    if (label === 'keine Fälle') {
-      return 'bye-forfeit-status ok';
-    }
-    if (label === 'kampflos prüfen') {
-      return 'bye-forfeit-status warn';
-    }
-    return 'bye-forfeit-status info';
-  }
-  function pairingReadinessOpenResultCount(): number {
-    return totalOpenBoardCount();
-  }
-
-  function pairingReadinessUnverifiedRoundCount(): number {
-    if (!selectedTournament) {
-      return 0;
-    }
-
-    return selectedTournament.rounds.filter(round => {
-      const diagnostics = diagnosticsFor(round.roundNumber);
-      return diagnostics !== undefined && diagnostics.openBoards === 0 && !round.isVerified;
-    }).length;
-  }
-
-  function pairingReadinessIssues(): string[] {
-    const issues: string[] = [];
-
-    if (!selectedTournament) {
-      issues.push('Kein Turnier ausgewählt.');
-      return issues;
-    }
-
-    const activePlayers = selectedTournament.players.filter(player => player.status === 0).length;
-    if (activePlayers < 2) {
-      issues.push('Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
-    }
-
-    const openResults = pairingReadinessOpenResultCount();
-    if (openResults > 0) {
-      issues.push(`${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
-    }
-
-    const unverifiedRounds = pairingReadinessUnverifiedRoundCount();
-    if (unverifiedRounds > 0) {
-      issues.push(`${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
-    }
-
-    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      issues.push('Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bitte vor dem Speichern prüfen.');
-    }
-
-    return issues;
-  }
-
-  function pairingReadinessStatusLabel(): string {
-    if (!selectedTournament) {
-      return 'kein Turnier';
-    }
-
-    if (pairingReadinessOpenResultCount() > 0 || selectedTournament.players.filter(player => player.status === 0).length < 2) {
-      return 'blockiert';
-    }
-
-    if (pairingReadinessUnverifiedRoundCount() > 0 || nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      return 'prüfen';
-    }
-
-    return 'bereit';
-  }
-
-  function pairingReadinessStatusClass(): string {
-    const label = pairingReadinessStatusLabel();
-    if (label === 'bereit') {
-      return 'pairing-readiness-status ok';
-    }
-    if (label === 'prüfen') {
-      return 'pairing-readiness-status warn';
-    }
-    if (label === 'blockiert') {
-      return 'pairing-readiness-status danger';
-    }
-    return 'pairing-readiness-status neutral';
-  }
-
-  function pairingReadinessCanCreatePreview(): boolean {
-    if (!selectedTournament) {
-      return false;
-    }
-
-    return selectedTournament.players.filter(player => player.status === 0).length >= 2 && pairingReadinessOpenResultCount() === 0;
-  }
-
-  function pairingReadinessCanGenerateRound(): boolean {
-    return pairingReadinessCanCreatePreview() && pairingReadinessUnverifiedRoundCount() === 0 && !nextRoundPreview?.pairingQuality.hasCriticalIssues;
-  }
-  return (
+                        return (
                           <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
                             <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
                             <td>{playerNameById(pairing.whitePlayerId)}</td>
                             <td>{pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                            <td>
+                              <strong>{chess960Display(pairing)}</strong>
+                              {chess960SeedDisplay(pairing) && <small>{chess960SeedDisplay(pairing)}</small>}
+                            </td>
                             <td>
                               <select
                                 value={pairing.result.kind}
@@ -2435,6 +2531,19 @@ function openRoundPrint(roundNumber: number) {
                       })}
                     </tbody>
                   </table>
+                </div>
+                <div className="round-bottom-actions">
+                  <div>
+                    <strong>Direkt weiterarbeiten</strong>
+                    <span>Nach der Ergebniseingabe ohne Scrollen Vorschau erzeugen oder nächste Runde auslosen. Kritische Hinweise blockieren nicht, sondern werden vor dem Auslosen bestätigt.</span>
+                  </div>
+                  <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>Auslosungsvorschau erzeugen</button>
+                  <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Nächste Runde auslosen</button>
+                  {pairingReadinessBlockingIssues().length > 0 && (
+                    <ul className="message-list round-bottom-blockers">
+                      {pairingReadinessBlockingIssues().map((issue, index) => <li key={`round-bottom-blocker-${index}`}>{issue}</li>)}
+                    </ul>
+                  )}
                 </div>
               </section>
             ))}
@@ -2816,16 +2925,3 @@ function openRoundPrint(roundNumber: number) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
-
-
-
-
-
-
-
-
-
-
-
-
-

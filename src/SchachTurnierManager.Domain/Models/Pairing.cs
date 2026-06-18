@@ -9,6 +9,7 @@ public sealed record Pairing
     public bool IsManualOverride { get; init; }
     public DateTimeOffset? LastChangedAt { get; init; }
     public string? Notes { get; init; }
+    public Chess960StartPosition? Chess960StartPosition { get; init; }
 
     public bool IsBye => BlackPlayerId is null || Result.Kind == GameResultKind.Bye;
 

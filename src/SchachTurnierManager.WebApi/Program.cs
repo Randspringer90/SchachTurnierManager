@@ -1,5 +1,11 @@
 using System.Text;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SchachTurnierManager.Application;
 using SchachTurnierManager.Application.External;
 using SchachTurnierManager.Domain.Models;
@@ -12,12 +18,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"]
-    ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
-Directory.CreateDirectory(dataDirectory);
-var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
-var connectionString = builder.Configuration.GetConnectionString("SchachTurnierManager")
-    ?? $"Data Source={databasePath}";
+var configuredConnectionString = builder.Configuration.GetConnectionString("SchachTurnierManager");
+string connectionString;
+string databaseHealthLabel;
+if (string.IsNullOrWhiteSpace(configuredConnectionString))
+{
+    var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"]
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
+    Directory.CreateDirectory(dataDirectory);
+    var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
+    connectionString = $"Data Source={databasePath}";
+    databaseHealthLabel = Path.GetFileName(databasePath);
+}
+else
+{
+    connectionString = configuredConnectionString;
+    databaseHealthLabel = "custom connection";
+}
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
 builder.Services.AddExternalPlayerLookupAdapters();
@@ -71,7 +88,7 @@ app.MapGet("/api/health", () => Results.Ok(new
     app = "SchachTurnierManager",
     version = "0.38.5",
     time = DateTimeOffset.UtcNow,
-    database = databasePath,
+    database = databaseHealthLabel,
     embeddedDashboard = embeddedDashboardAvailable
 }));
 
@@ -139,6 +156,28 @@ app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
     try
     {
         return Results.Ok(service.RequireTournament(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapDelete("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
+{
+    if (!service.DeleteTournament(id))
+    {
+        return Results.NotFound(new { error = $"Turnier {id} wurde nicht gefunden." });
+    }
+
+    return Results.Ok(new { deleted = true, id });
+});
+
+app.MapPost("/api/tournaments/{id:guid}/reset", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.ResetTournament(id));
     }
     catch (InvalidOperationException ex)
     {
@@ -353,6 +392,18 @@ app.MapPut("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNum
     try
     {
         return Results.Ok(service.OverridePairing(id, roundNumber, boardNumber, request.WhitePlayerId, request.BlackPlayerId, request.Notes));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-positions", (Guid id, int roundNumber, RollChess960StartPositionsRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.RollChess960StartPositions(id, roundNumber, request.OverwriteExisting, request.Seed));
     }
     catch (InvalidOperationException ex)
     {
@@ -652,8 +703,3 @@ static IResult ToDownload(ExportDocument document)
 {
     return Results.File(Encoding.UTF8.GetBytes(document.Content), document.ContentType, document.FileName);
 }
-
-
-
-
-
