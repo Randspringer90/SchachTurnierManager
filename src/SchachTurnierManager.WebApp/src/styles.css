@@ -1569,8 +1569,40 @@ th {
   100% { transform: translateY(0) rotateX(1080deg) rotateY(816deg) rotateZ(360deg); }
 }
 
+.dice-cube.rolling-quick {
+  animation: dice-quick 0.3s cubic-bezier(0.3, 0.05, 0.2, 1);
+}
+
+@keyframes dice-quick {
+  0%   { transform: translateY(0) rotateX(-18deg) rotateY(24deg); }
+  50%  { transform: translateY(-26px) rotateX(200deg) rotateY(160deg); }
+  100% { transform: translateY(0) rotateX(360deg) rotateY(312deg); }
+}
+
+.dice-stage.compact {
+  height: 150px;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.dice-stage.compact .dice-cube {
+  width: 78px;
+  height: 78px;
+}
+
+.dice-stage.compact .dice-face {
+  font-size: 2.5rem;
+}
+
+.dice-stage.compact .dice-face-0 { transform: rotateY(0deg) translateZ(39px); }
+.dice-stage.compact .dice-face-1 { transform: rotateY(90deg) translateZ(39px); }
+.dice-stage.compact .dice-face-2 { transform: rotateY(180deg) translateZ(39px); }
+.dice-stage.compact .dice-face-3 { transform: rotateY(-90deg) translateZ(39px); }
+.dice-stage.compact .dice-face-4 { transform: rotateX(90deg) translateZ(39px); }
+.dice-stage.compact .dice-face-5 { transform: rotateX(-90deg) translateZ(39px); }
+
 @media (prefers-reduced-motion: reduce) {
   .dice-cube.rolling { animation-duration: 0.2s; }
+  .dice-cube.rolling-quick { animation-duration: 0.12s; }
 }
 
 .dice-result-line {
@@ -1586,6 +1618,166 @@ th {
   gap: 0.6rem;
   justify-content: center;
   margin-bottom: 0.5rem;
+}
+
+/* ===== Per-Brett-Würfeln (Modal-Reiter + mobile Seite) ===== */
+.board-dice-button {
+  display: inline-block;
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
+.board-dice-roller {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.board-dice-squares {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.3rem;
+  width: 100%;
+  max-width: 420px;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.board-dice-square {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.5);
+  color: #64748b;
+}
+
+.board-dice-square.filled {
+  color: #f8fafc;
+  border-color: rgba(20, 184, 166, 0.7);
+  background: rgba(15, 118, 110, 0.3);
+}
+
+.board-dice-square.active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4);
+}
+
+.board-dice-black {
+  margin: 0 0 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.board-dice-ok {
+  color: #5eead4;
+  text-align: center;
+  font-weight: 600;
+}
+
+.board-dice-error {
+  color: #fecaca;
+  font-weight: 600;
+}
+
+.board-dice-warning {
+  color: #fcd34d;
+}
+
+.board-dice-pairing {
+  margin: 0.4rem 0 0;
+}
+
+.board-dice-modal .preview-card-header {
+  align-items: flex-start;
+}
+
+.board-dice-tabs {
+  margin: 0.75rem 0 1rem;
+}
+
+/* ===== QR / Handy ===== */
+.qr-svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  background: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.4rem;
+}
+
+.qr-tab-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.qr-tab-code {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.qr-tab-info {
+  flex: 1 1 260px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.qr-ip-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.qr-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qr-url {
+  flex: 1 1 200px;
+  word-break: break-all;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  background: rgba(15, 23, 42, 0.6);
+  font-size: 0.8rem;
+}
+
+.qr-hints {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+/* ===== Mobile Würfelseite (Handy via QR) ===== */
+.mobile-dice {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+.mobile-dice-header h1 {
+  margin: 0.2rem 0;
+  font-size: 1.4rem;
+}
+
+.mobile-dice-pairing {
+  font-size: 1.1rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.mobile-dice-foot {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
 }
 
 /* ===== Dublettenkennzeichnung in der Spielersuche ===== */

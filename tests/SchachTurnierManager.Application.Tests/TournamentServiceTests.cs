@@ -1,5 +1,6 @@
 using SchachTurnierManager.Application;
 using SchachTurnierManager.Domain.Models;
+using SchachTurnierManager.Domain.Services;
 using Xunit;
 
 namespace SchachTurnierManager.Application.Tests;
@@ -92,6 +93,52 @@ public sealed class TournamentServiceTests
         });
         Assert.Throws<InvalidOperationException>(() => service.RollChess960StartPositions(tournament.Id, round.RoundNumber, overwriteExisting: false, seed: 123));
         Assert.Contains(service.GetAuditJournal(tournament.Id), entry => entry.Action == AuditJournalAction.Chess960StartPositionsRolled);
+    }
+
+    [Fact]
+    public void RollChess960StartPositionForBoard_OnlyTargetBoardChangesAndPersists()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Chess960 Single", new TournamentSettings { Format = TournamentFormat.Swiss });
+        AddPlayers(service, tournament.Id, 4, "Chess960 Spieler");
+        var round = service.GenerateNextRound(tournament.Id);
+
+        // Erst alle Bretter würfeln, dann gezielt nur Brett 1 neu setzen.
+        service.RollChess960StartPositions(tournament.Id, round.RoundNumber, overwriteExisting: false, seed: 555);
+        var before = service.RequireTournament(tournament.Id).Rounds.Single();
+        var board1Before = before.Pairings.Single(pairing => pairing.BoardNumber == 1).Chess960StartPosition!;
+        var otherBoardsBefore = before.Pairings
+            .Where(pairing => pairing.BoardNumber != 1 && !pairing.IsBye)
+            .ToDictionary(pairing => pairing.BoardNumber, pairing => pairing.Chess960StartPosition!.PositionNumber);
+
+        var updated = service.RollChess960StartPositionForBoard(tournament.Id, round.RoundNumber, 1, overwriteExisting: true, positionNumber: 701);
+        var board1After = updated.Pairings.Single(pairing => pairing.BoardNumber == 1).Chess960StartPosition!;
+
+        Assert.Equal(701, board1After.PositionNumber);
+        Assert.True(new Chess960PositionService().ValidatePosition(board1After.WhiteBackRank));
+
+        // Andere Bretter unverändert (Persistenz geprüft über erneutes Laden).
+        var reloaded = service.RequireTournament(tournament.Id).Rounds.Single();
+        Assert.Equal(701, reloaded.Pairings.Single(pairing => pairing.BoardNumber == 1).Chess960StartPosition!.PositionNumber);
+        foreach (var (boardNumber, positionNumber) in otherBoardsBefore)
+        {
+            Assert.Equal(positionNumber, reloaded.Pairings.Single(pairing => pairing.BoardNumber == boardNumber).Chess960StartPosition!.PositionNumber);
+        }
+    }
+
+    [Fact]
+    public void RollChess960StartPositionForBoard_ThrowsOnExistingWithoutOverwrite()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Chess960 Single Guard", new TournamentSettings { Format = TournamentFormat.Swiss });
+        AddPlayers(service, tournament.Id, 4, "Chess960 Spieler");
+        var round = service.GenerateNextRound(tournament.Id);
+
+        var first = service.RollChess960StartPositionForBoard(tournament.Id, round.RoundNumber, 1, overwriteExisting: false, seed: 42);
+        Assert.NotNull(first.Pairings.Single(pairing => pairing.BoardNumber == 1).Chess960StartPosition);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            service.RollChess960StartPositionForBoard(tournament.Id, round.RoundNumber, 1, overwriteExisting: false, seed: 42));
     }
 
     private static void AddPlayers(TournamentService service, Guid tournamentId, int count, string prefix)

@@ -99,3 +99,25 @@ Write-Host "[Start-Dev] Browser geoeffnet."
 Write-Host "  Backend:  $backendUrl"
 Write-Host "  Frontend: $frontendOpenUrl"
 Write-Host "  Health:   $backendUrl/api/health"
+
+# Nur-lesender LAN-Hinweis fuer QR/Handy: zeigt die IPv4-Adressen des Laptops an.
+# Keine Firewall-/Systemaenderung. Das Handy muss im gleichen WLAN/Hotspot sein.
+Write-Host ""
+Write-Host "[Start-Dev] QR/Handy (gleiches WLAN/Hotspot) - moegliche Laptop-Adressen:"
+try {
+    $addresses = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+        Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
+        Select-Object -ExpandProperty IPAddress -Unique
+    if ($addresses) {
+        foreach ($addr in $addresses) {
+            Write-Host "  http://${addr}:5173  (im QR-Reiter als Laptop-IP eintragen)"
+        }
+    }
+    else {
+        Write-Host "  Keine LAN-IPv4 gefunden. Adresse manuell ermitteln: ipconfig -> IPv4-Adresse."
+    }
+}
+catch {
+    Write-Host "  IP-Ermittlung nicht moeglich. Adresse manuell ermitteln: ipconfig -> IPv4-Adresse."
+}
+Write-Host "  Hinweis: 'localhost' funktioniert auf dem Handy NICHT. Firewall kann Port 5173 blockieren."

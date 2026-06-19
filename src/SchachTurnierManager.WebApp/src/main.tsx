@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { encodeText, Ecl } from './qrcodegen';
 import './styles.css';
 
 type Health = {
@@ -910,17 +911,357 @@ const diceRestTransforms = [
   'rotateX(90deg)'
 ];
 
-function ChessDie({ rolling, spin, face }: { rolling: boolean; spin: number; face: number }): React.ReactElement {
+function ChessDie({ rolling, spin, face, quick, compact }: { rolling: boolean; spin: number; face: number; quick?: boolean; compact?: boolean }): React.ReactElement {
   // Sichtbarer Holz-D6: tumbelt/fliegt beim Würfeln und legt sich danach auf die Ergebnisfigur.
   // Rein visuell – die tatsächliche, gültige Chess960-Stellung erzeugt der Backend-Service.
   const restStyle = rolling ? undefined : { transform: diceRestTransforms[face] ?? diceRestTransforms[0] };
+  const rollClass = rolling ? (quick ? ' rolling-quick' : ' rolling') : '';
   return (
-    <div className="dice-stage">
-      <div className={`dice-cube${rolling ? ' rolling' : ''}`} key={spin} style={restStyle}>
+    <div className={`dice-stage${compact ? ' compact' : ''}`}>
+      <div className={`dice-cube${rollClass}`} key={spin} style={restStyle}>
         {diceFaceGlyphs.map((glyph, index) => (
           <div key={index} className={`dice-face dice-face-${index}`}>{glyph}</div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Spiegelt exakt die Domain-Logik Chess960PositionService.FromPositionNumber wider, damit die
+// links-nach-rechts-Animation dieselbe Stellung zeigt, die das Backend aus derselben
+// Positionsnummer (0..959) erneut ableitet und speichert.
+const chess960LightSquares = [1, 3, 5, 7];
+const chess960DarkSquares = [0, 2, 4, 6];
+const chess960KnightCombinations: Array<[number, number]> = (() => {
+  const combinations: Array<[number, number]> = [];
+  for (let first = 0; first < 5; first++) {
+    for (let second = first + 1; second < 5; second++) {
+      combinations.push([first, second]);
+    }
+  }
+  return combinations;
+})();
+
+function chess960BackRankFromNumber(positionNumber: number): string {
+  let remaining = positionNumber;
+  const backRank: string[] = new Array(8).fill('');
+  const emptySquares = (): number[] =>
+    backRank.map((piece, index) => (piece === '' ? index : -1)).filter(index => index >= 0);
+
+  const lightBishopIndex = remaining % 4;
+  remaining = Math.floor(remaining / 4);
+  backRank[chess960LightSquares[lightBishopIndex]] = 'B';
+
+  const darkBishopIndex = remaining % 4;
+  remaining = Math.floor(remaining / 4);
+  backRank[chess960DarkSquares[darkBishopIndex]] = 'B';
+
+  let squares = emptySquares();
+  const queenIndex = remaining % 6;
+  remaining = Math.floor(remaining / 6);
+  backRank[squares[queenIndex]] = 'Q';
+
+  squares = emptySquares();
+  const knight = chess960KnightCombinations[remaining % 10];
+  backRank[squares[knight[0]]] = 'N';
+  backRank[squares[knight[1]]] = 'N';
+
+  squares = emptySquares();
+  backRank[squares[0]] = 'R';
+  backRank[squares[1]] = 'K';
+  backRank[squares[2]] = 'R';
+
+  return backRank.join('');
+}
+
+const chess960PieceToFace: Record<string, number> = { K: 0, Q: 1, R: 2, B: 3, N: 4 };
+
+function chess960PieceFace(piece: string): number {
+  return chess960PieceToFace[piece] ?? 0;
+}
+
+type BoardDiceParams = { tournamentId: string; roundNumber: number; boardNumber: number };
+
+function parseBoardDiceParams(search: string): BoardDiceParams | null {
+  const params = new URLSearchParams(search);
+  const tournamentId = params.get('dice');
+  const roundNumber = Number(params.get('round'));
+  const boardNumber = Number(params.get('board'));
+  if (!tournamentId || !Number.isInteger(roundNumber) || !Number.isInteger(boardNumber) || roundNumber < 1 || boardNumber < 1) {
+    return null;
+  }
+  return { tournamentId, roundNumber, boardNumber };
+}
+
+function defaultLanHost(): string {
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' ? '' : host;
+}
+
+// Schritt-für-Schritt-Würfel für genau ein Brett. Wird im Modal (Reiter „Browser würfeln")
+// und auf der mobilen QR-Seite verwendet. Die Animation ist Visualisierung; gespeichert wird
+// die exakt vorgewürfelte Positionsnummer, die das Backend über den Domain-Service ableitet.
+function BoardDiceRoller({
+  tournamentId,
+  roundNumber,
+  boardNumber,
+  currentPosition,
+  disabled,
+  onSaved
+}: {
+  tournamentId: string;
+  roundNumber: number;
+  boardNumber: number;
+  currentPosition: Chess960StartPosition | null;
+  disabled: boolean;
+  onSaved: (round: TournamentRound) => void;
+}): React.ReactElement {
+  const [phase, setPhase] = React.useState<'idle' | 'rolling' | 'revealed'>('idle');
+  const [previewNumber, setPreviewNumber] = React.useState<number | null>(null);
+  const [previewBackRank, setPreviewBackRank] = React.useState<string>('');
+  const [revealStep, setRevealStep] = React.useState(0);
+  const [rolling, setRolling] = React.useState(false);
+  const [quick, setQuick] = React.useState(false);
+  const [face, setFace] = React.useState(0);
+  const [spin, setSpin] = React.useState(0);
+  const [saving, setSaving] = React.useState(false);
+  const [localError, setLocalError] = React.useState<string | null>(null);
+  const [localStatus, setLocalStatus] = React.useState<string | null>(null);
+  const timers = React.useRef<number[]>([]);
+
+  React.useEffect(() => () => {
+    timers.current.forEach(id => window.clearTimeout(id));
+  }, []);
+
+  const schedule = (callback: () => void, delay: number): void => {
+    const id = window.setTimeout(callback, delay);
+    timers.current.push(id);
+  };
+
+  function revealNext(rank: string, step: number): void {
+    if (step >= 8) {
+      setRolling(false);
+      setPhase('revealed');
+      return;
+    }
+    setFace(chess960PieceFace(rank[step]));
+    setQuick(true);
+    setRolling(true);
+    setSpin(previous => previous + 1);
+    schedule(() => {
+      setRolling(false);
+      setRevealStep(step + 1);
+      schedule(() => revealNext(rank, step + 1), 170);
+    }, 300);
+  }
+
+  function startRoll(): void {
+    if (rolling || saving || disabled) {
+      return;
+    }
+    setLocalError(null);
+    setLocalStatus(null);
+    const number = Math.floor(Math.random() * 960);
+    const rank = chess960BackRankFromNumber(number);
+    setPreviewNumber(number);
+    setPreviewBackRank(rank);
+    setRevealStep(0);
+    setPhase('rolling');
+    setQuick(false);
+    setRolling(true);
+    setSpin(previous => previous + 1);
+    schedule(() => {
+      setRolling(false);
+      revealNext(rank, 0);
+    }, 1100);
+  }
+
+  async function save(): Promise<void> {
+    if (previewNumber === null || saving) {
+      return;
+    }
+    if (currentPosition) {
+      const confirmed = window.confirm(`Brett ${boardNumber}: vorhandene Startstellung (SP ${currentPosition.positionNumber}) überschreiben?`);
+      if (!confirmed) {
+        return;
+      }
+    }
+    setSaving(true);
+    setLocalError(null);
+    try {
+      const updated = await requestJson<TournamentRound>(
+        `/api/tournaments/${tournamentId}/rounds/${roundNumber}/chess960/start-positions/${boardNumber}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ overwriteExisting: Boolean(currentPosition), positionNumber: previewNumber })
+        }
+      );
+      setLocalStatus(`Gespeichert: SP ${previewNumber} für Brett ${boardNumber}.`);
+      setPhase('idle');
+      setPreviewNumber(null);
+      setPreviewBackRank('');
+      setRevealStep(0);
+      onSaved(updated);
+    } catch (ex) {
+      setLocalError(ex instanceof Error ? ex.message : String(ex));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const revealedRank = previewBackRank
+    .split('')
+    .map((piece, index) => (index < revealStep ? piece : ''));
+
+  return (
+    <div className="board-dice-roller">
+      <ChessDie rolling={rolling} spin={spin} face={face} quick={quick} compact />
+      <div className="board-dice-squares" aria-label="Chess960-Grundreihe Feld für Feld">
+        {revealedRank.map((piece, index) => (
+          <div
+            key={index}
+            className={`board-dice-square${index < revealStep ? ' filled' : ''}${index === revealStep && phase === 'rolling' ? ' active' : ''}`}
+          >
+            {piece ? diceFaceGlyphs[chess960PieceFace(piece)] : index + 1}
+          </div>
+        ))}
+      </div>
+      <p className="dice-result-line">
+        {phase === 'rolling'
+          ? 'Der Würfel arbeitet sich Feld für Feld nach rechts …'
+          : phase === 'revealed' && previewNumber !== null
+            ? `Ergebnis: ${previewBackRank} · SP ${previewNumber}`
+            : currentPosition
+              ? `Aktuell gespeichert: ${currentPosition.whiteBackRank} · SP ${currentPosition.positionNumber}`
+              : 'Bereit zum Würfeln für dieses Brett.'}
+      </p>
+      {phase === 'revealed' && previewNumber !== null && (
+        <p className="board-dice-black muted">Schwarz spiegelbildlich: {previewBackRank.toLowerCase()}</p>
+      )}
+      <div className="dice-modal-actions">
+        {phase !== 'revealed' && (
+          <button type="button" onClick={startRoll} disabled={rolling || saving || disabled}>
+            {rolling ? 'Würfelt …' : currentPosition ? '🎲 Neu würfeln' : '🎲 Würfeln'}
+          </button>
+        )}
+        {phase === 'revealed' && (
+          <>
+            <button type="button" onClick={() => void save()} disabled={saving || disabled}>
+              {saving ? 'Speichert …' : '💾 Für Brett speichern'}
+            </button>
+            <button type="button" className="secondary" onClick={startRoll} disabled={saving}>🎲 Nochmal würfeln</button>
+            <button type="button" className="secondary" onClick={() => { setPhase('idle'); setPreviewNumber(null); setRevealStep(0); }} disabled={saving}>Abbrechen</button>
+          </>
+        )}
+      </div>
+      {localStatus && <p className="board-dice-ok">{localStatus}</p>}
+      {localError && <p className="board-dice-error">⚠ {localError}</p>}
+    </div>
+  );
+}
+
+function QrPanel({ url }: { url: string }): React.ReactElement {
+  const rendered = React.useMemo(() => {
+    try {
+      const qr = encodeText(url, Ecl.Medium);
+      const border = 4;
+      const dimension = qr.size + border * 2;
+      let path = '';
+      for (let y = 0; y < qr.size; y++) {
+        for (let x = 0; x < qr.size; x++) {
+          if (qr.getModule(x, y)) {
+            path += `M${x + border} ${y + border}h1v1h-1z`;
+          }
+        }
+      }
+      return { ok: true as const, dimension, path };
+    } catch {
+      return { ok: false as const, dimension: 0, path: '' };
+    }
+  }, [url]);
+
+  if (!rendered.ok) {
+    return <p className="board-dice-error">QR-Code konnte für diese URL nicht erzeugt werden. Bitte die URL unten manuell am Handy eintippen.</p>;
+  }
+
+  return (
+    <svg
+      className="qr-svg"
+      viewBox={`0 0 ${rendered.dimension} ${rendered.dimension}`}
+      role="img"
+      aria-label="QR-Code zur lokalen Würfelseite"
+      shapeRendering="crispEdges"
+    >
+      <rect width={rendered.dimension} height={rendered.dimension} fill="#ffffff" />
+      <path d={rendered.path} fill="#0f172a" />
+    </svg>
+  );
+}
+
+// Eigenständige, schlanke Würfelseite für das Handy (Aufruf per QR / LAN-URL ?dice=...&round=...&board=...).
+// Lädt nur das eine Turnier, zeigt nur dieses Brett und nutzt denselben Backend-Endpunkt.
+function MobileDicePage({ params }: { params: BoardDiceParams }): React.ReactElement {
+  const [tournament, setTournament] = React.useState<Tournament | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  const load = React.useCallback(async () => {
+    try {
+      const data = await requestJson<Tournament>(`/api/tournaments/${params.tournamentId}`);
+      setTournament(data);
+      setError(null);
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+    } finally {
+      setLoading(false);
+    }
+  }, [params.tournamentId]);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  const round = tournament?.rounds.find(item => item.roundNumber === params.roundNumber) ?? null;
+  const pairing = round?.pairings.find(item => item.boardNumber === params.boardNumber) ?? null;
+  const playerName = (id?: string | null): string => tournament?.players.find(player => player.id === id)?.name ?? '—';
+
+  return (
+    <div className="mobile-dice">
+      <header className="mobile-dice-header">
+        <p className="eyebrow">Schachwürfel · Chess960</p>
+        <h1>{tournament?.name ?? 'Turnier wird geladen …'}</h1>
+        <p className="muted">Runde {params.roundNumber} · Brett {params.boardNumber}</p>
+      </header>
+
+      {loading && <p className="muted">Lädt …</p>}
+      {error && <p className="board-dice-error">⚠ {error}</p>}
+
+      {!loading && !error && (!round || !pairing) && (
+        <p className="board-dice-error">Dieses Brett wurde nicht gefunden. Bitte am Laptop prüfen, ob Runde und Brett existieren.</p>
+      )}
+
+      {pairing && round && (
+        <>
+          <p className="mobile-dice-pairing">
+            <strong>{playerName(pairing.whitePlayerId)}</strong> – {pairing.isBye ? 'spielfrei' : <strong>{playerName(pairing.blackPlayerId)}</strong>}
+          </p>
+          {pairing.isBye ? (
+            <p className="board-dice-error">Spielfreies Brett – keine Startstellung nötig.</p>
+          ) : round.isLocked || round.isVerified ? (
+            <p className="board-dice-error">Runde ist gesperrt/geprüft. Startstellung kann nicht mehr geändert werden.</p>
+          ) : (
+            <BoardDiceRoller
+              tournamentId={params.tournamentId}
+              roundNumber={params.roundNumber}
+              boardNumber={params.boardNumber}
+              currentPosition={pairing.chess960StartPosition ?? null}
+              disabled={false}
+              onSaved={() => void load()}
+            />
+          )}
+        </>
+      )}
+      <p className="mobile-dice-foot muted">Funktioniert nur im gleichen WLAN/Hotspot wie der Laptop.</p>
     </div>
   );
 }
@@ -958,6 +1299,10 @@ function App() {
   const [chess960HasRolled, setChess960HasRolled] = React.useState(false);
   const [diceSpin, setDiceSpin] = React.useState(0);
   const [diceFace, setDiceFace] = React.useState(0);
+  const [boardDiceModal, setBoardDiceModal] = React.useState<{ roundNumber: number; boardNumber: number } | null>(null);
+  const [boardDiceTab, setBoardDiceTab] = React.useState<'browser' | 'qr'>('browser');
+  const [laptopIp, setLaptopIp] = React.useState<string>(() => readLocalStorage('stm.laptopIp') ?? defaultLanHost());
+  const [diceUrlCopied, setDiceUrlCopied] = React.useState(false);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
@@ -1098,7 +1443,11 @@ function App() {
   }, [selectedTournament?.id]);
 
   React.useEffect(() => {
-    if (!isNextRoundPreviewDialogOpen && !chess960DialogRound) {
+    writeLocalStorage('stm.laptopIp', laptopIp);
+  }, [laptopIp]);
+
+  React.useEffect(() => {
+    if (!isNextRoundPreviewDialogOpen && !chess960DialogRound && !boardDiceModal) {
       return undefined;
     }
 
@@ -1106,12 +1455,13 @@ function App() {
       if (event.key === 'Escape') {
         setIsNextRoundPreviewDialogOpen(false);
         setChess960DialogRound(null);
+        setBoardDiceModal(null);
       }
     }
 
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [isNextRoundPreviewDialogOpen, chess960DialogRound]);
+  }, [isNextRoundPreviewDialogOpen, chess960DialogRound, boardDiceModal]);
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1315,6 +1665,12 @@ function App() {
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex));
     }
+  }
+
+  function openBoardDice(roundNumber: number, boardNumber: number) {
+    setBoardDiceModal({ roundNumber, boardNumber });
+    setBoardDiceTab('browser');
+    setDiceUrlCopied(false);
   }
 
   function openChess960Dice(round: TournamentRound) {
@@ -2432,6 +2788,92 @@ function openRoundPrint(roundNumber: number) {
         </div>
       )}
 
+      {boardDiceModal && selectedTournament && (() => {
+        const round = selectedTournament.rounds.find(item => item.roundNumber === boardDiceModal.roundNumber);
+        const pairing = round?.pairings.find(item => item.boardNumber === boardDiceModal.boardNumber);
+        if (!round || !pairing) {
+          return null;
+        }
+        const roundClosed = round.isLocked || round.isVerified;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const host = laptopIp.trim() || window.location.hostname;
+        const diceUrl = `http://${host}${port}/?dice=${selectedTournament.id}&round=${round.roundNumber}&board=${pairing.boardNumber}`;
+        const hostIsLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+        return (
+          <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Würfeln Brett ${pairing.boardNumber}`} onClick={() => setBoardDiceModal(null)}>
+            <article className="card chess960-modal board-dice-modal" onClick={(event: React.MouseEvent) => event.stopPropagation()}>
+              <div className="preview-card-header">
+                <div>
+                  <p className="eyebrow">Schachwürfel · Chess960 · Einzelbrett</p>
+                  <h3>{selectedTournament.name}</h3>
+                  <p className="muted">Runde {round.roundNumber} · Brett {pairing.boardNumber}</p>
+                  <p className="board-dice-pairing"><strong>{playerNameById(pairing.whitePlayerId)}</strong> – {pairing.isBye ? 'spielfrei' : <strong>{playerNameById(pairing.blackPlayerId)}</strong>}</p>
+                </div>
+                <button type="button" className="secondary" onClick={() => setBoardDiceModal(null)}>Schließen</button>
+              </div>
+
+              {pairing.chess960StartPosition
+                ? <p className="board-dice-warning">⚠ Bereits gespeichert: {pairing.chess960StartPosition.whiteBackRank} · SP {pairing.chess960StartPosition.positionNumber}. Neu würfeln überschreibt diese Stellung nach Rückfrage.</p>
+                : <p className="muted">Für dieses Brett ist noch keine Startstellung gespeichert.</p>}
+
+              <div className="tab-bar board-dice-tabs">
+                <button type="button" className={`tab-button${boardDiceTab === 'browser' ? ' active' : ''}`} onClick={() => setBoardDiceTab('browser')}>Browser würfeln</button>
+                <button type="button" className={`tab-button${boardDiceTab === 'qr' ? ' active' : ''}`} onClick={() => setBoardDiceTab('qr')}>QR / Handy</button>
+              </div>
+
+              {boardDiceTab === 'browser' && (
+                roundClosed
+                  ? <p className="board-dice-error">Runde ist gesperrt/geprüft – keine Änderung der Startstellung möglich.</p>
+                  : <BoardDiceRoller
+                      tournamentId={selectedTournament.id}
+                      roundNumber={round.roundNumber}
+                      boardNumber={pairing.boardNumber}
+                      currentPosition={pairing.chess960StartPosition ?? null}
+                      disabled={roundClosed}
+                      onSaved={() => { setBackupRecommended(true); void refresh(selectedTournament.id); }}
+                    />
+              )}
+
+              {boardDiceTab === 'qr' && (
+                <div className="qr-tab">
+                  <p className="muted">Teilnehmer/Schiedsrichter können dieses Brett am Handy auswürfeln. Funktioniert nur im gleichen WLAN/Hotspot wie der Laptop.</p>
+                  <div className="qr-tab-grid">
+                    <div className="qr-tab-code"><QrPanel url={diceUrl} /></div>
+                    <div className="qr-tab-info">
+                      <label className="qr-ip-label">
+                        Laptop-IP im WLAN/Hotspot
+                        <input
+                          type="text"
+                          value={laptopIp}
+                          placeholder="z. B. 192.168.0.42"
+                          onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setLaptopIp(event.target.value); setDiceUrlCopied(false); }}
+                        />
+                      </label>
+                      {hostIsLocal && <p className="board-dice-warning">⚠ Aktuell zeigt die URL auf „{host}". Auf dem Handy zeigt <code>localhost</code> auf das Handy selbst. Bitte die LAN-IP des Laptops eintragen (Windows: <code>ipconfig</code> → IPv4-Adresse).</p>}
+                      <div className="qr-url-row">
+                        <code className="qr-url">{diceUrl}</code>
+                        <button
+                          type="button"
+                          className="small"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(diceUrl).then(() => setDiceUrlCopied(true)).catch(() => setDiceUrlCopied(false));
+                          }}
+                        >{diceUrlCopied ? '✓ Kopiert' : 'URL kopieren'}</button>
+                      </div>
+                      <ul className="qr-hints muted">
+                        <li>Handy und Laptop im selben WLAN/Hotspot.</li>
+                        <li>Eine evtl. Windows-Firewall kann den Zugriff auf Port {window.location.port || '5173'} blockieren – dann am Laptop würfeln.</li>
+                        <li>Gleichzeitiges Würfeln (Laptop + Handy) überschreibt nur nach Rückfrage; die zuletzt gespeicherte Stellung gilt.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </article>
+          </div>
+        );
+      })()}
+
       <section className="layout">
         <aside className="panel">
           <h2>Turniere</h2>
@@ -3071,6 +3513,15 @@ function openRoundPrint(roundNumber: number) {
                             <td>
                               <strong>{chess960Display(pairing)}</strong>
                               {chess960SeedDisplay(pairing) && <small>{chess960SeedDisplay(pairing)}</small>}
+                              {!pairing.isBye && (
+                                <button
+                                  type="button"
+                                  className="small board-dice-button"
+                                  title={`Chess960 für Brett ${pairing.boardNumber} würfeln`}
+                                  onClick={() => openBoardDice(round.roundNumber, pairing.boardNumber)}
+                                  disabled={roundClosed}
+                                >🎲 Würfeln</button>
+                              )}
                             </td>
                             <td>
                               <select
@@ -3514,4 +3965,7 @@ function openRoundPrint(roundNumber: number) {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+const boardDiceParams = parseBoardDiceParams(window.location.search);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  boardDiceParams ? <MobileDicePage params={boardDiceParams} /> : <App />
+);

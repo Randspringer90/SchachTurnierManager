@@ -68,6 +68,8 @@ public sealed record UpdateRoundVerifiedRequest(bool IsVerified);
 
 public sealed record RollChess960StartPositionsRequest(bool OverwriteExisting = false, int? Seed = null);
 
+public sealed record RollChess960StartPositionForBoardRequest(bool OverwriteExisting = false, int? Seed = null, int? PositionNumber = null);
+
 public sealed record UpdatePlayerStatusRequest(PlayerStatus Status);
 
 public sealed record ImportPlayersCsvRequest(string Content, bool ReplaceExisting = false);

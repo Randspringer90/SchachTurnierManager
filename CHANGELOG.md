@@ -1,3 +1,34 @@
+## 0.40.2 - Chess960-Würfeln pro Brett (Modal mit Reitern, lokaler QR-Code)
+
+- Neuer **„🎲 Würfeln"-Button pro Brett** in der Rundentabelle (Chess960-Spalte). Öffnet ein
+  Popup für genau dieses Turnier/Runde/Brett mit Turniername, Runde, Brettnummer, Paarung,
+  aktuell gespeicherter Stellung und Überschreib-Warnung. Der bestehende Button für alle
+  Bretter einer Runde bleibt unverändert.
+- **Interne Reiter im Popup:** „Browser würfeln" (Default) und „QR / Handy" – ohne neuen
+  Browser-Tab für die Hauptnavigation, auch bei schmaler Breite bedienbar.
+- **Schritt-für-Schritt-Würfel:** Der 3D-Würfel arbeitet die acht Felder der Grundreihe von
+  links nach rechts ab und zeigt die Figuren (König, Dame, Turm, Läufer, Springer). Danach
+  „Für Brett speichern", „Nochmal würfeln" oder „Abbrechen". Die Animation ist Visualisierung;
+  gespeichert wird die vorab gewürfelte Positionsnummer, die der Domain-Service
+  `Chess960PositionService` erneut als gültige Stellung ableitet (Läufer verschiedenfarbig,
+  König zwischen den Türmen). Vorhandene Stellungen werden nur nach Rückfrage überschrieben.
+- **QR / Handy lokal:** QR-Code (eingebetteter, abhängigkeitsfreier Generator – kein Cloud-
+  Dienst, kein Tunnel, kein externer Upload) plus kopierbare LAN-URL und Feld für die
+  Laptop-IP. Eigene mobile Würfelseite über `/?dice=<id>&round=<r>&board=<b>`, die nur dieses
+  Brett anzeigt und denselben Backend-Endpunkt nutzt. Schlägt die QR-Erzeugung fehl, bleiben
+  URL-/Kopier-Funktion und die Browser-Würfelfunktion uneingeschränkt nutzbar.
+- **Backend:** Neuer Single-Board-Endpunkt
+  `POST /api/tournaments/{id}/rounds/{round}/chess960/start-positions/{board}`
+  (optional `overwriteExisting`, `seed`, `positionNumber`). Nutzt weiterhin den bestehenden
+  `Chess960PositionService`; ändert nur das gewählte Brett, lässt andere Bretter und Ergebnisse
+  unberührt. Neue Tests für gültige Stellung, Isolierung anderer Bretter, Persistenz und
+  Überschreib-Schutz.
+- **LAN/Start:** `vite --host 0.0.0.0` (localhost bleibt erreichbar) für Handy-Zugriff im
+  gleichen WLAN/Hotspot; `Start-Dev.ps1` zeigt nur lesend die möglichen Laptop-IPv4-Adressen
+  und Firewall-/`localhost`-Hinweise an. Keine Firewall-/Systemänderung, kein Prozess-Kill.
+- Keine Änderung an Auslosungs-, Wertungs-, Such-, Dedupe- oder Ergebnislogik. Versionen auf
+  `0.40.2`.
+
 ## 0.40.1 - Turniertag-Startfix (Ein-Klick-BAT, Operator-Leiste nicht mehr fixiert)
 
 - Neue klickbare Startdatei `RUN_TURNIERMANAGER.bat` im Repo-Root: startet Backend,

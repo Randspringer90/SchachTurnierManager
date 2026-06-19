@@ -402,6 +402,83 @@ public sealed class TournamentService(ITournamentStore store)
         return updated;
     }
 
+    public TournamentRound RollChess960StartPositionForBoard(
+        Guid tournamentId,
+        int roundNumber,
+        int boardNumber,
+        bool overwriteExisting,
+        int? seed = null,
+        int? positionNumber = null)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var roundIndex = RequireRoundIndex(tournament, roundNumber);
+        var round = tournament.Rounds[roundIndex];
+        if (round.IsLocked || round.IsVerified)
+        {
+            throw new InvalidOperationException($"Runde {roundNumber} ist gesperrt oder geprüft. Startstellungen können nicht mehr geändert werden.");
+        }
+
+        var pairing = round.Pairings.FirstOrDefault(item => item.BoardNumber == boardNumber);
+        if (pairing is null)
+        {
+            throw new InvalidOperationException($"Brett {boardNumber} existiert in Runde {roundNumber} nicht.");
+        }
+
+        if (pairing.IsBye)
+        {
+            throw new InvalidOperationException($"Brett {boardNumber} ist spielfrei und erhält keine Chess960-Startstellung.");
+        }
+
+        var hadExisting = pairing.Chess960StartPosition is not null;
+        if (hadExisting && !overwriteExisting)
+        {
+            throw new InvalidOperationException($"Für Brett {boardNumber} existiert bereits eine Chess960-Startstellung. Zum Überschreiben muss overwriteExisting=true gesetzt werden.");
+        }
+
+        Chess960StartPosition position;
+        int? appliedSeed = null;
+        if (positionNumber.HasValue)
+        {
+            // Vom Browser/Handy vorab gewürfelte Stellung exakt übernehmen – der Service validiert den Bereich.
+            position = _chess960.FromPositionNumber(positionNumber.Value);
+        }
+        else
+        {
+            var baseSeed = seed ?? Random.Shared.Next(1, int.MaxValue);
+            appliedSeed = DeriveChess960Seed(baseSeed, roundNumber, boardNumber);
+            position = _chess960.GenerateRandomPosition(appliedSeed);
+        }
+
+        var noteDetail = positionNumber.HasValue
+            ? $"Chess960-Startstellung für Brett {boardNumber} gesetzt: SP {position.PositionNumber}."
+            : $"Chess960-Startstellung für Brett {boardNumber} gewürfelt: Seed {appliedSeed}.";
+
+        var updatedPairings = round.Pairings
+            .Select(item => item.BoardNumber == boardNumber
+                ? item with { Chess960StartPosition = position, Notes = AppendNote(item.Notes, noteDetail) }
+                : item)
+            .ToList();
+
+        var audit = round.Audit with
+        {
+            Messages = round.Audit.Messages
+                .Concat(new[] { $"{noteDetail} Vorhandene überschrieben: {(hadExisting ? "ja" : "nein")}." })
+                .ToList()
+        };
+        var updated = round with { Pairings = updatedPairings, Audit = audit };
+        tournament.Rounds[roundIndex] = updated;
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.Chess960StartPositionsRolled,
+            hadExisting ? AuditJournalSeverity.Warning : AuditJournalSeverity.Info,
+            $"Chess960-Startstellung gewürfelt: Runde {roundNumber}, Brett {boardNumber}.",
+            $"SP {position.PositionNumber}{(appliedSeed.HasValue ? $", Seed {appliedSeed}" : string.Empty)}, vorhandene überschrieben: {(hadExisting ? "ja" : "nein")}.",
+            roundNumber: roundNumber,
+            boardNumber: boardNumber);
+        _store.Save(tournament);
+        return updated;
+    }
+
     private TournamentRound WithPairingQualityAudit(TournamentState tournament, TournamentRound round)
     {
         var quality = _pairingQuality.Analyze(tournament, round);

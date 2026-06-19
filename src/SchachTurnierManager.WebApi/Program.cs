@@ -89,7 +89,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.40.1",
+    version = "0.40.2",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,
@@ -414,6 +414,22 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-
     try
     {
         return Results.Ok(service.RollChess960StartPositions(id, roundNumber, request.OverwriteExisting, request.Seed));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-positions/{boardNumber:int}", (Guid id, int roundNumber, int boardNumber, RollChess960StartPositionForBoardRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.RollChess960StartPositionForBoard(id, roundNumber, boardNumber, request.OverwriteExisting, request.Seed, request.PositionNumber));
+    }
+    catch (ArgumentOutOfRangeException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
     }
     catch (InvalidOperationException ex)
     {

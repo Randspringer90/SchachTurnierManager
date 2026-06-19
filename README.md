@@ -52,6 +52,36 @@ Healthcheck:
 http://localhost:5088/api/health
 ```
 
+## Chess960-Würfeln pro Brett (Desktop + QR/Handy)
+
+Im Rundenbereich hat jedes reguläre Brett neben der Chess960-Spalte einen
+**„🎲 Würfeln"**-Button. Er öffnet ein Popup für genau dieses Turnier, diese Runde und
+dieses Brett – mit zwei internen Reitern:
+
+- **Browser würfeln:** Der Würfel arbeitet sich Feld für Feld von links nach rechts durch
+  die acht Felder der Grundreihe und zeigt die Figuren. Anschließend
+  „💾 Für Brett speichern" (oder „🎲 Nochmal würfeln" / „Abbrechen"). Eine bereits
+  gespeicherte Stellung wird nur nach Rückfrage überschrieben. Die Stellung bleibt nach
+  Reload/Backup erhalten und erscheint weiter auf dem Rundenblatt/Druck.
+- **QR / Handy (nur lokal):** Zeigt einen QR-Code und eine LAN-URL, mit der
+  Teilnehmer/Schiedsrichter dieses Brett am Handy auswürfeln. Funktioniert **nur im
+  gleichen WLAN/Hotspot** wie der Laptop. Kein Cloud-Dienst, kein Tunnel.
+
+Hinweise zur QR/Handy-Nutzung:
+
+- **`localhost` funktioniert am Handy nicht** – es zeigt auf das Handy selbst. Im QR-Reiter
+  die **LAN-IP des Laptops** eintragen (Windows: `ipconfig` → IPv4-Adresse). Beim Start über
+  `RUN_TURNIERMANAGER.bat` werden die möglichen Laptop-Adressen im Startfenster angezeigt.
+- Der Dev-Server ist für das LAN erreichbar (`vite --host 0.0.0.0`); `http://localhost:5173`
+  am Laptop funktioniert weiterhin.
+- Eine **Windows-Firewall** kann den Zugriff auf Port `5173` blockieren. Dann am Laptop
+  würfeln – die Browser-Würfelfunktion ist davon unabhängig und immer verfügbar.
+- Würfeln Laptop und Handy gleichzeitig dasselbe Brett, gilt die zuletzt gespeicherte
+  Stellung; vorhandene Stellungen werden nur nach Rückfrage überschrieben.
+
+Der bestehende Button „🎲 Schachwürfel öffnen" (alle Bretter einer Runde auf einmal) bleibt
+unverändert erhalten.
+
 ## Release-Gate
 
 ```powershell
