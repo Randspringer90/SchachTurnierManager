@@ -546,6 +546,42 @@ async function requestText(url: string): Promise<string> {
   return await response.text();
 }
 
+function readLocalStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // localStorage kann im Privatmodus blockiert sein – Bedienung darf trotzdem weiterlaufen.
+  }
+}
+
+function backupTimestampSlug(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+function safeFileNamepart(value: string): string {
+  return value.replace(/[^A-Za-z0-9_\-]+/g, '_').replace(/^_+|_+$/g, '') || 'turnier';
+}
+
+function backupTimeLabel(iso: string | null): string {
+  if (!iso) {
+    return 'noch kein lokaler Backup-Export';
+  }
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'unbekannt';
+  }
+  return parsed.toLocaleString('de-DE');
+}
+
 function resultLabel(kind: number): string {
   return resultOptions.find(option => option.value === kind)?.label ?? String(kind);
 }
@@ -924,6 +960,9 @@ function App() {
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [status, setStatus] = React.useState('Bereit.');
   const [error, setError] = React.useState<string | null>(null);
+  const [outdoorMode, setOutdoorMode] = React.useState<boolean>(() => readLocalStorage('stm.outdoorMode') === '1');
+  const [lastBackupAt, setLastBackupAt] = React.useState<string | null>(null);
+  const [backupRecommended, setBackupRecommended] = React.useState<boolean>(false);
   const selectedTournament = tournaments.find(tournament => tournament.id === selectedId) ?? tournaments[0];
   const auditJournalRecentEntries = auditJournal.slice(0, 15);
   const auditJournalWarningCount = auditJournal.filter(entry => auditSeverityKey(entry.severity) === 'warning').length;
@@ -997,6 +1036,20 @@ function App() {
   }, [selectedTournament?.id]);
 
   React.useEffect(() => {
+    writeLocalStorage('stm.outdoorMode', outdoorMode ? '1' : '0');
+  }, [outdoorMode]);
+
+  React.useEffect(() => {
+    if (!selectedTournament?.id) {
+      setLastBackupAt(null);
+      setBackupRecommended(false);
+      return;
+    }
+    setLastBackupAt(readLocalStorage(`stm.lastBackup.${selectedTournament.id}`));
+    setBackupRecommended(false);
+  }, [selectedTournament?.id]);
+
+  React.useEffect(() => {
     setPairingQualityReports({});
     setNextRoundPreview(null);
     setIsNextRoundPreviewDialogOpen(false);
@@ -1059,7 +1112,12 @@ function App() {
     }
 
     const target = selectedTournament;
-    const confirmed = window.confirm(`Turnier "${target.name}" wirklich auf Start zurücksetzen? Alle Runden und Ergebnisse werden entfernt, Teilnehmer und Einstellungen bleiben erhalten.`);
+    const confirmed = window.confirm(
+      `Turnier "${target.name}" wirklich auf Start zurücksetzen?\n\n` +
+      `• Teilnehmer und Einstellungen BLEIBEN erhalten.\n` +
+      `• Alle Runden, Ergebnisse und Chess960-Startstellungen werden GELÖSCHT.\n\n` +
+      `Empfehlung: Vorher unten "Jetzt Backup erstellen" nutzen.`
+    );
     if (!confirmed) {
       return;
     }
@@ -1084,8 +1142,18 @@ function App() {
     }
 
     const target = selectedTournament;
-    const confirmed = window.confirm(`Turnier "${target.name}" wirklich löschen? Diese Aktion entfernt das Turnier aus der lokalen Datenbank.`);
+    const confirmed = window.confirm(
+      `Turnier "${target.name}" wirklich LÖSCHEN?\n\n` +
+      `Das gesamte Turnier inkl. Teilnehmer, Runden und Ergebnisse wird endgültig aus der lokalen Datenbank entfernt.\n` +
+      `Dies ist NICHT dasselbe wie Zurücksetzen.\n\n` +
+      `Empfehlung: Vorher unten "Jetzt Backup erstellen" nutzen.`
+    );
     if (!confirmed) {
+      return;
+    }
+    const confirmedName = window.prompt(`Zur Sicherheit den Turniernamen exakt eingeben, um das Löschen zu bestätigen:\n\n${target.name}`);
+    if (confirmedName !== target.name) {
+      setStatus('Löschen abgebrochen: Turniername wurde nicht exakt bestätigt.');
       return;
     }
 
@@ -1196,7 +1264,8 @@ function App() {
     setError(null);
     try {
       await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
-      setStatus('Neue Runde ausgelost.');
+      setStatus('Neue Runde ausgelost. Tipp: Jetzt ein lokales Backup ziehen.');
+      setBackupRecommended(true);
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
       await refresh(selectedTournament.id);
@@ -1241,7 +1310,8 @@ function App() {
       setDiceFace(Math.floor(Math.random() * diceFaceGlyphs.length));
       setChess960DialogRound(updated);
       setChess960HasRolled(true);
-      setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt.`);
+      setBackupRecommended(true);
+      setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt. Tipp: Jetzt ein lokales Backup ziehen.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex));
@@ -1255,12 +1325,17 @@ function App() {
       return;
     }
     setError(null);
-    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/results`, {
-      method: 'POST',
-      body: JSON.stringify({ roundNumber, boardNumber, result })
-    });
-    setStatus(`Ergebnis Runde ${roundNumber}, Brett ${boardNumber} gespeichert.`);
-    await refresh(selectedTournament.id);
+    setStatus(`Speichere Ergebnis Runde ${roundNumber}, Brett ${boardNumber} …`);
+    try {
+      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/results`, {
+        method: 'POST',
+        body: JSON.stringify({ roundNumber, boardNumber, result })
+      });
+      await refresh(selectedTournament.id);
+      setStatus(`✓ Ergebnis gespeichert: Runde ${roundNumber}, Brett ${boardNumber}.`);
+    } catch (ex) {
+      setError(`Ergebnis Runde ${roundNumber}, Brett ${boardNumber} konnte NICHT gespeichert werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+    }
   }
 
   function editKey(roundNumber: number, boardNumber: number): string {
@@ -1619,9 +1694,23 @@ function openRoundPrint(roundNumber: number) {
       return;
     }
 
-    const text = await requestText(`/api/tournaments/${selectedTournament.id}/export/json`);
-    setBackupJson(JSON.stringify(JSON.parse(text), null, 2));
-    downloadText(`${selectedTournament.name}-backup.json`, JSON.stringify(JSON.parse(text), null, 2), 'application/json;charset=utf-8');
+    setError(null);
+    try {
+      const text = await requestText(`/api/tournaments/${selectedTournament.id}/export/json`);
+      const pretty = JSON.stringify(JSON.parse(text), null, 2);
+      setBackupJson(pretty);
+      const now = new Date();
+      const roundLabel = latestRoundNumber() === null ? 'start' : `r${latestRoundNumber()}`;
+      const fileName = `${safeFileNamepart(selectedTournament.name)}_${roundLabel}_${backupTimestampSlug(now)}.json`;
+      downloadText(fileName, pretty, 'application/json;charset=utf-8');
+      const iso = now.toISOString();
+      setLastBackupAt(iso);
+      setBackupRecommended(false);
+      writeLocalStorage(`stm.lastBackup.${selectedTournament.id}`, iso);
+      setStatus(`✓ Lokales Backup gespeichert: ${fileName}`);
+    } catch (ex) {
+      setError(`Backup konnte NICHT erstellt werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+    }
   }
 
   async function importTournamentJson() {
@@ -2085,10 +2174,10 @@ function openRoundPrint(roundNumber: number) {
         : 'unauffällig';
 
   return (
-    <main className="shell">
+    <main className={`shell${outdoorMode ? ' outdoor' : ''}`}>
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.39.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.40.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -2130,6 +2219,11 @@ function openRoundPrint(roundNumber: number) {
                 <strong>{totalOpenBoardCount()}</strong>
                 {selectedTournament && <small>{activePlayerCount()} aktiv · {inactivePlayerCount()} inaktiv</small>}
               </div>
+              <div className={`operator-chip ${backupRecommended ? 'danger' : lastBackupAt ? 'ok' : ''}`}>
+                <span className="operator-chip-label">Letztes Backup</span>
+                <strong>{backupRecommended ? 'Backup empfohlen' : lastBackupAt ? 'aktuell' : 'noch keins'}</strong>
+                <small>{backupTimeLabel(lastBackupAt)}</small>
+              </div>
             </div>
             <div className={`operator-next tone-${step.tone}`}>
               <div>
@@ -2144,6 +2238,66 @@ function openRoundPrint(roundNumber: number) {
             {health?.databasePath && (
               <p className="operator-dbpath" title={health.databasePath}>Datenbank: {health.databasePath} · Autosave nach jeder Aktion · vor Runde 1 Backup ziehen</p>
             )}
+            <div className="operator-tools">
+              <button
+                type="button"
+                className={outdoorMode ? '' : 'secondary'}
+                aria-pressed={outdoorMode}
+                onClick={() => setOutdoorMode(previous => !previous)}
+                title="Größere Schrift, größere Buttons und höherer Kontrast für den Einsatz draußen. Wird lokal gespeichert."
+              >
+                {outdoorMode ? '☀ Turniertag-Modus AN' : '☀ Turniertag-Modus AUS'}
+              </button>
+              <button
+                type="button"
+                className={backupRecommended ? '' : 'secondary'}
+                onClick={() => void exportTournamentJson()}
+                disabled={!selectedTournament}
+                title="Lädt einen lokalen JSON-Snapshot mit Turniername, Runde und Zeitstempel herunter. Keine Cloud."
+              >
+                💾 Jetzt Backup erstellen
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => openTournamentExport('print/html')}
+                disabled={!selectedTournament}
+                title="Öffnet die Druckansicht mit Teilnehmerliste, Tabelle und Rundenblättern für das Turnierpaket."
+              >
+                🖨 Turnierpaket drucken
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={openLatestRoundPrint}
+                disabled={!selectedTournament || selectedTournament.rounds.length === 0}
+                title="Druckt das Rundenblatt der aktuellen Runde."
+              >
+                🖨 Rundenblatt drucken
+              </button>
+            </div>
+            <details className="operator-checklist">
+              <summary>✅ Vor-Ort-Checkliste &amp; Laptop-Hinweise</summary>
+              <div className="operator-checklist-body">
+                <ul>
+                  <li>Backend grün (Chip „Backend“ oben muss <strong>online</strong> sein)</li>
+                  <li>Backup ziehen, bevor Runde 1 ausgelost wird</li>
+                  <li>Teilnehmerliste prüfen (Anzahl, Namen, FIDE-ID)</li>
+                  <li>Wasser / Schatten / Sonnenschutz bereitstellen</li>
+                  <li>Rundenblatt der aktuellen Runde drucken</li>
+                  <li>Chess960 würfeln (falls Chess960-Turnier)</li>
+                  <li>Ergebnisse nach jeder Runde sofort eintragen und Speicher-Bestätigung abwarten</li>
+                  <li>Backup nach jeder Runde ziehen</li>
+                </ul>
+                <p className="operator-power-note">
+                  <strong>Strom &amp; Energie:</strong> Laptop am Netzteil betreiben · Energiesparen und Bildschirmsperre vermeiden ·
+                  Browser-Tab offen lassen · das Backend-Fenster NICHT schließen.
+                </p>
+                <p className="operator-power-note muted">
+                  Lokaler Lan-Zugriff per QR-Code ist bewusst noch nicht eingebaut (siehe Roadmap). Bedienung erfolgt am Turnier-Laptop.
+                </p>
+              </div>
+            </details>
           </section>
         );
       })()}

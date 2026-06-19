@@ -1,3 +1,26 @@
+## 0.40.0 - Turniertag-Härtung (Outdoor-Modus, Sticky-Leiste, Backup-Hinweise)
+
+- Neuer „Turniertag-Modus" (Outdoor): ein CSS-Klassen-Umschalter in der Operator-Leiste
+  vergrößert Schrift und Buttons und erhöht den Kontrast für den Einsatz draußen.
+  Die Einstellung wird lokal (localStorage) gespeichert und wirkt ohne Reload.
+- Operator-Leiste bleibt jetzt beim Scrollen oben sichtbar (sticky) und bietet
+  Schnellaktionen: Backup erstellen, Turnierpaket drucken, Rundenblatt drucken.
+- Neuer Backup-Status-Chip („Letztes Backup" / „Backup empfohlen"). Nach Auslosung
+  und Chess960-Würfeln erscheint ein klarer Backup-Hinweis. „Jetzt Backup erstellen"
+  lädt einen lokalen JSON-Snapshot mit Turniername, Runde und Zeitstempel (keine Cloud);
+  der Zeitpunkt des letzten Backups wird pro Turnier lokal gemerkt.
+- Ergebnis-Eingabe robuster: sichtbare „Speichere …" / „✓ Ergebnis gespeichert"-Bestätigung
+  und klare Fehlermeldung, wenn das Speichern fehlschlägt. Auslosungs-Blocker bei offenen
+  Ergebnissen bleibt unverändert.
+- Reset/Delete sicherer: Bestätigungsdialoge nennen den Turniernamen und den Unterschied
+  (Reset behält Teilnehmer/Einstellungen, löscht Runden/Ergebnisse/Chess960; Delete entfernt
+  das ganze Turnier). Delete verlangt zusätzlich die exakte Eingabe des Turniernamens.
+- Aufklappbare „Vor-Ort-Checkliste & Laptop-Hinweise" in der Operator-Leiste (rein statisch).
+- Neues schreibgeschütztes Skript `scripts/Show-EventReadiness.ps1`: prüft nur lesend
+  Backend, Frontend-Port, DB-Pfad, Backup-Ordner und Git-Status. Keine Systemänderung.
+- QR/LAN bewusst noch nicht implementiert (Roadmap-Hinweis im UI).
+- Keine Änderung an Auslosungs-, Wertungs- oder Dedupe-Logik. Versionen auf `0.40.0`.
+
 ## 0.39.0 - Operator-Bedienleiste und Druck-/Backup-Polish
 
 - Neue Operator-Bedienleiste oben im Dashboard: Backend-Status, gewähltes Turnier,

@@ -1709,3 +1709,115 @@ th {
     align-items: flex-start;
   }
 }
+
+/* Sticky Schnellaktionen: Operator-Leiste bleibt beim Scrollen oben erreichbar. */
+.operator-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+}
+
+.operator-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.operator-tools button {
+  flex: 0 0 auto;
+}
+
+.operator-checklist {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 0.4rem 0.85rem;
+}
+
+.operator-checklist > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #f1f5f9;
+  padding: 0.35rem 0;
+}
+
+.operator-checklist-body ul {
+  margin: 0.4rem 0 0.6rem;
+  padding-left: 1.2rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.operator-power-note {
+  margin: 0.35rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+/* Turniertag-/Outdoor-Modus: größere Schrift, größere Buttons, höherer Kontrast.
+   Kein eigenes Theme-System – nur eine Klasse auf .shell, ohne Reload umschaltbar. */
+.shell.outdoor {
+  font-size: 1.15rem;
+}
+
+.shell.outdoor button {
+  padding: 0.85rem 1.15rem;
+  font-size: 1.05rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.shell.outdoor button.small {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.95rem;
+}
+
+.shell.outdoor select,
+.shell.outdoor input,
+.shell.outdoor textarea {
+  font-size: 1.05rem;
+  border-color: #94a3b8;
+  border-width: 2px;
+}
+
+.shell.outdoor .operator-bar {
+  border-color: rgba(147, 197, 253, 0.8);
+  background: rgba(2, 6, 23, 0.95);
+}
+
+.shell.outdoor .operator-chip {
+  background: #020617;
+  border-left-width: 8px;
+}
+
+.shell.outdoor .operator-chip-label,
+.shell.outdoor .operator-chip small,
+.shell.outdoor .muted,
+.shell.outdoor small {
+  color: #e2e8f0;
+}
+
+.shell.outdoor .operator-chip strong,
+.shell.outdoor .operator-next strong {
+  color: #ffffff;
+  font-size: 1.35rem;
+}
+
+.shell.outdoor .operator-chip.danger,
+.shell.outdoor .result-review-chip.danger {
+  border-left-color: #f87171;
+}
+
+.shell.outdoor .status-line {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.shell.outdoor .status-line .error {
+  color: #fca5a5;
+}
+
+.shell.outdoor table {
+  font-size: 1.02rem;
+}
