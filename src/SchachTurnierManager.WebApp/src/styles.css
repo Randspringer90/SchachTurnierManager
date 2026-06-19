@@ -1710,13 +1710,11 @@ th {
   }
 }
 
-/* Sticky Schnellaktionen: Operator-Leiste bleibt beim Scrollen oben erreichbar. */
+/* Operator-Leiste bleibt im normalen Dokumentfluss (nicht mehr sticky/fixiert),
+   damit sie beim Scrollen keinen dauerhaften Platz mehr blockiert. */
 .operator-bar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+  position: static;
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.35);
 }
 
 .operator-tools {
@@ -1820,4 +1818,187 @@ th {
 
 .shell.outdoor table {
   font-size: 1.02rem;
+}
+
+/* Interne Hauptreiter für das ausgewählte Turnier.
+   Reine React/CSS-Umsetzung, keine zusätzliche UI-Bibliothek. */
+.tab-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.1rem 0.55rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  scrollbar-width: thin;
+}
+
+.tab-button {
+  flex: 0 0 auto;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: 2px solid transparent;
+  color: #cbd5e1;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.7rem 0.7rem 0.3rem 0.3rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tab-button:hover {
+  color: #f8fafc;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.tab-button.active {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.7);
+  border-bottom-color: #60a5fa;
+  color: #f8fafc;
+}
+
+/* Dynamische Runden-Unterreiter (aus echtem Turnierzustand erzeugt). */
+.round-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.round-tab-button {
+  flex: 0 0 auto;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.round-tab-button:hover {
+  color: #f8fafc;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.round-tab-button.active {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: rgba(96, 165, 250, 0.8);
+  color: #f8fafc;
+}
+
+.round-tab-button.round-tab-next {
+  border-style: dashed;
+  border-color: rgba(34, 197, 94, 0.55);
+  color: #bbf7d0;
+}
+
+.round-start {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.1rem;
+  border: 1px dashed rgba(96, 165, 250, 0.45);
+  border-radius: 0.9rem;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.round-start h4 {
+  margin: 0;
+}
+
+/* Übersicht-Reiter. */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.overview-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.85);
+  border-left: 4px solid #475569;
+}
+
+.overview-grid span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.overview-grid strong {
+  font-size: 1.05rem;
+  color: #e5e7eb;
+  overflow-wrap: anywhere;
+}
+
+.overview-grid small {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.overview-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  margin-bottom: 1rem;
+}
+
+.overview-next.tone-ok { border-color: rgba(34, 197, 94, 0.55); }
+.overview-next.tone-warn { border-color: rgba(245, 158, 11, 0.6); }
+.overview-next.tone-danger { border-color: rgba(239, 68, 68, 0.6); }
+
+.overview-next strong {
+  display: block;
+  font-size: 1.15rem;
+  margin: 0.1rem 0 0.25rem;
+  color: #f8fafc;
+}
+
+.overview-next p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  max-width: 60ch;
+}
+
+.overview-next button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .overview-next {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Outdoor-/Turniertag-Modus: größere, kontrastreichere Reiter. */
+.shell.outdoor .tab-button,
+.shell.outdoor .round-tab-button {
+  font-size: 1.05rem;
+  padding: 0.6rem 1rem;
+}
+
+.shell.outdoor .tab-button.active,
+.shell.outdoor .round-tab-button.active {
+  color: #ffffff;
+}
+
+.shell.outdoor .overview-grid strong {
+  font-size: 1.2rem;
+  color: #f8fafc;
 }

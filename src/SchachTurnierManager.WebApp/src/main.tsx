@@ -925,6 +925,21 @@ function ChessDie({ rolling, spin, face }: { rolling: boolean; spin: number; fac
   );
 }
 
+const mainTabs = [
+  { id: 'overview', label: 'Übersicht' },
+  { id: 'participants', label: 'Teilnehmer' },
+  { id: 'rounds', label: 'Runden / Auslosung' },
+  { id: 'standings', label: 'Tabelle / Ergebnisse' },
+  { id: 'print', label: 'Druck / Backup' },
+  { id: 'admin', label: 'Verwaltung' }
+] as const;
+
+type MainTab = typeof mainTabs[number]['id'];
+
+function isMainTab(value: string | null): value is MainTab {
+  return value !== null && mainTabs.some(tab => tab.id === value);
+}
+
 function App() {
   const [health, setHealth] = React.useState<Health | null>(null);
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
@@ -963,6 +978,11 @@ function App() {
   const [outdoorMode, setOutdoorMode] = React.useState<boolean>(() => readLocalStorage('stm.outdoorMode') === '1');
   const [lastBackupAt, setLastBackupAt] = React.useState<string | null>(null);
   const [backupRecommended, setBackupRecommended] = React.useState<boolean>(false);
+  const [activeMainTab, setActiveMainTab] = React.useState<MainTab>(() => {
+    const stored = readLocalStorage('stm.activeMainTab');
+    return isMainTab(stored) ? stored : 'overview';
+  });
+  const [activeRoundNumber, setActiveRoundNumber] = React.useState<number | null>(null);
   const selectedTournament = tournaments.find(tournament => tournament.id === selectedId) ?? tournaments[0];
   const auditJournalRecentEntries = auditJournal.slice(0, 15);
   const auditJournalWarningCount = auditJournal.filter(entry => auditSeverityKey(entry.severity) === 'warning').length;
@@ -1038,6 +1058,27 @@ function App() {
   React.useEffect(() => {
     writeLocalStorage('stm.outdoorMode', outdoorMode ? '1' : '0');
   }, [outdoorMode]);
+
+  React.useEffect(() => {
+    writeLocalStorage('stm.activeMainTab', activeMainTab);
+  }, [activeMainTab]);
+
+  // Hält den aktiven Runden-Unterreiter immer auf eine real existierende Runde.
+  // Greift nach Reset/Delete (keine Runden → null) und beim Turnierwechsel.
+  React.useEffect(() => {
+    const rounds = selectedTournament?.rounds ?? [];
+    if (rounds.length === 0) {
+      if (activeRoundNumber !== null) {
+        setActiveRoundNumber(null);
+      }
+      return;
+    }
+
+    const exists = rounds.some(round => round.roundNumber === activeRoundNumber);
+    if (!exists) {
+      setActiveRoundNumber(rounds[rounds.length - 1].roundNumber);
+    }
+  }, [selectedTournament?.id, selectedTournament?.rounds.length, activeRoundNumber]);
 
   React.useEffect(() => {
     if (!selectedTournament?.id) {
@@ -1263,11 +1304,13 @@ function App() {
 
     setError(null);
     try {
-      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
+      const created = await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
       setStatus('Neue Runde ausgelost. Tipp: Jetzt ein lokales Backup ziehen.');
       setBackupRecommended(true);
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
+      setActiveRoundNumber(created.roundNumber);
+      setActiveMainTab('rounds');
       await refresh(selectedTournament.id);
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex));
@@ -2276,28 +2319,6 @@ function openRoundPrint(roundNumber: number) {
                 🖨 Rundenblatt drucken
               </button>
             </div>
-            <details className="operator-checklist">
-              <summary>✅ Vor-Ort-Checkliste &amp; Laptop-Hinweise</summary>
-              <div className="operator-checklist-body">
-                <ul>
-                  <li>Backend grün (Chip „Backend“ oben muss <strong>online</strong> sein)</li>
-                  <li>Backup ziehen, bevor Runde 1 ausgelost wird</li>
-                  <li>Teilnehmerliste prüfen (Anzahl, Namen, FIDE-ID)</li>
-                  <li>Wasser / Schatten / Sonnenschutz bereitstellen</li>
-                  <li>Rundenblatt der aktuellen Runde drucken</li>
-                  <li>Chess960 würfeln (falls Chess960-Turnier)</li>
-                  <li>Ergebnisse nach jeder Runde sofort eintragen und Speicher-Bestätigung abwarten</li>
-                  <li>Backup nach jeder Runde ziehen</li>
-                </ul>
-                <p className="operator-power-note">
-                  <strong>Strom &amp; Energie:</strong> Laptop am Netzteil betreiben · Energiesparen und Bildschirmsperre vermeiden ·
-                  Browser-Tab offen lassen · das Backend-Fenster NICHT schließen.
-                </p>
-                <p className="operator-power-note muted">
-                  Lokaler Lan-Zugriff per QR-Code ist bewusst noch nicht eingebaut (siehe Roadmap). Bedienung erfolgt am Turnier-Laptop.
-                </p>
-              </div>
-            </details>
           </section>
         );
       })()}
@@ -2444,12 +2465,83 @@ function openRoundPrint(roundNumber: number) {
             <div className="actions">
               <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>Auslosungsvorschau</button>
               <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Nächste Runde auslosen</button>
-              <button type="button" className="secondary" onClick={() => void resetSelectedTournament()} disabled={!selectedTournament}>Turnier zurücksetzen</button>
-              <button type="button" className="danger" onClick={() => void deleteSelectedTournament()} disabled={!selectedTournament}>Turnier löschen</button>
             </div>
           </div>
 
-          {nextRoundPreview && (
+          <nav className="tab-bar" role="tablist" aria-label="Turnierbereiche">
+            {mainTabs.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeMainTab === tab.id}
+                className={`tab-button${activeMainTab === tab.id ? ' active' : ''}`}
+                onClick={() => setActiveMainTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+
+          {activeMainTab === 'overview' && (
+            <article className="card overview-card">
+              <h3>Übersicht</h3>
+              {!selectedTournament && <p className="muted">Bitte links ein Turnier anlegen oder aus der Liste auswählen.</p>}
+              {selectedTournament && (
+                <>
+                  <div className="overview-grid">
+                    <div><span>Turnier</span><strong>{selectedTournament.name}</strong></div>
+                    <div><span>Format</span><strong>{formatOptions.find(option => option.value === selectedTournament.settings.format)?.label ?? '–'}</strong></div>
+                    <div><span>Runde</span><strong>{operatorRoundLabel()}</strong></div>
+                    <div><span>Status</span><strong>{resultReviewStatusLabel()}</strong></div>
+                    <div><span>Offene Ergebnisse</span><strong>{totalOpenBoardCount()}</strong></div>
+                    <div><span>Teilnehmer</span><strong>{activePlayerCount()} aktiv · {inactivePlayerCount()} inaktiv</strong></div>
+                    <div><span>Backend</span><strong>{health ? `online · ${health.version}` : 'nicht erreichbar'}</strong></div>
+                    <div><span>Letztes Backup</span><strong>{backupRecommended ? 'empfohlen' : lastBackupAt ? 'aktuell' : 'noch keins'}</strong><small>{backupTimeLabel(lastBackupAt)}</small></div>
+                  </div>
+                  {(() => {
+                    const step = nextOperatorStep();
+                    return (
+                      <div className={`overview-next tone-${step.tone}`}>
+                        <div>
+                          <span className="operator-next-eyebrow">Nächster Schritt</span>
+                          <strong>{step.title}</strong>
+                          <p>{step.detail}</p>
+                        </div>
+                        {step.action && step.actionLabel && (
+                          <button type="button" onClick={step.action}>{step.actionLabel}</button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {health?.databasePath && (
+                    <p className="operator-dbpath" title={health.databasePath}>Datenbank: {health.databasePath} · Autosave nach jeder Aktion · vor Runde 1 Backup ziehen</p>
+                  )}
+                  <details className="operator-checklist" open>
+                    <summary>✅ Vor-Ort-Checkliste &amp; Laptop-Hinweise</summary>
+                    <div className="operator-checklist-body">
+                      <ul>
+                        <li>Backend grün (Chip „Backend“ oben muss <strong>online</strong> sein)</li>
+                        <li>Backup ziehen, bevor Runde 1 ausgelost wird</li>
+                        <li>Teilnehmerliste prüfen (Anzahl, Namen, FIDE-ID)</li>
+                        <li>Wasser / Schatten / Sonnenschutz bereitstellen</li>
+                        <li>Rundenblatt der aktuellen Runde drucken</li>
+                        <li>Chess960 würfeln (falls Chess960-Turnier)</li>
+                        <li>Ergebnisse nach jeder Runde sofort eintragen und Speicher-Bestätigung abwarten</li>
+                        <li>Backup nach jeder Runde ziehen</li>
+                      </ul>
+                      <p className="operator-power-note">
+                        <strong>Strom &amp; Energie:</strong> Laptop am Netzteil betreiben · Energiesparen und Bildschirmsperre vermeiden ·
+                        Browser-Tab offen lassen · das Backend-Fenster NICHT schließen.
+                      </p>
+                    </div>
+                  </details>
+                </>
+              )}
+            </article>
+          )}
+
+          {activeMainTab === 'rounds' && nextRoundPreview && (
             <article className={`card preview-card ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
               <div className="preview-card-header">
                 <div>
@@ -2507,6 +2599,17 @@ function openRoundPrint(roundNumber: number) {
               </div>
             </article>
           )}
+          {activeMainTab === 'admin' && (
+            <article className="card admin-danger-card">
+              <h3>Gefährliche Aktionen</h3>
+              <p className="muted">Zurücksetzen behält Teilnehmer und Einstellungen, löscht aber alle Runden, Ergebnisse und Chess960-Startstellungen. Löschen entfernt das gesamte Turnier und verlangt die exakte Eingabe des Turniernamens.</p>
+              <div className="actions">
+                <button type="button" className="secondary" onClick={() => void resetSelectedTournament()} disabled={!selectedTournament}>Turnier zurücksetzen</button>
+                <button type="button" className="danger" onClick={() => void deleteSelectedTournament()} disabled={!selectedTournament}>Turnier löschen</button>
+              </div>
+            </article>
+          )}
+          {activeMainTab === 'admin' && (
           <article className="card settings-card">
             <h3>Turniereinstellungen</h3>
             <form onSubmit={(event) => void saveSettings(event)} className="settings-form">
@@ -2567,7 +2670,9 @@ function openRoundPrint(roundNumber: number) {
               <button type="submit" disabled={!selectedTournament}>Einstellungen speichern</button>
             </form>
           </article>
+          )}
 
+          {activeMainTab === 'participants' && (
           <div className="grid two">
             <article className="card external-lookup-card">
               <h3>Spieler suchen</h3>
@@ -2661,7 +2766,9 @@ function openRoundPrint(roundNumber: number) {
               </form>
             </article>
           </div>
+          )}
 
+          {activeMainTab === 'participants' && (
           <article className="card participant-card">
             <h3>Teilnehmerliste <small className="muted">{selectedTournament?.players.length ?? 0} Teilnehmer · horizontal scrollbar</small></h3>
             <div className="table-scroll participant-scroll">
@@ -2695,7 +2802,9 @@ function openRoundPrint(roundNumber: number) {
               </table>
             </div>
           </article>
+          )}
 
+          {activeMainTab === 'standings' && (
           <div className="grid two">
             <article className="card">
               <h3>Live-Tabelle</h3>
@@ -2747,6 +2856,9 @@ function openRoundPrint(roundNumber: number) {
             </article>
           </div>
 
+          )}
+
+          {activeMainTab === 'standings' && (
           <article className="card">
             <h3>Kategorieauswertungen</h3>
             {categories.length === 0 && <p>Noch keine Kategorie mit passenden Spielern.</p>}
@@ -2764,6 +2876,9 @@ function openRoundPrint(roundNumber: number) {
             </div>
           </article>
 
+          )}
+
+          {activeMainTab === 'standings' && (
           <article className="card">
             <h3>Kreuztabelle</h3>
             <div className="table-scroll">
@@ -2784,10 +2899,45 @@ function openRoundPrint(roundNumber: number) {
             </div>
           </article>
 
+          )}
+
+          {activeMainTab === 'rounds' && (
           <article className="card">
             <h3>Runden und Ergebnisse</h3>
-            {selectedTournament?.rounds.length === 0 && <p>Noch keine Runde ausgelost.</p>}
-            {selectedTournament?.rounds.map(round => (
+            {(!selectedTournament || selectedTournament.rounds.length === 0) ? (
+              <div className="round-start">
+                <h4>Runde 1 auslosen</h4>
+                <p className="muted">Noch keine Runde vorhanden. Vorschau ansehen, prüfen und Runde 1 auslosen. Kritische Hinweise blockieren nicht, sondern werden vor dem Auslosen bestätigt.</p>
+                <div className="actions">
+                  <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>Auslosungsvorschau</button>
+                  <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Runde 1 auslosen</button>
+                </div>
+                {pairingReadinessBlockingIssues().length > 0 && (
+                  <ul className="message-list round-bottom-blockers">
+                    {pairingReadinessBlockingIssues().map((issue, index) => <li key={`round-start-blocker-${index}`}>{issue}</li>)}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="round-tab-bar" role="tablist" aria-label="Runden">
+                  {selectedTournament.rounds.map(round => (
+                    <button
+                      key={`round-tab-${round.roundNumber}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={round.roundNumber === activeRoundNumber}
+                      className={`round-tab-button${round.roundNumber === activeRoundNumber ? ' active' : ''}`}
+                      onClick={() => setActiveRoundNumber(round.roundNumber)}
+                    >
+                      Runde {round.roundNumber}
+                    </button>
+                  ))}
+                  {pairingReadinessCanCreatePreview() && (
+                    <button type="button" className="round-tab-button round-tab-next" onClick={() => void previewNextRound()} title="Vorschau für die nächste Runde als Popup öffnen">＋ Nächste Runde</button>
+                  )}
+                </div>
+                {selectedTournament.rounds.filter(round => round.roundNumber === activeRoundNumber).map(round => (
               <section key={round.roundNumber} className="round-box">
                 <div className="round-header">
                   <div>
@@ -2966,10 +3116,14 @@ function openRoundPrint(roundNumber: number) {
                   )}
                 </div>
               </section>
-            ))}
+                ))}
+              </>
+            )}
           </article>
+          )}
 
-                                                          <article className="card pairing-readiness-card">
+          {activeMainTab === 'rounds' && (
+          <article className="card pairing-readiness-card">
               <div className="pairing-readiness-header">
                 <div>
                   <h3>Auslosungsfreigabe</h3>
@@ -3005,8 +3159,10 @@ function openRoundPrint(roundNumber: number) {
 
               <p className="muted small">Hinweis: Diese Freigabe ergänzt die bestehenden Aktionen im Kopfbereich. Sie ist als bewusster Turnierleiter-Check vor der nächsten Runde gedacht.</p>
             </article>
+          )}
 
-<article className="card bye-forfeit-card">
+          {activeMainTab === 'standings' && (
+          <article className="card bye-forfeit-card">
               <div className="bye-forfeit-header">
                 <div>
                   <h3>Bye- und Kampflos-Audit</h3>
@@ -3060,8 +3216,10 @@ function openRoundPrint(roundNumber: number) {
                 <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
               </div>
             </article>
+          )}
 
-<article className="card result-review-card">
+          {activeMainTab === 'rounds' && (
+          <article className="card result-review-card">
               <div className="result-review-header">
                 <div>
                   <h3>Rundenabschluss-Checkliste</h3>
@@ -3114,8 +3272,9 @@ function openRoundPrint(roundNumber: number) {
                 <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle CSV</button>
               </div>
             </article>
+          )}
 
-
+          {activeMainTab === 'overview' && (
           <article className="card correction-journal-card">
             <div className="card-heading-row">
               <div>
@@ -3171,7 +3330,11 @@ function openRoundPrint(roundNumber: number) {
               <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
               <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Paarungen CSV</button>
             </div>
-          </article><article className="card export-center-card">
+          </article>
+          )}
+
+          {activeMainTab === 'print' && (
+          <article className="card export-center-card">
               <div className="export-center-header">
                 <div>
                   <h3>Turnierleiter-Exportcenter</h3>
@@ -3216,6 +3379,9 @@ function openRoundPrint(roundNumber: number) {
 
               <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.</p>
             </article>
+          )}
+
+          {activeMainTab === 'admin' && (
           <article className="card audit-journal-card">
             <div className="audit-journal-heading">
               <div>
@@ -3264,7 +3430,10 @@ function openRoundPrint(roundNumber: number) {
               <button type="button" className="secondary" onClick={() => exportAuditJournalJson()} disabled={!selectedTournament || auditJournal.length === 0}>Audit JSON</button>
             </div>
           </article>
-<article className="card">
+          )}
+
+          {activeMainTab === 'print' && (
+          <article className="card">
             <h3>Import / Export</h3>
             <div className="grid two">
               <section>
@@ -3338,6 +3507,7 @@ function openRoundPrint(roundNumber: number) {
               </section>
             </div>
           </article>
+          )}
         </section>
       </section>
     </main>

@@ -1,3 +1,19 @@
+## 0.40.1 - Turniertag-Startfix (Ein-Klick-BAT, Operator-Leiste nicht mehr fixiert)
+
+- Neue klickbare Startdatei `RUN_TURNIERMANAGER.bat` im Repo-Root: startet Backend,
+  Frontend und Browser. Nutzt `pwsh`, sonst `powershell`, jeweils mit `-ExecutionPolicy
+  Bypass` nur prozesslokal (keine Änderung der globalen ExecutionPolicy, keine Adminrechte).
+  Behebt das Problem, dass `Start-Dev.ps1` wegen fehlender Signatur direkt blockiert wurde.
+- `scripts/Start-Dev.ps1` robuster: pwsh-/powershell-Fallback für die Teilfenster und
+  Port-Prüfung für 5088/5173 (läuft ein Dienst bereits, wird er weiterverwendet statt hart
+  zu crashen oder Prozesse aggressiv zu killen).
+- Operator-Leiste ist nicht mehr `sticky`/fixiert: sie bleibt oben im normalen
+  Dokumentfluss und blockiert beim Scrollen keinen Platz mehr. Schnellaktionen (Backup,
+  Turnierpaket drucken, Rundenblatt drucken, nächster Schritt) und der Turniertag-Modus
+  bleiben unverändert funktionsfähig.
+- Keine Änderung an Auslosungs-, Wertungs-, Such-, Dedupe-, Chess960- oder Persistenzlogik.
+  Versionen auf `0.40.1`.
+
 ## 0.40.0 - Turniertag-Härtung (Outdoor-Modus, Sticky-Leiste, Backup-Hinweise)
 
 - Neuer „Turniertag-Modus" (Outdoor): ein CSS-Klassen-Umschalter in der Operator-Leiste

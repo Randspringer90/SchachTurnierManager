@@ -13,7 +13,20 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
 
-## Start
+## Schnellstart (empfohlen)
+
+Zum Starten doppelklicken: **`RUN_TURNIERMANAGER.bat`** (im Repo-Root).
+
+Die Datei startet Backend und Frontend in getrennten Fenstern und öffnet den Browser
+auf `http://localhost:5173`. Sie nutzt PowerShell 7 (`pwsh`), falls vorhanden, sonst
+Windows PowerShell, jeweils mit `-ExecutionPolicy Bypass` nur für diesen Prozess – die
+globale ExecutionPolicy wird **nicht** verändert und es werden **keine** Adminrechte benötigt.
+
+> Hinweis: Wenn PowerShell `.\scripts\Start-Dev.ps1` direkt mit der Meldung
+> „cannot be loaded … is not digitally signed" blockiert, einfach `RUN_TURNIERMANAGER.bat`
+> verwenden – die BAT umgeht die Signaturprüfung prozesslokal.
+
+## Start (manuell)
 
 Backend:
 
