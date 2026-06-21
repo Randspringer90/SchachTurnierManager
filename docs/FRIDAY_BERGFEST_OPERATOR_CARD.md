@@ -12,7 +12,7 @@ Ein-Seiten-Karte. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
 - Papier bereitlegen: Paarungsblatt, Ergebnisliste, Stift.
 - Health muss `status` zeigen: http://localhost:5088/api/health
 - Dashboard: http://localhost:5173
-- Optional vorab (eigenes isoliertes Backend, hängesicher): `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `20 OK, 0 FEHLER`.
+- Optional vorab (eigenes isoliertes Backend, hängesicher): `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
 - QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) — Runbook §9.
 
 ## Start
@@ -44,6 +44,7 @@ Danach Startbefehle erneut ausführen.
 ## Turnier/Runde
 
 - Turnier: `Bergfest Freestyle-Würfelschach 2026`, Swiss, 5 Runden.
+- Vor Runde 1: Format und geplante Runden prüfen. Nach 5 geplanten Runden keine 6. Runde.
 - Teilnehmer manuell oder CSV; Turnier-Id notieren.
 - Pro Runde: Vorschau öffnen, jeden Spieler höchstens einmal prüfen, bei ungerader Zahl genau ein Bye.
 - Rematch/Severity `kritisch`: nicht blind übernehmen. Manuell korrigieren, Notiz setzen.
@@ -51,6 +52,9 @@ Danach Startbefehle erneut ausführen.
 - Tabelle prüfen, Backup ziehen.
 - **Nach jeder Runde Audit sichern:** Audit-Journal-Karte → „Audit-Bundle (JSONL)" oder
   `pwsh -File .\scripts\Export-TournamentAudit.ps1`. Macht jede Auslosung/Korrektur nachvollziehbar.
+- Late Entry: Swiss ab nächster Runde ok; Round-Robin nach Start blockiert.
+- Grenzen: kein vollständiges FIDE-Dutch; >20 Spieler = Greedy-Fallback besonders prüfen.
+- QR/Handy: URL darf nicht `localhost` enthalten; bei Firewall/Netzproblem am Laptop würfeln.
 
 ## Backup/Fallback
 
@@ -62,3 +66,4 @@ $tournamentId=Read-Host "Turnier-Id"; $round=Read-Host "Runde/final"; Invoke-Res
 - Dashboard hängt: Print-/Export-Links aus Runbook direkt im Browser öffnen.
 - App fällt aus: letztes Rundenblatt und letzte Tabelle auf Papier weiterführen.
 - Nach dem Turnier Papierbogen nacherfassen.
+- Während laufender Runde keine Experimente: erst Papierstand sichern, dann neu starten/restore.

@@ -20,11 +20,13 @@
     Abgedeckte Szenarien (Plan Phase 3):
       1. Health.
       2. Swiss 12 Spieler / 5 Runden: ausgespielt, KEINE 6. Runde (HTTP 400),
-         keine vermeidbaren Rematches (direkt aus den Paarungen geprueft), Audit-Export.
-      3. Round-Robin 6 Spieler: Late Entry nach Start blockiert (HTTP 400).
+         keine vermeidbaren Rematches (direkt aus den Paarungen geprueft), Audit-Export
+         nach jeder Runde.
+      3. Round-Robin 6 Spieler: vollstaendiger Spielplan und Late Entry nach Start
+         blockiert (HTTP 400).
       4. Manuelle Paarung: gueltig ok, Self-Pairing blockiert, doppelter Spieler blockiert.
       5. Backup/Restore: Export -> Delete -> Re-Import -> verifiziert (isoliertes Datenverz.).
-      6. QR/Chess960: Start-Stellungen je Brett gewuerfelt und vollstaendig zugewiesen.
+      6. QR/Chess960: Start-Stellungen je Brett, Einzelbrett-Endpunkt und QR-URL-Form.
 
 .PARAMETER BaseUrl
     Wenn gesetzt, wird ein BEREITS laufendes Backend unter dieser URL genutzt und NICHT
@@ -239,6 +241,9 @@ try {
             $res = @(1, 2, 3) | Get-Random
             [void](Invoke-Api -Method Post -Path "/api/tournaments/$sid/rounds/$($round.roundNumber)/boards/$($b.boardNumber)/result" -Body @{ result = $res })
         }
+
+        $roundAudit = Invoke-Api -Method Get -Path "/api/tournaments/$sid/audit-journal/export.jsonl"
+        Assert-That ($roundAudit.Status -eq 200 -and $roundAudit.Raw.Length -gt 0) "Audit-Bundle nach Swiss Runde $r exportierbar" "Bytes: $($roundAudit.Raw.Length)"
     }
     $final = (Invoke-Api -Method Get -Path "/api/tournaments/$sid").Body
     Assert-That ($final.rounds.Count -eq 5) 'Genau 5 Runden ausgelost' "Ist: $($final.rounds.Count)"
@@ -270,12 +275,38 @@ try {
         $assigned = @($regular | Where-Object { $null -ne $_.chess960StartPosition })
         Assert-That ($assigned.Count -eq $regular.Count -and $regular.Count -gt 0) 'Alle regulaeren Bretter haben eine Start-Stellung' "$($assigned.Count)/$($regular.Count)"
     }
+    $singleBoard = Invoke-Api -Method Post -Path "/api/tournaments/$sid/rounds/1/chess960/start-positions/1" -Body @{ overwriteExisting = $true; positionNumber = 518 }
+    $singleBoardPairing = if ($singleBoard.Status -eq 200) { @($singleBoard.Body.pairings | Where-Object { $_.boardNumber -eq 1 })[0] } else { $null }
+    Assert-That ($singleBoard.Status -eq 200 -and $singleBoardPairing.chess960StartPosition.positionNumber -eq 518) 'Chess960-Einzelbrett-Endpunkt akzeptiert feste Position' "Status: $($singleBoard.Status)"
+    $qrUrl = "http://LAPTOP-IP:5173/?dice=$sid&round=1&board=1"
+    Assert-That ($qrUrl -match '\?dice=.*&round=1&board=1') 'QR-URL-Form enthaelt Turnier, Runde und Brett' $qrUrl
 
     # =====================================================================
-    # 3. ROUND-ROBIN: 6 Spieler, Late Entry nach Start blockiert
+    # 3. ROUND-ROBIN: 6 Spieler vollstaendig, Late Entry nach Start blockiert
     # =====================================================================
-    Write-Step "3. Round-Robin 6 Spieler / Late-Entry-Sperre"
+    Write-Step "3. Round-Robin 6 Spieler / vollstaendig + Late-Entry-Sperre"
     # TournamentFormat.RoundRobin = 0.
+    $rrFull = (Invoke-Api -Method Post -Path '/api/tournaments' -Body @{
+        name = "Smoke RR Full $stamp"; settings = @{ format = 0; plannedRounds = 5 }
+    }).Body
+    $rrFullId = $rrFull.id
+    for ($i = 1; $i -le 6; $i++) {
+        [void](Invoke-Api -Method Post -Path "/api/tournaments/$rrFullId/players" -Body @{ name = ("RR Full Spieler {0:D2}" -f $i); startingRank = $i })
+    }
+    $rrPairs = New-Object System.Collections.Generic.HashSet[string]
+    for ($r = 1; $r -le 5; $r++) {
+        $rrRound = (Invoke-Api -Method Post -Path "/api/tournaments/$rrFullId/pairings/next-round").Body
+        foreach ($board in @($rrRound.pairings | Where-Object { -not $_.isBye })) {
+            $key = (@([string]$board.whitePlayerId, [string]$board.blackPlayerId) | Sort-Object) -join '|'
+            [void]$rrPairs.Add($key)
+            $res = @(1, 2, 3) | Get-Random
+            [void](Invoke-Api -Method Post -Path "/api/tournaments/$rrFullId/rounds/$($rrRound.roundNumber)/boards/$($board.boardNumber)/result" -Body @{ result = $res })
+        }
+    }
+    Assert-That ($rrPairs.Count -eq 15) 'RR 6 Spieler erzeugt alle 15 Paarungen genau einmal' "Paarungen: $($rrPairs.Count)"
+    $rrFullExtra = Invoke-Api -Method Post -Path "/api/tournaments/$rrFullId/pairings/next-round"
+    Assert-That ($rrFullExtra.Status -eq 400) 'RR Zusatzrunde nach komplettem Spielplan blockiert (HTTP 400)' "Status: $($rrFullExtra.Status)"
+
     $rr = (Invoke-Api -Method Post -Path '/api/tournaments' -Body @{
         name = "Smoke RR $stamp"; settings = @{ format = 0; plannedRounds = 5 }
     }).Body
@@ -285,6 +316,12 @@ try {
     }
     $rrRound1 = Invoke-Api -Method Post -Path "/api/tournaments/$rid/pairings/next-round"
     Assert-That ($rrRound1.Status -eq 200) 'RR Runde 1 ausgelost' "Status: $($rrRound1.Status)"
+    if ($rrRound1.Status -eq 200) {
+        foreach ($board in @($rrRound1.Body.pairings | Where-Object { -not $_.isBye })) {
+            $res = @(1, 2, 3) | Get-Random
+            [void](Invoke-Api -Method Post -Path "/api/tournaments/$rid/rounds/1/boards/$($board.boardNumber)/result" -Body @{ result = $res })
+        }
+    }
     # Late Entry nach Start: Spieler hinzufuegen, dann naechste Runde muss blockieren.
     [void](Invoke-Api -Method Post -Path "/api/tournaments/$rid/players" -Body @{ name = 'RR Late Entry'; startingRank = 7 })
     $rrNext = Invoke-Api -Method Post -Path "/api/tournaments/$rid/pairings/next-round"
@@ -347,7 +384,7 @@ try {
     Assert-That ($restored.Status -eq 200 -and $playerCountAfter -eq $playerCountBefore) 'Wiederhergestelltes Turnier vollstaendig' "Spieler vorher/nachher: $playerCountBefore/$playerCountAfter"
 
     # --- Aufraeumen der Smoke-Turniere (nur das isolierte DB-Verzeichnis) ---
-    foreach ($cleanupId in @($sid, $rid, $mid)) {
+    foreach ($cleanupId in @($sid, $rrFullId, $rid, $mid)) {
         [void](Invoke-Api -Method Delete -Path "/api/tournaments/$cleanupId")
     }
 }

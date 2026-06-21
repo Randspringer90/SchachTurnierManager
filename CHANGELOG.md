@@ -20,6 +20,29 @@ synthetisch; keine echten Daten/Exporte committet (`output/**` ist ignoriert).
   Smoke-Lauf und das Timeout-/Stop-Verhalten ergaenzt; QR-Vorabtest dort verankert.
 - **Version:** `0.41.0` → `0.41.1` (Health, `package.json`). 175 Tests bleiben gruen.
 
+## 0.41.1 - Operator-Readiness-Smoke und Runbook-Haertung
+
+Release-Candidate-Vorbereitung nach der Swiss-Engine-Haertung. Fokus: Turniertagsfaehigkeit,
+Startpaket, lokale Verifikation und klare Grenzen. Keine neue Pairing-Architektur, keine
+Auslosungs- oder Wertungslogik geaendert. Alle Smoke-Daten sind synthetisch.
+
+- **Operator-Smoke-Skript:** `scripts\Smoke-OperatorWorkflow.ps1` startet isolierte lokale
+  API-Prozesse, prueft Health, Swiss 12/5 inkl. Audit-Export und Rundenlimit, Round-Robin 6
+  vollstaendig, Round-Robin-Late-Entry-Sperre, Manual-Pairing-Guards, Backup/Restore in zweitem
+  Datenpfad sowie Chess960-Einzelbrett/QR-URL-Form. Artefakte landen unter `output\...` und sind
+  ignoriert; API-Daten liegen in temporaeren synthetischen Datenpfaden.
+- **Runbook/Checklisten:** Turniertagsablauf geschärft: `PlannedRounds`/MaxRounds vor Start
+  gegenpruefen, Audit-Bundle nach jeder Runde exportieren, Backup/Restore klarer trennen,
+  QR/Chess960-Vorabtest vor Ort dokumentieren, Late Entry je Format erklaeren, Swiss-Grenzen
+  (kein vollstaendiges FIDE-Dutch, >20 Spieler Greedy-Fallback) sichtbar halten.
+- **Portable-Paket robuster lokal baubar:** `Pack-Portable.ps1` und `Invoke-ReleaseGate.ps1`
+  nutzen vorhandene `node_modules`, statt bei jedem Paketbau ein `npm install` zu erzwingen.
+  Das vermeidet Windows-`EPERM unlink` bei gesperrten Node-Dateien; in sauberer Umgebung
+  installieren sie weiterhin per `npm ci`/`npm install`. `dotnet publish` nutzt vorhandene
+  Restore-Artefakte mit `--no-restore`.
+- **Startpaket-Grenzen:** Dev-Start und Portable-Paket bleiben lokale Werkzeuge; keine Cloud,
+  keine Uploads, keine Releases/Tags.
+
 ## 0.41.0 - Schweizer-System V2: global optimale Paarung (vermeidbare Rematches eliminiert)
 
 Folgearbeit zum Bergfest-Postmortem („falsche/wiederholte Paarungen"). Die Schweizer-Engine

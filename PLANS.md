@@ -7,6 +7,17 @@
 - Offen (unverändert): kein vollständiges FIDE-Dutch, Felder > 20 Spieler Greedy-Fallback,
   QR-Anzeige am realen Handy bleibt manueller Vorabtest.
 
+# Aktueller Zusatz 0.41.1
+
+- Operator-/Release-Candidate-Haertung ohne neue Pairing-Architektur:
+  `scripts\Smoke-OperatorWorkflow.ps1` prueft synthetisch Health, Swiss 12/5,
+  Rundenlimit, Audit-Export, Round-Robin, Manual-Pairing-Guards, Backup/Restore und
+  Chess960/QR-URL-Form.
+- Runbook/Checklisten geschärft fuer Turniertag: QR-Vorabtest, Audit nach jeder Runde,
+  Backup/Restore, MaxRounds, Late Entry je Format, Swiss-Grenzen und Notfallablauf.
+- Offen vor echtem Release: realer Handytest im Veranstaltungs-WLAN/Hotspot, keine Tags/Releases
+  ohne ausdrueckliche Freigabe.
+
 # Aktueller Zusatz 0.41.0
 
 - Schweizer-System V2: global optimale Minimum-Penalty-Paarung (≤ 20 Spieler) ersetzt die

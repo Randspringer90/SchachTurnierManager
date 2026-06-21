@@ -27,7 +27,7 @@ Hintergrund/Architektur: `docs/BERGFEST_MVP_PLAN.md`.
    echte Turnier auf Port 5088 nicht) und prüft in einem Lauf: Health, Swiss 12/5 (genau
    5 Runden, keine 6., keine vermeidbaren Rematches, Audit-Export), Round-Robin-Late-Entry-
    Sperre, manuelle Paarung (gültig/Self-Pairing/Doppelspieler), Backup/Restore und das
-   Chess960-Würfeln hinter dem QR-Flow. Erwartung: `Operator-Smoke: 20 OK, 0 FEHLER`,
+   Chess960-Würfeln hinter dem QR-Flow. Erwartung: `Operator-Smoke: ... OK, 0 FEHLER`,
    Exit-Code 0. Das Skript fährt sein Backend danach selbst wieder herunter (kein
    zurückbleibender Prozess) und löscht sein Temp-Datenverzeichnis. Logs unter
    `output\smoke\`. Hängt nichts: jeder Aufruf hat ein Timeout, der Start wartet mit
@@ -130,7 +130,8 @@ Für jede Runde:
    - **Korrektur**: einfach das Ergebnis am selben Brett erneut setzen; es überschreibt
      und die Tabelle aktualisiert sich sofort.
 5. **Backup ziehen** (Schritt 6) — empfohlen nach jeder Runde.
-6. Erst wenn alle Bretter der Runde ein Ergebnis haben, lässt sich die nächste Runde auslosen.
+6. **Audit-Bundle exportieren** (Schritt 6) — nach jeder Runde und am Turnierende.
+7. Erst wenn alle Bretter der Runde ein Ergebnis haben, lässt sich die nächste Runde auslosen.
 
 ## 5a. Was tun bei Rematch-Warnung?
 
@@ -152,7 +153,20 @@ Rematch-Warnung in Vorschau/Qualität bedeutet jetzt also: das Rematch ist rechn
 5. Bei Feldern **über 20 Spielern** schaltet die Engine in einen Greedy-Fallback (im Audit
    gekennzeichnet); dann kann ein Rematch wieder vermeidbar sein – Vorschau besonders prüfen.
 
-## 6. Backup / Snapshot nach jeder Runde
+## 5b. Rundenlimit, Late Entry und bewusste Grenzen
+
+- **MaxRounds:** Die geplante Rundenzahl (`PlannedRounds`) ist hart. Nach 5 geplanten Runden
+  darf keine 6. Runde erzeugt werden. Vor Turnierstart deshalb Format und Rundenzahl laut
+  Ausschreibung gegenprüfen.
+- **Swiss Late Entry:** Nachmeldungen sind im Schweizer-System möglich; sie spielen ab der
+  nächsten noch nicht ausgelosten Runde mit. Frühere Runden bleiben unverändert.
+- **Round-Robin Late Entry/Rückzug:** Im Jeder-gegen-jeden ist der Spielplan ab Runde 1 fixiert.
+  Spätere Spieleränderungen werden blockiert und erfordern Reset/Neuanlage.
+- **Formatwechsel:** Nach bereits ausgelosten Runden nicht mehr ändern.
+- **Swiss-Grenzen:** Kein vollständiges FIDE-Dutch; bis 20 aktive Spieler globale
+  Minimum-Penalty-Paarung, darüber dokumentierter Greedy-Fallback.
+
+## 6. Backup / Restore / Audit nach jeder Runde
 
 Autosave läuft immer in SQLite. Zusätzlich pro Runde einen externen JSON-Snapshot ziehen:
 
@@ -169,6 +183,23 @@ Wiederherstellen (falls nötig): den JSON-Inhalt an
 `{"tournament": <json>, "overwriteExisting": true}` senden.
 
 > Tipp: Ordner `D:\Schach\Backups\` vorher anlegen.
+
+Audit-Forensik nach jeder Runde und am Turnierende zusätzlich sichern:
+
+```powershell
+pwsh -File .\scripts\Export-TournamentAudit.ps1 -TournamentId $tournamentId -Format jsonl
+```
+
+Erwartung: Datei in `output\audit\` mit Manifest, Turnier-Snapshot, Pairing-Forensik und allen
+Audit-Ereignissen. Diese Datei bleibt lokal und wird nicht committet.
+
+Restore-Regel:
+- **Nicht während einer laufenden Runde in Panik importieren.** Erst aktuellen Stand sichern,
+  Papierstand festhalten und dann in Ruhe importieren.
+- Vor dem Turnier Restore isoliert prüfen: `scripts\Smoke-OperatorWorkflow.ps1` deckt den
+  Backup/Restore-Pfad mit synthetischen Daten ab.
+- Im echten Notfall JSON-Backup an `POST /api/tournaments/import` senden. `overwriteExisting=true`
+  nur verwenden, wenn klar ist, dass das vorhandene Turnier überschrieben werden soll.
 
 ## 7. Export & Druck (Paarungen + Tabelle)
 
@@ -189,6 +220,7 @@ CSV öffnet in Excel/LibreOffice (Trennzeichen **Semikolon**, UTF-8).
 1. Letzte Ergebnisse eingeben.
 2. Finale Tabelle als CSV **und** als HTML-Druckansicht exportieren/drucken.
 3. Abschluss-Backup ziehen (Schritt 6, `bergfest_final.json`).
+4. Finales Audit-Bundle exportieren (`jsonl` empfohlen).
 
 ## 9. QR/Handy-Vorabtest (vor dem ersten Würfeln)
 
@@ -206,7 +238,7 @@ Handy prüfen — das ist die bekannte offene Verifikationslücke aus dem Postmo
    hängt nicht davon ab.
 
 Die Datenschicht hinter dem QR-Flow (Chess960-Startstellungen je Brett) wird vom
-Operator-Smoke (Schritt 6) automatisch verifiziert; nur die Handy-Anzeige selbst muss manuell
+Operator-Smoke (Startcheck Schritt 6) automatisch verifiziert; nur die Handy-Anzeige selbst muss manuell
 geprüft werden.
 
 ## 10. Hänger-/Timeout-Verhalten (so hängt nichts)
@@ -233,3 +265,5 @@ Siehe `docs/FRIDAY_BERGFEST_CHECKLIST.md`, Abschnitt "Fallback". Kurz:
   (letztes gedrucktes Rundenblatt + Tabelle als Grundlage), später nacherfassen.
 - Bei unsicherer Technik während einer Runde: Runde auf Papier zu Ende spielen, erst danach
   App reparieren oder nacherfassen.
+- Keine ungeprüften Experimente während laufender Runde: zuerst Papierstand sichern, dann
+  Backend/Frontend neu starten, dann Restore nur mit bewusst gewähltem Backup.

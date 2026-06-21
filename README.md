@@ -2,16 +2,25 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.38.x
+## Aktueller Stand bis 0.41.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
 - Externe Spielerdaten per FIDE-ID suchen und übernehmen.
-- Schweizer-System-Paarungen mit Audit, Bye-/kampflos-Prüfungen und Regressionstests.
+- Schweizer-System-Paarungen mit global optimaler Rematch-Vermeidung bis 20 Spieler,
+  Audit, Bye-/kampflos-Prüfungen und Regressionstests.
 - Ergebnisse, Tabellen, Kategorien, Kreuztabelle, Rundenblätter und Exporte.
 - Persistentes Audit-Journal mit Dashboard, Exporten und Query-API.
+- Operator-Readiness-Smoke für lokale synthetische Turniertagsprüfung.
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
+
+## Bewusste Grenzen
+
+- Schweizer-System ist noch kein vollständiges FIDE-Dutch.
+- Felder mit mehr als 20 aktiven Spielern nutzen den dokumentierten Greedy-Fallback.
+- QR/Handy funktioniert nur im gleichen WLAN/Hotspot und muss vor Ort mit echter Laptop-IP
+  getestet werden; Browser-Würfeln am Laptop bleibt der Fallback.
 
 ## Schnellstart (empfohlen)
 
@@ -100,6 +109,18 @@ Ereignisse) und macht spätere Nachfragen nachvollziehbar. Details: `docs/AUDIT_
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1"
 ```
+
+## Operator-Readiness-Smoke
+
+Nach einem Build kann der lokale Turniertag mit rein synthetischen Daten geprüft werden:
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Smoke-OperatorWorkflow.ps1"
+```
+
+Der Smoke startet isolierte lokale API-Prozesse, prüft Health, Swiss 12/5, Round-Robin,
+Manual-Pairing-Guards, Backup/Restore und Chess960/QR-URL-Form. Artefakte liegen unter
+`output\operator-readiness-smoke\` und werden nicht committet.
 
 ## Sicher committen
 
