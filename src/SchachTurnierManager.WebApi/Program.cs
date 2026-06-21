@@ -55,10 +55,44 @@ var app = builder.Build();
 var webRootPath = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 var embeddedDashboardAvailable = File.Exists(Path.Combine(webRootPath, "index.html"));
 
-using (var scope = app.Services.CreateScope())
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+var usesFileDatabase = !string.Equals(databaseFullPath, "custom connection", StringComparison.Ordinal);
+if (usesFileDatabase)
 {
+    var probe = DatabaseStartupDiagnostics.Probe(databaseFullPath);
+    if (!probe.IsHealthy)
+    {
+        var report = DatabaseStartupDiagnostics.BuildFailureReport(databaseFullPath, probe);
+        startupLogger.LogCritical("{Report}", report);
+        Console.Error.WriteLine(report);
+        Environment.Exit(2);
+        return;
+    }
+}
+
+try
+{
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TournamentDbContext>();
     db.Database.EnsureCreated();
+}
+catch (Exception ex)
+{
+    // Klassisch: "SQLite Error 10: 'disk I/O error'" beim WAL-Pragma. Statt Stacktrace einen
+    // verständlichen, handlungsorientierten Hinweis ausgeben und sauber mit Fehlercode beenden,
+    // damit das Startskript die Lage erkennt.
+    var probe = usesFileDatabase ? DatabaseStartupDiagnostics.Probe(databaseFullPath) : new DatabaseProbeResult
+    {
+        DatabasePath = databaseFullPath,
+        Directory = databaseFullPath,
+        DirectoryExists = true,
+        DirectoryWritable = true
+    };
+    var report = DatabaseStartupDiagnostics.BuildFailureReport(databaseFullPath, probe, ex.Message);
+    startupLogger.LogCritical(ex, "{Report}", report);
+    Console.Error.WriteLine(report);
+    Environment.Exit(2);
+    return;
 }
 
 app.UseCors();
@@ -89,7 +123,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.40.2",
+    version = "0.40.3",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,

@@ -897,10 +897,38 @@ public sealed class TournamentService(ITournamentStore store)
 
     private TournamentRound GetNextRoundRobinRound(TournamentState tournament)
     {
-        var all = _roundRobin.GenerateAllRounds(tournament.Players.Where(p => p.IsActive).ToList(), tournament.Settings.TwzSource);
+        var activePlayers = tournament.Players.Where(p => p.IsActive).ToList();
+
+        // Jeder-gegen-jeden fixiert den kompletten Spielplan beim Start (Runde 1). Würde sich der
+        // aktive Teilnehmerkreis danach ändern, berechnet die Circle-Methode den Plan still neu und
+        // macht bereits gespielte Runden inkonsistent (falsche Farben, Rematches, falsche Byes,
+        // andere Rundenanzahl). Deshalb harte Sperre statt rückwirkender Stillschweigen-Änderung.
+        if (tournament.Rounds.Count > 0)
+        {
+            var scheduledParticipants = tournament.Rounds
+                .SelectMany(round => round.Pairings)
+                .SelectMany(pairing => new[] { pairing.WhitePlayerId, pairing.BlackPlayerId })
+                .Where(id => id is not null)
+                .Select(id => id!.Value)
+                .ToHashSet();
+            var currentActive = activePlayers.Select(p => p.Id).ToHashSet();
+
+            if (!currentActive.SetEquals(scheduledParticipants))
+            {
+                var added = currentActive.Except(scheduledParticipants).Count();
+                var removed = scheduledParticipants.Except(currentActive).Count();
+                throw new InvalidOperationException(
+                    "Im Jeder-gegen-jeden ist der Spielplan ab Runde 1 fixiert. " +
+                    $"Der aktive Teilnehmerkreis hat sich seit dem Start geändert (zusätzlich aktiv: {added}, nicht mehr aktiv: {removed}). " +
+                    "Ein nachträglicher Spieler oder Rückzug erfordert eine bewusste Neuplanung (Turnier zurücksetzen oder neu anlegen), " +
+                    "damit bereits gespielte Runden nicht rückwirkend verändert werden.");
+            }
+        }
+
+        var all = _roundRobin.GenerateAllRounds(activePlayers, tournament.Settings.TwzSource);
         if (tournament.Rounds.Count >= all.Count)
         {
-            throw new InvalidOperationException("Alle Rundenturnier-Runden wurden bereits erzeugt.");
+            throw new InvalidOperationException("Alle Runden des Jeder-gegen-jeden-Turniers wurden bereits erzeugt.");
         }
 
         return all[tournament.Rounds.Count];

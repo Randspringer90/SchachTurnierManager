@@ -1,3 +1,36 @@
+## 0.40.3 - Bergfest-Postmortem: Stabilisierung Rundenlimit, Late Entry, Round-Robin, DB-Start
+
+Nach dem realen Bergfest-Turnier (Freitag, 2026-06-19): harte Ursachenanalyse und gezielte
+Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.md`.
+
+- **Jeder-gegen-jeden / Round-Robin – Late Entry & Rückzug nicht mehr stillschweigend
+  rückwirkend:** `TournamentService.GetNextRoundRobinRound` berechnete bei jeder Auslosung den
+  kompletten Spielplan aus den aktuell aktiven Spielern neu. Kam ein Spieler nach Runde 1 dazu
+  (oder zog sich zurück), verschob das die Circle-Methode und machte bereits gespielte Runden
+  inkonsistent (falsche Farben, Rematches, falsche Byes, abweichende Rundenzahl). Jetzt **harte
+  Sperre mit klarer Meldung**: Der Teilnehmerkreis ist ab Runde 1 fixiert; nachträgliche
+  Änderungen erfordern bewusste Neuplanung (Zurücksetzen/Neuanlage). Bestätigt per Domain-/
+  Application-Test und HTTP-Smoke (HTTP 400 mit Hinweis „Spielplan ab Runde 1 fixiert").
+- **SQLite-Start robust + verständliche Diagnose:** Der Backend-Start (`Program.cs`) prüft das
+  Datenverzeichnis jetzt vorab auf Existenz/Schreibrechte (`DatabaseStartupDiagnostics.Probe`)
+  und fängt Fehler bei `EnsureCreated()` ab. Statt eines kryptischen Stacktraces
+  („SQLite Error 10: 'disk I/O error'" beim WAL-Pragma, real am Turniertag aufgetreten) gibt es
+  eine mehrzeilige, handlungsorientierte Klartextmeldung (Pfad, Schreibbarkeit, Ursachen wie
+  OneDrive/Antivirus/zweite Instanz/Reststände) und einen sauberen Exit-Code (2), den das
+  Startskript erkennen kann. Keine riskante Schema-/Journal-Migration.
+- **Rundenlimit zusätzlich abgesichert:** Die bestehende harte Sperre `EnsureCanCreateNextRound`
+  (keine Runde über `PlannedRounds` hinaus – greift bei `next-round`, Preview, Round-Robin und
+  Swiss gleichermaßen) ist nun durch explizite Szenario-Tests (Swiss 12 Spieler / 5 Runden und
+  6 Runden) und einen HTTP-Smoke (HTTP 400 „maximale Rundenzahl") fest verankert.
+- **Neue Tests (Application/Infrastructure):** Postmortem-Szenarien mit synthetischen Spielern –
+  Rundenlimit (Swiss 5/6 Runden), Late Entry nach Runde 2/4 mit 0 Punkten und unveränderten
+  Altrunden, Rückzug, Reaktivierung, doppelte FIDE-ID, manuelle Paarung (Persistenz + als
+  gespielt gewertet + Schutz gegen Doppelpaarung/inaktive Spieler), Round-Robin 4/5/6/12/13
+  Spieler (jede Paarung genau einmal, Byes korrekt, Rundenlimit), Round-Robin Late Entry/Rückzug
+  blockiert. Plus DB-Startdiagnose-Tests (schreibbar, readonly, Hinweistexte).
+- Keine Änderung an Schweizer-Paarungs-, Wertungs-, Such-/Dedupe- oder Chess960-Logik. Versionen
+  auf `0.40.3`.
+
 ## 0.40.2 - Chess960-Würfeln pro Brett (Modal mit Reitern, lokaler QR-Code)
 
 - Neuer **„🎲 Würfeln"-Button pro Brett** in der Rundentabelle (Chess960-Spalte). Öffnet ein
