@@ -1,3 +1,12 @@
+# Aktueller Zusatz 0.41.1
+
+- Operator-Smoke `scripts/Smoke-OperatorWorkflow.ps1`: ein hängesicherer End-to-End-Lauf gegen
+  ein isoliertes, frisch gebautes Backend (Health, Swiss 12/5, RR-Late-Entry-Sperre, manuelle
+  Paarung, Backup/Restore, Chess960/QR-Daten) mit Timeouts, Heartbeat, klarem Exit-Code und
+  zuverlässigem Teardown. Runbook/Checklist/Operator-Card und QR-Vorabtest dokumentiert.
+- Offen (unverändert): kein vollständiges FIDE-Dutch, Felder > 20 Spieler Greedy-Fallback,
+  QR-Anzeige am realen Handy bleibt manueller Vorabtest.
+
 # Aktueller Zusatz 0.41.0
 
 - Schweizer-System V2: global optimale Minimum-Penalty-Paarung (≤ 20 Spieler) ersetzt die

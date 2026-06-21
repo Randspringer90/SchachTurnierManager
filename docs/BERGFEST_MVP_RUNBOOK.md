@@ -19,15 +19,28 @@ Hintergrund/Architektur: `docs/BERGFEST_MVP_PLAN.md`.
 3. Backend starten (Schritt 1) und Healthcheck öffnen.
 4. Frontend starten (Schritt 2).
 5. Papier-Fallback bereitlegen: Pairingbogen, Ergebnisliste, Stift.
-6. Optionaler Dry-run:
+6. **Automatischer Operator-Smoke (empfohlen, hängesicher):**
+   ```powershell
+   pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1
+   ```
+   Startet ein **eigenes, isoliertes** Backend (Port 5099, Temp-Datenverzeichnis – stört das
+   echte Turnier auf Port 5088 nicht) und prüft in einem Lauf: Health, Swiss 12/5 (genau
+   5 Runden, keine 6., keine vermeidbaren Rematches, Audit-Export), Round-Robin-Late-Entry-
+   Sperre, manuelle Paarung (gültig/Self-Pairing/Doppelspieler), Backup/Restore und das
+   Chess960-Würfeln hinter dem QR-Flow. Erwartung: `Operator-Smoke: 20 OK, 0 FEHLER`,
+   Exit-Code 0. Das Skript fährt sein Backend danach selbst wieder herunter (kein
+   zurückbleibender Prozess) und löscht sein Temp-Datenverzeichnis. Logs unter
+   `output\smoke\`. Hängt nichts: jeder Aufruf hat ein Timeout, der Start wartet mit
+   Heartbeat und bricht spätestens nach 90 s mit klarem Exit-Code ab.
+7. Optionaler manueller Dry-run im echten Backend (Port 5088):
    ```powershell
    pwsh -File .\scripts\New-DemoTournament.ps1 -Players 10 -Rounds 5 -PlayOut
    ```
    Erwartung: 5 Runden werden ausgelost und gefüllt, am Ende erscheint eine Tabelle.
-7. Einmal Tabelle und Rundenblatt als CSV/HTML exportieren und drucken.
-8. Backup einmal testen (Schritt 6).
+8. Einmal Tabelle und Rundenblatt als CSV/HTML exportieren und drucken.
+9. Backup einmal testen (Schritt 6) und QR-Vorabtest am Handy durchführen (Schritt 9 unten).
 
-Wenn die Generalprobe durchläuft, ist Freitag startklar.
+Wenn der Smoke grün ist und die Generalprobe durchläuft, ist Freitag startklar.
 
 ---
 
@@ -176,6 +189,39 @@ CSV öffnet in Excel/LibreOffice (Trennzeichen **Semikolon**, UTF-8).
 1. Letzte Ergebnisse eingeben.
 2. Finale Tabelle als CSV **und** als HTML-Druckansicht exportieren/drucken.
 3. Abschluss-Backup ziehen (Schritt 6, `bergfest_final.json`).
+
+## 9. QR/Handy-Vorabtest (vor dem ersten Würfeln)
+
+Der QR-Flow ist nur lokal (gleiches WLAN/Hotspot), kein Cloud-Dienst. Einmal vorab am realen
+Handy prüfen — das ist die bekannte offene Verifikationslücke aus dem Postmortem:
+
+1. Laptop-IPv4 ermitteln (`ipconfig` → IPv4-Adresse, **nicht** `localhost`). Beim Start über
+   `RUN_TURNIERMANAGER.bat` werden die möglichen Adressen im Startfenster angezeigt.
+2. Im Rundenbereich an einem Brett **🎲 Würfeln → Reiter „QR / Handy"** öffnen, dort die
+   Laptop-IP eintragen. QR mit dem Handy scannen (Handy im selben WLAN/Hotspot).
+3. Lädt die Seite am Handy → würfeln und „Für Brett speichern" → am Laptop erscheint die
+   Stellung. Vorabtest bestanden.
+4. Lädt sie **nicht**: Windows-Firewall kann Port `5173` blockieren, oder das Handy ist im
+   falschen Netz. Dann am Laptop würfeln (Browser-Reiter, immer verfügbar) — der Turniertag
+   hängt nicht davon ab.
+
+Die Datenschicht hinter dem QR-Flow (Chess960-Startstellungen je Brett) wird vom
+Operator-Smoke (Schritt 6) automatisch verifiziert; nur die Handy-Anzeige selbst muss manuell
+geprüft werden.
+
+## 10. Hänger-/Timeout-Verhalten (so hängt nichts)
+
+- **Start (`RUN_TURNIERMANAGER.bat` / `Start-Dev.ps1`):** wartet je 60 s auf Backend und
+  Frontend mit Statusausgabe; bleibt eine Komponente aus, kommt eine Warnung und der Start
+  läuft weiter, statt ewig zu blockieren. Backend/Frontend laufen in eigenen Fenstern.
+- **Operator-Smoke (`Smoke-OperatorWorkflow.ps1`):** jeder HTTP-Aufruf hat ein Timeout; der
+  Backend-Start wartet max. 90 s mit Heartbeat; danach Exit-Code 2. Das selbst gestartete
+  Backend wird zuverlässig beendet (kein zurückbleibender Listener). Exit 0 = alles grün,
+  1 = mind. ein Check rot, 2 = Backend nicht startbar/erreichbar.
+- **Prozess klemmt trotzdem:** gezielt am Port stoppen (siehe Schritt 1/2,
+  `Get-NetTCPConnection -LocalPort <5088|5173|5099> | Stop-Process`), dann neu starten.
+- **Bereitschaftscheck ohne Änderung:** `pwsh -File .\scripts\Show-EventReadiness.ps1` prüft
+  nur lesend Backend, Frontend, DB-Pfad, Backup-Ordner und Git-Stand.
 
 ---
 

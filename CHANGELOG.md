@@ -1,3 +1,25 @@
+## 0.41.1 - Operator-Smoke und haengesicherer Verifikationslauf
+
+Turniertags-Reife: ein einziger, **haengesicherer** Skript-Lauf verifiziert die wichtigsten
+Operator-Workflows end-to-end gegen ein frisches Backend. **Keine Aenderung an Auslosungs-,
+Wertungs- oder API-Logik** – ausschliesslich Verifikation, Timeouts und Doku. Alle Spieler
+synthetisch; keine echten Daten/Exporte committet (`output/**` ist ignoriert).
+
+- **`scripts/Smoke-OperatorWorkflow.ps1` (neu):** startet optional ein isoliertes Backend
+  (eigener Port 5099, Temp-Datenverzeichnis aus dem frischen Release-Binary), prueft Health,
+  Swiss 12/5 (genau 5 Runden, keine 6., **keine vermeidbaren Rematches** direkt aus den
+  Paarungen, Audit-Export), Round-Robin-Late-Entry-Sperre, manuelle Paarung (gueltig/
+  Self-Pairing/Doppelspieler), Backup/Restore (Export→Delete→Import) und Chess960-Wuerfeln
+  hinter dem QR-Flow. Liefert `OK/FEHLER`-Summe und klaren Exit-Code (0/1/2).
+- **Haenge-Schutz:** jeder HTTP-Aufruf hat ein TimeoutSec; der Backend-Start wartet maximal
+  `-StartTimeoutSeconds` mit Heartbeat und sauberem Exit-Code; das selbst gestartete Backend
+  wird im `finally` als Prozessbaum beendet (kein zurueckbleibender Listener) und das Temp-
+  Datenverzeichnis entfernt. **Pre-Flight-Port-Check:** ist der Port belegt, bricht der Smoke
+  bewusst ab, statt sich still gegen ein fremdes/veraltetes Backend zu verbinden.
+- **Doku:** Runbook (Generalprobe), Friday-Checklist (Startcheck) und Operator-Card um den
+  Smoke-Lauf und das Timeout-/Stop-Verhalten ergaenzt; QR-Vorabtest dort verankert.
+- **Version:** `0.41.0` → `0.41.1` (Health, `package.json`). 175 Tests bleiben gruen.
+
 ## 0.41.0 - Schweizer-System V2: global optimale Paarung (vermeidbare Rematches eliminiert)
 
 Folgearbeit zum Bergfest-Postmortem („falsche/wiederholte Paarungen"). Die Schweizer-Engine

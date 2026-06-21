@@ -12,6 +12,8 @@ Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 - [ ] Dashboard geöffnet: http://localhost:5173.
 - [ ] Papier-Fallback bereit: leeres Paarungsblatt und Ergebnisliste.
 - [ ] Druckweg geprüft: HTML-Rundenblatt kann geöffnet/gedruckt werden.
+- [ ] Operator-Smoke grün: `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `20 OK, 0 FEHLER`.
+- [ ] QR-Vorabtest am Handy gemacht (Laptop-IP eingetragen, gleiches WLAN) — siehe Runbook §9.
 
 ## Turnier anlegen
 

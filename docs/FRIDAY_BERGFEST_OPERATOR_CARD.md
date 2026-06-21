@@ -12,6 +12,8 @@ Ein-Seiten-Karte. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
 - Papier bereitlegen: Paarungsblatt, Ergebnisliste, Stift.
 - Health muss `status` zeigen: http://localhost:5088/api/health
 - Dashboard: http://localhost:5173
+- Optional vorab (eigenes isoliertes Backend, hängesicher): `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `20 OK, 0 FEHLER`.
+- QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) — Runbook §9.
 
 ## Start
 
