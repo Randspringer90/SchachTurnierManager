@@ -52,8 +52,8 @@ Ziel dieses Dokuments ist eine belastbare Funktionsmatrix für den SchachTurnier
 
 | Funktion | Status | Bemerkung |
 |---|---:|---|
-| Scoregruppen-Auslosung | 🟡 | Greedy-V2 vorhanden. |
-| Rematch-Vermeidung | 🟡 | Vorhanden, aber kein vollständiger FIDE-Dutch-Suchbaum. |
+| Scoregruppen-Auslosung | 🟡 | Optimales Minimum-Penalty-Matching (V2, ≤ 20 Spieler); Punktdifferenz dominiert die Strafgewichte. |
+| Rematch-Vermeidung | ✅ | Seit v0.41.0 global optimal: Rematch nur, wenn keine rematchfreie Gesamtauslosung existiert (`docs/SWISS_PAIRING_ENGINE.md`). |
 | Farbpräferenzen/Farbbalance | 🟡 | Vorhanden inkl. dritter gleicher Farbe als Penalty. |
 | Floater-Erkennung | 🟡 | Audit vorhanden; FIDE-Dutch-Floater-Regeln offen. |
 | Bye-Vergabe | 🟡 | Grundregel vorhanden; feinere Buchungs-/Punktregeln offen. |

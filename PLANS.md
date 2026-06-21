@@ -1,3 +1,11 @@
+# Aktueller Zusatz 0.41.0
+
+- Schweizer-System V2: global optimale Minimum-Penalty-Paarung (≤ 20 Spieler) ersetzt die
+  Greedy-Gegnerauswahl. Vermeidbare Rematches sind eliminiert (Invariantentest über mehrere
+  Feldgrößen/Seeds). Bye/Farben/Forensik unverändert. Details `docs/SWISS_PAIRING_ENGINE.md`.
+- Offen (Swiss v2/FIDE-Dutch): Bracket-/Floater-/Erstrunden-Setzungsregeln, austauschbare
+  Pairing-Strategien, polynomiales Matching für große Opens.
+
 # Aktueller Zusatz 0.12.0
 
 - Externe Profile können auf Dubletten geprüft und als neuer oder bestehender Teilnehmer angewendet werden.

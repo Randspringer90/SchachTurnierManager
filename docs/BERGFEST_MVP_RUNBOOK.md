@@ -121,16 +121,23 @@ Für jede Runde:
 
 ## 5a. Was tun bei Rematch-Warnung?
 
-Die Swiss-Engine ist heuristisch. Späte Runden kleiner Felder können Rematches erzwingen.
-Das darf am Freitag nicht still passieren.
+Ab v0.41.0 wählt die Swiss-Engine eine **global optimale Auslosung** (siehe
+`docs/SWISS_PAIRING_ENGINE.md`): Sie erzeugt ein Rematch **nur dann**, wenn es bei diesem
+Feld und dieser Begegnungshistorie **keine** rematchfreie Gesamtauslosung mehr gibt. Eine
+Rematch-Warnung in Vorschau/Qualität bedeutet jetzt also: das Rematch ist rechnerisch
+**unvermeidbar** (Audit-Hinweis „Rematch unvermeidbar (global optimiert …)").
 
-1. Nicht direkt auslosen, wenn Vorschau oder Pairing-Qualität `kritisch` meldet.
-2. Betroffenes Brett identifizieren.
-3. Wenn eine einfache Tauschpaarung ohne neues Rematch möglich ist, manuell korrigieren.
-4. Im Notizfeld kurz dokumentieren: `Rematch vermieden, manueller Tausch`.
-5. Wenn keine saubere Korrektur möglich ist: Entscheidung auf Papier notieren und im
-   Turnierleiterkreis akzeptieren. Für Bergfest/Freestyle ist Transparenz wichtiger als
-   eine perfekte FIDE-Dutch-Auslosung.
+1. Vorschau ansehen. Meldet die Qualität `kritisch`/Rematch, ist es kein Engine-Fehler mehr,
+   sondern eine echte Zwangslage des Feldes.
+2. Trotzdem prüfen, ob ein **manueller Tausch** an einem anderen Brett das Rematch auflöst,
+   ohne ein neues zu erzeugen. (Die Engine garantiert global rematchfrei, falls überhaupt
+   möglich – ein manueller Tausch hilft nur, wenn man bewusst andere Kriterien höher gewichtet.)
+3. Falls eine Korrektur erfolgt, im Notizfeld dokumentieren: `Manueller Tausch, Begründung …`.
+4. Wenn das Rematch unvermeidbar ist: so auslosen, kurz auf Papier/Audit vermerken und im
+   Turnierleiterkreis akzeptieren. Für Bergfest/Freestyle ist Transparenz wichtiger als eine
+   perfekte FIDE-Dutch-Auslosung.
+5. Bei Feldern **über 20 Spielern** schaltet die Engine in einen Greedy-Fallback (im Audit
+   gekennzeichnet); dann kann ein Rematch wieder vermeidbar sein – Vorschau besonders prüfen.
 
 ## 6. Backup / Snapshot nach jeder Runde
 

@@ -141,8 +141,11 @@ Rundenlimit → HTTP 400, Round-Robin-Late-Entry-Sperre → HTTP 400.
   `docs/AUDIT_JOURNAL.md`. **Verbleibende Grenze:** Die Swiss-Greedy-Heuristik liefert keine
   bewerteten Alternativ-Paarungen; protokolliert wird der gewählte Entscheidungsstand, nicht die
   verworfenen Alternativen (FIDE-Dutch-Alternativbewertung ist Folgearbeit).
-- **Swiss-Engine ist Greedy-Heuristik**, kein vollständiges FIDE-Dutch. Späte Rematches sind in
-  Engpässen möglich (mit Critical-Flag protokolliert).
+- **~~Swiss-Engine ist Greedy-Heuristik~~ (verbessert in 0.41.0):** Die Auslosung paart jetzt
+  global optimal (Minimum-Penalty-Matching, ≤ 20 Spieler) und erzeugt Rematches nur noch, wenn
+  keine rematchfreie Gesamtauslosung mehr existiert (`docs/SWISS_PAIRING_ENGINE.md`). **Verbleibende
+  Grenze:** kein vollständiges FIDE-Dutch (Bracket-/Floater-/Erstrunden-Setzungsregeln); Felder
+  > 20 Spieler nutzen den dokumentierten Greedy-Fallback.
 - **Round-Robin nach Start nicht erweiterbar** (bewusste Sperre). Late Entry/Rückzug im RR erfordert
   Reset/Neuanlage – akzeptierter MVP-Trade-off zugunsten Datenintegrität.
 - **QR nicht am realen Handy vor Ort verifiziert.**

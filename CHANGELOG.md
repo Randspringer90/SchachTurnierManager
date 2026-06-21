@@ -1,3 +1,27 @@
+## 0.41.0 - Schweizer-System V2: global optimale Paarung (vermeidbare Rematches eliminiert)
+
+Folgearbeit zum Bergfest-Postmortem („falsche/wiederholte Paarungen"). Die Schweizer-Engine
+war eine reine Greedy-Heuristik, die sich früh festlegte und spätere Spieler in **vermeidbare
+Rematches** zwingen konnte. Reproduziert über viele zufällige Verläufe: schon ab 8 Spielern
+trat das Problem ab Runde 4 in der Mehrzahl der Fälle auf. Details: `docs/SWISS_PAIRING_ENGINE.md`.
+Alle Tests mit synthetischen Spielern.
+
+- **Global optimales Minimum-Penalty-Matching:** Statt Spieler nacheinander zu paaren, minimiert
+  die Engine jetzt die Gesamtstrafe über alle Bretter (exakte Maximum-Weight-Matching-Suche per
+  Bitmasken-DP für Felder bis 20 Spieler). Die Strafmodelle (Punktdifferenz, Farbbilanz/Präferenz/
+  dritte gleiche Farbe) bleiben; die Rematch-Strafe dominiert nun sicher alles andere.
+- **Rematch nur wenn unvermeidbar:** Garantie – ein Rematch entsteht ausschließlich, wenn es
+  keine rematchfreie Gesamtauslosung mehr gibt. Genau dann meldet das Audit „Rematch unvermeidbar
+  (global optimiert …)". Bye-Vergabe, Farbentscheidung und die komplette Pairing-Forensik bleiben
+  unverändert und beschreiben automatisch das verbesserte Ergebnis.
+- **Große Felder (> 20 Spieler):** bewusster, im Audit gekennzeichneter Greedy-Fallback, bis ein
+  vollständiges FIDE-Dutch verfügbar ist (Roadmap „Swiss v2" in `docs/SWISS_PAIRING_ENGINE.md`).
+- **Algorithmuskennung:** `Swiss-ScoreGroup-Greedy-V2` → `Swiss-ScoreGroup-Optimal-V2`.
+- **Tests:** Neue Invariante `SwissPairingOptimalMatchingTests` über 8/10/12/13/16 Spieler und
+  6–7 Runden × 60 Seeds: nie ein vermeidbares Rematch (reproduzierte den alten Greedy-Defekt und
+  sichert den Fix). Bestehende Swiss-Golden-/Regression-/Advanced-Tests bleiben grün.
+- **Version:** `0.40.4` → `0.41.0` (Health, `package.json`). Runbook 5a und Roadmap aktualisiert.
+
 ## 0.40.4 - Audit-Journal-Forensik: Pairing-Diagnostik, Datei-Spiegel und Export-Bundle
 
 Folgearbeit zum Bergfest-Postmortem: Die dort benannte Forensik-Lücke („Audit-Journal existiert

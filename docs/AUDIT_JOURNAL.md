@@ -45,11 +45,12 @@ nach Ergebniseingaben/Statusänderungen gültig bleibt:
 - `byeDecisions`, `rematchWarnings`, `scoreGroupDeviations`, `colorNotes`, `engineMessages`, `findings`
 - `proposedPairings`: je Brett Weiß/Schwarz, Punkte vor der Runde, Differenz, Bye/Override/Rematch-Flags
 
-> **Grenze (TODO):** Die Swiss-Engine ist eine dokumentierte Greedy-Heuristik. Sie liefert
-> keine bewerteten **Alternativ-Paarungen** („warum diese und nicht jene"). Die Forensik
-> protokolliert daher den **gewählten** Entscheidungsstand samt Warnungen/Blockern, nicht die
-> verworfenen Alternativen. Ein vollständiges FIDE-Dutch mit Alternativbewertung ist
-> Folgearbeit (siehe `docs/SWISS_CHESS_PARITY_ROADMAP.md`).
+> **Grenze (TODO):** Seit v0.41.0 paart die Swiss-Engine global optimal (Minimum-Penalty-Matching,
+> siehe `docs/SWISS_PAIRING_ENGINE.md`) und erzeugt Rematches nur noch, wenn sie unvermeidbar
+> sind. Die Forensik protokolliert weiterhin den **gewählten** Entscheidungsstand samt
+> Warnungen/Blockern, jedoch keine bewerteten **Alternativ-Paarungen** („warum diese und nicht
+> jene") und keine FIDE-Dutch-Bracket-Reihenfolge. Ein vollständiges FIDE-Dutch mit
+> Alternativbewertung ist Folgearbeit (siehe `docs/SWISS_CHESS_PARITY_ROADMAP.md`).
 
 ## Speicherorte & Format
 

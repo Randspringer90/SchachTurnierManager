@@ -99,7 +99,7 @@ public sealed class SwissPairingEngineAdvancedTests
 
         var round = new SwissPairingEngine().GenerateNextRound(tournament);
 
-        Assert.Equal("Swiss-ScoreGroup-Greedy-V2", round.Audit.Algorithm);
+        Assert.Equal("Swiss-ScoreGroup-Optimal-V2", round.Audit.Algorithm);
         Assert.NotEmpty(round.Audit.ScoreGroups);
         Assert.NotEmpty(round.Audit.ColorNotes);
     }
