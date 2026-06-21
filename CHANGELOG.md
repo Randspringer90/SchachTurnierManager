@@ -1,3 +1,40 @@
+## 0.40.4 - Audit-Journal-Forensik: Pairing-Diagnostik, Datei-Spiegel und Export-Bundle
+
+Folgearbeit zum Bergfest-Postmortem: Die dort benannte Forensik-Lücke („Audit-Journal existiert
+in der DB, wurde aber nicht exportiert/gesichert") ist geschlossen. **Keine Änderung an
+Auslosungs- oder Wertungslogik** – ausschließlich Diagnose, Persistenz und Export. Details in
+`docs/AUDIT_JOURNAL.md`. Alle Tests mit synthetischen Spielern; keine echten Daten/Exporte committet.
+
+- **Pairing-Forensik je Runde (`PairingForensics`):** Bei Vorschau und Auslosung wird ein
+  unveränderlicher Entscheidungs-Snapshot aus dem Stand **vor** der Runde festgehalten – Format,
+  geplante/aktuelle Runde, aktive/inaktive Spielerzahl, offene Vorrundenergebnisse, Bretter/Byes/
+  manuelle Paarungen, Rematches, Scoregruppen-Abweichungen, Farbfolgerisiken, Qualitätswert sowie
+  die vorgeschlagenen Paarungen je Brett (Punkte vor der Runde, Differenz, Flags). Reine Diagnose
+  über den bestehenden `PairingQualityAnalyzer`.
+- **Mehr auditierte Ereignisse:** Runde-Vorschau erzeugt, Turnier gelöscht, **blockierte
+  Auslosungen** (Rundenlimit, Round-Robin-Roster-Sperre, offene Vorrunde, zu wenige Spieler) und
+  Audit-Export werden jetzt protokolliert. So taucht z. B. der Rundenlimit-Blocker beim Versuch
+  einer zu vielen Runde nachvollziehbar im Journal auf.
+- **Append-only Datei-Spiegel (`FileAuditJournalSink`):** Jedes Audit-Ereignis wird zusätzlich zur
+  DB in eine JSONL-Datei pro Turnier unter `%LocalAppData%\SchachTurnierManager\audit\` geschrieben
+  (außerhalb des Repos). Der Spiegel überlebt DB-Verlust und `Reset`. **Fehlertolerant:** Ein
+  Schreibfehler bricht den Turnierschritt nie ab, sondern erzeugt einen sichtbaren
+  `AuditJournalMirrorFailed`-Warneintrag.
+- **Forensisches Export-Bundle:** Neue Endpunkte
+  `GET /api/tournaments/{id}/audit-journal/export.jsonl` und `…/export.json` liefern ein in sich
+  geschlossenes Bundle (Manifest, vollständiger Turnier-Snapshot, Pairing-Forensik je Runde, alle
+  Audit-Ereignisse). Dateiname `Turniername_round{n}_{Zeitstempel}_audit.jsonl/json`. WebApp:
+  Buttons „Audit-Bundle (JSONL)/(JSON)" in der Audit-Karte. Skript:
+  `scripts\Export-TournamentAudit.ps1` (speichert lokal nach `output\audit\`, kein Upload).
+- **Tests (+12 → 170 gesamt):** Audit deckt create/add-player/preview/next-round/result/
+  manual-pairing/chess960/reset/delete ab; Schreibfehler im Spiegel wirft nicht und liefert eine
+  Warnung; Rundenlimit-Blocker und Round-Robin-Late-Entry-Blocker sind auditierbar; Late-Entry-
+  Swiss ist auditierbar; Export-Bundle (JSONL/JSON) ist self-contained. Plus
+  `FileAuditJournalSink`-Tests (append-only, Verzeichnis-Anlage). HTTP-Smoke (Port 5099, isoliertes
+  Datenverzeichnis): Export 200 mit korrektem Dateinamen, Rundenlimit-Blocker im Bundle, Datei-Spiegel
+  geschrieben.
+- **Version:** `0.40.3` → `0.40.4` (Health, `package.json`).
+
 ## 0.40.3 - Bergfest-Postmortem: Stabilisierung Rundenlimit, Late Entry, Round-Robin, DB-Start
 
 Nach dem realen Bergfest-Turnier (Freitag, 2026-06-19): harte Ursachenanalyse und gezielte

@@ -12,6 +12,7 @@ public enum AuditJournalAction
     PlayerStatusChanged = 12,
     PlayerRemoved = 13,
     PlayerWithdrawn = 14,
+    TournamentDeleted = 5,
     RoundGenerated = 20,
     ResultRecorded = 21,
     PairingOverridden = 22,
@@ -19,7 +20,11 @@ public enum AuditJournalAction
     RoundUnlocked = 24,
     RoundVerified = 25,
     RoundUnverified = 26,
-    Chess960StartPositionsRolled = 27
+    Chess960StartPositionsRolled = 27,
+    RoundPreviewGenerated = 28,
+    PairingGenerationBlocked = 29,
+    AuditJournalExported = 30,
+    AuditJournalMirrorFailed = 31
 }
 
 public enum AuditJournalSeverity

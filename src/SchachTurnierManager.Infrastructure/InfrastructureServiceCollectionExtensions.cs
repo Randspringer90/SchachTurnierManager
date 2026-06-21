@@ -22,6 +22,16 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registriert den append-only Datei-Audit-Spiegel. Das Verzeichnis liegt lokal (AppData)
+    /// und enthält pro Turnier eine JSONL-Datei – außerhalb des Repositorys.
+    /// </summary>
+    public static IServiceCollection AddFileAuditJournalSink(this IServiceCollection services, string auditDirectory)
+    {
+        services.AddSingleton<IAuditJournalSink>(new FileAuditJournalSink(auditDirectory));
+        return services;
+    }
+
     private static bool IsSharedMemoryConnection(string sqliteConnectionString)
     {
         var builder = new SqliteConnectionStringBuilder(sqliteConnectionString);

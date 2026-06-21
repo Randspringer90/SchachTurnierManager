@@ -82,6 +82,19 @@ Hinweise zur QR/Handy-Nutzung:
 Der bestehende Button „🎲 Schachwürfel öffnen" (alle Bretter einer Runde auf einmal) bleibt
 unverändert erhalten.
 
+## Nach jeder Runde: Audit sichern
+
+Jede Turnierleiter-Aktion landet im Audit-Journal (DB **und** append-only Datei-Spiegel unter
+`%LocalAppData%\SchachTurnierManager\audit\`). Zur Forensik nach **jeder Runde** und am
+**Turnierende** ein Bundle exportieren und lokal sichern:
+
+- **WebApp:** Audit-Journal-Karte → **„Audit-Bundle (JSONL)"** oder **„(JSON)"**.
+- **Skript:** `pwsh -File .\scripts\Export-TournamentAudit.ps1` (Datei landet in `output\audit\`,
+  kein Upload, keine Cloud).
+
+Das Bundle ist in sich geschlossen (Manifest, Turnier-Snapshot, Pairing-Forensik je Runde, alle
+Ereignisse) und macht spätere Nachfragen nachvollziehbar. Details: `docs/AUDIT_JOURNAL.md`.
+
 ## Release-Gate
 
 ```powershell

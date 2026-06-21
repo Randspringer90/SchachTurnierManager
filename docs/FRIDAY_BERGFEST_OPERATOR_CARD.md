@@ -47,6 +47,8 @@ Danach Startbefehle erneut ausführen.
 - Rematch/Severity `kritisch`: nicht blind übernehmen. Manuell korrigieren, Notiz setzen.
 - Runde erzeugen, HTML-Rundenblatt drucken/aushängen, Ergebnisse eingeben.
 - Tabelle prüfen, Backup ziehen.
+- **Nach jeder Runde Audit sichern:** Audit-Journal-Karte → „Audit-Bundle (JSONL)" oder
+  `pwsh -File .\scripts\Export-TournamentAudit.ps1`. Macht jede Auslosung/Korrektur nachvollziehbar.
 
 ## Backup/Fallback
 

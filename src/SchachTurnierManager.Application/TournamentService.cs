@@ -3,9 +3,10 @@ using SchachTurnierManager.Domain.Services;
 
 namespace SchachTurnierManager.Application;
 
-public sealed class TournamentService(ITournamentStore store)
+public sealed class TournamentService(ITournamentStore store, IAuditJournalSink? auditSink = null)
 {
     private readonly ITournamentStore _store = store;
+    private readonly IAuditJournalSink? _auditSink = auditSink;
     private readonly RoundRobinPairingEngine _roundRobin = new();
     private readonly SwissPairingEngine _swiss = new();
     private readonly StandingsCalculator _standings = new();
@@ -18,6 +19,8 @@ public sealed class TournamentService(ITournamentStore store)
     private readonly ExternalPlayerImportService _externalPlayerImport = new();
     private readonly PlayerImportPreviewService _playerImportPreview = new();
     private readonly Chess960PositionService _chess960 = new();
+    private readonly PairingForensicsBuilder _forensics = new();
+    private readonly AuditForensicExportBuilder _auditExport = new();
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
@@ -41,6 +44,21 @@ public sealed class TournamentService(ITournamentStore store)
 
     public bool DeleteTournament(Guid tournamentId)
     {
+        var tournament = _store.Get(tournamentId);
+        if (tournament is null)
+        {
+            return false;
+        }
+
+        // Den Löschvorgang noch festhalten, bevor das Turnier verschwindet. Der append-only
+        // Audit-Spiegel (Datei) behält den Eintrag dauerhaft, auch nachdem die DB-Zeile weg ist.
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.TournamentDeleted,
+            AuditJournalSeverity.Critical,
+            $"Turnier gelöscht: {tournament.Name}.",
+            $"Runden: {tournament.Rounds.Count}, Spieler: {tournament.Players.Count}, Audit-Einträge: {tournament.AuditJournal.Count}.");
+        _store.Save(tournament);
         return _store.Delete(tournamentId);
     }
 
@@ -276,6 +294,32 @@ public sealed class TournamentService(ITournamentStore store)
     public NextRoundPreview PreviewNextRound(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
+        NextRoundPreview preview;
+        try
+        {
+            preview = BuildNextRoundPreview(tournament, "preview");
+        }
+        catch (InvalidOperationException ex)
+        {
+            AuditBlockedPairingAttempt(tournament, "Runde-Vorschau blockiert.", ex.Message);
+            throw;
+        }
+
+        // Die Vorschau selbst wird nicht als Runde gespeichert; dass eine Vorschau erzeugt wurde,
+        // inklusive Forensik-Kennzahlen, gehört aber ins Audit-Journal.
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.RoundPreviewGenerated,
+            AuditJournalSeverity.Info,
+            $"Runde-Vorschau erzeugt: Runde {preview.RoundNumber}.",
+            preview.Round.Forensics?.ToSummaryLine(),
+            roundNumber: preview.RoundNumber);
+        _store.Save(tournament);
+        return preview;
+    }
+
+    private NextRoundPreview BuildNextRoundPreview(TournamentState tournament, string trigger)
+    {
         EnsureCanCreateNextRound(tournament);
 
         TournamentRound previewRound = tournament.Settings.Format switch
@@ -286,6 +330,7 @@ public sealed class TournamentService(ITournamentStore store)
         };
 
         var quality = _pairingQuality.Analyze(tournament, previewRound);
+        previewRound = previewRound with { Forensics = _forensics.Build(tournament, previewRound, trigger) };
         var messages = new List<string>
         {
             $"Vorschau für Runde {previewRound.RoundNumber}: {previewRound.Pairings.Count} Brett(er), Qualitätswert {quality.QualityScore}/100, Status {quality.Severity}.",
@@ -307,33 +352,52 @@ public sealed class TournamentService(ITournamentStore store)
     public ExportDocument ExportNextRoundPreviewCsv(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
-        var preview = PreviewNextRound(tournamentId);
+        var preview = BuildNextRoundPreview(tournament, "preview-export");
         return _exports.ExportNextRoundPreviewCsv(tournament, preview);
     }
 
     public ExportDocument ExportPrintableNextRoundPreviewHtml(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
-        var preview = PreviewNextRound(tournamentId);
+        var preview = BuildNextRoundPreview(tournament, "preview-export");
         return _exports.ExportPrintableNextRoundPreviewHtml(tournament, preview);
     }
 
     public TournamentRound GenerateNextRound(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);
-        EnsureCanCreateNextRound(tournament);
 
-        TournamentRound nextRound = tournament.Settings.Format switch
+        TournamentRound nextRound;
+        try
         {
-            TournamentFormat.RoundRobin => GetNextRoundRobinRound(tournament),
-            TournamentFormat.Swiss => _swiss.GenerateNextRound(tournament),
-            _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
-        };
+            EnsureCanCreateNextRound(tournament);
+            nextRound = tournament.Settings.Format switch
+            {
+                TournamentFormat.RoundRobin => GetNextRoundRobinRound(tournament),
+                TournamentFormat.Swiss => _swiss.GenerateNextRound(tournament),
+                _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Blockierte Auslosungen (Rundenlimit, Round-Robin-Roster-Sperre, offene Vorrunde,
+            // zu wenige Spieler) forensisch festhalten, dann den ursprünglichen Fehler weiterreichen.
+            AuditBlockedPairingAttempt(tournament, "Auslosung blockiert.", ex.Message);
+            throw;
+        }
 
-        nextRound = WithPairingQualityAudit(tournament, nextRound);
+        // Forensik aus dem Stand VOR Hinzufügen der neuen Runde (prior rounds = bisherige Runden).
+        var forensics = _forensics.Build(tournament, nextRound, "generated");
+        nextRound = WithPairingQualityAudit(tournament, nextRound) with { Forensics = forensics };
 
         tournament.Rounds.Add(nextRound);
-        AddAuditEntry(tournament, AuditJournalAction.RoundGenerated, AuditJournalSeverity.Info, $"Runde {nextRound.RoundNumber} ausgelost.", $"{nextRound.Pairings.Count} Brett(er).", roundNumber: nextRound.RoundNumber);
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.RoundGenerated,
+            AuditJournalSeverity.Info,
+            $"Runde {nextRound.RoundNumber} ausgelost.",
+            $"{nextRound.Pairings.Count} Brett(er). {forensics.ToSummaryLine()}",
+            roundNumber: nextRound.RoundNumber);
         _store.Save(tournament);
         return nextRound;
     }
@@ -734,6 +798,55 @@ public sealed class TournamentService(ITournamentStore store)
             .ToList();
     }
 
+    public ExportDocument ExportAuditJournalJsonl(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var document = _auditExport.BuildJsonl(tournament);
+        RecordAuditExport(tournament, document.FileName, "jsonl");
+        return document;
+    }
+
+    public ExportDocument ExportAuditJournalJson(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var document = _auditExport.BuildJson(tournament);
+        RecordAuditExport(tournament, document.FileName, "json");
+        return document;
+    }
+
+    private void RecordAuditExport(TournamentState tournament, string fileName, string format)
+    {
+        // Das exportierte Bundle wird vor diesem Eintrag erzeugt; der Export-Vorgang selbst ist
+        // ein eigenes, forensisch relevantes Ereignis ("welcher Snapshot wurde wann gezogen").
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.AuditJournalExported,
+            AuditJournalSeverity.Info,
+            $"Audit-Bundle exportiert ({format}).",
+            $"Datei: {fileName}, Einträge: {tournament.AuditJournal.Count}.");
+        _store.Save(tournament);
+    }
+
+    private void AuditBlockedPairingAttempt(TournamentState tournament, string summary, string reason)
+    {
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.PairingGenerationBlocked,
+            AuditJournalSeverity.Warning,
+            summary,
+            reason,
+            reason: reason);
+        try
+        {
+            _store.Save(tournament);
+        }
+        catch
+        {
+            // Der Blockierungs-Audit darf den ursprünglichen Auslösefehler nie verschlucken oder
+            // durch einen Speicherfehler ersetzen. Der Aufrufer wirft die Ursache ohnehin weiter.
+        }
+    }
+
     public IReadOnlyList<RoundDiagnostics> GetRoundDiagnostics(Guid tournamentId)
     {
         return _roundDiagnostics.Calculate(RequireTournament(tournamentId));
@@ -758,7 +871,7 @@ public sealed class TournamentService(ITournamentStore store)
         return _store.Get(tournamentId) ?? throw new InvalidOperationException($"Turnier {tournamentId} wurde nicht gefunden.");
     }
 
-    private static void AddAuditEntry(
+    private void AddAuditEntry(
         TournamentState tournament,
         AuditJournalAction action,
         AuditJournalSeverity severity,
@@ -770,7 +883,7 @@ public sealed class TournamentService(ITournamentStore store)
         string? playerName = null,
         string? reason = null)
     {
-        tournament.AuditJournal.Add(new AuditJournalEntry
+        var entry = new AuditJournalEntry
         {
             Action = action,
             Severity = severity,
@@ -781,7 +894,39 @@ public sealed class TournamentService(ITournamentStore store)
             BoardNumber = boardNumber,
             PlayerId = playerId,
             PlayerName = string.IsNullOrWhiteSpace(playerName) ? null : playerName.Trim()
-        });
+        };
+        tournament.AuditJournal.Add(entry);
+        MirrorAuditEntry(tournament, entry);
+    }
+
+    private void MirrorAuditEntry(TournamentState tournament, AuditJournalEntry entry)
+    {
+        if (_auditSink is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _auditSink.Append(tournament.Id, tournament.Name, entry);
+        }
+        catch (Exception ex)
+        {
+            // Ein Schreibfehler im append-only Spiegel darf den Turnierschritt nie abbrechen.
+            // Stattdessen eine Warnung ins (in der DB persistierte) Journal schreiben, damit UI/API
+            // den Fehler sichtbar machen. Nicht erneut spiegeln, sonst Endlosschleife bei Dauerfehler.
+            if (entry.Action != AuditJournalAction.AuditJournalMirrorFailed)
+            {
+                tournament.AuditJournal.Add(new AuditJournalEntry
+                {
+                    Action = AuditJournalAction.AuditJournalMirrorFailed,
+                    Severity = AuditJournalSeverity.Warning,
+                    Actor = "System",
+                    Summary = "Audit-Spiegel konnte nicht geschrieben werden.",
+                    Details = ex.Message
+                });
+            }
+        }
     }
 
     private static TournamentSettings NormalizeSettings(TournamentSettings settings)

@@ -792,6 +792,8 @@ function auditActionLabel(action: number | string): string {
     case 'ExternalPlayerApplied': return 'Externe Spielerdaten';
     case '4':
     case 'TournamentReset': return 'Turnier zurückgesetzt';
+    case '5':
+    case 'TournamentDeleted': return 'Turnier gelöscht';
     case '10':
     case 'PlayerAdded': return 'Spieler hinzugefügt';
     case '11':
@@ -818,6 +820,14 @@ function auditActionLabel(action: number | string): string {
     case 'RoundUnverified': return 'Prüfung zurückgenommen';
     case '27':
     case 'Chess960StartPositionsRolled': return 'Chess960-Startstellungen gewürfelt';
+    case '28':
+    case 'RoundPreviewGenerated': return 'Runde-Vorschau erzeugt';
+    case '29':
+    case 'PairingGenerationBlocked': return 'Auslosung blockiert';
+    case '30':
+    case 'AuditJournalExported': return 'Audit-Bundle exportiert';
+    case '31':
+    case 'AuditJournalMirrorFailed': return 'Audit-Spiegel fehlgeschlagen';
     default: return String(action);
   }
 }
@@ -3879,7 +3889,10 @@ function openRoundPrint(roundNumber: number) {
             <div className="actions">
               <button type="button" onClick={() => exportAuditJournalCsv()} disabled={!selectedTournament || auditJournal.length === 0}>Audit CSV</button>
               <button type="button" className="secondary" onClick={() => exportAuditJournalJson()} disabled={!selectedTournament || auditJournal.length === 0}>Audit JSON</button>
+              <button type="button" onClick={() => openTournamentExport('audit-journal/export.jsonl')} disabled={!selectedTournament} title="Forensisches Bundle: Manifest, Turnier-Snapshot, Pairing-Forensik je Runde und alle Audit-Ereignisse als JSONL.">Audit-Bundle (JSONL)</button>
+              <button type="button" className="secondary" onClick={() => openTournamentExport('audit-journal/export.json')} disabled={!selectedTournament} title="Gleiches Forensik-Bundle als strukturiertes JSON-Dokument.">Audit-Bundle (JSON)</button>
             </div>
+            <p className="muted">Nach jeder Runde und nach Turnierende ein Audit-Bundle exportieren und lokal sichern – das schließt die Forensik-Lücke aus dem Bergfest-Postmortem.</p>
           </article>
           )}
 

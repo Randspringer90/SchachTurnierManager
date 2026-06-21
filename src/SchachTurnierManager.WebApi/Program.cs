@@ -22,24 +22,28 @@ var configuredConnectionString = builder.Configuration.GetConnectionString("Scha
 string connectionString;
 string databaseHealthLabel;
 string databaseFullPath;
+string auditDirectory;
+var defaultDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
 if (string.IsNullOrWhiteSpace(configuredConnectionString))
 {
-    var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"]
-        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
+    var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"] ?? defaultDataDirectory;
     Directory.CreateDirectory(dataDirectory);
     var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
     connectionString = $"Data Source={databasePath}";
     databaseHealthLabel = Path.GetFileName(databasePath);
     databaseFullPath = databasePath;
+    auditDirectory = Path.Combine(dataDirectory, "audit");
 }
 else
 {
     connectionString = configuredConnectionString;
     databaseHealthLabel = "custom connection";
     databaseFullPath = "custom connection";
+    auditDirectory = Path.Combine(defaultDataDirectory, "audit");
 }
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
+builder.Services.AddFileAuditJournalSink(auditDirectory);
 builder.Services.AddExternalPlayerLookupAdapters();
 builder.Services.AddScoped<TournamentService>();
 builder.Services.AddCors(options =>
@@ -123,7 +127,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.40.3",
+    version = "0.40.4",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,
@@ -650,6 +654,31 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/query", (Guid id, HttpReque
         return Results.NotFound(new { error = ex.Message });
     }
 });
+
+app.MapGet("/api/tournaments/{id:guid}/audit-journal/export.jsonl", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportAuditJournalJsonl(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/audit-journal/export.json", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportAuditJournalJson(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 app.MapGet("/api/tournaments/{id:guid}/round-diagnostics", (Guid id, TournamentService service) =>
 {
     try

@@ -131,9 +131,16 @@ Rundenlimit → HTTP 400, Round-Robin-Late-Entry-Sperre → HTTP 400.
 
 ## Offene Risiken
 
-- **Keine Turnier-Laufzeitlogs vorhanden.** Symptome „falsch ausgelost"/„6. Runde" sind ohne
-  Aktions-/Pairing-Audit-Trail nicht forensisch rekonstruierbar. (Audit-Journal existiert in der
-  DB, wurde aber nicht exportiert/gesichert.)
+- **~~Keine Turnier-Laufzeitlogs vorhanden.~~ (geschlossen in 0.40.4)** Das Audit-Journal lag nur
+  in der DB und wurde nicht exportiert/gesichert. Mit 0.40.4 ist die Forensik-Lücke geschlossen:
+  ein append-only Datei-Spiegel pro Turnier (überlebt DB-Verlust/`Reset`), strukturierte
+  Pairing-Forensik je Runde (Einstellung, aktive/inaktive Spieler, offene Ergebnisse, Bye-/Rematch-/
+  Scoregruppen-/Farbfolge-Diagnose, vorgeschlagene Paarungen) sowie ein in sich geschlossenes
+  Export-Bundle (JSONL/JSON) über WebApp-Button, API und `scripts\Export-TournamentAudit.ps1`.
+  Auch blockierte Auslosungen (z. B. Rundenlimit) werden jetzt protokolliert. Details:
+  `docs/AUDIT_JOURNAL.md`. **Verbleibende Grenze:** Die Swiss-Greedy-Heuristik liefert keine
+  bewerteten Alternativ-Paarungen; protokolliert wird der gewählte Entscheidungsstand, nicht die
+  verworfenen Alternativen (FIDE-Dutch-Alternativbewertung ist Folgearbeit).
 - **Swiss-Engine ist Greedy-Heuristik**, kein vollständiges FIDE-Dutch. Späte Rematches sind in
   Engpässen möglich (mit Critical-Flag protokolliert).
 - **Round-Robin nach Start nicht erweiterbar** (bewusste Sperre). Late Entry/Rückzug im RR erfordert
