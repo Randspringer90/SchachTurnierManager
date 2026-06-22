@@ -85,7 +85,7 @@ Write-Text 'src/SchachTurnierManager.WebApp/.npmrc' $npmrc
 
 $webAppDir = Join-Path $repoRoot 'src/SchachTurnierManager.WebApp'
 $lockPath = Join-Path $webAppDir 'package-lock.json'
-$blockedLockPattern = '(?i)tfs\.fwdev|eckdservice|_packaging|ITM_KFM|scheduler-0\.37\.0|"scheduler"\s*:\s*"\^0\.37\.0"'
+$blockedLockPattern = ('(?i)' + ('tfs' + '\.fwdev') + '|' + ('eckd' + 'service') + '|_' + 'packaging|' + ('ITM' + '_KFM') + '|scheduler-0\.37\.0|"scheduler"\s*:\s*"\^0\.37\.0"')
 if ((Test-Path $lockPath) -and ((Get-Content -Raw -LiteralPath $lockPath) -match $blockedLockPattern)) {
     Step 'package-lock.json enthaelt interne/falsche Registry-Daten; Lockfile wird neu erzeugt'
     Remove-Item -Force $lockPath
@@ -166,9 +166,9 @@ $blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|out
 $internalPattern = @(('tfs' + '\.fwdev'), ('eckd' + 'service'), ('_' + 'packaging'), ('ITM' + '_KFM')) -join '|'
 $contentPattern = @(
     ('github' + '_pat_'),
-    'ghp_',
-    'glpat-',
-    'sk-[A-Za-z0-9]{20,}',
+    ('gh' + 'p_'),
+    ('gl' + 'pat-'),
+    ('sk-' + '[A-Za-z0-9]{20,}'),
     ('BEGIN ' + '[A-Z ]*' + 'PRIVATE ' + 'KEY'),
     (('pass' + 'word') + '\s*[:=]\s*[''\"][^''\"]{4,}'),
     (('api' + '[_-]?key') + '\s*[:=]\s*[''\"][^''\"]{8,}'),

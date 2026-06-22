@@ -8,6 +8,9 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
+    <RepositoryRoot>$(MSBuildThisFileDirectory)</RepositoryRoot>
+    <BaseIntermediateOutputPath>$(RepositoryRoot)tmp\dotnet-obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(RepositoryRoot)tmp\dotnet-bin\$(MSBuildProjectName)\</BaseOutputPath>
     <DisableMsCoverageReferencedPathMaps>true</DisableMsCoverageReferencedPathMaps>
     <DisableRarCache>true</DisableRarCache>
     <UseAppHost>false</UseAppHost>

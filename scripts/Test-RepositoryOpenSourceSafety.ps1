@@ -14,9 +14,9 @@ $blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|out
 $internalPattern = @(('tfs' + '\.fwdev'), ('eckd' + 'service'), ('_' + 'packaging'), ('ITM' + '_KFM')) -join '|'
 $contentPattern = @(
     ('github' + '_pat_'),
-    'ghp_',
-    'glpat-',
-    'sk-[A-Za-z0-9]{20,}',
+    ('gh' + 'p_'),
+    ('gl' + 'pat-'),
+    ('sk-' + '[A-Za-z0-9]{20,}'),
     ('BEGIN ' + '[A-Z ]*' + 'PRIVATE ' + 'KEY'),
     (('pass' + 'word') + '\s*[:=]\s*[''\"][^''\"]{4,}'),
     (('api' + '[_-]?key') + '\s*[:=]\s*[''\"][^''\"]{8,}'),

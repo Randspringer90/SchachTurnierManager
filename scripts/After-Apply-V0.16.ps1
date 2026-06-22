@@ -27,7 +27,7 @@ function Replace-Required {
     }
 
     if (-not $content.Contains($Old)) {
-        throw "Erwartete Stelle nicht gefunden in $Path: $Description"
+        throw "Erwartete Stelle nicht gefunden in ${Path}: $Description"
     }
 
     $content = $content.Replace($Old, $New)
@@ -50,7 +50,7 @@ function Replace-RegexRequired {
 
     $updated = [regex]::Replace($content, $Pattern, $Replacement, [Text.RegularExpressions.RegexOptions]::Singleline)
     if ($updated -eq $content) {
-        throw "Erwartete Regex-Stelle nicht gefunden in $Path: $Description"
+        throw "Erwartete Regex-Stelle nicht gefunden in ${Path}: $Description"
     }
 
     Set-Content -LiteralPath $Path -Value $updated -Encoding utf8NoBOM

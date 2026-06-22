@@ -15,6 +15,7 @@ tmp/
 .env
 .env.*
 !.env.example
+.npmrc
 
 *.tsbuildinfo
 *.sqlite
