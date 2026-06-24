@@ -87,7 +87,17 @@ try {
     Push-Location $webApp
     try {
         if (-not $NoNpmInstall) {
-            Invoke-NativeStep 'npm install' { npm install }
+            if (Test-Path -LiteralPath (Join-Path $webApp 'node_modules')) {
+                Write-Host '[ReleaseGate] node_modules vorhanden - npm install übersprungen.'
+            } else {
+                Invoke-NativeStep 'npm install' {
+                    if (Test-Path -LiteralPath (Join-Path $webApp 'package-lock.json')) {
+                        npm ci
+                    } else {
+                        npm install
+                    }
+                }
+            }
         } else {
             Write-Host '[ReleaseGate] npm install übersprungen.'
         }

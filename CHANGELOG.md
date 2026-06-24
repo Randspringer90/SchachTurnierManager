@@ -38,8 +38,22 @@ Auslosungs- oder Wertungslogik geaendert. Alle Smoke-Daten sind synthetisch.
 - **Portable-Paket robuster lokal baubar:** `Pack-Portable.ps1` und `Invoke-ReleaseGate.ps1`
   nutzen vorhandene `node_modules`, statt bei jedem Paketbau ein `npm install` zu erzwingen.
   Das vermeidet Windows-`EPERM unlink` bei gesperrten Node-Dateien; in sauberer Umgebung
-  installieren sie weiterhin per `npm ci`/`npm install`. `dotnet publish` nutzt vorhandene
-  Restore-Artefakte mit `--no-restore`.
+  installieren sie weiterhin per `npm ci`/`npm install`. Das Standardpaket ist
+  framework-dependent ohne Runtime-Identifier und nutzt vorhandene Restore-Artefakte mit
+  `--no-restore`, damit der Paketbau auch ohne online verfuegbare `win-x64` Runtime-Packs
+  funktioniert; `Start-Portable.bat` startet EXE oder DLL. Der inkrementelle Publish-Clean-
+  Bookkeeping-Schritt wird nur fuer den Portable-Paketbau deaktiviert, weil das Zielverzeichnis
+  ohnehin neu aufgebaut wird und die SDK-Dateiliste in eingeschraenkten lokalen Workspaces
+  blockiert sein kann. Native Paketbauschritte laufen mit Timeout und UTF-8-Logs; Publish laeuft
+  seriell (`-m:1`), um lokale Datei-/Compiler-Locks zu vermeiden. Wenn ein vorhandenes ZIP
+  gesperrt ist, schreibt `Pack-Portable.ps1` ein zeitgestempeltes Ersatz-ZIP, statt den frisch
+  gebauten Portable-Ordner zu verwerfen.
+- **Portable-Start:** `Start-Portable.bat` setzt den Backend-Arbeitsordner auf `app\`, damit
+  das eingebettete Dashboard (`wwwroot`) auch beim DLL-Start per `dotnet` gefunden wird, und
+  beendet Fehlerfaelle ohne interaktives `pause`.
+- **Portable-Gate:** `scripts\Test-PortablePackageGate.ps1` baut ein Paket unter `tmp\`, prueft
+  Startdatei, DLL, eingebettetes Dashboard, leeres Datenverzeichnis und blockiert versehentlich
+  staged private/generierte Dateien.
 - **Startpaket-Grenzen:** Dev-Start und Portable-Paket bleiben lokale Werkzeuge; keine Cloud,
   keine Uploads, keine Releases/Tags.
 
