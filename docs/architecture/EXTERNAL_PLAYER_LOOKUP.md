@@ -69,3 +69,11 @@ Geplant ist ein neutraler `PlayerLookupResult`, der in einen lokalen `Player` ü
 ## Stand 0.10.0
 
 Aktiv ist zunächst FIDE-ID-Lookup über `ratings.fide.com/profile/{id}`. Namenssuche sowie DSB/ThSB werden als Providerstruktur vorbereitet, aber noch nicht als vollautomatische Live-Abfrage genutzt.
+
+## Stand Bergfest-Finalisierung (lokale Aggregation)
+
+- `search-all` fragt **alle** registrierten Quellen ab und bricht nicht nach dem ersten Treffer ab. Ergebnisse gleicher Personen werden zusammengeführt (Primärschlüssel FIDE-ID, dann DSB-/National-ID, dann normalisierter Name + Geburtsjahr).
+- Neue lokale Quelle **„Lokale Teilnehmer & Importe"** (`ExternalPlayerSource.Local`): durchsucht alle bereits erfassten Turnierteilnehmer und importierten Presetdaten im lokalen Datenbestand. Dadurch ergänzt eine FIDE-ID-Suche fehlende DWZ/TWZ/DSB-ID aus lokalen Daten, ohne FIDE-Werte (Elo) zu überschreiben (FIDE bleibt führend, Confidence 0.95 vs. lokal 0.6).
+- Die lokale Quelle unterstützt **Namenssuche** diakritik- und reihenfolgetolerant: „Marco Geißhirt", „Marco Geisshirt", „Geishirt Marco", „Geißhirt, Marco" finden dieselbe Person (Umlaute ä/ae, ö/oe, ü/ue, ß/ss; Akzente entfernt; Doppelbuchstaben vereinheitlicht; mit/ohne Komma). Logik in `PlayerNameNormalizer`.
+- DSB/ThSB bleiben ehrlich als „vorbereitet, aktuell nicht aktiv" markiert; es wird keine instabile Online-Abfrage vorgetäuscht.
+- **Deduplikation beim Speichern:** Gleiche FIDE- oder DSB-ID kann im selben Turnier nicht doppelt als Teilnehmer angelegt werden (`AddPlayer`/`UpdatePlayer`/CSV-Import). Der CSV-Import überspringt ID- und reine Namensdubletten, statt abzubrechen. Im Dashboard zeigt ein Suchtreffer mit bereits vorhandener ID „bereits im Turnier" und deaktiviert „Als neuen Teilnehmer speichern"; stattdessen kann der vorhandene Teilnehmer geöffnet/bearbeitet werden.

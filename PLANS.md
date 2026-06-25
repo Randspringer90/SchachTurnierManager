@@ -1,3 +1,31 @@
+# Aktueller Zusatz 0.41.1
+
+- Operator-Smoke `scripts/Smoke-OperatorWorkflow.ps1`: ein hängesicherer End-to-End-Lauf gegen
+  ein isoliertes, frisch gebautes Backend (Health, Swiss 12/5, RR-Late-Entry-Sperre, manuelle
+  Paarung, Backup/Restore, Chess960/QR-Daten) mit Timeouts, Heartbeat, klarem Exit-Code und
+  zuverlässigem Teardown. Runbook/Checklist/Operator-Card und QR-Vorabtest dokumentiert.
+- Offen (unverändert): kein vollständiges FIDE-Dutch, Felder > 20 Spieler Greedy-Fallback,
+  QR-Anzeige am realen Handy bleibt manueller Vorabtest.
+
+# Aktueller Zusatz 0.41.1
+
+- Operator-/Release-Candidate-Haertung ohne neue Pairing-Architektur:
+  `scripts\Smoke-OperatorWorkflow.ps1` prueft synthetisch Health, Swiss 12/5,
+  Rundenlimit, Audit-Export, Round-Robin, Manual-Pairing-Guards, Backup/Restore und
+  Chess960/QR-URL-Form.
+- Runbook/Checklisten geschärft fuer Turniertag: QR-Vorabtest, Audit nach jeder Runde,
+  Backup/Restore, MaxRounds, Late Entry je Format, Swiss-Grenzen und Notfallablauf.
+- Offen vor echtem Release: realer Handytest im Veranstaltungs-WLAN/Hotspot, keine Tags/Releases
+  ohne ausdrueckliche Freigabe.
+
+# Aktueller Zusatz 0.41.0
+
+- Schweizer-System V2: global optimale Minimum-Penalty-Paarung (≤ 20 Spieler) ersetzt die
+  Greedy-Gegnerauswahl. Vermeidbare Rematches sind eliminiert (Invariantentest über mehrere
+  Feldgrößen/Seeds). Bye/Farben/Forensik unverändert. Details `docs/SWISS_PAIRING_ENGINE.md`.
+- Offen (Swiss v2/FIDE-Dutch): Bracket-/Floater-/Erstrunden-Setzungsregeln, austauschbare
+  Pairing-Strategien, polynomiales Matching für große Opens.
+
 # Aktueller Zusatz 0.12.0
 
 - Externe Profile können auf Dubletten geprüft und als neuer oder bestehender Teilnehmer angewendet werden.

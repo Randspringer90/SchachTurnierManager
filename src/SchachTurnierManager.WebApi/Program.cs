@@ -1,5 +1,11 @@
 using System.Text;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SchachTurnierManager.Application;
 using SchachTurnierManager.Application.External;
 using SchachTurnierManager.Domain.Models;
@@ -9,15 +15,35 @@ using SchachTurnierManager.Infrastructure.External;
 using SchachTurnierManager.WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
-var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"]
-    ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
-Directory.CreateDirectory(dataDirectory);
-var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
-var connectionString = builder.Configuration.GetConnectionString("SchachTurnierManager")
-    ?? $"Data Source={databasePath}";
+var configuredConnectionString = builder.Configuration.GetConnectionString("SchachTurnierManager");
+string connectionString;
+string databaseHealthLabel;
+string databaseFullPath;
+string auditDirectory;
+var defaultDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
+if (string.IsNullOrWhiteSpace(configuredConnectionString))
+{
+    var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"] ?? defaultDataDirectory;
+    Directory.CreateDirectory(dataDirectory);
+    var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
+    connectionString = $"Data Source={databasePath}";
+    databaseHealthLabel = Path.GetFileName(databasePath);
+    databaseFullPath = databasePath;
+    auditDirectory = Path.Combine(dataDirectory, "audit");
+}
+else
+{
+    connectionString = configuredConnectionString;
+    databaseHealthLabel = "custom connection";
+    databaseFullPath = "custom connection";
+    auditDirectory = Path.Combine(defaultDataDirectory, "audit");
+}
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
+builder.Services.AddFileAuditJournalSink(auditDirectory);
 builder.Services.AddExternalPlayerLookupAdapters();
 builder.Services.AddScoped<TournamentService>();
 builder.Services.AddCors(options =>
@@ -33,10 +59,44 @@ var app = builder.Build();
 var webRootPath = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 var embeddedDashboardAvailable = File.Exists(Path.Combine(webRootPath, "index.html"));
 
-using (var scope = app.Services.CreateScope())
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+var usesFileDatabase = !string.Equals(databaseFullPath, "custom connection", StringComparison.Ordinal);
+if (usesFileDatabase)
 {
+    var probe = DatabaseStartupDiagnostics.Probe(databaseFullPath);
+    if (!probe.IsHealthy)
+    {
+        var report = DatabaseStartupDiagnostics.BuildFailureReport(databaseFullPath, probe);
+        startupLogger.LogCritical("{Report}", report);
+        Console.Error.WriteLine(report);
+        Environment.Exit(2);
+        return;
+    }
+}
+
+try
+{
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TournamentDbContext>();
     db.Database.EnsureCreated();
+}
+catch (Exception ex)
+{
+    // Klassisch: "SQLite Error 10: 'disk I/O error'" beim WAL-Pragma. Statt Stacktrace einen
+    // verständlichen, handlungsorientierten Hinweis ausgeben und sauber mit Fehlercode beenden,
+    // damit das Startskript die Lage erkennt.
+    var probe = usesFileDatabase ? DatabaseStartupDiagnostics.Probe(databaseFullPath) : new DatabaseProbeResult
+    {
+        DatabasePath = databaseFullPath,
+        Directory = databaseFullPath,
+        DirectoryExists = true,
+        DirectoryWritable = true
+    };
+    var report = DatabaseStartupDiagnostics.BuildFailureReport(databaseFullPath, probe, ex.Message);
+    startupLogger.LogCritical(ex, "{Report}", report);
+    Console.Error.WriteLine(report);
+    Environment.Exit(2);
+    return;
 }
 
 app.UseCors();
@@ -67,9 +127,10 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.38.5",
+    version = "0.41.1",
     time = DateTimeOffset.UtcNow,
-    database = databasePath,
+    database = databaseHealthLabel,
+    databasePath = databaseFullPath,
     embeddedDashboard = embeddedDashboardAvailable
 }));
 
@@ -84,6 +145,12 @@ app.MapGet("/api/external-players/search", async (string? source, string? query,
     }
 
     var result = await service.SearchAsync(parsedSource, query ?? string.Empty, cancellationToken);
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/external-players/search-all", async (string? query, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
+{
+    var result = await service.SearchAllAsync(query ?? string.Empty, cancellationToken);
     return Results.Ok(result);
 });
 
@@ -137,6 +204,28 @@ app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
     try
     {
         return Results.Ok(service.RequireTournament(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapDelete("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
+{
+    if (!service.DeleteTournament(id))
+    {
+        return Results.NotFound(new { error = $"Turnier {id} wurde nicht gefunden." });
+    }
+
+    return Results.Ok(new { deleted = true, id });
+});
+
+app.MapPost("/api/tournaments/{id:guid}/reset", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.ResetTournament(id));
     }
     catch (InvalidOperationException ex)
     {
@@ -358,6 +447,34 @@ app.MapPut("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNum
     }
 });
 
+app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-positions", (Guid id, int roundNumber, RollChess960StartPositionsRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.RollChess960StartPositions(id, roundNumber, request.OverwriteExisting, request.Seed));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-positions/{boardNumber:int}", (Guid id, int roundNumber, int boardNumber, RollChess960StartPositionForBoardRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.RollChess960StartPositionForBoard(id, roundNumber, boardNumber, request.OverwriteExisting, request.Seed, request.PositionNumber));
+    }
+    catch (ArgumentOutOfRangeException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
 app.MapPatch("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/lock", (Guid id, int roundNumber, UpdateRoundLockRequest request, TournamentService service) =>
 {
     try
@@ -537,6 +654,31 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/query", (Guid id, HttpReque
         return Results.NotFound(new { error = ex.Message });
     }
 });
+
+app.MapGet("/api/tournaments/{id:guid}/audit-journal/export.jsonl", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportAuditJournalJsonl(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/audit-journal/export.json", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportAuditJournalJson(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 app.MapGet("/api/tournaments/{id:guid}/round-diagnostics", (Guid id, TournamentService service) =>
 {
     try
@@ -650,8 +792,3 @@ static IResult ToDownload(ExportDocument document)
 {
     return Results.File(Encoding.UTF8.GetBytes(document.Content), document.ContentType, document.FileName);
 }
-
-
-
-
-

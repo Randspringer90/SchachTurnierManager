@@ -4,7 +4,8 @@ public enum ExternalPlayerSource
 {
     Fide = 0,
     Dsb = 1,
-    Thsb = 2
+    Thsb = 2,
+    Local = 3
 }
 
 public enum ExternalPlayerLookupStatus
@@ -76,6 +77,23 @@ public sealed record ExternalPlayerLookupResult
         Message = message,
         Players = Array.Empty<ExternalPlayerProfile>()
     };
+}
+
+public sealed record ExternalPlayerAggregateSourceResult(
+    ExternalPlayerSource Source,
+    string SourceName,
+    ExternalPlayerLookupStatus Status,
+    bool IsActive,
+    string Message,
+    int Count);
+
+public sealed record ExternalPlayerAggregateResult
+{
+    public string Query { get; init; } = string.Empty;
+    public string Mode { get; init; } = "name";
+    public string Message { get; init; } = string.Empty;
+    public IReadOnlyList<ExternalPlayerProfile> Players { get; init; } = Array.Empty<ExternalPlayerProfile>();
+    public IReadOnlyList<ExternalPlayerAggregateSourceResult> Sources { get; init; } = Array.Empty<ExternalPlayerAggregateSourceResult>();
 }
 
 public sealed record ExternalPlayerProfile

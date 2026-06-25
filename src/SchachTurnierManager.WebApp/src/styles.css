@@ -203,6 +203,53 @@ textarea {
   overflow: auto;
 }
 
+/* Teilnehmerliste: volle Breite, horizontal scrollbar, lesbare Spalten */
+.participant-card {
+  width: 100%;
+}
+
+.participant-card h3 small {
+  font-weight: 400;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.participant-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-height: 60vh;
+}
+
+.participant-table {
+  min-width: 880px;
+}
+
+.participant-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #0f172a;
+}
+
+.participant-table th,
+.participant-table td {
+  white-space: nowrap;
+}
+
+.participant-table .col-name {
+  min-width: 180px;
+  white-space: normal;
+}
+
+.participant-table .col-club {
+  min-width: 160px;
+  white-space: normal;
+}
+
+.participant-table .col-actions {
+  white-space: nowrap;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -463,6 +510,49 @@ th {
   grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1.4fr) auto;
   gap: 0.5rem;
   align-items: center;
+}
+
+.external-lookup-form.single {
+  grid-template-columns: minmax(180px, 1fr) auto;
+}
+
+.source-status-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-status-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.source-status-list .source-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.source-status-list .source-active .source-badge {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.source-status-list .source-prepared {
+  color: #94a3b8;
+}
+
+.source-status-list .source-prepared .source-badge {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
 }
 
 .provider-info {
@@ -1315,4 +1405,792 @@ th {
   background: rgba(245, 158, 11, 0.12);
   border-radius: 0.75rem;
   padding: 0.75rem;
+}
+
+
+.round-bottom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(30, 64, 175, 0.18);
+}
+
+.round-bottom-actions > div {
+  display: flex;
+  flex: 1 1 18rem;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.round-bottom-actions span {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+}
+
+.round-bottom-actions button {
+  flex: 0 0 auto;
+}
+
+/* Round preview modal / operator workflow hotfix */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.preview-modal {
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.preview-modal-table {
+  max-height: 44vh;
+  overflow: auto;
+}
+
+.round-bottom-actions button:disabled,
+.pairing-readiness-actions button:disabled {
+  opacity: 0.55;
+}
+
+.round-bottom-blockers {
+  flex: 1 1 100%;
+  margin: 0.25rem 0 0;
+  color: #fecaca;
+}
+
+.chess960-dice-panel {
+  margin: 1rem 0;
+  padding: 0.9rem;
+  border: 1px solid rgba(20, 184, 166, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.chess960-dice-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chess960-dice-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chess960-dice-header span,
+.chess960-table small {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+}
+
+.chess960-table,
+.chess960-modal-table {
+  margin-top: 0.75rem;
+}
+
+.chess960-modal {
+  width: min(980px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+/* ===== Sichtbarer 3D-Schachwürfel (Chess960) ===== */
+.dice-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  margin: 0.5rem 0 1rem;
+  perspective: 900px;
+  background: radial-gradient(circle at 50% 35%, rgba(20, 184, 166, 0.18), rgba(2, 6, 23, 0) 60%);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.dice-cube {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform: rotateX(-18deg) rotateY(24deg);
+}
+
+.dice-cube.rolling {
+  animation: dice-tumble 1.25s cubic-bezier(0.3, 0.05, 0.2, 1) forwards;
+}
+
+.dice-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.4rem;
+  line-height: 1;
+  color: #1f2937;
+  border-radius: 14px;
+  border: 2px solid rgba(120, 72, 24, 0.55);
+  background: linear-gradient(150deg, #f4dcae 0%, #e6c089 45%, #d2a263 100%);
+  box-shadow: inset 0 0 18px rgba(120, 72, 24, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.dice-face-0 { transform: rotateY(0deg) translateZ(52px); }
+.dice-face-1 { transform: rotateY(90deg) translateZ(52px); }
+.dice-face-2 { transform: rotateY(180deg) translateZ(52px); }
+.dice-face-3 { transform: rotateY(-90deg) translateZ(52px); }
+.dice-face-4 { transform: rotateX(90deg) translateZ(52px); }
+.dice-face-5 { transform: rotateX(-90deg) translateZ(52px); }
+
+@keyframes dice-tumble {
+  0%   { transform: translateY(0) rotateX(-18deg) rotateY(24deg); }
+  20%  { transform: translateY(-70px) rotateX(220deg) rotateY(180deg) rotateZ(40deg); }
+  45%  { transform: translateY(20px) rotateX(540deg) rotateY(380deg) rotateZ(120deg); }
+  70%  { transform: translateY(-30px) rotateX(820deg) rotateY(620deg) rotateZ(220deg); }
+  100% { transform: translateY(0) rotateX(1080deg) rotateY(816deg) rotateZ(360deg); }
+}
+
+.dice-cube.rolling-quick {
+  animation: dice-quick 0.3s cubic-bezier(0.3, 0.05, 0.2, 1);
+}
+
+@keyframes dice-quick {
+  0%   { transform: translateY(0) rotateX(-18deg) rotateY(24deg); }
+  50%  { transform: translateY(-26px) rotateX(200deg) rotateY(160deg); }
+  100% { transform: translateY(0) rotateX(360deg) rotateY(312deg); }
+}
+
+.dice-stage.compact {
+  height: 150px;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.dice-stage.compact .dice-cube {
+  width: 78px;
+  height: 78px;
+}
+
+.dice-stage.compact .dice-face {
+  font-size: 2.5rem;
+}
+
+.dice-stage.compact .dice-face-0 { transform: rotateY(0deg) translateZ(39px); }
+.dice-stage.compact .dice-face-1 { transform: rotateY(90deg) translateZ(39px); }
+.dice-stage.compact .dice-face-2 { transform: rotateY(180deg) translateZ(39px); }
+.dice-stage.compact .dice-face-3 { transform: rotateY(-90deg) translateZ(39px); }
+.dice-stage.compact .dice-face-4 { transform: rotateX(90deg) translateZ(39px); }
+.dice-stage.compact .dice-face-5 { transform: rotateX(-90deg) translateZ(39px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-cube.rolling { animation-duration: 0.2s; }
+  .dice-cube.rolling-quick { animation-duration: 0.12s; }
+}
+
+.dice-result-line {
+  text-align: center;
+  margin: 0 0 0.75rem;
+  color: #5eead4;
+  font-weight: 600;
+}
+
+.dice-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+/* ===== Per-Brett-Würfeln (Modal-Reiter + mobile Seite) ===== */
+.board-dice-button {
+  display: inline-block;
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
+.board-dice-roller {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.board-dice-squares {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.3rem;
+  width: 100%;
+  max-width: 420px;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.board-dice-square {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.5);
+  color: #64748b;
+}
+
+.board-dice-square.filled {
+  color: #f8fafc;
+  border-color: rgba(20, 184, 166, 0.7);
+  background: rgba(15, 118, 110, 0.3);
+}
+
+.board-dice-square.active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4);
+}
+
+.board-dice-black {
+  margin: 0 0 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.board-dice-ok {
+  color: #5eead4;
+  text-align: center;
+  font-weight: 600;
+}
+
+.board-dice-error {
+  color: #fecaca;
+  font-weight: 600;
+}
+
+.board-dice-warning {
+  color: #fcd34d;
+}
+
+.board-dice-pairing {
+  margin: 0.4rem 0 0;
+}
+
+.board-dice-modal .preview-card-header {
+  align-items: flex-start;
+}
+
+.board-dice-tabs {
+  margin: 0.75rem 0 1rem;
+}
+
+/* ===== QR / Handy ===== */
+.qr-svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  background: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.4rem;
+}
+
+.qr-tab-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.qr-tab-code {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.qr-tab-info {
+  flex: 1 1 260px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.qr-ip-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.qr-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qr-url {
+  flex: 1 1 200px;
+  word-break: break-all;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  background: rgba(15, 23, 42, 0.6);
+  font-size: 0.8rem;
+}
+
+.qr-hints {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+/* ===== Mobile Würfelseite (Handy via QR) ===== */
+.mobile-dice {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+.mobile-dice-header h1 {
+  margin: 0.2rem 0;
+  font-size: 1.4rem;
+}
+
+.mobile-dice-pairing {
+  font-size: 1.1rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.mobile-dice-foot {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+/* ===== Dublettenkennzeichnung in der Spielersuche ===== */
+.participant-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #052e2b;
+  background: #5eead4;
+  vertical-align: middle;
+}
+
+.lookup-result-existing {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(15, 118, 110, 0.12);
+}
+
+/* Operator-Bedienleiste / Event-Modus */
+.operator-bar {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.78);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  display: grid;
+  gap: 1rem;
+}
+
+.operator-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.operator-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.85);
+  border-left: 4px solid #475569;
+}
+
+.operator-chip.ok { border-left-color: #22c55e; }
+.operator-chip.danger { border-left-color: #ef4444; }
+
+.operator-chip-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.operator-chip strong {
+  font-size: 1.05rem;
+  color: #e5e7eb;
+  overflow-wrap: anywhere;
+}
+
+.operator-chip small {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.operator-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.operator-next.tone-ok { border-color: rgba(34, 197, 94, 0.55); }
+.operator-next.tone-warn { border-color: rgba(245, 158, 11, 0.6); }
+.operator-next.tone-danger { border-color: rgba(239, 68, 68, 0.6); }
+
+.operator-next-eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.operator-next strong {
+  display: block;
+  font-size: 1.15rem;
+  margin: 0.1rem 0 0.25rem;
+  color: #f8fafc;
+}
+
+.operator-next p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  max-width: 60ch;
+}
+
+.operator-next button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.operator-dbpath {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .operator-next {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Operator-Leiste bleibt im normalen Dokumentfluss (nicht mehr sticky/fixiert),
+   damit sie beim Scrollen keinen dauerhaften Platz mehr blockiert. */
+.operator-bar {
+  position: static;
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.35);
+}
+
+.operator-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.operator-tools button {
+  flex: 0 0 auto;
+}
+
+.operator-checklist {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 0.4rem 0.85rem;
+}
+
+.operator-checklist > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #f1f5f9;
+  padding: 0.35rem 0;
+}
+
+.operator-checklist-body ul {
+  margin: 0.4rem 0 0.6rem;
+  padding-left: 1.2rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.operator-power-note {
+  margin: 0.35rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+/* Turniertag-/Outdoor-Modus: größere Schrift, größere Buttons, höherer Kontrast.
+   Kein eigenes Theme-System – nur eine Klasse auf .shell, ohne Reload umschaltbar. */
+.shell.outdoor {
+  font-size: 1.15rem;
+}
+
+.shell.outdoor button {
+  padding: 0.85rem 1.15rem;
+  font-size: 1.05rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.shell.outdoor button.small {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.95rem;
+}
+
+.shell.outdoor select,
+.shell.outdoor input,
+.shell.outdoor textarea {
+  font-size: 1.05rem;
+  border-color: #94a3b8;
+  border-width: 2px;
+}
+
+.shell.outdoor .operator-bar {
+  border-color: rgba(147, 197, 253, 0.8);
+  background: rgba(2, 6, 23, 0.95);
+}
+
+.shell.outdoor .operator-chip {
+  background: #020617;
+  border-left-width: 8px;
+}
+
+.shell.outdoor .operator-chip-label,
+.shell.outdoor .operator-chip small,
+.shell.outdoor .muted,
+.shell.outdoor small {
+  color: #e2e8f0;
+}
+
+.shell.outdoor .operator-chip strong,
+.shell.outdoor .operator-next strong {
+  color: #ffffff;
+  font-size: 1.35rem;
+}
+
+.shell.outdoor .operator-chip.danger,
+.shell.outdoor .result-review-chip.danger {
+  border-left-color: #f87171;
+}
+
+.shell.outdoor .status-line {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.shell.outdoor .status-line .error {
+  color: #fca5a5;
+}
+
+.shell.outdoor table {
+  font-size: 1.02rem;
+}
+
+/* Interne Hauptreiter für das ausgewählte Turnier.
+   Reine React/CSS-Umsetzung, keine zusätzliche UI-Bibliothek. */
+.tab-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.1rem 0.55rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  scrollbar-width: thin;
+}
+
+.tab-button {
+  flex: 0 0 auto;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: 2px solid transparent;
+  color: #cbd5e1;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.7rem 0.7rem 0.3rem 0.3rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tab-button:hover {
+  color: #f8fafc;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.tab-button.active {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.7);
+  border-bottom-color: #60a5fa;
+  color: #f8fafc;
+}
+
+/* Dynamische Runden-Unterreiter (aus echtem Turnierzustand erzeugt). */
+.round-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.round-tab-button {
+  flex: 0 0 auto;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.round-tab-button:hover {
+  color: #f8fafc;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.round-tab-button.active {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: rgba(96, 165, 250, 0.8);
+  color: #f8fafc;
+}
+
+.round-tab-button.round-tab-next {
+  border-style: dashed;
+  border-color: rgba(34, 197, 94, 0.55);
+  color: #bbf7d0;
+}
+
+.round-start {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.1rem;
+  border: 1px dashed rgba(96, 165, 250, 0.45);
+  border-radius: 0.9rem;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.round-start h4 {
+  margin: 0;
+}
+
+/* Übersicht-Reiter. */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.overview-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.85);
+  border-left: 4px solid #475569;
+}
+
+.overview-grid span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.overview-grid strong {
+  font-size: 1.05rem;
+  color: #e5e7eb;
+  overflow-wrap: anywhere;
+}
+
+.overview-grid small {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.overview-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  margin-bottom: 1rem;
+}
+
+.overview-next.tone-ok { border-color: rgba(34, 197, 94, 0.55); }
+.overview-next.tone-warn { border-color: rgba(245, 158, 11, 0.6); }
+.overview-next.tone-danger { border-color: rgba(239, 68, 68, 0.6); }
+
+.overview-next strong {
+  display: block;
+  font-size: 1.15rem;
+  margin: 0.1rem 0 0.25rem;
+  color: #f8fafc;
+}
+
+.overview-next p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  max-width: 60ch;
+}
+
+.overview-next button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .overview-next {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Outdoor-/Turniertag-Modus: größere, kontrastreichere Reiter. */
+.shell.outdoor .tab-button,
+.shell.outdoor .round-tab-button {
+  font-size: 1.05rem;
+  padding: 0.6rem 1rem;
+}
+
+.shell.outdoor .tab-button.active,
+.shell.outdoor .round-tab-button.active {
+  color: #ffffff;
+}
+
+.shell.outdoor .overview-grid strong {
+  font-size: 1.2rem;
+  color: #f8fafc;
 }

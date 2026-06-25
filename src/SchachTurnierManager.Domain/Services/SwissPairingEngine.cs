@@ -4,6 +4,16 @@ namespace SchachTurnierManager.Domain.Services;
 
 public sealed class SwissPairingEngine
 {
+    // Wiederholungspaarungen müssen jede Kombination aus Punktdifferenz- und Farbstrafen
+    // sicher dominieren, damit die globale Optimierung ein Rematch ausschließlich dann wählt,
+    // wenn es keine rematchfreie vollständige Paarung mehr gibt ("nur wenn unvermeidbar").
+    private const decimal RematchPenalty = 1_000_000_000m;
+
+    // Exakte Minimum-Penalty-Paarung per Bitmaske ist für Vereins-/Open-Sektionen bis zu dieser
+    // Größe schnell und speicherfreundlich. Größere Felder (große Opens) fallen bewusst auf die
+    // dokumentierte Greedy-Heuristik zurück, bis ein vollständiges FIDE-Dutch verfügbar ist.
+    private const int MaxPlayersForExactMatching = 20;
+
     public TournamentRound GenerateNextRound(TournamentState tournament)
     {
         var roundNumber = tournament.Rounds.Count + 1;
@@ -15,21 +25,17 @@ public sealed class SwissPairingEngine
             .ThenBy(p => p.Player.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var messages = new List<string>
-        {
-            "Schweizer-System V2: scoregruppenorientierte Greedy-Paarung mit Rematch-Vermeidung, Bye-Schutz und Farbpräferenzprüfung.",
-            "Noch kein vollständiges FIDE-Dutch-System; Scoregroups, Floaters und Farbentscheidungen werden aber auditierbar protokolliert."
-        };
+        var messages = new List<string>();
         var scoreGroups = BuildScoreGroupMessages(active);
         var floaters = new List<string>();
         var colorNotes = new List<string>();
         var pairings = new List<Pairing>();
-        var unpaired = active.Select(p => p.Player.Id).ToList();
+        var toPair = new List<PlayerPairingProfile>(active);
 
-        if (unpaired.Count % 2 == 1)
+        if (toPair.Count % 2 == 1)
         {
-            var bye = SelectByePlayer(active);
-            unpaired.Remove(bye.Player.Id);
+            var bye = SelectByePlayer(toPair);
+            toPair.Remove(bye);
             pairings.Add(Pairing.Bye(pairings.Count + 1, bye.Player.Id) with
             {
                 Notes = $"Bye: niedrigste Scoregruppe ohne bisheriges Bye bevorzugt. Punkte vor Runde: {bye.Points}."
@@ -37,18 +43,18 @@ public sealed class SwissPairingEngine
             messages.Add($"Bye vergeben an {bye.Player.Name} ({bye.Points} Punkte, bisheriges Bye: {(bye.HadBye ? "ja" : "nein")}).");
         }
 
-        while (unpaired.Count > 0)
-        {
-            var firstId = unpaired[0];
-            unpaired.RemoveAt(0);
-            var first = profiles[firstId];
-            var secondId = SelectBestOpponent(first, unpaired.Select(id => profiles[id]));
-            var second = profiles[secondId];
-            unpaired.Remove(secondId);
+        var (pairs, usedExact) = BuildPairs(toPair);
 
+        messages.Insert(0, usedExact
+            ? "Schweizer-System V2: global optimierte Minimum-Penalty-Paarung (exakte Maximum-Weight-Matching-Suche) mit Rematch-Vermeidung, Bye-Schutz und Farbpräferenzprüfung."
+            : $"Schweizer-System V2: Greedy-Fallback aktiv (Feld > {MaxPlayersForExactMatching} Spieler; exakte Optimierung übersprungen) mit Rematch-Vermeidung, Bye-Schutz und Farbpräferenzprüfung.");
+        messages.Insert(1, "Noch kein vollständiges FIDE-Dutch-System; Scoregroups, Floaters und Farbentscheidungen werden aber auditierbar protokolliert.");
+
+        foreach (var (first, second) in pairs)
+        {
             if (first.OpponentIds.Contains(second.Player.Id))
             {
-                messages.Add($"Rematch unvermeidbar im Greedy-Schritt: {first.Player.Name} gegen {second.Player.Name}.");
+                messages.Add($"Rematch unvermeidbar (global optimiert, keine rematchfreie Gesamtpaarung möglich): {first.Player.Name} gegen {second.Player.Name}.");
             }
 
             if (first.Points != second.Points)
@@ -76,8 +82,8 @@ public sealed class SwissPairingEngine
                 .ToList(),
             Audit = new PairingAudit
             {
-                Algorithm = "Swiss-ScoreGroup-Greedy-V2",
-                RulesetVersion = "STM-0.4-swiss-scoregroups",
+                Algorithm = "Swiss-ScoreGroup-Optimal-V2",
+                RulesetVersion = "STM-0.41-swiss-optimal-matching",
                 Messages = messages,
                 ScoreGroups = scoreGroups,
                 Floaters = floaters,
@@ -107,6 +113,119 @@ public sealed class SwissPairingEngine
             .First();
     }
 
+    /// <summary>
+    /// Erzeugt die Spielpaarungen für ein gerades Restfeld. Für Felder bis
+    /// <see cref="MaxPlayersForExactMatching"/> wird ein exaktes Minimum-Penalty-Matching gesucht
+    /// (garantiert rematchfrei, sofern überhaupt möglich, und minimiert Punkt-/Farbstrafen global);
+    /// größere Felder nutzen die bisherige Greedy-Heuristik.
+    /// </summary>
+    private static (List<(PlayerPairingProfile First, PlayerPairingProfile Second)> Pairs, bool UsedExact) BuildPairs(
+        IReadOnlyList<PlayerPairingProfile> players)
+    {
+        if (players.Count == 0)
+        {
+            return (new List<(PlayerPairingProfile, PlayerPairingProfile)>(), true);
+        }
+
+        if (players.Count <= MaxPlayersForExactMatching)
+        {
+            return (BuildExactPairs(players), true);
+        }
+
+        return (BuildGreedyPairs(players), false);
+    }
+
+    private static List<(PlayerPairingProfile First, PlayerPairingProfile Second)> BuildExactPairs(
+        IReadOnlyList<PlayerPairingProfile> players)
+    {
+        var n = players.Count; // gerade
+        var weights = new decimal[n, n];
+        for (var i = 0; i < n; i++)
+        {
+            for (var j = i + 1; j < n; j++)
+            {
+                var penalty = PairingPenalty(players[i], players[j]);
+                weights[i, j] = penalty;
+                weights[j, i] = penalty;
+            }
+        }
+
+        var size = 1 << n;
+        var dp = new decimal[size];
+        var choice = new int[size];
+        Array.Fill(dp, decimal.MaxValue);
+        dp[0] = 0m;
+
+        for (var mask = 1; mask < size; mask++)
+        {
+            if (System.Numerics.BitOperations.PopCount((uint)mask) % 2 != 0)
+            {
+                continue;
+            }
+
+            var first = System.Numerics.BitOperations.TrailingZeroCount((uint)mask);
+            var withoutFirst = mask & ~(1 << first);
+            var best = decimal.MaxValue;
+            var bestPartner = -1;
+
+            var remaining = withoutFirst;
+            while (remaining != 0)
+            {
+                var partner = System.Numerics.BitOperations.TrailingZeroCount((uint)remaining);
+                remaining &= remaining - 1;
+
+                var previous = mask & ~(1 << first) & ~(1 << partner);
+                if (dp[previous] == decimal.MaxValue)
+                {
+                    continue;
+                }
+
+                var candidate = dp[previous] + weights[first, partner];
+                if (candidate < best)
+                {
+                    best = candidate;
+                    bestPartner = partner;
+                }
+            }
+
+            dp[mask] = best;
+            choice[mask] = bestPartner;
+        }
+
+        var pairs = new List<(PlayerPairingProfile, PlayerPairingProfile)>();
+        var current = size - 1;
+        while (current != 0)
+        {
+            var first = System.Numerics.BitOperations.TrailingZeroCount((uint)current);
+            var partner = choice[current];
+            pairs.Add((players[first], players[partner]));
+            current &= ~(1 << first);
+            current &= ~(1 << partner);
+        }
+
+        return pairs;
+    }
+
+    private static List<(PlayerPairingProfile First, PlayerPairingProfile Second)> BuildGreedyPairs(
+        IReadOnlyList<PlayerPairingProfile> players)
+    {
+        var pairs = new List<(PlayerPairingProfile, PlayerPairingProfile)>();
+        var byId = players.ToDictionary(p => p.Player.Id);
+        var unpaired = players.Select(p => p.Player.Id).ToList();
+
+        while (unpaired.Count > 0)
+        {
+            var firstId = unpaired[0];
+            unpaired.RemoveAt(0);
+            var first = byId[firstId];
+            var secondId = SelectBestOpponent(first, unpaired.Select(id => byId[id]));
+            unpaired.Remove(secondId);
+            pairs.Add((first, byId[secondId]));
+        }
+
+        return pairs;
+    }
+
     private static Guid SelectBestOpponent(PlayerPairingProfile first, IEnumerable<PlayerPairingProfile> candidates)
     {
         return candidates
@@ -127,7 +246,7 @@ public sealed class SwissPairingEngine
         var penalty = Math.Abs(a.Points - b.Points) * 1000m;
         if (a.OpponentIds.Contains(b.Player.Id))
         {
-            penalty += 100000m;
+            penalty += RematchPenalty;
         }
 
         penalty += colorDecision.Penalty;

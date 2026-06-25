@@ -12,7 +12,14 @@ Aktuell:
 - Durchschnittsgegner
 - Performance
 
+Vorbereitet:
+- FIDE-Virtual-Opponent-Modell für eigene ungespielte Runden
+  (`UnplayedRoundTiebreak`, `UnplayedRoundBuchholzMode`, C.07/2024 Art. 16.4).
+  Rein/getestet, noch nicht im `StandingsCalculator` verdrahtet.
+  Details: docs/TIEBREAK_UNPLAYED_ROUNDS.md.
+
 Offen:
-- kampflose Partien differenziert behandeln
-- Feinheiten für Round Robin vs Swiss trennen
-- progressive Wertungen und Median-Buchholz ergänzen
+- Modell opt-in in `StandingsCalculator` integrieren (eigene Baselines neu).
+- Gegner-eigene ungespielte Runden nach FIDE Art. 16.2 (Kategorien) auswerten.
+- Feinheiten für Round Robin vs Swiss trennen.
+- progressive Wertungen weiter ausbauen.

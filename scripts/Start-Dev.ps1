@@ -4,6 +4,23 @@ $backend = Join-Path $root "src\SchachTurnierManager.WebApi"
 $frontend = Join-Path $root "src\SchachTurnierManager.WebApp"
 $backendUrl = "http://localhost:5088"
 $frontendUrl = "http://127.0.0.1:5173"
+$frontendOpenUrl = "http://localhost:5173"
+
+# Kindfenster bevorzugt mit PowerShell 7 (pwsh) starten, sonst Windows PowerShell.
+$childShell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
+Write-Host "[Start-Dev] Verwende Shell fuer Teilfenster: $childShell"
+
+function Test-PortInUse {
+    param([Parameter(Mandatory = $true)][int]$Port)
+    try {
+        $connections = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction Stop
+        return ($null -ne $connections)
+    }
+    catch {
+        # Get-NetTCPConnection liefert einen Fehler, wenn nichts lauscht -> Port frei.
+        return $false
+    }
+}
 
 function Wait-HttpOk {
     param(
@@ -45,24 +62,62 @@ function Start-DevWindow {
     $escapedDir = $WorkingDirectory.Replace("'", "''")
     $escapedCommand = $Command.Replace("'", "''")
     $windowCommand = "`$Host.UI.RawUI.WindowTitle = '$escapedTitle'; Set-Location '$escapedDir'; $escapedCommand"
-    Start-Process pwsh -ArgumentList @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $windowCommand)
+    Start-Process $childShell -ArgumentList @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $windowCommand)
 }
 
-Write-Host "[Start-Dev] Starte Backend-Fenster..."
-Start-DevWindow -Title "STM Backend :5088" -WorkingDirectory $backend -Command "dotnet run"
+# --- Backend ---
+if (Test-PortInUse -Port 5088) {
+    Write-Host "[Start-Dev] Port 5088 ist bereits belegt - Backend wird als laufend angenommen, kein Neustart."
+}
+else {
+    Write-Host "[Start-Dev] Starte Backend-Fenster..."
+    Start-DevWindow -Title "STM Backend :5088" -WorkingDirectory $backend -Command "dotnet run"
+}
 
 Write-Host "[Start-Dev] Warte auf Backend $backendUrl/api/health ..."
 if (-not (Wait-HttpOk -Url "$backendUrl/api/health" -TimeoutSeconds 60 -Label "Backend")) {
-    Write-Warning "Backend war nach 60 Sekunden noch nicht erreichbar. Prüfe das Backend-Terminalfenster. Das Frontend wird trotzdem gestartet."
+    Write-Warning "Backend war nach 60 Sekunden noch nicht erreichbar. Pruefe das Backend-Terminalfenster. Das Frontend wird trotzdem gestartet."
 }
 
-Write-Host "[Start-Dev] Starte Frontend-Fenster..."
-Start-DevWindow -Title "STM Frontend :5173" -WorkingDirectory $frontend -Command "if (-not (Test-Path node_modules)) { npm install }; npm run dev"
+# --- Frontend ---
+if (Test-PortInUse -Port 5173) {
+    Write-Host "[Start-Dev] Port 5173 ist bereits belegt - Frontend wird als laufend angenommen, kein Neustart."
+}
+else {
+    Write-Host "[Start-Dev] Starte Frontend-Fenster..."
+    Start-DevWindow -Title "STM Frontend :5173" -WorkingDirectory $frontend -Command "if (-not (Test-Path node_modules)) { npm install }; npm run dev"
+}
 
 Write-Host "[Start-Dev] Warte auf Frontend $frontendUrl ..."
 if (-not (Wait-HttpOk -Url $frontendUrl -TimeoutSeconds 60 -Label "Frontend")) {
-    Write-Warning "Frontend war nach 60 Sekunden noch nicht erreichbar. Prüfe das Frontend-Terminalfenster. Browser wird trotzdem geöffnet."
+    Write-Warning "Frontend war nach 60 Sekunden noch nicht erreichbar. Pruefe das Frontend-Terminalfenster. Browser wird trotzdem geoeffnet."
 }
 
-Start-Process $frontendUrl
-Write-Host "[Start-Dev] Browser geöffnet. Backend: $backendUrl/api/health · Frontend: $frontendUrl"
+Start-Process $frontendOpenUrl
+Write-Host ""
+Write-Host "[Start-Dev] Browser geoeffnet."
+Write-Host "  Backend:  $backendUrl"
+Write-Host "  Frontend: $frontendOpenUrl"
+Write-Host "  Health:   $backendUrl/api/health"
+
+# Nur-lesender LAN-Hinweis fuer QR/Handy: zeigt die IPv4-Adressen des Laptops an.
+# Keine Firewall-/Systemaenderung. Das Handy muss im gleichen WLAN/Hotspot sein.
+Write-Host ""
+Write-Host "[Start-Dev] QR/Handy (gleiches WLAN/Hotspot) - moegliche Laptop-Adressen:"
+try {
+    $addresses = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+        Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
+        Select-Object -ExpandProperty IPAddress -Unique
+    if ($addresses) {
+        foreach ($addr in $addresses) {
+            Write-Host "  http://${addr}:5173  (im QR-Reiter als Laptop-IP eintragen)"
+        }
+    }
+    else {
+        Write-Host "  Keine LAN-IPv4 gefunden. Adresse manuell ermitteln: ipconfig -> IPv4-Adresse."
+    }
+}
+catch {
+    Write-Host "  IP-Ermittlung nicht moeglich. Adresse manuell ermitteln: ipconfig -> IPv4-Adresse."
+}
+Write-Host "  Hinweis: 'localhost' funktioniert auf dem Handy NICHT. Firewall kann Port 5173 blockieren."

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Changelog
 
 ## 0.38.7 - Projektstruktur und KI-Agentenarchitektur
@@ -21,6 +22,251 @@
 - `scripts/Test-GitCommitSafety.ps1` führt den Tracked-File-Scan jetzt auch bei sauberem Arbeitsbaum aus (kein Frühabbruch mehr).
 - `scripts/Test-RepositoryOpenSourceSafety.ps1` ist nun ein eigenständiger, strengerer Public-Snapshot-Auditor mit maschinen- und menschenlesbarem Report unter `output/repo-open-source-safety/`.
 - Dokumentiert, dass externe Toolfehler in PowerShell nicht über Semikolon-Ketten verdeckt werden dürfen (`a; git commit` committet trotz Fehler); für manuelle Abläufe einzelne Befehle, `&&` oder `Commit-If-Green.ps1` nutzen.
+=======
+## 0.41.1 - Operator-Smoke und haengesicherer Verifikationslauf
+
+Turniertags-Reife: ein einziger, **haengesicherer** Skript-Lauf verifiziert die wichtigsten
+Operator-Workflows end-to-end gegen ein frisches Backend. **Keine Aenderung an Auslosungs-,
+Wertungs- oder API-Logik** – ausschliesslich Verifikation, Timeouts und Doku. Alle Spieler
+synthetisch; keine echten Daten/Exporte committet (`output/**` ist ignoriert).
+
+- **`scripts/Smoke-OperatorWorkflow.ps1` (neu):** startet optional ein isoliertes Backend
+  (eigener Port 5099, Temp-Datenverzeichnis aus dem frischen Release-Binary), prueft Health,
+  Swiss 12/5 (genau 5 Runden, keine 6., **keine vermeidbaren Rematches** direkt aus den
+  Paarungen, Audit-Export), Round-Robin-Late-Entry-Sperre, manuelle Paarung (gueltig/
+  Self-Pairing/Doppelspieler), Backup/Restore (Export→Delete→Import) und Chess960-Wuerfeln
+  hinter dem QR-Flow. Liefert `OK/FEHLER`-Summe und klaren Exit-Code (0/1/2).
+- **Haenge-Schutz:** jeder HTTP-Aufruf hat ein TimeoutSec; der Backend-Start wartet maximal
+  `-StartTimeoutSeconds` mit Heartbeat und sauberem Exit-Code; das selbst gestartete Backend
+  wird im `finally` als Prozessbaum beendet (kein zurueckbleibender Listener) und das Temp-
+  Datenverzeichnis entfernt. **Pre-Flight-Port-Check:** ist der Port belegt, bricht der Smoke
+  bewusst ab, statt sich still gegen ein fremdes/veraltetes Backend zu verbinden.
+- **Doku:** Runbook (Generalprobe), Friday-Checklist (Startcheck) und Operator-Card um den
+  Smoke-Lauf und das Timeout-/Stop-Verhalten ergaenzt; QR-Vorabtest dort verankert.
+- **Version:** `0.41.0` → `0.41.1` (Health, `package.json`). 175 Tests bleiben gruen.
+
+## 0.41.1 - Operator-Readiness-Smoke und Runbook-Haertung
+
+Release-Candidate-Vorbereitung nach der Swiss-Engine-Haertung. Fokus: Turniertagsfaehigkeit,
+Startpaket, lokale Verifikation und klare Grenzen. Keine neue Pairing-Architektur, keine
+Auslosungs- oder Wertungslogik geaendert. Alle Smoke-Daten sind synthetisch.
+
+- **Operator-Smoke-Skript:** `scripts\Smoke-OperatorWorkflow.ps1` startet isolierte lokale
+  API-Prozesse, prueft Health, Swiss 12/5 inkl. Audit-Export und Rundenlimit, Round-Robin 6
+  vollstaendig, Round-Robin-Late-Entry-Sperre, Manual-Pairing-Guards, Backup/Restore in zweitem
+  Datenpfad sowie Chess960-Einzelbrett/QR-URL-Form. Artefakte landen unter `output\...` und sind
+  ignoriert; API-Daten liegen in temporaeren synthetischen Datenpfaden.
+- **Runbook/Checklisten:** Turniertagsablauf geschärft: `PlannedRounds`/MaxRounds vor Start
+  gegenpruefen, Audit-Bundle nach jeder Runde exportieren, Backup/Restore klarer trennen,
+  QR/Chess960-Vorabtest vor Ort dokumentieren, Late Entry je Format erklaeren, Swiss-Grenzen
+  (kein vollstaendiges FIDE-Dutch, >20 Spieler Greedy-Fallback) sichtbar halten.
+- **Portable-Paket robuster lokal baubar:** `Pack-Portable.ps1` und `Invoke-ReleaseGate.ps1`
+  nutzen vorhandene `node_modules`, statt bei jedem Paketbau ein `npm install` zu erzwingen.
+  Das vermeidet Windows-`EPERM unlink` bei gesperrten Node-Dateien; in sauberer Umgebung
+  installieren sie weiterhin per `npm ci`/`npm install`. `dotnet publish` nutzt vorhandene
+  Restore-Artefakte mit `--no-restore`.
+- **Startpaket-Grenzen:** Dev-Start und Portable-Paket bleiben lokale Werkzeuge; keine Cloud,
+  keine Uploads, keine Releases/Tags.
+
+## 0.41.0 - Schweizer-System V2: global optimale Paarung (vermeidbare Rematches eliminiert)
+
+Folgearbeit zum Bergfest-Postmortem („falsche/wiederholte Paarungen"). Die Schweizer-Engine
+war eine reine Greedy-Heuristik, die sich früh festlegte und spätere Spieler in **vermeidbare
+Rematches** zwingen konnte. Reproduziert über viele zufällige Verläufe: schon ab 8 Spielern
+trat das Problem ab Runde 4 in der Mehrzahl der Fälle auf. Details: `docs/SWISS_PAIRING_ENGINE.md`.
+Alle Tests mit synthetischen Spielern.
+
+- **Global optimales Minimum-Penalty-Matching:** Statt Spieler nacheinander zu paaren, minimiert
+  die Engine jetzt die Gesamtstrafe über alle Bretter (exakte Maximum-Weight-Matching-Suche per
+  Bitmasken-DP für Felder bis 20 Spieler). Die Strafmodelle (Punktdifferenz, Farbbilanz/Präferenz/
+  dritte gleiche Farbe) bleiben; die Rematch-Strafe dominiert nun sicher alles andere.
+- **Rematch nur wenn unvermeidbar:** Garantie – ein Rematch entsteht ausschließlich, wenn es
+  keine rematchfreie Gesamtauslosung mehr gibt. Genau dann meldet das Audit „Rematch unvermeidbar
+  (global optimiert …)". Bye-Vergabe, Farbentscheidung und die komplette Pairing-Forensik bleiben
+  unverändert und beschreiben automatisch das verbesserte Ergebnis.
+- **Große Felder (> 20 Spieler):** bewusster, im Audit gekennzeichneter Greedy-Fallback, bis ein
+  vollständiges FIDE-Dutch verfügbar ist (Roadmap „Swiss v2" in `docs/SWISS_PAIRING_ENGINE.md`).
+- **Algorithmuskennung:** `Swiss-ScoreGroup-Greedy-V2` → `Swiss-ScoreGroup-Optimal-V2`.
+- **Tests:** Neue Invariante `SwissPairingOptimalMatchingTests` über 8/10/12/13/16 Spieler und
+  6–7 Runden × 60 Seeds: nie ein vermeidbares Rematch (reproduzierte den alten Greedy-Defekt und
+  sichert den Fix). Bestehende Swiss-Golden-/Regression-/Advanced-Tests bleiben grün.
+- **Version:** `0.40.4` → `0.41.0` (Health, `package.json`). Runbook 5a und Roadmap aktualisiert.
+
+## 0.40.4 - Audit-Journal-Forensik: Pairing-Diagnostik, Datei-Spiegel und Export-Bundle
+
+Folgearbeit zum Bergfest-Postmortem: Die dort benannte Forensik-Lücke („Audit-Journal existiert
+in der DB, wurde aber nicht exportiert/gesichert") ist geschlossen. **Keine Änderung an
+Auslosungs- oder Wertungslogik** – ausschließlich Diagnose, Persistenz und Export. Details in
+`docs/AUDIT_JOURNAL.md`. Alle Tests mit synthetischen Spielern; keine echten Daten/Exporte committet.
+
+- **Pairing-Forensik je Runde (`PairingForensics`):** Bei Vorschau und Auslosung wird ein
+  unveränderlicher Entscheidungs-Snapshot aus dem Stand **vor** der Runde festgehalten – Format,
+  geplante/aktuelle Runde, aktive/inaktive Spielerzahl, offene Vorrundenergebnisse, Bretter/Byes/
+  manuelle Paarungen, Rematches, Scoregruppen-Abweichungen, Farbfolgerisiken, Qualitätswert sowie
+  die vorgeschlagenen Paarungen je Brett (Punkte vor der Runde, Differenz, Flags). Reine Diagnose
+  über den bestehenden `PairingQualityAnalyzer`.
+- **Mehr auditierte Ereignisse:** Runde-Vorschau erzeugt, Turnier gelöscht, **blockierte
+  Auslosungen** (Rundenlimit, Round-Robin-Roster-Sperre, offene Vorrunde, zu wenige Spieler) und
+  Audit-Export werden jetzt protokolliert. So taucht z. B. der Rundenlimit-Blocker beim Versuch
+  einer zu vielen Runde nachvollziehbar im Journal auf.
+- **Append-only Datei-Spiegel (`FileAuditJournalSink`):** Jedes Audit-Ereignis wird zusätzlich zur
+  DB in eine JSONL-Datei pro Turnier unter `%LocalAppData%\SchachTurnierManager\audit\` geschrieben
+  (außerhalb des Repos). Der Spiegel überlebt DB-Verlust und `Reset`. **Fehlertolerant:** Ein
+  Schreibfehler bricht den Turnierschritt nie ab, sondern erzeugt einen sichtbaren
+  `AuditJournalMirrorFailed`-Warneintrag.
+- **Forensisches Export-Bundle:** Neue Endpunkte
+  `GET /api/tournaments/{id}/audit-journal/export.jsonl` und `…/export.json` liefern ein in sich
+  geschlossenes Bundle (Manifest, vollständiger Turnier-Snapshot, Pairing-Forensik je Runde, alle
+  Audit-Ereignisse). Dateiname `Turniername_round{n}_{Zeitstempel}_audit.jsonl/json`. WebApp:
+  Buttons „Audit-Bundle (JSONL)/(JSON)" in der Audit-Karte. Skript:
+  `scripts\Export-TournamentAudit.ps1` (speichert lokal nach `output\audit\`, kein Upload).
+- **Tests (+12 → 170 gesamt):** Audit deckt create/add-player/preview/next-round/result/
+  manual-pairing/chess960/reset/delete ab; Schreibfehler im Spiegel wirft nicht und liefert eine
+  Warnung; Rundenlimit-Blocker und Round-Robin-Late-Entry-Blocker sind auditierbar; Late-Entry-
+  Swiss ist auditierbar; Export-Bundle (JSONL/JSON) ist self-contained. Plus
+  `FileAuditJournalSink`-Tests (append-only, Verzeichnis-Anlage). HTTP-Smoke (Port 5099, isoliertes
+  Datenverzeichnis): Export 200 mit korrektem Dateinamen, Rundenlimit-Blocker im Bundle, Datei-Spiegel
+  geschrieben.
+- **Version:** `0.40.3` → `0.40.4` (Health, `package.json`).
+
+## 0.40.3 - Bergfest-Postmortem: Stabilisierung Rundenlimit, Late Entry, Round-Robin, DB-Start
+
+Nach dem realen Bergfest-Turnier (Freitag, 2026-06-19): harte Ursachenanalyse und gezielte
+Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.md`.
+
+- **Jeder-gegen-jeden / Round-Robin – Late Entry & Rückzug nicht mehr stillschweigend
+  rückwirkend:** `TournamentService.GetNextRoundRobinRound` berechnete bei jeder Auslosung den
+  kompletten Spielplan aus den aktuell aktiven Spielern neu. Kam ein Spieler nach Runde 1 dazu
+  (oder zog sich zurück), verschob das die Circle-Methode und machte bereits gespielte Runden
+  inkonsistent (falsche Farben, Rematches, falsche Byes, abweichende Rundenzahl). Jetzt **harte
+  Sperre mit klarer Meldung**: Der Teilnehmerkreis ist ab Runde 1 fixiert; nachträgliche
+  Änderungen erfordern bewusste Neuplanung (Zurücksetzen/Neuanlage). Bestätigt per Domain-/
+  Application-Test und HTTP-Smoke (HTTP 400 mit Hinweis „Spielplan ab Runde 1 fixiert").
+- **SQLite-Start robust + verständliche Diagnose:** Der Backend-Start (`Program.cs`) prüft das
+  Datenverzeichnis jetzt vorab auf Existenz/Schreibrechte (`DatabaseStartupDiagnostics.Probe`)
+  und fängt Fehler bei `EnsureCreated()` ab. Statt eines kryptischen Stacktraces
+  („SQLite Error 10: 'disk I/O error'" beim WAL-Pragma, real am Turniertag aufgetreten) gibt es
+  eine mehrzeilige, handlungsorientierte Klartextmeldung (Pfad, Schreibbarkeit, Ursachen wie
+  OneDrive/Antivirus/zweite Instanz/Reststände) und einen sauberen Exit-Code (2), den das
+  Startskript erkennen kann. Keine riskante Schema-/Journal-Migration.
+- **Rundenlimit zusätzlich abgesichert:** Die bestehende harte Sperre `EnsureCanCreateNextRound`
+  (keine Runde über `PlannedRounds` hinaus – greift bei `next-round`, Preview, Round-Robin und
+  Swiss gleichermaßen) ist nun durch explizite Szenario-Tests (Swiss 12 Spieler / 5 Runden und
+  6 Runden) und einen HTTP-Smoke (HTTP 400 „maximale Rundenzahl") fest verankert.
+- **Neue Tests (Application/Infrastructure):** Postmortem-Szenarien mit synthetischen Spielern –
+  Rundenlimit (Swiss 5/6 Runden), Late Entry nach Runde 2/4 mit 0 Punkten und unveränderten
+  Altrunden, Rückzug, Reaktivierung, doppelte FIDE-ID, manuelle Paarung (Persistenz + als
+  gespielt gewertet + Schutz gegen Doppelpaarung/inaktive Spieler), Round-Robin 4/5/6/12/13
+  Spieler (jede Paarung genau einmal, Byes korrekt, Rundenlimit), Round-Robin Late Entry/Rückzug
+  blockiert. Plus DB-Startdiagnose-Tests (schreibbar, readonly, Hinweistexte).
+- Keine Änderung an Schweizer-Paarungs-, Wertungs-, Such-/Dedupe- oder Chess960-Logik. Versionen
+  auf `0.40.3`.
+
+## 0.40.2 - Chess960-Würfeln pro Brett (Modal mit Reitern, lokaler QR-Code)
+
+- Neuer **„🎲 Würfeln"-Button pro Brett** in der Rundentabelle (Chess960-Spalte). Öffnet ein
+  Popup für genau dieses Turnier/Runde/Brett mit Turniername, Runde, Brettnummer, Paarung,
+  aktuell gespeicherter Stellung und Überschreib-Warnung. Der bestehende Button für alle
+  Bretter einer Runde bleibt unverändert.
+- **Interne Reiter im Popup:** „Browser würfeln" (Default) und „QR / Handy" – ohne neuen
+  Browser-Tab für die Hauptnavigation, auch bei schmaler Breite bedienbar.
+- **Schritt-für-Schritt-Würfel:** Der 3D-Würfel arbeitet die acht Felder der Grundreihe von
+  links nach rechts ab und zeigt die Figuren (König, Dame, Turm, Läufer, Springer). Danach
+  „Für Brett speichern", „Nochmal würfeln" oder „Abbrechen". Die Animation ist Visualisierung;
+  gespeichert wird die vorab gewürfelte Positionsnummer, die der Domain-Service
+  `Chess960PositionService` erneut als gültige Stellung ableitet (Läufer verschiedenfarbig,
+  König zwischen den Türmen). Vorhandene Stellungen werden nur nach Rückfrage überschrieben.
+- **QR / Handy lokal:** QR-Code (eingebetteter, abhängigkeitsfreier Generator – kein Cloud-
+  Dienst, kein Tunnel, kein externer Upload) plus kopierbare LAN-URL und Feld für die
+  Laptop-IP. Eigene mobile Würfelseite über `/?dice=<id>&round=<r>&board=<b>`, die nur dieses
+  Brett anzeigt und denselben Backend-Endpunkt nutzt. Schlägt die QR-Erzeugung fehl, bleiben
+  URL-/Kopier-Funktion und die Browser-Würfelfunktion uneingeschränkt nutzbar.
+- **Backend:** Neuer Single-Board-Endpunkt
+  `POST /api/tournaments/{id}/rounds/{round}/chess960/start-positions/{board}`
+  (optional `overwriteExisting`, `seed`, `positionNumber`). Nutzt weiterhin den bestehenden
+  `Chess960PositionService`; ändert nur das gewählte Brett, lässt andere Bretter und Ergebnisse
+  unberührt. Neue Tests für gültige Stellung, Isolierung anderer Bretter, Persistenz und
+  Überschreib-Schutz.
+- **LAN/Start:** `vite --host 0.0.0.0` (localhost bleibt erreichbar) für Handy-Zugriff im
+  gleichen WLAN/Hotspot; `Start-Dev.ps1` zeigt nur lesend die möglichen Laptop-IPv4-Adressen
+  und Firewall-/`localhost`-Hinweise an. Keine Firewall-/Systemänderung, kein Prozess-Kill.
+- Keine Änderung an Auslosungs-, Wertungs-, Such-, Dedupe- oder Ergebnislogik. Versionen auf
+  `0.40.2`.
+
+## 0.40.1 - Turniertag-Startfix (Ein-Klick-BAT, Operator-Leiste nicht mehr fixiert)
+
+- Neue klickbare Startdatei `RUN_TURNIERMANAGER.bat` im Repo-Root: startet Backend,
+  Frontend und Browser. Nutzt `pwsh`, sonst `powershell`, jeweils mit `-ExecutionPolicy
+  Bypass` nur prozesslokal (keine Änderung der globalen ExecutionPolicy, keine Adminrechte).
+  Behebt das Problem, dass `Start-Dev.ps1` wegen fehlender Signatur direkt blockiert wurde.
+- `scripts/Start-Dev.ps1` robuster: pwsh-/powershell-Fallback für die Teilfenster und
+  Port-Prüfung für 5088/5173 (läuft ein Dienst bereits, wird er weiterverwendet statt hart
+  zu crashen oder Prozesse aggressiv zu killen).
+- Operator-Leiste ist nicht mehr `sticky`/fixiert: sie bleibt oben im normalen
+  Dokumentfluss und blockiert beim Scrollen keinen Platz mehr. Schnellaktionen (Backup,
+  Turnierpaket drucken, Rundenblatt drucken, nächster Schritt) und der Turniertag-Modus
+  bleiben unverändert funktionsfähig.
+- Keine Änderung an Auslosungs-, Wertungs-, Such-, Dedupe-, Chess960- oder Persistenzlogik.
+  Versionen auf `0.40.1`.
+
+## 0.40.0 - Turniertag-Härtung (Outdoor-Modus, Sticky-Leiste, Backup-Hinweise)
+
+- Neuer „Turniertag-Modus" (Outdoor): ein CSS-Klassen-Umschalter in der Operator-Leiste
+  vergrößert Schrift und Buttons und erhöht den Kontrast für den Einsatz draußen.
+  Die Einstellung wird lokal (localStorage) gespeichert und wirkt ohne Reload.
+- Operator-Leiste bleibt jetzt beim Scrollen oben sichtbar (sticky) und bietet
+  Schnellaktionen: Backup erstellen, Turnierpaket drucken, Rundenblatt drucken.
+- Neuer Backup-Status-Chip („Letztes Backup" / „Backup empfohlen"). Nach Auslosung
+  und Chess960-Würfeln erscheint ein klarer Backup-Hinweis. „Jetzt Backup erstellen"
+  lädt einen lokalen JSON-Snapshot mit Turniername, Runde und Zeitstempel (keine Cloud);
+  der Zeitpunkt des letzten Backups wird pro Turnier lokal gemerkt.
+- Ergebnis-Eingabe robuster: sichtbare „Speichere …" / „✓ Ergebnis gespeichert"-Bestätigung
+  und klare Fehlermeldung, wenn das Speichern fehlschlägt. Auslosungs-Blocker bei offenen
+  Ergebnissen bleibt unverändert.
+- Reset/Delete sicherer: Bestätigungsdialoge nennen den Turniernamen und den Unterschied
+  (Reset behält Teilnehmer/Einstellungen, löscht Runden/Ergebnisse/Chess960; Delete entfernt
+  das ganze Turnier). Delete verlangt zusätzlich die exakte Eingabe des Turniernamens.
+- Aufklappbare „Vor-Ort-Checkliste & Laptop-Hinweise" in der Operator-Leiste (rein statisch).
+- Neues schreibgeschütztes Skript `scripts/Show-EventReadiness.ps1`: prüft nur lesend
+  Backend, Frontend-Port, DB-Pfad, Backup-Ordner und Git-Status. Keine Systemänderung.
+- QR/LAN bewusst noch nicht implementiert (Roadmap-Hinweis im UI).
+- Keine Änderung an Auslosungs-, Wertungs- oder Dedupe-Logik. Versionen auf `0.40.0`.
+
+## 0.39.0 - Operator-Bedienleiste und Druck-/Backup-Polish
+
+- Neue Operator-Bedienleiste oben im Dashboard: Backend-Status, gewähltes Turnier,
+  aktuelle Runde, offene Ergebnisse und ein klarer „Nächster Schritt" mit Direkt-Aktion
+  (Runde 1 auslosen / Ergebnisse eintragen / Vorschau erzeugen / Abschluss prüfen).
+- Health-Endpunkt liefert zusätzlich den vollständigen Datenbankpfad; die Bedienleiste
+  zeigt Pfad, Autosave-Hinweis und Backup-Erinnerung vor Runde 1.
+- Rundenblatt-Druck und Turnierbericht zeigen jetzt das Druckdatum; offene Bretter
+  erhalten auf dem Rundenblatt ein leeres, beschreibbares Ergebnisfeld.
+- Teilnehmerliste in der Druckansicht enthält jetzt FIDE-ID, Jahrgang und ca.-Alter.
+- Neues lokales Backup-Skript `scripts/Backup-BergfestTournament.ps1` (nur lokaler
+  JSON-Export nach `D:\Schach\Backups`, keine Cloud, keine echten Beispieldaten).
+- Versionen auf `0.39.0` angehoben.
+
+## 0.38.7 - Bergfest-Operatorunterlagen und Dry-run-CLI-Fix
+
+- Freitag-Unterlagen ergänzt/geschärft: Operator Card, 09:30-Startcheck, Backup,
+  Papier-/CSV-Fallback und Vorgehen bei Rematch-Warnungen.
+- `scripts/New-DemoTournament.ps1` akzeptiert zusätzlich den freitags verwendeten
+  Parameteralias `-Players`.
+- WebApi-Start nutzt explizit Console-Logging, damit lokale Startfehler nicht vom
+  Windows-EventLog-Provider verdeckt werden.
+- Kleiner Testvertrag dokumentiert den `-Players`-Alias im Demo-Skript.
+
+## 0.38.6 - Tie-Break-Roadmap und Virtual-Opponent-Modell für ungespielte Runden
+
+- `docs/FEATURE_ROADMAP.md` (P1–P5) und `docs/IMPORT_EXPORT_ROADMAP.md` ergänzt.
+- Reines, getestetes Domain-Modell `UnplayedRoundTiebreak` mit `UnplayedRoundBuchholzMode`
+  für die FIDE-Behandlung eigener ungespielter Runden (C.07/2024 Art. 16.4, virtueller Gegner).
+- Unit-Tests für gespielte Partie, kampflosen Sieg, Bye, konfigurierbare Wertung und
+  vorbereitete Buchholz-Cut-Liste.
+- `docs/TIEBREAK_UNPLAYED_ROUNDS.md` dokumentiert Modell, Annahmen und Integrationspfad.
+- Bewusst noch nicht in `StandingsCalculator` verdrahtet (Default = bisheriges Verhalten,
+  keine Wertungs-Regression).
+>>>>>>> a6e7381c3de9b4685eb37bf80b7702d4bbfdda1d
 
 ## 0.38.5 - Commit-Guard-Fix und Clean-Current-Baseline
 

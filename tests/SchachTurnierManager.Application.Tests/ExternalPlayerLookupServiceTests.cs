@@ -61,6 +61,90 @@ public sealed class ExternalPlayerLookupServiceTests
         Assert.Equal(GenderCategory.Male, player.Gender);
     }
 
+    [Fact]
+    public async Task SearchAllAsync_ById_MergesFideEloWithLocalDwz()
+    {
+        var fide = new StubProvider(ExternalPlayerSource.Fide, supportsId: true, supportsName: false, new ExternalPlayerProfile
+        {
+            Source = ExternalPlayerSource.Fide,
+            ExternalId = "4610563",
+            Name = "Geisshirt, Marco",
+            FideId = "4610563",
+            BirthYear = 1990,
+            Elo = 1968,
+            Confidence = 0.95
+        });
+        var local = new StubProvider(ExternalPlayerSource.Local, supportsId: true, supportsName: true, new ExternalPlayerProfile
+        {
+            Source = ExternalPlayerSource.Local,
+            ExternalId = "4610563",
+            Name = "Marco Geißhirt",
+            FideId = "4610563",
+            Dwz = 1987,
+            Confidence = 0.6
+        });
+        var service = new ExternalPlayerLookupService(new IExternalPlayerLookupProvider[] { fide, local });
+
+        var result = await service.SearchAllAsync("4610563");
+
+        var profile = Assert.Single(result.Players);
+        Assert.Equal("4610563", profile.FideId);
+        Assert.Equal(1968, profile.Elo);
+        Assert.Equal(1987, profile.Dwz);
+        Assert.Contains(result.Sources, s => s.Source == ExternalPlayerSource.Local && s.IsActive && s.Count == 1);
+    }
+
+    [Fact]
+    public async Task SearchAllAsync_ByName_UsesLocalSourceWhenFideNameSearchInactive()
+    {
+        var fide = new StubProvider(ExternalPlayerSource.Fide, supportsId: true, supportsName: false);
+        var local = new StubProvider(ExternalPlayerSource.Local, supportsId: true, supportsName: true, new ExternalPlayerProfile
+        {
+            Source = ExternalPlayerSource.Local,
+            ExternalId = "4610563",
+            Name = "Marco Geißhirt",
+            FideId = "4610563",
+            Dwz = 1987,
+            Confidence = 0.6
+        });
+        var service = new ExternalPlayerLookupService(new IExternalPlayerLookupProvider[] { fide, local });
+
+        var result = await service.SearchAllAsync("Marco Geißhirt");
+
+        Assert.Single(result.Players);
+        Assert.Contains(result.Sources, s => s.Source == ExternalPlayerSource.Fide && !s.IsActive);
+        Assert.Contains(result.Sources, s => s.Source == ExternalPlayerSource.Local && s.IsActive);
+    }
+
+    private sealed class StubProvider : IExternalPlayerLookupProvider
+    {
+        private readonly ExternalPlayerProfile[] _profiles;
+        private readonly bool _supportsId;
+        private readonly bool _supportsName;
+
+        public StubProvider(ExternalPlayerSource source, bool supportsId, bool supportsName, params ExternalPlayerProfile[] profiles)
+        {
+            Source = source;
+            _supportsId = supportsId;
+            _supportsName = supportsName;
+            _profiles = profiles;
+            Info = new ExternalPlayerProviderInfo(source, source.ToString(), supportsId, supportsName, "stub", null);
+        }
+
+        public ExternalPlayerSource Source { get; }
+        public ExternalPlayerProviderInfo Info { get; }
+
+        public Task<ExternalPlayerLookupResult> LookupByIdAsync(string externalId, CancellationToken cancellationToken = default)
+            => Task.FromResult(_supportsId && _profiles.Length > 0
+                ? ExternalPlayerLookupResult.Found(Source, externalId, _profiles)
+                : ExternalPlayerLookupResult.Empty(Source, externalId, "leer"));
+
+        public Task<ExternalPlayerLookupResult> SearchByNameAsync(string name, CancellationToken cancellationToken = default)
+            => Task.FromResult(_supportsName && _profiles.Length > 0
+                ? ExternalPlayerLookupResult.Found(Source, name, _profiles)
+                : ExternalPlayerLookupResult.Empty(Source, name, "leer"));
+    }
+
     private sealed class FakeExternalProvider : IExternalPlayerLookupProvider
     {
         public ExternalPlayerSource Source => ExternalPlayerSource.Fide;

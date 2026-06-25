@@ -14,6 +14,7 @@ $portableRoot = Join-Path $outputRoot "portable"
 $appOutput = Join-Path $portableRoot "app"
 $dataDir = Join-Path $portableRoot "data"
 $webApp = Join-Path $root "src\SchachTurnierManager.WebApp"
+$webAppDist = Join-Path $root "tmp\webapp-dist"
 $webApiProject = Join-Path $root "src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj"
 $packageJsonPath = Join-Path $webApp "package.json"
 $version = "dev"
@@ -64,7 +65,7 @@ Invoke-Checked "dotnet publish" { dotnet @publishArgs }
 
 $wwwroot = Join-Path $appOutput "wwwroot"
 New-Item -ItemType Directory -Force -Path $wwwroot | Out-Null
-Copy-Item -Path (Join-Path $webApp "dist\*") -Destination $wwwroot -Recurse -Force
+Copy-Item -Path (Join-Path $webAppDist "*") -Destination $wwwroot -Recurse -Force
 Copy-Item -Path (Join-Path $root "scripts\Start-Portable.bat") -Destination (Join-Path $portableRoot "Start-SchachTurnierManager.bat") -Force
 
 @"

@@ -16,7 +16,7 @@ public sealed class PairingAuditQualityWorkflowTests
 
         Assert.Contains(round.Audit.Messages, message => message.Contains("Paarungsqualität", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(round.Audit.Messages, message => message.Contains("Qualitätsprüfung", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal("Swiss-ScoreGroup-Greedy-V2", round.Audit.Algorithm);
+        Assert.Equal("Swiss-ScoreGroup-Optimal-V2", round.Audit.Algorithm);
     }
 
     [Fact]

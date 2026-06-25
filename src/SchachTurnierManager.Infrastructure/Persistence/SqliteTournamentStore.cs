@@ -59,6 +59,20 @@ public sealed class SqliteTournamentStore(TournamentDbContext dbContext) : ITour
         _dbContext.SaveChanges();
     }
 
+
+    public bool Delete(Guid id)
+    {
+        var existing = _dbContext.TournamentSnapshots.SingleOrDefault(x => x.Id == id);
+        if (existing is null)
+        {
+            return false;
+        }
+
+        _dbContext.TournamentSnapshots.Remove(existing);
+        _dbContext.SaveChanges();
+        return true;
+    }
+
     private static TournamentState Deserialize(TournamentSnapshot snapshot)
     {
         try
