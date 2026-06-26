@@ -75,3 +75,25 @@ src/SchachTurnierManager.WebApp/package-lock.json.backup*
 
 # Local Codex configuration
 .codex/
+
+# === Public-repo secret/PII hardening (secret-safety audit, 2026-06-26) ===
+# npm registry config can carry auth tokens or internal feed URLs -> never commit.
+.npmrc
+**/.npmrc
+
+# Local secret material. No real secrets belong in the repo; see secrets/README.md.
+/secrets/*
+!/secrets/README.md
+secrets/local/
+*.dpapi.txt
+
+# Local exports / dumps that may contain participant data.
+exports/
+exports/**
+Dumps/
+Dumps/**
+
+# Local tournament import / participant artifacts (PII) stay local only.
+TEILNEHMER_*.txt
+/IMPORT_*_COMMANDS.txt
+/README_*_IMPORT.md
