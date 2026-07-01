@@ -10,7 +10,7 @@ Set-Location $repoRoot
 function Stop-GitSafety([string]$Message) { Write-Error "[GitSafety] $Message"; exit 1 }
 function Info([string]$Message) { Write-Host "[GitSafety] $Message" }
 
-$blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @(('tfs' + '\.fwdev'), ('eckd' + 'service'), ('_' + 'packaging'), ('ITM' + '_KFM')) -join '|'
 $contentPattern = @(
     ('github' + '_pat_'),
