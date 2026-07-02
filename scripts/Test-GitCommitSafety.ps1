@@ -11,7 +11,7 @@ function Stop-GitSafety([string]$Message) { Write-Error "[GitSafety] $Message"; 
 function Info([string]$Message) { Write-Host "[GitSafety] $Message" }
 function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"') -replace '\\', '/') }
 
-$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
 $contentPattern = @(
     (('github') + '_pat_'),

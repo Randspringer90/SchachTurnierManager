@@ -15,7 +15,6 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
 
-<<<<<<< HEAD
 ## Projektstruktur
 
 - `src/`, `tests/`: .NET-Solution (Domain, Application, Infrastructure, WebApi) und React/TypeScript-WebApp; Architektur in `docs/architecture/ARCHITECTURE.md`.
@@ -25,8 +24,6 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - `scripts/`: aktive Skripte mit Übersicht in `scripts/README.md`; historische After-Apply-Skripte unter `scripts/archive/after-apply/`.
 - `AGENTS.md`: verbindliche, providerneutrale Regeln für KI-Agenten; `.agents/skills/` enthält wiederverwendbare Skills, `.claude/` nur einen Adapter.
 
-## Start
-=======
 ## Bewusste Grenzen
 
 - Schweizer-System ist noch kein vollständiges FIDE-Dutch.
@@ -48,18 +45,19 @@ globale ExecutionPolicy wird **nicht** verändert und es werden **keine** Adminr
 > verwenden – die BAT umgeht die Signaturprüfung prozesslokal.
 
 ## Start (manuell)
->>>>>>> a6e7381c3de9b4685eb37bf80b7702d4bbfdda1d
+
+Alle manuellen Befehle werden aus dem Repo-Root ausgeführt.
 
 Backend:
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj
+dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj
 ```
 
 Frontend:
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager\src\SchachTurnierManager.WebApp"; npm install; npm run dev
+Push-Location .\src\SchachTurnierManager.WebApp; npm install; npm run dev; Pop-Location
 ```
 
 Dashboard:
@@ -119,8 +117,17 @@ Ereignisse) und macht spätere Nachfragen nachvollziehbar. Details: `docs/AUDIT_
 
 ## Release-Gate
 
+Für lokale Build-/Test-Prüfung ohne Portable-Paket:
+
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1"
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1" -SkipPack
+```
+
+Das vollständige Gate ohne `-SkipPack` erstellt zusätzlich ein lokales Portable-Paket
+unter `output\` und gehört in einen explizit freigegebenen Release-Lauf.
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1"
 ```
 
 ## Operator-Readiness-Smoke
@@ -128,7 +135,7 @@ Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -Exec
 Nach einem Build kann der lokale Turniertag mit rein synthetischen Daten geprüft werden:
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Smoke-OperatorWorkflow.ps1"
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Smoke-OperatorWorkflow.ps1"
 ```
 
 Der Smoke startet isolierte lokale API-Prozesse, prüft Health, Swiss 12/5, Round-Robin,
@@ -138,13 +145,13 @@ Manual-Pairing-Guards, Backup/Restore und Chess960/QR-URL-Form. Artefakte liegen
 ## Sicher committen
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "Commit message" -Push
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "Commit message"
 ```
 
-Das bestehende private Entwicklungsrepo soll nicht direkt öffentlich geschaltet werden, wenn historische interne Registry-URLs oder lokale Auditdateien enthalten waren. Für eine öffentliche Veröffentlichung wird ein geprüfter Clean Snapshot ohne alte Git-Historie empfohlen.
+`-Push` nur mit ausdrücklicher Freigabe verwenden. Das bestehende private Entwicklungsrepo soll nicht direkt öffentlich geschaltet werden, wenn historische interne Registry-URLs oder lokale Auditdateien enthalten waren. Für eine öffentliche Veröffentlichung wird ein geprüfter Clean Snapshot ohne alte Git-Historie empfohlen.
 ## Commit-Sicherheitscheck
 
-Commits laufen ueber `scripts/Commit-If-Green.ps1`. Der Guard prueft Build, Tests, Frontend, Paketierung und blockiert lokale Audit-/Backup-Dateien, Artefakte, interne Registry-Referenzen und kritische Zugangsdaten-Muster. Er verwendet kein blindes `git add --all`, sondern zeigt die geaenderten Dateien an und staged nur explizit gepruefte Pfade. Fuer eine spaetere Open-Source-Veröffentlichung wird ein Clean Snapshot ohne private Historie verwendet.
+Commits laufen ueber `scripts/Commit-If-Green.ps1`. Der Guard prueft Build, Tests, Frontend, Paketierung und blockiert lokale Audit-/Backup-Dateien, Artefakte, `.npmrc`, interne Registry-Referenzen und kritische Zugangsdaten-Muster. Er verwendet kein blindes `git add --all`, sondern zeigt die geaenderten Dateien an und staged nur explizit gepruefte Pfade. Fuer eine spaetere Open-Source-Veröffentlichung wird ein Clean Snapshot ohne private Historie verwendet.
 
 ## Open-Source-Clean-Snapshot
 

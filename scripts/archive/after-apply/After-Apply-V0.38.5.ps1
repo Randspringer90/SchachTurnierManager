@@ -85,7 +85,7 @@ Write-Text 'src/SchachTurnierManager.WebApp/.npmrc' $npmrc
 
 $webAppDir = Join-Path $repoRoot 'src/SchachTurnierManager.WebApp'
 $lockPath = Join-Path $webAppDir 'package-lock.json'
-$blockedLockPattern = '(?i)tfs\.fwdev|eckdservice|_packaging|ITM_KFM|scheduler-0\.37\.0|"scheduler"\s*:\s*"\^0\.37\.0"'
+$blockedLockPattern = ('(?i)' + ('tfs' + '\.fwdev') + '|' + ('eckd' + 'service') + '|_' + 'packaging|' + ('ITM' + '_KFM') + '|scheduler-0\.37\.0|"scheduler"\s*:\s*"\^0\.37\.0"')
 if ((Test-Path $lockPath) -and ((Get-Content -Raw -LiteralPath $lockPath) -match $blockedLockPattern)) {
     Step 'package-lock.json enthaelt interne/falsche Registry-Daten; Lockfile wird neu erzeugt'
     Remove-Item -Force $lockPath
@@ -162,13 +162,13 @@ Set-Location $repoRoot
 function Stop-GitSafety([string]$Message) { Write-Error "[GitSafety] $Message"; exit 1 }
 function Info([string]$Message) { Write-Host "[GitSafety] $Message" }
 
-$blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @(('tfs' + '\.fwdev'), ('eckd' + 'service'), ('_' + 'packaging'), ('ITM' + '_KFM')) -join '|'
 $contentPattern = @(
     ('github' + '_pat_'),
-    'ghp_',
-    'glpat-',
-    'sk-[A-Za-z0-9]{20,}',
+    ('gh' + 'p_'),
+    ('gl' + 'pat-'),
+    ('sk-' + '[A-Za-z0-9]{20,}'),
     ('BEGIN ' + '[A-Z ]*' + 'PRIVATE ' + 'KEY'),
     (('pass' + 'word') + '\s*[:=]\s*[''\"][^''\"]{4,}'),
     (('api' + '[_-]?key') + '\s*[:=]\s*[''\"][^''\"]{8,}'),
@@ -336,4 +336,4 @@ Write-Text 'docs/HANDOFF_0_38_5.md' $handoff
 Run-Step 'Git-Sicherheitspruefung aktueller Stand' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Test-GitCommitSafety.ps1' }
 Run-Step 'Release-Gate' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Invoke-ReleaseGate.ps1' }
 
-Step 'Fertig. Wenn Gate gruen ist: scripts/Commit-If-Green.ps1 -Message "Fix commit guard open source safety" -Push ausfuehren.'
+Step 'Fertig. Wenn Gate gruen ist: scripts/Commit-If-Green.ps1 -Message "Fix commit guard open source safety" ausfuehren. Push nur mit ausdruecklicher Freigabe.'

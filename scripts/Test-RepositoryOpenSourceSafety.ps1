@@ -13,7 +13,7 @@ function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"
 # SECURITY-PATTERN-FILE: Diese Datei enthaelt bewusst Detection-/Blocklist-Regexe, keine echten Secrets.
 # Diese Pruefung ist fuer Public-Snapshot-Kandidaten strenger als der private Commit-Guard:
 # Sie scannt immer alle getrackten Dateien und markiert zusaetzlich public-unsichere Artefakte.
-$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 # Artefakte, die im privaten Repo erlaubt sind, aber NIE in einen Public Snapshot gehoeren.
 $snapshotExcludeRegex = '(?i)(^|/)scripts/(archive/after-apply/)?After-Apply-.*\.ps1$|(^|/)scripts/archive(/|$)|(^|/)docs/(handoffs/)?HANDOFF_.*\.md$|(^|/)docs/handoffs(/|$)|(^|/)files/|\.(patch|diff|diffstat)$'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
@@ -87,6 +87,7 @@ if ($AllHistory) {
     if ($historyHits) {
         Add-Finding 'error' 'history-leftover' '(git-history)' 'Historie enthaelt potenzielle Altlasten. Public Release nur als Clean Snapshot ohne .git.'
     }
+    if (-not $historyHits) { Info 'OK: Historie ohne Treffer in diesem Basisscan.' }
 }
 
 New-Item -ItemType Directory -Force $ReportDir | Out-Null

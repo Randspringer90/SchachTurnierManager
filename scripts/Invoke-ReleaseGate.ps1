@@ -103,7 +103,11 @@ try {
     }
 
     Assert-NoKnownBadFiles
-    Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests, Frontend-Build und Paketierung erfolgreich.'
+    if ($SkipPack) {
+        Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests und Frontend-Build erfolgreich; Paketierung uebersprungen.'
+    } else {
+        Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests, Frontend-Build und Paketierung erfolgreich.'
+    }
     git status --short
 } finally {
     Pop-Location
