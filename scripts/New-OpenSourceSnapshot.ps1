@@ -71,7 +71,7 @@ $reportPath = Join-Path $target 'OPEN_SOURCE_SNAPSHOT_REPORT.md'
 $report = @(
     '# Open Source Snapshot Report',
     '',
-    "- Commit: `$commit`",
+    ('- Commit: `{0}`' -f $commit),
     "- Erzeugt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
     "- Enthaltene Dateien: $($included.Count)",
     "- Ausgeschlossene Dateien: $($excluded.Count)",
@@ -86,7 +86,7 @@ $report = @(
     '## Ausgeschlossene Dateien',
     ''
 )
-$report += ($excluded | Sort-Object | ForEach-Object { "- `$_`" })
+$report += ($excluded | Sort-Object | ForEach-Object { '- `{0}`' -f $_ })
 $report | Set-Content -LiteralPath $reportPath -Encoding UTF8
 
 if ($hits.Count -gt 0) {

@@ -47,3 +47,18 @@ Diese Datei ist die zentrale, providerneutrale Regeldatei für alle KI-Agenten (
 - Der wiederverwendbare Skill `.agents/skills/repository-security.md` ist vor Commit-, Push- und Public-Snapshot-Arbeiten zu beachten.
 - Externe Toolfehler in PowerShell nie mit Semikolon-Ketten (`a; b; c`) verdecken: Bei `cmd1; git commit` läuft das Commit auch dann, wenn `cmd1` (z. B. ein Safety-Check) fehlschlägt. Für manuelle Abläufe einzelne Befehle nacheinander oder `&&` (nur bei Erfolg weiter) verwenden, oder direkt `scripts/Commit-If-Green.ps1` nutzen, das nach jedem Schritt hart stoppt.
 - Security-/Detection-Skripte tragen den Marker `SECURITY-PATTERN-FILE` und dürfen Blocklist-/Credential-Regexe dokumentieren, ohne von den Safety-Checks als Leak gemeldet zu werden.
+
+## KI-Lauf-Standard (2026-07)
+
+LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
+
+- **Lauf-Protokoll**: Prompts, Abschlussberichte und Lessons Learned gehoeren nach
+  `docs/ai/` (Skill `ai-run-logging`) und werden mit committet.
+- **Modell-Policy**: immer das leistungsstaerkste verfuegbare Claude-/OpenAI-Modell
+  gemaess `CORE-KFM-Wissensmanagement\config\model-routing.json` (Qualitaet vor Kosten,
+  kein automatischer Downgrade bei riskanten Aufgaben).
+- **Internet-Recherche**: fuer zeitkritische Fakten Skill `internet-research` nutzen
+  (Websuche des Tools, Proxy beachten, Quellen + Datum dokumentieren).
+- **Wissensmanagement**: global indexiert `CORE-KFM-Wissensmanagement` dieses Projekt
+  (AGENTS/README/PLANS/CHANGELOG, `docs/ai/**`, `docs/knowledge/**`, `.agents/**`);
+  projektspezifisches Wissen gehoert nach `docs/knowledge/` bzw. `docs/ai/`.
