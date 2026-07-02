@@ -59,6 +59,9 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
   kein automatischer Downgrade bei riskanten Aufgaben).
 - **Internet-Recherche**: fuer zeitkritische Fakten Skill `internet-research` nutzen
   (Websuche des Tools, Proxy beachten, Quellen + Datum dokumentieren).
+- **Chat-only-Tools** (ChatGPT/Langdock ohne Dateizugriff): Kontextpaket via
+  `CORE-KFM-Wissensmanagement\scripts\New-KnowledgePromptPack.ps1` erzeugen und mitgeben.
 - **Wissensmanagement**: global indexiert `CORE-KFM-Wissensmanagement` dieses Projekt
   (AGENTS/README/PLANS/CHANGELOG, `docs/ai/**`, `docs/knowledge/**`, `.agents/**`);
   projektspezifisches Wissen gehoert nach `docs/knowledge/` bzw. `docs/ai/`.
+
