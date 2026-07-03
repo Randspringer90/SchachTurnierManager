@@ -45,7 +45,10 @@ Danach Startbefehle erneut ausführen.
 
 - Turnier: `Bergfest Freestyle-Würfelschach 2026`, Swiss, 5 Runden.
 - Vor Runde 1: Format und geplante Runden prüfen. Nach 5 geplanten Runden keine 6. Runde.
-- Teilnehmer manuell oder CSV; Turnier-Id notieren.
+- Teilnehmer manuell, CSV oder Preset. Bei Preset zuerst:
+  `pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun`
+  und Report pruefen; Warnungen nur bewusst mit `-AllowWarnings`.
+- Turnier-Id notieren.
 - Pro Runde: Vorschau öffnen, jeden Spieler höchstens einmal prüfen, bei ungerader Zahl genau ein Bye.
 - Rematch/Severity `kritisch`: nicht blind übernehmen. Manuell korrigieren, Notiz setzen.
 - Runde erzeugen, HTML-Rundenblatt drucken/aushängen, Ergebnisse eingeben.

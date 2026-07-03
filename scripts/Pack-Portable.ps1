@@ -75,7 +75,11 @@ function Invoke-Checked {
     )
 
     Write-Host "[Pack-Portable] $Label..."
+    $global:LASTEXITCODE = 0
     & $Command
+    if (-not $?) {
+        throw "Schritt fehlgeschlagen: $Label"
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Schritt fehlgeschlagen: $Label (ExitCode=$LASTEXITCODE)"
     }

@@ -1,3 +1,30 @@
+## 0.42.0 - Preset-Import-Guard, Restore-Haertung und Zusammenarbeit/KI-Vorbereitung
+
+Turnierbetriebs-Folgearbeit ohne Pairing- oder UI-Grossumbau. Fokus: lokaler Bergfest-/Preset-
+Import, robuste Reports, sicherer Restore und klare Zusammenarbeit. Keine echten
+`local-input/**/*.local.json`-Daten, keine Secrets, kein Push/Release/PR.
+
+- **Preset-Import-CLI gehaertet:** `scripts/Import-TournamentPreset.ps1` validiert lokale
+  Preset-JSONs, erzeugt normalisierte CSV plus `output\reports\preset-import-report-*.json`,
+  dokumentiert uebersprungene Namensdubletten, Rating-Fallbacks und Warnungen. Die Konsole
+  bleibt kurz; CSV-Vorschau nur mit `-ShowCsvPreview`.
+- **Import-Gate:** Echter `-CreateTournament`-Import ruft vor dem CSV-Import die API-Vorschau
+  `players/preview-import.csv` auf. Blocker stoppen. Warnungen stoppen ebenfalls, bis sie
+  nach Report-Pruefung bewusst mit `-AllowWarnings` akzeptiert werden.
+- **Backup/Restore-Haertung:** `POST /api/tournaments/import` validiert importierte Turniere
+  gegen leere Namen/Settings/Listen, doppelte Spieler-IDs/FIDE-/DSB-IDs, ungueltige
+  Runden-/Brettnummern, Mehrfachpaarungen pro Runde und Paarungen gegen unbekannte Spieler.
+- **Secret-Gates:** `.env.example` ist als leeres Beispiel versionierbar; echte `.env`/
+  `.env.*` bleiben in Commit-/Open-Source-/Portable-Gates blockiert.
+- **Portable-ZIP-Gate:** `Pack-Portable.ps1` wertet PowerShell-Cmdlets wie
+  `Compress-Archive` nicht mehr wegen leerem `$LASTEXITCODE` faelschlich als Fehler.
+- **Version:** `0.41.1` -> `0.42.0` (Health, `package.json`, Lockfile-Root).
+- **Tests:** Application-Tests fuer Restore-Guards und Settings-Normalisierung; Skriptvertrag
+  fuer Preview-Gate/Report-Schluessel; synthetischer Preset-Dry-run erfolgreich.
+- **Doku:** `PLANS.md`, `README.md`, `docs/NEXT_PROMPTS.md`,
+  `docs/TOURNAMENT_PRESET_IMPORT.md`, `docs/BERGFEST_MVP_RUNBOOK.md`,
+  `docs/COLLABORATION.md`, `docs/AI_HELP_ASSISTANT.md`, `.env.example`.
+
 ## 0.41.1 - Operator-Smoke und haengesicherer Verifikationslauf
 
 Turniertags-Reife: ein einziger, **haengesicherer** Skript-Lauf verifiziert die wichtigsten

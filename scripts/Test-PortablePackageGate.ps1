@@ -60,7 +60,7 @@ function Assert-NoForbiddenPackageFiles {
 }
 
 function Assert-NoForbiddenStagedFiles {
-    $blockedStagedRegex = '(?i)(^|/)(local-input|local-data|logs|output|tmp|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)'
+    $blockedStagedRegex = '(?i)(^|/)(local-input|local-data|logs|output|tmp|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env$|(^|/)\.env\.(?!example$)'
     $entries = git -C $repoRoot diff --cached --name-status
     foreach ($entry in $entries) {
         if ([string]::IsNullOrWhiteSpace($entry)) { continue }

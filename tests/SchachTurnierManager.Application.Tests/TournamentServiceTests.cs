@@ -74,6 +74,90 @@ public sealed class TournamentServiceTests
     }
 
     [Fact]
+    public void SaveImportedTournament_RejectsDuplicateExternalIds()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var imported = new TournamentState
+        {
+            Id = Guid.NewGuid(),
+            Name = "Import Guard",
+            Settings = new TournamentSettings { Format = TournamentFormat.Swiss, PlannedRounds = 3 },
+            Players =
+            {
+                new Player { Id = Guid.NewGuid(), Name = "Spieler A", FideId = "4610563" },
+                new Player { Id = Guid.NewGuid(), Name = "Spieler B", FideId = "4610563" }
+            }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => service.SaveImportedTournament(imported, overwriteExisting: true));
+
+        Assert.Contains("FIDE-ID", ex.Message);
+        Assert.Empty(service.ListTournaments());
+    }
+
+    [Fact]
+    public void SaveImportedTournament_RejectsPairingWithUnknownPlayer()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var knownPlayerId = Guid.NewGuid();
+        var unknownPlayerId = Guid.NewGuid();
+        var imported = new TournamentState
+        {
+            Id = Guid.NewGuid(),
+            Name = "Restore Guard",
+            Settings = new TournamentSettings { Format = TournamentFormat.Swiss, PlannedRounds = 3 },
+            Players =
+            {
+                new Player { Id = knownPlayerId, Name = "Spieler A" }
+            },
+            Rounds =
+            {
+                new TournamentRound
+                {
+                    RoundNumber = 1,
+                    Pairings = new[] { Pairing.Game(1, knownPlayerId, unknownPlayerId) }
+                }
+            }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => service.SaveImportedTournament(imported, overwriteExisting: true));
+
+        Assert.Contains("nicht in der Teilnehmerliste", ex.Message);
+        Assert.Empty(service.ListTournaments());
+    }
+
+    [Fact]
+    public void SaveImportedTournament_NormalizesSettingsAndRecordsAudit()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var imported = new TournamentState
+        {
+            Id = Guid.NewGuid(),
+            Name = "  Restore ok  ",
+            Settings = new TournamentSettings
+            {
+                Format = TournamentFormat.Swiss,
+                PlannedRounds = 0,
+                HeroCupMinimumRatedGames = 0,
+                Tiebreaks = Array.Empty<TiebreakType>()
+            },
+            Players =
+            {
+                new Player { Id = Guid.NewGuid(), Name = "Spieler A" },
+                new Player { Id = Guid.NewGuid(), Name = "Spieler B" }
+            }
+        };
+
+        var saved = service.SaveImportedTournament(imported, overwriteExisting: true);
+
+        Assert.Equal("Restore ok", saved.Name);
+        Assert.Equal(1, saved.Settings.PlannedRounds);
+        Assert.Equal(1, saved.Settings.HeroCupMinimumRatedGames);
+        Assert.Contains(TiebreakType.StartingRank, saved.Settings.Tiebreaks);
+        Assert.Contains(saved.AuditJournal, entry => entry.Action == AuditJournalAction.TournamentImported);
+    }
+
+    [Fact]
     public void RollChess960StartPositions_PersistsPerBoardAndDoesNotOverwriteResults()
     {
         var service = new TournamentService(new InMemoryTournamentStore());

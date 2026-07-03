@@ -112,6 +112,18 @@ Im Dashboard ein neues Turnier anlegen:
 - **Manuell**: pro Spieler Name (+ optional Verein/TWZ) im Dashboard hinzufügen.
 - **CSV-Import**: vorbereitete CSV im Dashboard importieren
   (Vorschau über `preview-import.csv`, dann Import).
+- **Lokales Bergfest-Preset**: zuerst Dry-run, dann Report pruefen:
+  ```powershell
+  Set-Location "D:\Schach\SchachTurnierManager"
+  pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun
+  ```
+  Erwartung: Report unter `output\reports\preset-import-report-*.json`, keine API-Aenderung.
+  Echter Import nur nach Report-Pruefung und laufendem Backend:
+  ```powershell
+  pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -ApiBaseUrl "http://localhost:5088" -CreateTournament
+  ```
+  Wenn Warnungen bewusst akzeptiert werden sollen, `-AllowWarnings` ergaenzen und im
+  Operator-Notizzettel kurz vermerken.
 - Ungerade Teilnehmerzahl ist ok — die App vergibt automatisch genau **ein Bye** pro Runde.
 
 ## 5. Runden durchführen (5×)
@@ -181,6 +193,8 @@ Invoke-RestMethod "http://localhost:5088/api/tournaments/$tournamentId/export/js
 Wiederherstellen (falls nötig): den JSON-Inhalt an
 `POST http://localhost:5088/api/tournaments/import` mit Body
 `{"tournament": <json>, "overwriteExisting": true}` senden.
+Der Importpfad lehnt offensichtlich defekte Snapshots ab, z. B. doppelte Spieler-IDs,
+doppelte FIDE-/DSB-IDs, ungueltige Runden/Bretter oder Paarungen gegen unbekannte Spieler.
 
 > Tipp: Ordner `D:\Schach\Backups\` vorher anlegen.
 

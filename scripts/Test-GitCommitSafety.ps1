@@ -10,7 +10,7 @@ Set-Location $repoRoot
 function Stop-GitSafety([string]$Message) { Write-Error "[GitSafety] $Message"; exit 1 }
 function Info([string]$Message) { Write-Host "[GitSafety] $Message" }
 
-$blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env$|(^|/)\.env\.(?!example$)|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @(('tfs' + '\.fwdev'), ('eckd' + 'service'), ('_' + 'packaging'), ('ITM' + '_KFM')) -join '|'
 $contentPattern = @(
     ('github' + '_pat_'),
@@ -70,18 +70,26 @@ if ($statusItems.Count -eq 0) { Info '  <leer>'; exit 0 }
 $statusItems | ForEach-Object { Info ("  {0} {1}" -f $_.Status, $_.Path) }
 Test-PathList $statusItems -AllowDeletes
 
-$trackedFiles = git ls-files
 $hits = New-Object System.Collections.Generic.List[string]
-foreach ($file in $trackedFiles) {
-    if ($file -match $blockedPathRegex) { Stop-GitSafety "Verbotener getrackter Pfad im Repository: $file" }
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
-    $content = Get-Content -Raw -LiteralPath $file -ErrorAction SilentlyContinue
-    if ($null -eq $content) { continue }
-    if ($content -match $internalPattern) { $hits.Add("internal:$file") }
-    if ($content -match $contentPattern) { $hits.Add("credential-pattern:$file") }
+function Test-ContentPatterns([string]$Label, [string]$Text) {
+    if ([string]::IsNullOrEmpty($Text)) { return }
+    if ($Text -match $internalPattern) { $hits.Add("internal:$Label") }
+    if ($Text -match $contentPattern) { $hits.Add("credential-pattern:$Label") }
 }
-if ($hits.Count -gt 0) { Stop-GitSafety ("Treffer in getrackten Dateien: " + ($hits -join ', ')) }
-Info 'OK: Aktueller Arbeitsbaum ist frei von verbotenen getrackten Pfaden, internen Referenzen und kritischen Zugangsdaten-Mustern.'
+
+$diffLines = git diff --unified=0 -- . ':(exclude).local-audits/**' ':(exclude)security-audit/**' ':(exclude).local-backups/**'
+$addedText = ($diffLines | Where-Object { $_ -like '+*' -and $_ -notlike '+++ *' }) -join "`n"
+Test-ContentPatterns 'working-tree-added-lines' $addedText
+
+foreach ($item in ($statusItems | Where-Object { $_.Status -eq '??' })) {
+    $path = [string]$item.Path
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+    $content = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+    Test-ContentPatterns $path $content
+}
+
+if ($hits.Count -gt 0) { Stop-GitSafety ("Treffer in aktuellen Aenderungen: " + ($hits -join ', ')) }
+Info 'OK: Aktuelle Aenderungen sind frei von verbotenen Pfaden, internen Referenzen und kritischen Zugangsdaten-Mustern.'
 
 if ($AllHistory) {
     New-Item -ItemType Directory -Force $ReportDir | Out-Null

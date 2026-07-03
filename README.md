@@ -2,10 +2,12 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.41.x
+## Aktueller Stand bis 0.42.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
+- Lokaler Bergfest-/Preset-Import mit Dry-run, JSON-Report, CSV-Vorschau-Gate und
+  bewusstem `-AllowWarnings` fuer Warnungsimporte.
 - Externe Spielerdaten per FIDE-ID suchen und übernehmen.
 - Schweizer-System-Paarungen mit global optimaler Rematch-Vermeidung bis 20 Spieler,
   Audit, Bye-/kampflos-Prüfungen und Regressionstests.
@@ -14,6 +16,7 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Operator-Readiness-Smoke für lokale synthetische Turniertagsprüfung.
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
+- Kollaborations- und KI-Hilfe-Konzept vorbereitet; KI ist default-aus und nur als BYO-Key/local-secret geplant.
 
 ## Bewusste Grenzen
 
@@ -60,6 +63,24 @@ Healthcheck:
 ```text
 http://localhost:5088/api/health
 ```
+
+## Bergfest-Preset-Import
+
+Echte lokale Presets liegen unter `local-input/**` und bleiben gitignored.
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"
+.\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun
+```
+
+Der Dry-run schreibt CSV und Report nach `output\reports\`. Echter Import:
+
+```powershell
+.\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -ApiBaseUrl "http://localhost:5088" -CreateTournament
+```
+
+Warnungen stoppen den Import, bis sie bewusst mit `-AllowWarnings` akzeptiert werden.
+Details: `docs/TOURNAMENT_PRESET_IMPORT.md`.
 
 ## Chess960-Würfeln pro Brett (Desktop + QR/Handy)
 
@@ -125,10 +146,13 @@ Manual-Pairing-Guards, Backup/Restore und Chess960/QR-URL-Form. Artefakte liegen
 ## Sicher committen
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "Commit message" -Push
+Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "Commit message"
 ```
 
-Das bestehende private Entwicklungsrepo soll nicht direkt öffentlich geschaltet werden, wenn historische interne Registry-URLs oder lokale Auditdateien enthalten waren. Für eine öffentliche Veröffentlichung wird ein geprüfter Clean Snapshot ohne alte Git-Historie empfohlen.
+Kein Push, Release oder PR ohne ausdrueckliche Freigabe. Das bestehende Entwicklungsrepo soll
+nicht direkt öffentlich geschaltet werden, wenn historische interne Registry-URLs oder lokale
+Auditdateien enthalten waren. Für eine öffentliche Veröffentlichung wird ein geprüfter Clean
+Snapshot ohne alte Git-Historie empfohlen.
 ## Commit-Sicherheitscheck
 
 Commits laufen ueber scripts/Commit-If-Green.ps1. Der Guard prueft Build, Tests, Frontend, Paketierung und blockiert lokale Audit-/Backup-Dateien, Artefakte, interne Registry-Referenzen und kritische Zugangsdaten-Muster. Fuer eine spaetere Open-Source-Veröffentlichung wird ein Clean Snapshot ohne private Historie verwendet.

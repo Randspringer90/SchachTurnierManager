@@ -21,7 +21,8 @@ Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 - [ ] Format: Swiss / Schweizer System.
 - [ ] Geplante Runden: 5.
 - [ ] Format und Rundenzahl gegen Ausschreibung geprüft; keine 6. Runde nach 5 geplanten Runden.
-- [ ] Teilnehmer erfasst oder CSV importiert.
+- [ ] Bei Preset-Import: Dry-run ausgefuehrt und Report unter `output\reports\` geprueft.
+- [ ] Teilnehmer erfasst, CSV importiert oder Preset-Import bewusst mit/ohne `-AllowWarnings` ausgefuehrt.
 - [ ] Teilnehmerzahl notiert: ______.
 - [ ] Turnier-Id notiert: ______________________________.
 
@@ -81,6 +82,12 @@ Dashboard stoppen:
 ```powershell
 Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue |
   ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Preset-Dry-run:
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"
+pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun
 ```
 
 Backup:

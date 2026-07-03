@@ -1,3 +1,47 @@
+# Aktueller Zusatz 0.42.0
+
+- P0-Importlauf: `scripts\Import-TournamentPreset.ps1` validiert lokale Preset-JSONs robuster,
+  erzeugt einen strukturierten JSON-Report unter `output\reports\`, nutzt beim echten Import
+  die API-CSV-Vorschau als Gate und verlangt `-AllowWarnings`, wenn Warnungen bewusst akzeptiert
+  werden sollen. Dry-run bleibt ohne API-Aenderung.
+- API-Backup/Restore-Haertung: `POST /api/tournaments/import` lehnt korrupte Turnier-Snapshots
+  mit doppelten Spieler-IDs/FIDE-/DSB-IDs, ungueltigen Runden/Brettern oder Paarungen gegen
+  unbekannte Spieler ab.
+- Zusammenarbeit und KI-Hilfe sind vorbereitet, aber bewusst noch nicht produktiv verdrahtet:
+  siehe `docs/COLLABORATION.md`, `docs/AI_HELP_ASSISTANT.md` und `.env.example`.
+- Public-Sonderfall bleibt: lokale Commits erlaubt, aber kein Push/Release/PR ohne ausdrueckliche
+  Freigabe.
+
+# Feature-Plan Turnierbetrieb ab 0.42.x
+
+## P0 - Turniertagsnutzen
+- [x] Bergfest-Import per lokaler Preset-JSON robuster machen.
+- [x] JSON/CSV-Import vor Import validieren und reporten.
+- [x] API-Backup/Restore gegen offensichtliche defekte Snapshots absichern.
+- [x] Operator-Smoke fuer Runde starten, Paarungen, Ergebnis erfassen, Korrektur, Tabelle,
+  Backup/Restore und Chess960/QR synthetisch abdecken.
+- [ ] Operator-Dashboard weiter verdichten: naechste Aktion, offene Bretter, letzter Export,
+  letzter Backup-/Audit-Stand noch klarer sichtbar.
+- [ ] Print/Export fuer Paarungen, Tabellen, Ergebnisse als Turnierpaket sichtbarer buendeln.
+- [ ] Offline-/Fallback-Betrieb dokumentiert gegen echte Vor-Ort-Ausstattung testen.
+
+## P1 - Freestyle, Forensik, Qualitaet
+- [x] Chess960/Freestyle-Wuerfelschach Wuerfel-/Startposition-Modul pro Brett mit QR-Grundlage.
+- [x] Audit-Journal und Pairing-Forensics mit Export-Bundle.
+- [ ] QR-Code-Flow mit realem Handy im Veranstaltungs-WLAN/Hotspot testen.
+- [ ] Tie-Breaks inkl. kampflos/unplayed rounds fertig in `StandingsCalculator` verdrahten.
+- [ ] Swiss-Pairing-Qualitaet Richtung FIDE-Dutch verbessern: Floater, Brackets, grosse Felder.
+- [ ] Local-Roster-/Spielersuche fuer schnelle Anmeldung ausbauen.
+
+## P2 - Zusammenarbeit, Anzeige, KI-Hilfe
+- [ ] Mehr-Operator-Modus fuer parallele Bedienung konzipieren, ohne lokale Daten zu riskieren.
+- [ ] Kommentar-/Notizsystem fuer Runden, Bretter, Spieler und organisatorische Aufgaben.
+- [ ] Integrierte KI-Hilfe/Chatbot nur mit BYO-Key/local-secret, Provider-Abstraktion und
+  ausgeschaltetem Default; keine Cloud-Aufrufe in Tests.
+- [ ] Wissensmanagement-Anbindung an lokale docs/runbooks, keine privaten Rohdaten in Prompts.
+- [ ] Export fuer Vereinsseite/WhatsApp/CSV/JSON/HTML/PDF priorisieren.
+- [ ] Oeffentliche Anzeige/Beamer-Modus mit reduzierter Operator-Oberflaeche.
+
 # Aktueller Zusatz 0.41.1
 
 - Operator-Smoke `scripts/Smoke-OperatorWorkflow.ps1`: ein hängesicherer End-to-End-Lauf gegen

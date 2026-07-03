@@ -46,6 +46,7 @@ tmp/**
 *.sqlite3
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 *.pfx

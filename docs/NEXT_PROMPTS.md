@@ -1,7 +1,51 @@
 # NEXT_PROMPTS.md
 
-Konsolidierte, vorbereitete Arbeitsaufträge für kommende Entwicklungsläufe.
-Stand: 2026-06-16 (Basis: 0.38.5, Build/Tests/Frontend grün, Open-Source-Safety grün).
+Konsolidierte, vorbereitete Arbeitsauftraege fuer kommende Entwicklungslaeufe.
+Stand: 2026-07-03 (Basis: 0.42.0 Feature-Lauf, Import-/Restore-Haertung lokal getestet).
+
+## Erledigt am 2026-07-03
+- Preset-Import fuer Bergfest/lokale Turniere gehaertet:
+  `scripts\Import-TournamentPreset.ps1` erzeugt CSV plus JSON-Report, prueft Preset-Schema,
+  dokumentiert Rating-Fallbacks und blockiert echte Imports mit Warnungen ohne bewusstes
+  `-AllowWarnings`.
+- Echter Import nutzt nach Turniererstellung die API-CSV-Vorschau als Gate
+  (`players/preview-import.csv`); Dry-run bleibt ohne API-Aenderung.
+- `POST /api/tournaments/import` validiert Restore-Snapshots strenger: keine doppelten
+  Spieler-IDs/FIDE-/DSB-IDs, keine ungueltigen Runden/Bretter, keine Paarungen gegen
+  unbekannte Spieler.
+- Zusammenarbeit und KI-Hilfe sind als Doku-/Config-Basis vorbereitet:
+  `docs/COLLABORATION.md`, `docs/AI_HELP_ASSISTANT.md`, `.env.example`.
+
+## Naechster Prompt - Feature-Scheibe 2
+```text
+Du arbeitest lokal in D:\Schach\SchachTurnierManager.
+Public-Sonderfall: lokale Commits erlaubt, aber kein Push/Release/PR.
+
+Ziel: Operator-Dashboard und Turnierpaket fuer Bergfest/Freestyle weiter verbessern.
+Erst Ist-Zustand lesen: AGENTS.md, PLANS.md, README.md, CHANGELOG.md,
+docs/BERGFEST_MVP_RUNBOOK.md, docs/TOURNAMENT_PRESET_IMPORT.md,
+docs/COLLABORATION.md, docs/AI_HELP_ASSISTANT.md, relevante Tests/Skripte.
+
+Umfang:
+- P0: Dashboard zeigt kompakt letzten Backup-Stand, letzten Audit-Export, offene Bretter,
+  Import-/Preset-Report-Hinweis und naechste sinnvolle Operator-Aktion.
+- P0: Export/Print als Turnierpaket buendeln: Tabelle, aktuelle Paarungen, Rundenblatt,
+  Audit-Hinweis und Backup-Erinnerung.
+- P1 klein: QR/Chess960-Vorabtest im Runbook und Smoke sichtbarer machen, aber keine neue
+  QR-Architektur.
+- Kein FIDE-Dutch-Umbau, keine KI-Cloud-Aufrufe, keine echten local-input-Daten committen.
+
+Checks: dotnet test, npm run build, Import-DryRun mit synthetischem tmp-Preset,
+Secret-/Token-Scan, .npmrc-Pruefung, git diff --check. Bei gruenem Gate lokal committen.
+```
+
+## Priorisierte offene Feature-Liste
+- P0: Operator-Dashboard verdichten; Export-/Print-Turnierpaket; Offline-/Fallback-Test mit
+  echter Vor-Ort-Ausstattung; Importbericht im Operator-Ablauf sichtbar machen.
+- P1: Chess960/QR real testen; Tie-Breaks fuer kampflos/unplayed rounds integrieren;
+  Swiss-Pairing Richtung FIDE-Dutch vertiefen; lokale Spielersuche beschleunigen.
+- P2: Mehr-Operator-Konzept; Notizen/Kommentare; KI-Hilfe mit BYO-Key und lokaler
+  Runbook-Anbindung; Beamer-/Publikumsmodus; Vereinsseite-/WhatsApp-/PDF-Exports.
 
 ## Erledigt am 2026-06-16
 - Priorisierte `docs/FEATURE_ROADMAP.md` (P1–P5) angelegt.
