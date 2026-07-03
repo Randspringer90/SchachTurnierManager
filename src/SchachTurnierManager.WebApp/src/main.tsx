@@ -2405,6 +2405,15 @@ function openRoundPrint(roundNumber: number) {
     action?: () => void;
   };
 
+  type OperatorAlert = {
+    key: string;
+    tone: 'info' | 'warn' | 'danger' | 'ok';
+    title: string;
+    detail: string;
+    actionLabel?: string;
+    action?: () => void;
+  };
+
   function nextOperatorStep(): OperatorStep {
     if (!selectedTournament) {
       return {
@@ -2467,6 +2476,182 @@ function openRoundPrint(roundNumber: number) {
       actionLabel: 'Auslosungsvorschau',
       action: () => void previewNextRound()
     };
+  }
+
+  function latestAuditExportEntry(): AuditJournalEntry | undefined {
+    return auditJournal.find(entry => String(entry.action) === '30' || String(entry.action) === 'AuditJournalExported');
+  }
+
+  function auditExportStatusLabel(): string {
+    const entry = latestAuditExportEntry();
+    return entry ? auditDateLabel(entry.createdAt) : 'noch kein Audit-Bundle';
+  }
+
+  function currentRoundDiagnostics(): RoundDiagnostics | undefined {
+    const roundNumber = latestRoundNumber();
+    return roundNumber === null ? undefined : diagnosticsFor(roundNumber);
+  }
+
+  function operatorPreviewUrl(): string {
+    const port = window.location.port ? `:${window.location.port}` : '';
+    const host = laptopIp.trim() || window.location.hostname;
+    return `${window.location.protocol}//${host}${port}/`;
+  }
+
+  function operatorPreviewHostIsLocal(): boolean {
+    const host = laptopIp.trim() || window.location.hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  }
+
+  function operatorAlerts(): OperatorAlert[] {
+    const alerts: OperatorAlert[] = [];
+
+    if (!health) {
+      alerts.push({
+        key: 'backend',
+        tone: 'danger',
+        title: 'Backend nicht erreichbar',
+        detail: 'Healthcheck fehlgeschlagen. Backend-Fenster prüfen; bereits geladene UI bleibt bedienbar.'
+      });
+    }
+
+    if (error) {
+      alerts.push({
+        key: 'last-error',
+        tone: 'danger',
+        title: 'Letzte Fehlermeldung',
+        detail: error,
+        actionLabel: 'Fehler ausblenden',
+        action: () => setError(null)
+      });
+    }
+
+    if (!selectedTournament) {
+      alerts.push({
+        key: 'no-tournament',
+        tone: 'warn',
+        title: 'Kein Turnier ausgewählt',
+        detail: 'Turnier links anlegen oder vorhandenes Turnier auswählen.'
+      });
+      return alerts;
+    }
+
+    if (activePlayerCount() < 2) {
+      alerts.push({
+        key: 'players',
+        tone: 'warn',
+        title: 'Teilnehmer fehlen',
+        detail: `Aktuell ${activePlayerCount()} aktive Spieler. Mindestens zwei aktive Spieler sind für eine Auslosung nötig.`,
+        actionLabel: 'Teilnehmer öffnen',
+        action: () => setActiveMainTab('participants')
+      });
+    }
+
+    const openBoards = totalOpenBoardCount();
+    if (openBoards > 0) {
+      alerts.push({
+        key: 'open-results',
+        tone: 'danger',
+        title: `${openBoards} offene Ergebnis(se)`,
+        detail: 'Vor der nächsten Auslosung müssen alle laufenden Bretter geklärt sein.',
+        actionLabel: 'Runden öffnen',
+        action: () => setActiveMainTab('rounds')
+      });
+    }
+
+    const unverified = pairingReadinessUnverifiedRoundCount();
+    if (unverified > 0) {
+      alerts.push({
+        key: 'unverified-rounds',
+        tone: 'warn',
+        title: `${unverified} vollständige Runde(n) ungeprüft`,
+        detail: 'Ergebniszettel gegen UI prüfen und Runde danach als geprüft markieren.',
+        actionLabel: 'Runden prüfen',
+        action: () => setActiveMainTab('rounds')
+      });
+    }
+
+    if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      alerts.push({
+        key: 'critical-preview',
+        tone: 'warn',
+        title: 'Kritische Auslosungsvorschau',
+        detail: 'Rematch-, Scoregruppen- oder Farbhinweise vor Aushang bewusst prüfen.',
+        actionLabel: 'Vorschau zeigen',
+        action: () => setIsNextRoundPreviewDialogOpen(true)
+      });
+    }
+
+    if (auditJournalCriticalCount > 0) {
+      alerts.push({
+        key: 'audit-critical',
+        tone: 'danger',
+        title: `${auditJournalCriticalCount} kritische Audit-Einträge`,
+        detail: 'Kritische Eingriffe oder Blocker vor Veröffentlichung und nächster Runde prüfen.',
+        actionLabel: 'Audit öffnen',
+        action: () => setActiveMainTab('admin')
+      });
+    } else if (auditJournalWarningCount > 0) {
+      alerts.push({
+        key: 'audit-warning',
+        tone: 'warn',
+        title: `${auditJournalWarningCount} Audit-Warnung(en)`,
+        detail: 'Warnungen vor Export, Aushang und Abschluss bewusst prüfen.',
+        actionLabel: 'Audit öffnen',
+        action: () => setActiveMainTab('admin')
+      });
+    }
+
+    if (selectedTournament.rounds.length > 0 && !latestAuditExportEntry()) {
+      alerts.push({
+        key: 'audit-export',
+        tone: 'warn',
+        title: 'Audit-Bundle noch nicht exportiert',
+        detail: 'Nach jeder Runde ein Audit-Bundle sichern; es enthält Snapshot, Journal und Pairing-Forensik.',
+        actionLabel: 'Audit-Bundle',
+        action: () => openTournamentExport('audit-journal/export.jsonl')
+      });
+    }
+
+    if (backupRecommended) {
+      alerts.push({
+        key: 'backup-recommended',
+        tone: 'danger',
+        title: 'Backup empfohlen',
+        detail: 'Nach Auslosung, Chess960-Würfeln und Ergebnisabschluss lokalen JSON-Snapshot ziehen.',
+        actionLabel: 'Backup JSON',
+        action: () => void exportTournamentJson()
+      });
+    } else if (!lastBackupAt) {
+      alerts.push({
+        key: 'backup-missing',
+        tone: 'warn',
+        title: 'Noch kein lokales Backup',
+        detail: 'Vor Runde 1 und nach jeder Runde zusätzlich zum SQLite-Autosave ein JSON-Backup sichern.',
+        actionLabel: 'Backup JSON',
+        action: () => void exportTournamentJson()
+      });
+    }
+
+    if (operatorPreviewHostIsLocal()) {
+      alerts.push({
+        key: 'phone-localhost',
+        tone: 'info',
+        title: 'Handy-URL zeigt noch auf localhost',
+        detail: 'Für Handy/Hotspot-Test die LAN-IP des Laptops eintragen. localhost funktioniert nur am Laptop.'
+      });
+    }
+
+    if (alerts.length === 0) {
+      alerts.push({
+        key: 'ready',
+        tone: 'ok',
+        title: 'Keine akuten Operator-Warnungen',
+        detail: 'Dashboard, Backups und Exporte weiter nach Runbook nutzen.'
+      });
+    }
+
+    return alerts.slice(0, 8);
   }
   function correctionJournalItems() {
     if (!selectedTournament) {
@@ -2586,7 +2771,7 @@ function openRoundPrint(roundNumber: number) {
     <main className={`shell${outdoorMode ? ' outdoor' : ''}`}>
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.40.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.43.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -2600,7 +2785,12 @@ function openRoundPrint(roundNumber: number) {
 
       <section className="status-line">
         <span>{status}</span>
-        {error && <strong className="error">{error}</strong>}
+        {error && (
+          <span className="status-error">
+            <strong className="error">{error}</strong>
+            <button type="button" className="small secondary" onClick={() => setError(null)}>ausblenden</button>
+          </span>
+        )}
       </section>
 
       {(() => {
@@ -2669,9 +2859,9 @@ function openRoundPrint(roundNumber: number) {
               <button
                 type="button"
                 className="secondary"
-                onClick={() => openTournamentExport('print/html')}
+                onClick={() => openTournamentExport('package/print/html')}
                 disabled={!selectedTournament}
-                title="Öffnet die Druckansicht mit Teilnehmerliste, Tabelle und Rundenblättern für das Turnierpaket."
+                title="Öffnet das gebündelte Turnierpaket mit Teilnehmerliste, Tabelle, aktueller Runde und Sicherungshinweisen."
               >
                 🖨 Turnierpaket drucken
               </button>
@@ -2966,6 +3156,69 @@ function openRoundPrint(roundNumber: number) {
                       </div>
                     );
                   })()}
+                  <div className="operator-dashboard-grid">
+                    <section className="operator-dashboard-panel operator-action-panel">
+                      <h4>Operator-Aktionen</h4>
+                      <div className="operator-action-grid">
+                        <button type="button" onClick={() => setActiveMainTab('participants')}>Import / Teilnehmer</button>
+                        <button type="button" className={backupRecommended ? '' : 'secondary'} onClick={() => void exportTournamentJson()}>Backup JSON</button>
+                        <button type="button" className="secondary" onClick={() => openTournamentExport('package/print/html')}>Turnierpaket HTML</button>
+                        <button type="button" className="secondary" onClick={() => openTournamentExport('package/export.json')}>Turnierpaket JSON</button>
+                        <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={selectedTournament.rounds.length === 0}>Aktuelle Paarungen CSV</button>
+                        <button type="button" className="secondary" onClick={() => openTournamentExport('audit-journal/export.jsonl')}>Audit-Bundle JSONL</button>
+                      </div>
+                      <p className="muted">Lokaler Preset-Dry-run schreibt Reports nach <code>output\reports\</code>. Warnungen vor echtem Import bewusst prüfen.</p>
+                    </section>
+
+                    <section className="operator-dashboard-panel operator-alert-panel">
+                      <h4>Warnungen / Handlungsbedarf</h4>
+                      <div className="operator-alert-list">
+                        {operatorAlerts().map(alert => (
+                          <div key={alert.key} className={`operator-alert tone-${alert.tone}`}>
+                            <div>
+                              <strong>{alert.title}</strong>
+                              <p>{alert.detail}</p>
+                            </div>
+                            {alert.action && alert.actionLabel && (
+                              <button type="button" className="small secondary" onClick={alert.action}>{alert.actionLabel}</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="operator-dashboard-panel operator-state-panel">
+                      <h4>Sicherungs- und Exportstand</h4>
+                      <dl className="operator-state-list">
+                        <dt>Aktuelle Runde</dt><dd>{operatorRoundLabel()}</dd>
+                        <dt>Offen in aktueller Runde</dt><dd>{currentRoundDiagnostics()?.openBoards ?? 0}</dd>
+                        <dt>Letztes Backup</dt><dd>{backupTimeLabel(lastBackupAt)}</dd>
+                        <dt>Letztes Audit-Bundle</dt><dd>{auditExportStatusLabel()}</dd>
+                        <dt>Audit-Warnungen</dt><dd>{auditJournalWarningCount} Warnung(en), {auditJournalCriticalCount} kritisch</dd>
+                      </dl>
+                    </section>
+
+                    <section className="operator-dashboard-panel operator-phone-panel">
+                      <h4>Lokale Handy-/Operator-Preview</h4>
+                      <div className="operator-phone-grid">
+                        <div className="operator-phone-qr"><QrPanel url={operatorPreviewUrl()} /></div>
+                        <div>
+                          <label className="qr-ip-label">
+                            Laptop-IP im WLAN/Hotspot
+                            <input
+                              type="text"
+                              value={laptopIp}
+                              placeholder="z. B. 192.168.0.42"
+                              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLaptopIp(event.target.value)}
+                            />
+                          </label>
+                          <code className="qr-url">{operatorPreviewUrl()}</code>
+                          {operatorPreviewHostIsLocal() && <p className="board-dice-warning">Auf dem Handy funktioniert <code>localhost</code> nicht. LAN-IP des Laptops eintragen und im gleichen WLAN/Hotspot testen.</p>}
+                          <p className="muted">Vorbereitung für lokalen Handy-/Hotspot-Test. Kein Cloud-Dienst, kein Tunnel.</p>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
                   {health?.databasePath && (
                     <p className="operator-dbpath" title={health.databasePath}>Datenbank: {health.databasePath} · Autosave nach jeder Aktion · vor Runde 1 Backup ziehen</p>
                   )}
@@ -3799,9 +4052,9 @@ function openRoundPrint(roundNumber: number) {
               <div className="export-center-header">
                 <div>
                   <h3>Turnierleiter-Exportcenter</h3>
-                  <p className="muted">Schnellzugriff auf Aushänge, Tabellen, Paarungen, Vorschau und Backup. Ideal vor, während und nach einer Runde.</p>
+                  <p className="muted">Schnellzugriff auf Turnierpaket, Aushänge, Tabellen, Paarungen, Audit und Backup. Ideal vor, während und nach einer Runde.</p>
                 </div>
-                <span className="export-center-badge">v0.25</span>
+                <span className="export-center-badge">v0.43</span>
               </div>
 
               <div className="export-center-metrics">
@@ -3811,16 +4064,30 @@ function openRoundPrint(roundNumber: number) {
                 <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>Runden</span></div>
                 <div><strong>{totalOpenBoardCount()}</strong><span>offene Bretter</span></div>
                 <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
+                <div><strong>{backupRecommended ? 'ja' : 'nein'}</strong><span>Backup empfohlen</span></div>
+                <div><strong>{latestAuditExportEntry() ? 'ja' : 'nein'}</strong><span>Audit exportiert</span></div>
               </div>
 
               {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>Offene Ergebnisse:</strong> Vor Finaltabellen oder Veröffentlichungen bitte offene Bretter prüfen.</div>}
               {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>Kritische Vorschau:</strong> Pairing-Hinweise vor Aushang oder Auslosung prüfen.</div>}
+              {!lastBackupAt && <div className="export-center-warning"><strong>Backup fehlt:</strong> Vor echten Runden zusätzlich zum SQLite-Autosave ein JSON-Backup ziehen.</div>}
 
               <div className="export-center-grid">
+                <section>
+                  <h4>Turnierpaket</h4>
+                  <div className="export-center-actions">
+                    <button type="button" onClick={() => openTournamentExport('package/print/html')} disabled={!selectedTournament}>Paket HTML drucken</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('package/export.json')} disabled={!selectedTournament}>Paket JSON</button>
+                    <button type="button" className={backupRecommended ? '' : 'secondary'} onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup JSON</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('audit-journal/export.jsonl')} disabled={!selectedTournament}>Audit-Bundle JSONL</button>
+                  </div>
+                  <p className="muted">HTML enthält Teilnehmerliste, Tabelle, Ergebnisbogen der aktuellen Runde sowie Backup-/Audit-Hinweise. JSON ist für lokale Weiterverarbeitung gedacht.</p>
+                </section>
                 <section>
                   <h4>Aushänge</h4>
                   <div className="export-center-actions">
                     <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Gesamt-Druckansicht</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('package/print/html')} disabled={!selectedTournament}>Turnierpaket</button>
                     <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
                     <button type="button" onClick={openNextRoundPreviewPrint} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau drucken</button>
                   </div>
@@ -3833,12 +4100,13 @@ function openRoundPrint(roundNumber: number) {
                     <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen CSV</button>
                     <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Paarungen CSV</button>
                     <button type="button" className="secondary" onClick={openNextRoundPreviewCsv} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau CSV</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('package/export.json')} disabled={!selectedTournament}>Paket JSON</button>
                     <button type="button" className="secondary" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup JSON</button>
                   </div>
                 </section>
               </div>
 
-              <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.</p>
+              <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Paket-HTML/JSON sind lokale Exporte; Restore erfolgt weiter über Backup JSON.</p>
             </article>
           )}
 

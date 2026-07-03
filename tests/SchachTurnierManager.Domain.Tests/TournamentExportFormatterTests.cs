@@ -1,5 +1,6 @@
 using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Domain.Services;
+using System.Text.Json;
 using Xunit;
 
 namespace SchachTurnierManager.Domain.Tests;
@@ -127,6 +128,63 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("Gedruckt am", document.Content);
         Assert.Contains("class=\"result-cell\"", document.Content);
         Assert.DoesNotContain(">offen<", document.Content);
+    }
+
+    [Fact]
+    public void ExportPrintableTournamentPackageHtml_IncludesCurrentRoundSheetAndSafetyHints()
+    {
+        var tournament = CreateTournament();
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 2,
+            Pairings = new[]
+            {
+                Pairing.Game(1, tournament.Players[1].Id, tournament.Players[0].Id)
+            }
+        });
+        var standings = new StandingsCalculator().Calculate(tournament);
+        var diagnostics = new RoundDiagnosticsCalculator().Calculate(tournament);
+        var document = new TournamentExportFormatter().ExportPrintableTournamentPackageHtml(tournament, standings, diagnostics);
+
+        Assert.EndsWith("_Turnierpaket.html", document.FileName);
+        Assert.Equal("text/html; charset=utf-8", document.ContentType);
+        Assert.Contains("Turnierpaket", document.Content);
+        Assert.Contains("Ergebnisbogen / aktuelle Runde", document.Content);
+        Assert.Contains("Runde 2", document.Content);
+        Assert.Contains("Backup:", document.Content);
+        Assert.Contains("Audit:", document.Content);
+        Assert.Contains("Alpha", document.Content);
+        Assert.Contains("Beta", document.Content);
+    }
+
+    [Fact]
+    public void ExportTournamentPackageJson_ContainsParticipantsStandingsAndCurrentRound()
+    {
+        var tournament = CreateTournament();
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 2,
+            Pairings = new[]
+            {
+                Pairing.Game(1, tournament.Players[1].Id, tournament.Players[0].Id)
+            }
+        });
+        var standings = new StandingsCalculator().Calculate(tournament);
+        var diagnostics = new RoundDiagnosticsCalculator().Calculate(tournament);
+        var document = new TournamentExportFormatter().ExportTournamentPackageJson(tournament, standings, diagnostics);
+
+        Assert.EndsWith("_Turnierpaket.json", document.FileName);
+        Assert.Equal("application/json; charset=utf-8", document.ContentType);
+        using var parsed = JsonDocument.Parse(document.Content);
+        var root = parsed.RootElement;
+        Assert.Equal("SchachTurnierManager.TournamentPackage", root.GetProperty("kind").GetString());
+        Assert.Contains("JSON-Backup", root.GetProperty("backupHint").GetString());
+        Assert.Equal("Test Turnier", root.GetProperty("tournament").GetProperty("name").GetString());
+        Assert.Equal(2, root.GetProperty("participants").GetArrayLength());
+        Assert.Equal(2, root.GetProperty("standings").GetArrayLength());
+        Assert.Equal(2, root.GetProperty("currentRound").GetProperty("roundNumber").GetInt32());
+        Assert.Equal(1, root.GetProperty("currentRound").GetProperty("pairings").GetArrayLength());
+        Assert.Equal("package/print/html", root.GetProperty("exportFiles").GetProperty("htmlPackage").GetString());
     }
 
     private static NextRoundPreview CreatePreview(TournamentState tournament)

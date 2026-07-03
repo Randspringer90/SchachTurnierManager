@@ -1,7 +1,7 @@
 # NEXT_PROMPTS.md
 
 Konsolidierte, vorbereitete Arbeitsauftraege fuer kommende Entwicklungslaeufe.
-Stand: 2026-07-03 (Basis: 0.42.0 Feature-Lauf, Import-/Restore-Haertung lokal getestet).
+Stand: 2026-07-04 (Basis: 0.43.0 Feature-Lauf, Operator-Dashboard und Turnierpaket lokal getestet).
 
 ## Erledigt am 2026-07-03
 - Preset-Import fuer Bergfest/lokale Turniere gehaertet:
@@ -16,32 +16,45 @@ Stand: 2026-07-03 (Basis: 0.42.0 Feature-Lauf, Import-/Restore-Haertung lokal ge
 - Zusammenarbeit und KI-Hilfe sind als Doku-/Config-Basis vorbereitet:
   `docs/COLLABORATION.md`, `docs/AI_HELP_ASSISTANT.md`, `.env.example`.
 
-## Naechster Prompt - Feature-Scheibe 2
+## Erledigt am 2026-07-04
+- Operator-Dashboard verdichtet: naechster Schritt, aktuelle Runde, offene Ergebnisse,
+  Warnungen/Handlungsbedarf, Backup-/Audit-Stand, Import-/Backup-/Export-Aktionen und
+  ausblendbare Fehlermeldungen.
+- Export-/Print-Turnierpaket ergaenzt:
+  `package/print/html` und `package/export.json` enthalten Teilnehmerliste, aktuelle
+  Paarungen/Rundenblatt, Tabelle/Standings sowie Backup-/Audit-Hinweise. CSV-Einzelexporte
+  bleiben erhalten; PDF nur ueber Browser-Druck.
+- Lokale Handy-/Operator-Preview im Dashboard vorbereitet (Laptop-IP + QR, keine Cloud).
+- Operator-Smoke prueft Paket-HTML/JSON.
+
+## Naechster Prompt - Feature-Scheibe 3
 ```text
 Du arbeitest lokal in D:\Schach\SchachTurnierManager.
 Public-Sonderfall: lokale Commits erlaubt, aber kein Push/Release/PR.
 
-Ziel: Operator-Dashboard und Turnierpaket fuer Bergfest/Freestyle weiter verbessern.
+Ziel: Echten Vor-Ort-Offline-/Fallback-Test und Zuschauer-/Beamer-Vorbereitung fuer den
+SchachTurnierManager umsetzen.
 Erst Ist-Zustand lesen: AGENTS.md, PLANS.md, README.md, CHANGELOG.md,
 docs/BERGFEST_MVP_RUNBOOK.md, docs/TOURNAMENT_PRESET_IMPORT.md,
-docs/COLLABORATION.md, docs/AI_HELP_ASSISTANT.md, relevante Tests/Skripte.
+docs/COLLABORATION.md, docs/AI_HELP_ASSISTANT.md, docs/completions/**, relevante Tests/Skripte.
 
 Umfang:
-- P0: Dashboard zeigt kompakt letzten Backup-Stand, letzten Audit-Export, offene Bretter,
-  Import-/Preset-Report-Hinweis und naechste sinnvolle Operator-Aktion.
-- P0: Export/Print als Turnierpaket buendeln: Tabelle, aktuelle Paarungen, Rundenblatt,
-  Audit-Hinweis und Backup-Erinnerung.
-- P1 klein: QR/Chess960-Vorabtest im Runbook und Smoke sichtbarer machen, aber keine neue
-  QR-Architektur.
+- P0: Offline-/Fallback-Betrieb mit synthetischem Vor-Ort-Szenario pruefen und dokumentieren:
+  Backend/Frontend-Neustart, direkt nutzbare Export-Links, Backup/Restore, Papier-Fallback.
+- P0: Beamer-/Zuschaueransicht vorbereiten: lokale, read-only Anzeige fuer Tabelle/aktuelle
+  Paarungen ohne Operator-Controls; keine Cloud, kein externer Dienst.
+- P1: Handy-/QR-Testpfad weiter vorbereiten, aber echten Handy/WLAN-Test als manuellen
+  offenen Punkt belassen, falls kein reales Geraet/Netz verfuegbar ist.
 - Kein FIDE-Dutch-Umbau, keine KI-Cloud-Aufrufe, keine echten local-input-Daten committen.
 
 Checks: dotnet test, npm run build, Import-DryRun mit synthetischem tmp-Preset,
-Secret-/Token-Scan, .npmrc-Pruefung, git diff --check. Bei gruenem Gate lokal committen.
+Smoke-OperatorWorkflow.ps1, Secret-/Token-Scan, .npmrc-Pruefung, git diff --check.
+Bei gruenem Gate lokal committen.
 ```
 
 ## Priorisierte offene Feature-Liste
-- P0: Operator-Dashboard verdichten; Export-/Print-Turnierpaket; Offline-/Fallback-Test mit
-  echter Vor-Ort-Ausstattung; Importbericht im Operator-Ablauf sichtbar machen.
+- P0: Offline-/Fallback-Test mit echter Vor-Ort-Ausstattung; Beamer-/Zuschaueransicht ohne
+  Operator-Bedienelemente.
 - P1: Chess960/QR real testen; Tie-Breaks fuer kampflos/unplayed rounds integrieren;
   Swiss-Pairing Richtung FIDE-Dutch vertiefen; lokale Spielersuche beschleunigen.
 - P2: Mehr-Operator-Konzept; Notizen/Kommentare; KI-Hilfe mit BYO-Key und lokaler

@@ -38,7 +38,9 @@ Hintergrund/Architektur: `docs/BERGFEST_MVP_PLAN.md`.
    ```
    Erwartung: 5 Runden werden ausgelost und gefüllt, am Ende erscheint eine Tabelle.
 8. Einmal Tabelle und Rundenblatt als CSV/HTML exportieren und drucken.
-9. Backup einmal testen (Schritt 6) und QR-Vorabtest am Handy durchführen (Schritt 9 unten).
+9. Im Dashboard das **Turnierpaket HTML** und **Paket JSON** öffnen: Druck / Backup →
+   Paket HTML drucken / Paket JSON.
+10. Backup einmal testen (Schritt 6) und QR-Vorabtest am Handy durchführen (Schritt 9 unten).
 
 Wenn der Smoke grün ist und die Generalprobe durchläuft, ist Freitag startklar.
 
@@ -219,6 +221,8 @@ Restore-Regel:
 
 Im Dashboard gibt es Export-/Druckbuttons. Direkte Endpunkte (im Browser öffnen / drucken):
 
+- **Turnierpaket HTML**: `http://localhost:5088/api/tournaments/{id}/package/print/html`
+- **Turnierpaket JSON**: `http://localhost:5088/api/tournaments/{id}/package/export.json`
 - **Tabelle CSV**: `http://localhost:5088/api/tournaments/{id}/standings/export.csv`
 - **Paarungen CSV (alle Runden)**: `http://localhost:5088/api/tournaments/{id}/pairings/export.csv`
 - **Paarungen CSV (eine Runde)**: `.../pairings/export.csv?roundNumber=3`
@@ -228,6 +232,10 @@ Im Dashboard gibt es Export-/Druckbuttons. Direkte Endpunkte (im Browser öffnen
 
 HTML-Seiten enthalten ein Druck-Layout (Strg+P → drucken oder als PDF speichern).
 CSV öffnet in Excel/LibreOffice (Trennzeichen **Semikolon**, UTF-8).
+
+Das Turnierpaket ist der empfohlene Operator-Satz vor/nach einer Runde: Teilnehmerliste,
+aktuelle Runde/Paarungen, Ergebnisbogen, Tabelle/Standings sowie Backup-/Audit-Hinweise.
+Es ersetzt **nicht** das JSON-Backup aus Schritt 6.
 
 ## 8. Turnierende
 
@@ -254,6 +262,9 @@ Handy prüfen — das ist die bekannte offene Verifikationslücke aus dem Postmo
 Die Datenschicht hinter dem QR-Flow (Chess960-Startstellungen je Brett) wird vom
 Operator-Smoke (Startcheck Schritt 6) automatisch verifiziert; nur die Handy-Anzeige selbst muss manuell
 geprüft werden.
+
+Zusätzlich zeigt die Dashboard-Übersicht eine lokale Operator-Preview-URL mit QR. Das ist nur
+ein lokaler Handy-/Hotspot-Vorabtest für dieselbe App, noch keine getrennte Zuschaueransicht.
 
 ## 10. Hänger-/Timeout-Verhalten (so hängt nichts)
 

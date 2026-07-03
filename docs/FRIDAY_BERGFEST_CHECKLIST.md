@@ -13,6 +13,7 @@ Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 - [ ] Papier-Fallback bereit: leeres Paarungsblatt und Ergebnisliste.
 - [ ] Druckweg geprüft: HTML-Rundenblatt kann geöffnet/gedruckt werden.
 - [ ] Operator-Smoke grün: `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
+- [ ] Turnierpaket geprüft: Dashboard → Druck / Backup → Paket HTML drucken / Paket JSON.
 - [ ] QR-Vorabtest am Handy gemacht (Laptop-IP eingetragen, gleiches WLAN) — siehe Runbook §9.
 
 ## Turnier anlegen
@@ -105,6 +106,8 @@ Invoke-RestMethod "http://localhost:5088/api/tournaments/$tournamentId/export/js
 - Dashboard: http://localhost:5173
 - Tabelle CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/standings/export.csv`
 - Paarungen CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/pairings/export.csv`
+- Turnierpaket HTML: `http://localhost:5088/api/tournaments/<Turnier-Id>/package/print/html`
+- Turnierpaket JSON: `http://localhost:5088/api/tournaments/<Turnier-Id>/package/export.json`
 - Turnierdruck: `http://localhost:5088/api/tournaments/<Turnier-Id>/print/html`
 - Rundenblatt: `http://localhost:5088/api/tournaments/<Turnier-Id>/rounds/<Runde>/print/html`
 - Audit JSONL: `http://localhost:5088/api/tournaments/<Turnier-Id>/audit-journal/export.jsonl`

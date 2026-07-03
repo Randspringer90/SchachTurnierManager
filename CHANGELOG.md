@@ -1,3 +1,24 @@
+## 0.43.0 - Operator-Dashboard und Export-/Print-Turnierpaket
+
+Turniertags-Folgearbeit auf Basis 0.42.0. Fokus: Bedienbarkeit am Spielort, lokales
+Exportpaket und klare Sicherungshinweise. Keine Änderung an Pairing-, Wertungs- oder
+Restore-Logik. Kein Push/Release/PR.
+
+- **Operator-Dashboard verdichtet:** Übersicht zeigt nächsten Schritt, aktuelle Runde, offene
+  Ergebnisse, Backup-/Audit-Stand, Warnungen/Handlungsbedarf, Import-/Backup-/Export-Aktionen
+  und ausblendbare Fehlermeldungen.
+- **Lokale Handy-/Operator-Preview vorbereitet:** Dashboard erzeugt lokale URL/QR auf Basis
+  der Laptop-IP. Kein Cloud-Dienst, kein Tunnel; echter Handy-/Hotspot-Test bleibt manuell.
+- **Turnierpaket HTML/JSON:** neue lokale Endpunkte
+  `/api/tournaments/{id}/package/print/html` und
+  `/api/tournaments/{id}/package/export.json`. Das Paket enthält Teilnehmerliste, aktuelle
+  Runde/Paarungen, Ergebnisbogen, Tabelle/Standings und Backup-/Audit-Hinweise. CSV-Exports
+  bleiben einzeln verfügbar; PDF weiterhin nur über Browser-Druck möglich.
+- **Exportcenter:** Tab "Druck / Backup" bündelt Paket-HTML, Paket-JSON, Backup-JSON,
+  Audit-Bundle und aktuelle CSV-Exports.
+- **Smoke/Test:** `Smoke-OperatorWorkflow.ps1` prüft zusätzlich Paket-HTML und Paket-JSON.
+- **Version:** `0.42.0` -> `0.43.0` (Health, `package.json`, Lockfile-Root).
+
 ## 0.42.0 - Preset-Import-Guard, Restore-Haertung und Zusammenarbeit/KI-Vorbereitung
 
 Turnierbetriebs-Folgearbeit ohne Pairing- oder UI-Grossumbau. Fokus: lokaler Bergfest-/Preset-

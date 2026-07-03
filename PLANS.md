@@ -1,3 +1,16 @@
+# Aktueller Zusatz 0.43.0
+
+- Operator-Dashboard verdichtet: Übersicht zeigt nächsten Schritt, offene Ergebnisse,
+  Warnungen/Handlungsbedarf, Backup-/Audit-Stand, Import-/Export-Aktionen und eine lokale
+  Handy-/Hotspot-Preview-URL mit QR. Fehler bleiben sichtbar und ausblendbar, ohne die UI zu
+  blockieren.
+- Export-/Print-Turnierpaket ergänzt: neue lokale Endpunkte
+  `package/print/html` und `package/export.json` bündeln Teilnehmerliste, aktuelle Runde,
+  Ergebnisbogen, Tabelle/Standings sowie Backup-/Audit-Hinweise. CSV-Einzelexporte bleiben
+  unverändert verfügbar.
+- Operator-Smoke prüft zusätzlich Turnierpaket HTML/JSON.
+- Keine PDF-Dependency, keine Cloud, kein Provider-Call, kein Push/Release/PR.
+
 # Aktueller Zusatz 0.42.0
 
 - P0-Importlauf: `scripts\Import-TournamentPreset.ps1` validiert lokale Preset-JSONs robuster,
@@ -20,15 +33,17 @@
 - [x] API-Backup/Restore gegen offensichtliche defekte Snapshots absichern.
 - [x] Operator-Smoke fuer Runde starten, Paarungen, Ergebnis erfassen, Korrektur, Tabelle,
   Backup/Restore und Chess960/QR synthetisch abdecken.
-- [ ] Operator-Dashboard weiter verdichten: naechste Aktion, offene Bretter, letzter Export,
+- [x] Operator-Dashboard weiter verdichten: naechste Aktion, offene Bretter, letzter Export,
   letzter Backup-/Audit-Stand noch klarer sichtbar.
-- [ ] Print/Export fuer Paarungen, Tabellen, Ergebnisse als Turnierpaket sichtbarer buendeln.
+- [x] Print/Export fuer Paarungen, Tabellen, Ergebnisse als Turnierpaket sichtbarer buendeln.
 - [ ] Offline-/Fallback-Betrieb dokumentiert gegen echte Vor-Ort-Ausstattung testen.
 
 ## P1 - Freestyle, Forensik, Qualitaet
 - [x] Chess960/Freestyle-Wuerfelschach Wuerfel-/Startposition-Modul pro Brett mit QR-Grundlage.
 - [x] Audit-Journal und Pairing-Forensics mit Export-Bundle.
 - [ ] QR-Code-Flow mit realem Handy im Veranstaltungs-WLAN/Hotspot testen.
+- [x] Lokale Handy-/Operator-Preview als QR/URL im Dashboard vorbereiten; echter Handytest
+  bleibt manuell.
 - [ ] Tie-Breaks inkl. kampflos/unplayed rounds fertig in `StandingsCalculator` verdrahten.
 - [ ] Swiss-Pairing-Qualitaet Richtung FIDE-Dutch verbessern: Floater, Brackets, grosse Felder.
 - [ ] Local-Roster-/Spielersuche fuer schnelle Anmeldung ausbauen.

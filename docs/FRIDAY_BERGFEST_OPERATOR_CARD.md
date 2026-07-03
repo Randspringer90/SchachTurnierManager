@@ -13,6 +13,7 @@ Ein-Seiten-Karte. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
 - Health muss `status` zeigen: http://localhost:5088/api/health
 - Dashboard: http://localhost:5173
 - Optional vorab (eigenes isoliertes Backend, hängesicher): `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
+- Turnierpaket einmal öffnen: Dashboard → Druck / Backup → Paket HTML drucken / Paket JSON.
 - QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) — Runbook §9.
 
 ## Start
@@ -53,11 +54,14 @@ Danach Startbefehle erneut ausführen.
 - Rematch/Severity `kritisch`: nicht blind übernehmen. Manuell korrigieren, Notiz setzen.
 - Runde erzeugen, HTML-Rundenblatt drucken/aushängen, Ergebnisse eingeben.
 - Tabelle prüfen, Backup ziehen.
+- Turnierpaket HTML/JSON bei Bedarf aus Dashboard → Druck / Backup erzeugen
+  (enthält Teilnehmerliste, aktuelle Runde, Ergebnisbogen, Tabelle, Backup-/Audit-Hinweise).
 - **Nach jeder Runde Audit sichern:** Audit-Journal-Karte → „Audit-Bundle (JSONL)" oder
   `pwsh -File .\scripts\Export-TournamentAudit.ps1`. Macht jede Auslosung/Korrektur nachvollziehbar.
 - Late Entry: Swiss ab nächster Runde ok; Round-Robin nach Start blockiert.
 - Grenzen: kein vollständiges FIDE-Dutch; >20 Spieler = Greedy-Fallback besonders prüfen.
 - QR/Handy: URL darf nicht `localhost` enthalten; bei Firewall/Netzproblem am Laptop würfeln.
+  Dashboard-Übersicht zeigt zusätzlich eine lokale Operator-Preview-URL/QR für den Hotspot-Test.
 
 ## Backup/Fallback
 

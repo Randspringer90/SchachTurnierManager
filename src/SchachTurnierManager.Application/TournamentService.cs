@@ -775,6 +775,24 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             _roundDiagnostics.Calculate(tournament));
     }
 
+    public ExportDocument ExportPrintableTournamentPackageHtml(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportPrintableTournamentPackageHtml(
+            tournament,
+            _standings.Calculate(tournament),
+            _roundDiagnostics.Calculate(tournament));
+    }
+
+    public ExportDocument ExportTournamentPackageJson(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportTournamentPackageJson(
+            tournament,
+            _standings.Calculate(tournament),
+            _roundDiagnostics.Calculate(tournament));
+    }
+
     public ExportDocument ExportPrintableRoundHtml(Guid tournamentId, int roundNumber)
     {
         var tournament = RequireTournament(tournamentId);

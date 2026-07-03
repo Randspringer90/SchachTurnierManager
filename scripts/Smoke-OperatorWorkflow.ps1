@@ -13,7 +13,8 @@
       - Der Backend-Start wartet maximal -StartTimeoutSeconds mit Heartbeat-Ausgabe.
       - Wird das Backend von diesem Skript gestartet, laeuft es gegen ein ISOLIERTES
         Datenverzeichnis (Temp) auf einem eigenen Port (Standard 5099) und wird im
-        finally-Block zuverlaessig (Prozessbaum) beendet.
+        finally-Block zuverlaessig (Prozessbaum) beendet. Das Release-Binary wird vor
+        dem Start frisch gebaut, damit keine veraltete DLL getestet wird.
       - Klarer Exit-Code: 0 = alle Checks gruen, 1 = mindestens ein Check rot,
         2 = Backend nicht startbar/erreichbar.
 
@@ -21,7 +22,7 @@
       1. Health.
       2. Swiss 12 Spieler / 5 Runden: ausgespielt, KEINE 6. Runde (HTTP 400),
          keine vermeidbaren Rematches (direkt aus den Paarungen geprueft), Audit-Export
-         nach jeder Runde.
+         nach jeder Runde, Turnierpaket HTML/JSON.
       3. Round-Robin 6 Spieler: vollstaendiger Spielplan und Late Entry nach Start
          blockiert (HTTP 400).
       4. Manuelle Paarung: gueltig ok, Self-Pairing blockiert, doppelter Spieler blockiert.
@@ -156,11 +157,9 @@ try {
             exit 2
         }
         $dll = Join-Path $root 'src\SchachTurnierManager.WebApi\bin\Release\net10.0\SchachTurnierManager.WebApi.dll'
-        if (-not (Test-Path $dll)) {
-            Write-Host "[Smoke] Release-Build fehlt, baue WebApi (Release) ..." -ForegroundColor Yellow
-            & dotnet build (Join-Path $root 'src\SchachTurnierManager.WebApi') -c Release -v minimal
-            if ($LASTEXITCODE -ne 0) { Write-Error "Build fehlgeschlagen."; exit 2 }
-        }
+        Write-Host "[Smoke] Baue WebApi (Release), damit kein veraltetes Binary getestet wird ..." -ForegroundColor Yellow
+        & dotnet build (Join-Path $root 'src\SchachTurnierManager.WebApi') -c Release -v minimal
+        if ($LASTEXITCODE -ne 0) { Write-Error "Build fehlgeschlagen."; exit 2 }
         if (-not (Test-Path $dll)) { Write-Error "WebApi-DLL nicht gefunden: $dll"; exit 2 }
 
         New-Item -ItemType Directory -Force -Path $DataDirectory | Out-Null
@@ -263,6 +262,12 @@ try {
         [System.IO.File]::WriteAllText($auditFile, $audit.Raw, [System.Text.UTF8Encoding]::new($false))
         Write-Host "         Audit gesichert: $auditFile" -ForegroundColor DarkGray
     }
+
+    # Turnierpaket: HTML fuer Druck/Aushang, JSON fuer lokale Weiterverarbeitung.
+    $packageHtml = Invoke-Api -Method Get -Path "/api/tournaments/$sid/package/print/html"
+    Assert-That ($packageHtml.Status -eq 200 -and $packageHtml.Raw -match 'Turnierpaket' -and $packageHtml.Raw -match 'Ergebnisbogen') 'Turnierpaket HTML exportierbar' "Bytes: $($packageHtml.Raw.Length)"
+    $packageJson = Invoke-Api -Method Get -Path "/api/tournaments/$sid/package/export.json"
+    Assert-That ($packageJson.Status -eq 200 -and $packageJson.Raw -match 'SchachTurnierManager.TournamentPackage' -and $packageJson.Raw -match 'currentRound') 'Turnierpaket JSON exportierbar' "Bytes: $($packageJson.Raw.Length)"
 
     # =====================================================================
     # 6 (vorgezogen, nutzt Swiss-Runde): QR/Chess960 Start-Stellungen

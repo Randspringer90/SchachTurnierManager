@@ -2,16 +2,19 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.42.x
+## Aktueller Stand bis 0.43.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
 - Lokaler Bergfest-/Preset-Import mit Dry-run, JSON-Report, CSV-Vorschau-Gate und
   bewusstem `-AllowWarnings` fuer Warnungsimporte.
+- Verdichtetes Operator-Dashboard mit nächstem Schritt, offenen Ergebnissen, Backup-/Audit-Stand,
+  Warnungen, Import-/Export-Aktionen und lokaler Handy-/Hotspot-Preview.
 - Externe Spielerdaten per FIDE-ID suchen und übernehmen.
 - Schweizer-System-Paarungen mit global optimaler Rematch-Vermeidung bis 20 Spieler,
   Audit, Bye-/kampflos-Prüfungen und Regressionstests.
-- Ergebnisse, Tabellen, Kategorien, Kreuztabelle, Rundenblätter und Exporte.
+- Ergebnisse, Tabellen, Kategorien, Kreuztabelle, Rundenblätter und gebündeltes Turnierpaket
+  als HTML/JSON plus CSV-Einzelexporte.
 - Persistentes Audit-Journal mit Dashboard, Exporten und Query-API.
 - Operator-Readiness-Smoke für lokale synthetische Turniertagsprüfung.
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
@@ -124,6 +127,23 @@ Jede Turnierleiter-Aktion landet im Audit-Journal (DB **und** append-only Datei-
 
 Das Bundle ist in sich geschlossen (Manifest, Turnier-Snapshot, Pairing-Forensik je Runde, alle
 Ereignisse) und macht spätere Nachfragen nachvollziehbar. Details: `docs/AUDIT_JOURNAL.md`.
+
+## Operator-Dashboard und Turnierpaket
+
+Die Übersicht bündelt den Turniertagszustand: aktuelle Runde, offene Ergebnisse, Backup-/Audit-
+Stand, Warnungen und den nächsten sinnvollen Schritt. Fehler werden als ausblendbare Meldung
+angezeigt, blockieren aber nicht die restliche UI.
+
+Im Tab **Druck / Backup** gibt es das gebündelte Turnierpaket:
+
+- **Paket HTML drucken**: `http://localhost:5088/api/tournaments/{id}/package/print/html`
+- **Paket JSON**: `http://localhost:5088/api/tournaments/{id}/package/export.json`
+- Einzel-CSV: Teilnehmer, Tabelle, alle Paarungen, aktuelle Paarungen.
+- Backup bleibt separat: JSON-Snapshot über `export/json`; das Paket ersetzt kein Restore-Backup.
+
+Das HTML-Paket enthält Teilnehmerliste, Tabelle, Ergebnisbogen der aktuellen Runde und klare
+Backup-/Audit-Hinweise. PDF wird nicht nativ erzeugt; bei Bedarf im Browser über **Drucken →
+als PDF speichern**.
 
 ## Release-Gate
 

@@ -54,7 +54,7 @@ Set-Location "D:\Schach\SchachTurnierManager"
 
 ## Offene Einstiegsthemen
 
-- Operator-Dashboard: Backup-/Audit-Stand und naechste Aktion kompakter anzeigen.
-- Exportpaket: Tabelle, Paarungen, Rundenblatt, Audit-Hinweis und Backup-Erinnerung buendeln.
+- Offline-/Fallback-Test: Turniertags-Neustart, direkte Exportlinks, Backup/Restore und
+  Papier-Fallback mit synthetischen Daten pruefen.
+- Beamer-/Zuschaueransicht: lokale read-only Anzeige ohne Operator-Bedienelemente vorbereiten.
 - Tie-Breaks: ungespielte Runden/FIDE-Virtual-Opponent opt-in integrieren.
-- Beamer-/Publikumsmodus ohne Operator-Bedienelemente.

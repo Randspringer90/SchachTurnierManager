@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using SchachTurnierManager.Domain.Models;
 
 namespace SchachTurnierManager.Domain.Services;
@@ -113,6 +114,124 @@ public sealed class TournamentExportFormatter
         AppendDiagnostics(builder, diagnostics);
         AppendHtmlEnd(builder);
         return HtmlDocument($"{SafeFileName(tournament.Name)}_Runde_{round.RoundNumber:D2}.html", builder.ToString());
+    }
+
+    public ExportDocument ExportPrintableTournamentPackageHtml(TournamentState tournament, IReadOnlyList<StandingRow> standings, IReadOnlyList<RoundDiagnostics> diagnostics)
+    {
+        var currentRound = CurrentRound(tournament);
+        var builder = new StringBuilder();
+        AppendHtmlStart(builder, tournament.Name, "Turnierpaket");
+        builder.AppendLine($"<h1>{Html(tournament.Name)} · Turnierpaket</h1>");
+        builder.AppendLine($"<p class=\"muted\">Operator-Paket für Aushang, Ergebnisannahme, Tabellenkontrolle und lokale Sicherung. · Gedruckt am {Html(PrintedAtLabel())}</p>");
+        AppendTournamentMeta(builder, tournament);
+        AppendPackageHints(builder, tournament, currentRound);
+        AppendPlayers(builder, tournament);
+        AppendStandings(builder, standings);
+        AppendCurrentRoundSheet(builder, tournament, currentRound, diagnostics);
+        AppendHtmlEnd(builder);
+        return HtmlDocument($"{SafeFileName(tournament.Name)}_Turnierpaket.html", builder.ToString());
+    }
+
+    public ExportDocument ExportTournamentPackageJson(TournamentState tournament, IReadOnlyList<StandingRow> standings, IReadOnlyList<RoundDiagnostics> diagnostics)
+    {
+        var currentRound = CurrentRound(tournament);
+        var players = tournament.Players.ToDictionary(p => p.Id, p => p);
+        var currentDiagnostics = currentRound is null
+            ? null
+            : diagnostics.FirstOrDefault(item => item.RoundNumber == currentRound.RoundNumber);
+
+        var payload = new
+        {
+            kind = "SchachTurnierManager.TournamentPackage",
+            exportedAt = DateTimeOffset.UtcNow,
+            backupHint = "Vor und nach jeder Runde zusätzlich JSON-Backup ziehen; diese Paketdatei ersetzt kein Restore-Backup.",
+            auditHint = "Nach jeder Runde und am Turnierende Audit-Bundle exportieren.",
+            tournament = new
+            {
+                id = tournament.Id,
+                name = tournament.Name,
+                createdOn = tournament.CreatedOn,
+                format = tournament.Settings.Format.ToString(),
+                plannedRounds = tournament.Settings.PlannedRounds,
+                playedRounds = tournament.Rounds.Count,
+                playerCount = tournament.Players.Count,
+                activePlayerCount = tournament.Players.Count(player => player.Status == PlayerStatus.Active)
+            },
+            participants = tournament.Players
+                .OrderBy(player => player.StartingRank)
+                .ThenBy(player => player.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(player => new
+                {
+                    id = player.Id,
+                    startingRank = player.StartingRank,
+                    name = player.Name,
+                    club = player.Club,
+                    fideId = player.FideId,
+                    nationalId = player.NationalId,
+                    birthYear = player.BirthYear,
+                    status = player.Status.ToString(),
+                    twz = player.Twz(tournament.Settings.TwzSource)
+                }),
+            standings = standings.Select(row => new
+            {
+                rank = row.Rank,
+                playerId = row.PlayerId,
+                name = row.Name,
+                twz = row.Twz,
+                points = row.Points,
+                wins = row.Wins,
+                blackWins = row.BlackWins,
+                buchholz = row.Buchholz,
+                buchholzCutOne = row.BuchholzCutOne,
+                sonnebornBerger = row.SonnebornBerger,
+                tournamentPerformance = row.TournamentPerformance
+            }),
+            currentRound = currentRound is null
+                ? null
+                : new
+                {
+                    roundNumber = currentRound.RoundNumber,
+                    resultStatus = currentRound.ResultStatus.ToString(),
+                    isLocked = currentRound.IsLocked,
+                    isVerified = currentRound.IsVerified,
+                    openBoards = currentDiagnostics?.OpenBoards ?? currentRound.Pairings.Count(pairing => !pairing.IsBye && !pairing.Result.IsPlayed),
+                    pairings = currentRound.Pairings.OrderBy(pairing => pairing.BoardNumber).Select(pairing => new
+                    {
+                        boardNumber = pairing.BoardNumber,
+                        white = PlayerDisplay(players, pairing.WhitePlayerId),
+                        black = pairing.IsBye ? "spielfrei" : PlayerDisplay(players, pairing.BlackPlayerId),
+                        result = ResultLabel(pairing.Result.Kind),
+                        isBye = pairing.IsBye,
+                        isManualOverride = pairing.IsManualOverride,
+                        chess960 = Chess960Display(pairing),
+                        notes = pairing.Notes
+                    })
+                },
+            roundDiagnostics = diagnostics.OrderBy(item => item.RoundNumber).Select(item => new
+            {
+                roundNumber = item.RoundNumber,
+                isComplete = item.IsComplete,
+                isLocked = item.IsLocked,
+                isVerified = item.IsVerified,
+                openBoards = item.OpenBoards,
+                forfeitBoards = item.ForfeitBoards,
+                byeBoards = item.ByeBoards,
+                warnings = item.Warnings
+            }),
+            exportFiles = new
+            {
+                htmlPackage = "package/print/html",
+                jsonPackage = "package/export.json",
+                standingsCsv = "standings/export.csv",
+                currentPairingsCsv = currentRound is null ? null : $"pairings/export.csv?roundNumber={currentRound.RoundNumber}",
+                allPairingsCsv = "pairings/export.csv",
+                backupJson = "export/json",
+                auditBundleJsonl = "audit-journal/export.jsonl"
+            }
+        };
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+        return JsonDocument($"{SafeFileName(tournament.Name)}_Turnierpaket.json", json);
     }
 
     public ExportDocument ExportNextRoundPreviewCsv(TournamentState tournament, NextRoundPreview preview)
@@ -237,6 +356,22 @@ public sealed class TournamentExportFormatter
         builder.AppendLine("</dl></section>");
     }
 
+    private static void AppendPackageHints(StringBuilder builder, TournamentState tournament, TournamentRound? currentRound)
+    {
+        var currentRoundLabel = currentRound is null ? "noch keine Runde ausgelost" : $"Runde {currentRound.RoundNumber}";
+        builder.AppendLine("<section><h2>Operator-Hinweise</h2>");
+        builder.AppendLine("<div class=\"diagnostics\"><strong>Turnierpaket-Inhalt:</strong><ul>");
+        builder.AppendLine("<li>Teilnehmerliste</li>");
+        builder.AppendLine("<li>Aktuelle Tabelle / Standings</li>");
+        builder.AppendLine($"<li>Ergebnisbogen für {Html(currentRoundLabel)}</li>");
+        builder.AppendLine("<li>Backup- und Audit-Erinnerung</li>");
+        builder.AppendLine("</ul></div>");
+        builder.AppendLine("<div class=\"diagnostics\"><strong>Backup:</strong> Vor Runde 1, nach jeder Runde und am Turnierende ein separates JSON-Backup exportieren. Dieses HTML-Paket ist ein Aushang-/Kontrollpaket und ersetzt kein Restore-Backup.</div>");
+        builder.AppendLine("<div class=\"diagnostics\"><strong>Audit:</strong> Nach jeder Runde zusätzlich das Audit-Bundle exportieren, damit Paarungen, Korrekturen und Warnungen forensisch nachvollziehbar bleiben.</div>");
+        builder.AppendLine($"<p class=\"muted\">Geplante Runden: {tournament.Settings.PlannedRounds} · aktuelle Runde: {Html(currentRoundLabel)}</p>");
+        builder.AppendLine("</section>");
+    }
+
     private static void AppendPlayers(StringBuilder builder, TournamentState tournament)
     {
         builder.AppendLine("<section><h2>Teilnehmerliste</h2><table><thead><tr><th>Startnr.</th><th>Name</th><th>Verein</th><th>FIDE-ID</th><th>TWZ</th><th>Jg.</th><th>Alter</th><th>Status</th></tr></thead><tbody>");
@@ -255,6 +390,41 @@ public sealed class TournamentExportFormatter
             builder.AppendLine($"<tr><td>{row.Rank}</td><td>{Html(row.Name)}</td><td>{FormatDecimal(row.Points)}</td><td>{row.Wins}</td><td>{row.BlackWins}</td><td>{FormatDecimal(row.Buchholz)}</td><td>{FormatDecimal(row.BuchholzCutOne)}</td><td>{FormatDecimal(row.BuchholzCutTwo)}</td><td>{FormatDecimal(row.MedianBuchholz)}</td><td>{FormatDecimal(row.SonnebornBerger)}</td><td>{FormatDecimal(row.KoyaScore)}</td><td>{FormatDecimal(row.ProgressiveScore)}</td><td>{(row.TournamentPerformance?.ToString(CultureInfo.InvariantCulture) ?? "—")}</td></tr>");
         }
         builder.AppendLine("</tbody></table></section>");
+    }
+
+    private static void AppendCurrentRoundSheet(StringBuilder builder, TournamentState tournament, TournamentRound? currentRound, IReadOnlyList<RoundDiagnostics> diagnostics)
+    {
+        builder.AppendLine("<section><h2>Ergebnisbogen / aktuelle Runde</h2>");
+        if (currentRound is null)
+        {
+            builder.AppendLine("<div class=\"diagnostics\">Noch keine Runde ausgelost. Erst Teilnehmer prüfen, Vorschau erzeugen und Runde 1 auslosen.</div>");
+            builder.AppendLine("</section>");
+            return;
+        }
+
+        var players = tournament.Players.ToDictionary(p => p.Id, p => p);
+        builder.AppendLine($"<h3>Runde {currentRound.RoundNumber}</h3>");
+        builder.AppendLine("<table><thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Chess960</th><th>Ergebnis</th><th>Unterschrift / Notiz</th></tr></thead><tbody>");
+        foreach (var pairing in currentRound.Pairings.OrderBy(p => p.BoardNumber))
+        {
+            builder.Append("<tr>");
+            builder.Append($"<td>{pairing.BoardNumber}</td>");
+            builder.Append($"<td>{Html(PlayerDisplay(players, pairing.WhitePlayerId))}</td>");
+            builder.Append($"<td>{Html(pairing.IsBye ? "spielfrei" : PlayerDisplay(players, pairing.BlackPlayerId))}</td>");
+            builder.Append($"<td>{Html(Chess960Display(pairing))}</td>");
+            builder.Append($"<td class=\"result-cell\">{PrintResultCell(pairing)}</td>");
+            builder.Append($"<td>{Html(pairing.Notes ?? string.Empty)}</td>");
+            builder.AppendLine("</tr>");
+        }
+        builder.AppendLine("</tbody></table>");
+
+        var diagnostic = diagnostics.FirstOrDefault(item => item.RoundNumber == currentRound.RoundNumber);
+        if (diagnostic is not null)
+        {
+            AppendDiagnostics(builder, diagnostic);
+        }
+
+        builder.AppendLine("</section>");
     }
 
     private static void AppendRounds(StringBuilder builder, TournamentState tournament, IReadOnlyList<RoundDiagnostics> diagnostics)
@@ -322,6 +492,20 @@ public sealed class TournamentExportFormatter
         ContentType = "text/html; charset=utf-8",
         Content = content
     };
+
+    private static ExportDocument JsonDocument(string fileName, string content) => new()
+    {
+        FileName = fileName,
+        ContentType = "application/json; charset=utf-8",
+        Content = content
+    };
+
+    private static TournamentRound? CurrentRound(TournamentState tournament)
+    {
+        return tournament.Rounds
+            .OrderByDescending(round => round.RoundNumber)
+            .FirstOrDefault();
+    }
 
     private static string PlayerName(IReadOnlyDictionary<Guid, string> players, Guid? id)
     {

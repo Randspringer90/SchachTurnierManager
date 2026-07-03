@@ -24,6 +24,10 @@ Die Konsole zeigt bewusst keine komplette Teilnehmerliste. Fuer lokale Sichtprue
 .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun -ShowCsvPreview
 ```
 
+Das Operator-Dashboard erinnert in der Übersicht an diesen Report-Pfad. Echte
+`local-input/**/*.local.json`-Dateien und erzeugte Reports bleiben lokal und werden nicht
+committet.
+
 ## Import
 
 Backend muss laufen. Vor dem echten Import immer zuerst den Dry-run-Report pruefen. Danach:
