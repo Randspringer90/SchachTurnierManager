@@ -40,7 +40,7 @@ Hintergrund/Architektur: `docs/BERGFEST_MVP_PLAN.md`.
 8. Einmal Tabelle und Rundenblatt als CSV/HTML exportieren und drucken.
 9. Im Dashboard das **Turnierpaket HTML** und **Paket JSON** öffnen: Druck / Backup →
    Paket HTML drucken / Paket JSON.
-10. Backup einmal testen (Schritt 6) und QR-Vorabtest am Handy durchführen (Schritt 9 unten).
+10. Backup einmal testen (Schritt 6), QR-Vorabtest am Handy durchführen und Beamer-/Zuschaueransicht öffnen (Schritt 9 unten).
 
 Wenn der Smoke grün ist und die Generalprobe durchläuft, ist Freitag startklar.
 
@@ -237,6 +237,27 @@ Das Turnierpaket ist der empfohlene Operator-Satz vor/nach einer Runde: Teilnehm
 aktuelle Runde/Paarungen, Ergebnisbogen, Tabelle/Standings sowie Backup-/Audit-Hinweise.
 Es ersetzt **nicht** das JSON-Backup aus Schritt 6.
 
+## 7a. Zuschauer- und Beamer-Ansicht
+
+Im Dashboard unter **Übersicht → QR / Handy / Beamer**:
+
+1. Laptop-IP im WLAN/Hotspot eintragen (`ipconfig`, IPv4-Adresse; nicht `localhost`).
+2. **Zuschauer öffnen** oder **Beamer öffnen**.
+3. Anzeige prüfen: aktuelle Paarungen, offene Bretter und Tabelle sichtbar; keine
+   Operator-Buttons/Erfassung auf dem Beamer.
+4. QR nur verwenden, wenn eine private lokale Adresse angezeigt wird (`10.x`, `172.16-31.x`,
+   `192.168.x` oder `.local`). Kein Tunnel, keine Cloud, keine öffentliche URL.
+
+Direktform:
+
+```text
+http://<Laptop-IP>:5173/?view=public&tournament=<Turnier-Id>&mode=spectator
+http://<Laptop-IP>:5173/?view=beamer&tournament=<Turnier-Id>&mode=beamer
+```
+
+Die Anzeige ist read-only und aktualisiert sich regelmäßig. Für finale Veröffentlichung weiter
+Paket-HTML/CSV/JSON exportieren.
+
 ## 8. Turnierende
 
 1. Letzte Ergebnisse eingeben.
@@ -264,7 +285,18 @@ Operator-Smoke (Startcheck Schritt 6) automatisch verifiziert; nur die Handy-Anz
 geprüft werden.
 
 Zusätzlich zeigt die Dashboard-Übersicht eine lokale Operator-Preview-URL mit QR. Das ist nur
-ein lokaler Handy-/Hotspot-Vorabtest für dieselbe App, noch keine getrennte Zuschaueransicht.
+ein lokaler Handy-/Hotspot-Vorabtest für dieselbe App. Ab 0.44.0 gibt es zusätzlich getrennte
+read-only Zuschauer-/Beamer-Links. Die Operator-Erfassung per QR nur auf vertrauenswürdigen
+lokalen Geräten öffnen.
+
+## 9a. Hilfe / Assistent
+
+Der Reiter **Hilfe / Assistent** ist lokale Turnierleiter-Hilfe:
+
+- Sucht Runbook-Themen zu Start, Backup/Restore, Audit, Import, QR/Handy, Beamer, Export,
+  Ergebnis-Korrektur und Zusammenarbeit.
+- Default: `KI-Hilfe nicht konfiguriert`; lokale Themen bleiben trotzdem nutzbar.
+- Keine echten Provider-Keys, keine Cloud-Aufrufe in Tests, keine privaten Rohdaten.
 
 ## 10. Hänger-/Timeout-Verhalten (so hängt nichts)
 

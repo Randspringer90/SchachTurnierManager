@@ -1,3 +1,17 @@
+# Aktueller Zusatz 0.44.0
+
+- Sichere Hilfe-/Assistenten-Scheibe: Reiter **Hilfe / Assistent** zeigt lokale
+  Runbook-Themen mit Suche. Application-Provider-Interface, deaktivierter Default-Provider und
+  lokaler Docs-only-Provider sind vorbereitet; echte OpenAI/Claude/Custom-HTTP-Aufrufe bleiben
+  default-aus und testsicher ohne Cloud/Kosten.
+- Zuschauer-/Beamer-Nutzung ausgebaut: read-only Public-/Beamer-Seite für aktuelle Paarungen,
+  offene Bretter und Tabelle; Dashboard erzeugt lokale Links/QR nur mit privater LAN-IP und
+  trennt Zuschauer/Beamer von Operator-Erfassung.
+- Turnierpaket weist Pairings, Ergebnisbogen, Backup/Audit und Zuschauer-/Beamer-Hinweis
+  expliziter aus. Keine PDF-Dependency.
+- Zusammenarbeit/Doku rollenbasiert nachgezogen; echter Handy-/Beamer-/WLAN-Test bleibt
+  manueller Vor-Ort-Check.
+
 # Aktueller Zusatz 0.43.0
 
 - Operator-Dashboard verdichtet: Übersicht zeigt nächsten Schritt, offene Ergebnisse,
@@ -51,11 +65,11 @@
 ## P2 - Zusammenarbeit, Anzeige, KI-Hilfe
 - [ ] Mehr-Operator-Modus fuer parallele Bedienung konzipieren, ohne lokale Daten zu riskieren.
 - [ ] Kommentar-/Notizsystem fuer Runden, Bretter, Spieler und organisatorische Aufgaben.
-- [ ] Integrierte KI-Hilfe/Chatbot nur mit BYO-Key/local-secret, Provider-Abstraktion und
+- [x] Integrierte KI-Hilfe/Chatbot nur mit BYO-Key/local-secret, Provider-Abstraktion und
   ausgeschaltetem Default; keine Cloud-Aufrufe in Tests.
-- [ ] Wissensmanagement-Anbindung an lokale docs/runbooks, keine privaten Rohdaten in Prompts.
+- [x] Wissensmanagement-Anbindung an lokale docs/runbooks, keine privaten Rohdaten in Prompts.
 - [ ] Export fuer Vereinsseite/WhatsApp/CSV/JSON/HTML/PDF priorisieren.
-- [ ] Oeffentliche Anzeige/Beamer-Modus mit reduzierter Operator-Oberflaeche.
+- [x] Oeffentliche Anzeige/Beamer-Modus mit reduzierter Operator-Oberflaeche.
 
 # Aktueller Zusatz 0.41.1
 

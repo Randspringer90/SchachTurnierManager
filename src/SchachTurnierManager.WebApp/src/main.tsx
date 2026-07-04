@@ -373,6 +373,38 @@ type PlayerImportPreviewRow = {
   status: number;
 };
 
+type AiHelpTopic = {
+  id: string;
+  title: string;
+  source: string;
+  summary: string;
+  body: string;
+  tags: string[];
+};
+
+type AiHelpStatus = {
+  isConfigured: boolean;
+  mode: number;
+  provider: string;
+  message: string;
+  topics: AiHelpTopic[];
+};
+
+type AiHelpResponse = {
+  isConfigured: boolean;
+  mode: number;
+  provider: string;
+  answer: string;
+  citations: string[];
+  warnings: string[];
+  topics: AiHelpTopic[];
+};
+
+type PublicDisplayParams = {
+  tournamentId?: string;
+  mode: 'spectator' | 'beamer';
+};
+
 type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
 
 type SettingsForm = {
@@ -420,6 +452,47 @@ const resultOptions = [
   { value: 8, label: 'Armageddon Weiß' },
   { value: 9, label: 'Armageddon Schwarz' }
 ];
+
+const fallbackAiHelpStatus: AiHelpStatus = {
+  isConfigured: false,
+  mode: 0,
+  provider: 'disabled',
+  message: 'KI-Hilfe nicht konfiguriert',
+  topics: [
+    {
+      id: 'backup-restore',
+      title: 'Backup, Restore und kritische Aktionen',
+      source: 'docs/BERGFEST_MVP_RUNBOOK.md',
+      summary: 'Vor Runde 1, nach jeder Runde und vor Reset/Löschen ein JSON-Backup ziehen.',
+      body: 'Restore nur bewusst und nicht hektisch während einer laufenden Runde ausführen.',
+      tags: ['backup', 'restore', 'reset', 'delete']
+    },
+    {
+      id: 'qr-handy',
+      title: 'QR, Handy und lokaler Hotspot',
+      source: 'docs/BERGFEST_MVP_RUNBOOK.md#9',
+      summary: 'QR funktioniert nur im gleichen WLAN/Hotspot; localhost funktioniert am Handy nicht.',
+      body: 'Laptop-IP eintragen, Handy ins gleiche Netz bringen und vorab testen.',
+      tags: ['qr', 'handy', 'hotspot', 'wlan']
+    },
+    {
+      id: 'beamer-zuschauer',
+      title: 'Zuschauer- und Beamer-Anzeige',
+      source: 'docs/BERGFEST_MVP_RUNBOOK.md',
+      summary: 'Read-only Anzeige für Paarungen und Tabelle ohne Operator-Controls nutzen.',
+      body: 'Für Publikumsgeräte lokale LAN-Links verwenden, kein Tunnel und keine Cloud.',
+      tags: ['beamer', 'zuschauer', 'read-only']
+    },
+    {
+      id: 'ki-config',
+      title: 'KI-Hilfe konfigurieren',
+      source: 'docs/AI_HELP_ASSISTANT.md',
+      summary: 'KI-Hilfe ist standardmäßig deaktiviert; lokale Hilfethemen bleiben nutzbar.',
+      body: 'Provider-Keys gehören nur in lokale Secrets oder Umgebung, nie ins Git.',
+      tags: ['ki', 'ai', 'provider', 'env']
+    }
+  ]
+};
 
 const formatOptions = [
   { value: 1, label: 'Schweizer System' },
@@ -1003,9 +1076,46 @@ function parseBoardDiceParams(search: string): BoardDiceParams | null {
   return { tournamentId, roundNumber, boardNumber };
 }
 
+function parsePublicDisplayParams(search: string): PublicDisplayParams | null {
+  const params = new URLSearchParams(search);
+  const view = params.get('view');
+  if (view !== 'public' && view !== 'beamer') {
+    return null;
+  }
+
+  const mode = view === 'beamer' || params.get('mode') === 'beamer' ? 'beamer' : 'spectator';
+  const tournamentId = params.get('tournament') ?? undefined;
+  return { tournamentId, mode };
+}
+
 function defaultLanHost(): string {
   const host = window.location.hostname;
   return host === 'localhost' || host === '127.0.0.1' || host === '::1' ? '' : host;
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '' || normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1';
+}
+
+function isPrivateLanHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  if (isLoopbackHost(normalized)) {
+    return false;
+  }
+
+  const match = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return normalized.endsWith('.local');
+  }
+
+  const octets = match.slice(1).map(value => Number(value));
+  if (octets.some(value => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
+  }
+
+  const [a, b] = octets;
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
 // Schritt-für-Schritt-Würfel für genau ein Brett. Wird im Modal (Reiter „Browser würfeln")
@@ -1276,12 +1386,145 @@ function MobileDicePage({ params }: { params: BoardDiceParams }): React.ReactEle
   );
 }
 
+function PublicDisplayPage({ params }: { params: PublicDisplayParams }): React.ReactElement {
+  const [tournament, setTournament] = React.useState<Tournament | null>(null);
+  const [standings, setStandings] = React.useState<StandingRow[]>([]);
+  const [diagnostics, setDiagnostics] = React.useState<RoundDiagnostics[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = React.useState<string>('');
+  const [loading, setLoading] = React.useState(true);
+
+  const load = React.useCallback(async () => {
+    try {
+      const selected = params.tournamentId
+        ? await requestJson<Tournament>(`/api/tournaments/${params.tournamentId}`)
+        : (await requestJson<Tournament[]>('/api/tournaments'))[0] ?? null;
+
+      if (!selected) {
+        setTournament(null);
+        setStandings([]);
+        setDiagnostics([]);
+        setError(null);
+        return;
+      }
+
+      const [standingData, diagnosticData] = await Promise.all([
+        requestJson<StandingRow[]>(`/api/tournaments/${selected.id}/standings`),
+        requestJson<RoundDiagnostics[]>(`/api/tournaments/${selected.id}/round-diagnostics`)
+      ]);
+      setTournament(selected);
+      setStandings(standingData);
+      setDiagnostics(diagnosticData);
+      setLastUpdated(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setError(null);
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+    } finally {
+      setLoading(false);
+    }
+  }, [params.tournamentId]);
+
+  React.useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(), 15000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  const currentRound = tournament?.rounds.reduce<TournamentRound | null>((latest, round) =>
+    latest === null || round.roundNumber > latest.roundNumber ? round : latest, null) ?? null;
+  const currentDiagnostics = currentRound
+    ? diagnostics.find(item => item.roundNumber === currentRound.roundNumber)
+    : undefined;
+  const players = React.useMemo(() => new Map((tournament?.players ?? []).map(player => [player.id, player.name])), [tournament?.players]);
+  const playerName = (id?: string | null): string => id ? players.get(id) ?? id.slice(0, 8) : '—';
+
+  return (
+    <main className={`public-display ${params.mode === 'beamer' ? 'beamer' : 'spectator'}`}>
+      <header className="public-display-header">
+        <div>
+          <p className="eyebrow">{params.mode === 'beamer' ? 'Beamer-Modus' : 'Zuschaueransicht'} · read-only</p>
+          <h1>{tournament?.name ?? 'SchachTurnierManager'}</h1>
+          <p className="muted">
+            {tournament ? `Runde ${tournament.rounds.length} von ${tournament.settings.plannedRounds}` : 'Kein Turnier ausgewählt'}
+            {lastUpdated && ` · aktualisiert ${lastUpdated}`}
+          </p>
+        </div>
+        <div className="public-display-status">
+          <strong>{currentDiagnostics?.openBoards ?? 0}</strong>
+          <span>offene Bretter</span>
+        </div>
+      </header>
+
+      {loading && <p className="muted">Lädt …</p>}
+      {error && <p className="board-dice-error">⚠ {error}</p>}
+      {!loading && !error && !tournament && <p className="board-dice-error">Kein Turnier gefunden.</p>}
+
+      {tournament && (
+        <section className="public-display-grid">
+          <article className="public-panel public-pairings-panel">
+            <h2>{currentRound ? `Paarungen Runde ${currentRound.roundNumber}` : 'Noch keine Runde'}</h2>
+            {!currentRound && <p className="muted">Sobald die erste Runde ausgelost ist, erscheinen hier die Paarungen.</p>}
+            {currentRound && (
+              <div className="table-scroll compact">
+                <table className="public-pairings-table">
+                  <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Ergebnis</th><th>Chess960</th></tr></thead>
+                  <tbody>
+                    {currentRound.pairings.map(pairing => (
+                      <tr key={`public-pairing-${pairing.boardNumber}`} className={!pairing.isBye && !pairing.result.isPlayed ? 'public-open-row' : ''}>
+                        <td>{pairing.boardNumber}</td>
+                        <td>{playerName(pairing.whitePlayerId)}</td>
+                        <td>{pairing.isBye ? 'spielfrei' : playerName(pairing.blackPlayerId)}</td>
+                        <td>{resultLabel(pairing.result.kind)}</td>
+                        <td>{chess960DisplayPublic(pairing)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+
+          <article className="public-panel public-standings-panel">
+            <h2>Tabelle</h2>
+            <div className="table-scroll compact">
+              <table className="public-standings-table">
+                <thead><tr><th>Rang</th><th>Name</th><th>Punkte</th><th>Siege</th><th>Buchholz</th></tr></thead>
+                <tbody>
+                  {standings.map(row => (
+                    <tr key={`public-standing-${row.playerId}`}>
+                      <td>{row.rank}</td>
+                      <td>{row.name}</td>
+                      <td>{row.points}</td>
+                      <td>{row.wins}</td>
+                      <td>{row.buchholz}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      )}
+    </main>
+  );
+}
+
+function chess960DisplayPublic(pairing: Pairing): string {
+  if (pairing.isBye) {
+    return '—';
+  }
+  return pairing.chess960StartPosition
+    ? `${pairing.chess960StartPosition.whiteBackRank} · SP ${pairing.chess960StartPosition.positionNumber}`
+    : '—';
+}
+
 const mainTabs = [
   { id: 'overview', label: 'Übersicht' },
   { id: 'participants', label: 'Teilnehmer' },
   { id: 'rounds', label: 'Runden / Auslosung' },
   { id: 'standings', label: 'Tabelle / Ergebnisse' },
   { id: 'print', label: 'Druck / Backup' },
+  { id: 'help', label: 'Hilfe / Assistent' },
   { id: 'admin', label: 'Verwaltung' }
 ] as const;
 
@@ -1293,6 +1536,12 @@ function isMainTab(value: string | null): value is MainTab {
 
 function App() {
   const [health, setHealth] = React.useState<Health | null>(null);
+  const [aiHelpStatus, setAiHelpStatus] = React.useState<AiHelpStatus>(fallbackAiHelpStatus);
+  const [aiHelpQuestion, setAiHelpQuestion] = React.useState('Wie teste ich QR am Handy?');
+  const [aiHelpSearch, setAiHelpSearch] = React.useState('');
+  const [aiHelpAnswer, setAiHelpAnswer] = React.useState<string>('KI-Hilfe nicht konfiguriert');
+  const [aiHelpWarnings, setAiHelpWarnings] = React.useState<string[]>([]);
+  const [aiHelpLoading, setAiHelpLoading] = React.useState(false);
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [selectedId, setSelectedId] = React.useState<string>('');
   const [standings, setStandings] = React.useState<StandingRow[]>([]);
@@ -1345,6 +1594,19 @@ function App() {
   const auditJournalInfoCount = auditJournal.length - auditJournalWarningCount - auditJournalCriticalCount;
   const auditJournalRoundEntryCount = auditJournal.filter(entry => entry.roundNumber !== null && entry.roundNumber !== undefined).length;
   const auditJournalPlayerEntryCount = auditJournal.filter(entry => Boolean(entry.playerId || entry.playerName)).length;
+  const visibleAiHelpTopics = React.useMemo(() => {
+    const query = aiHelpSearch.trim().toLowerCase();
+    const topics = aiHelpStatus.topics.length > 0 ? aiHelpStatus.topics : fallbackAiHelpStatus.topics;
+    if (!query) {
+      return topics;
+    }
+
+    return topics.filter(topic =>
+      topic.title.toLowerCase().includes(query) ||
+      topic.summary.toLowerCase().includes(query) ||
+      topic.body.toLowerCase().includes(query) ||
+      topic.tags.some(tag => tag.toLowerCase().includes(query)));
+  }, [aiHelpSearch, aiHelpStatus.topics]);
 
   const loadTournaments = React.useCallback(async (): Promise<Tournament[]> => {
     const data = await requestJson<Tournament[]>('/api/tournaments');
@@ -1397,6 +1659,17 @@ function App() {
     requestJson<Health>('/api/health')
       .then(setHealth)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+    requestJson<AiHelpStatus>('/api/help/assistant')
+      .then(status => {
+        setAiHelpStatus(status);
+        setAiHelpAnswer(status.message);
+        setAiHelpWarnings(status.isConfigured ? [] : [status.message]);
+      })
+      .catch(() => {
+        setAiHelpStatus(fallbackAiHelpStatus);
+        setAiHelpAnswer(fallbackAiHelpStatus.message);
+        setAiHelpWarnings([fallbackAiHelpStatus.message]);
+      });
     loadTournaments().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
   }, [loadTournaments]);
 
@@ -1988,6 +2261,34 @@ function App() {
     await refresh(selectedTournament.id);
   }
 
+  async function askAiHelp(): Promise<void> {
+    const question = aiHelpQuestion.trim();
+    setAiHelpSearch(question);
+    setAiHelpLoading(true);
+    try {
+      if (!aiHelpStatus.isConfigured) {
+        setAiHelpAnswer('KI-Hilfe nicht konfiguriert');
+        setAiHelpWarnings(['KI-Hilfe nicht konfiguriert']);
+        return;
+      }
+
+      const response = await requestJson<AiHelpResponse>('/api/help/assistant/ask', {
+        method: 'POST',
+        body: JSON.stringify({ question })
+      });
+      setAiHelpAnswer(response.answer || 'KI-Hilfe nicht konfiguriert');
+      setAiHelpWarnings(response.warnings);
+      if (response.topics.length > 0) {
+        setAiHelpSearch(question);
+      }
+    } catch {
+      setAiHelpAnswer('KI-Hilfe nicht konfiguriert');
+      setAiHelpWarnings(['KI-Hilfe nicht konfiguriert']);
+    } finally {
+      setAiHelpLoading(false);
+    }
+  }
+
   async function exportPlayers() {
     if (!selectedTournament) {
       return;
@@ -2492,15 +2793,39 @@ function openRoundPrint(roundNumber: number) {
     return roundNumber === null ? undefined : diagnosticsFor(roundNumber);
   }
 
-  function operatorPreviewUrl(): string {
+  function localLinkHost(): string {
+    return laptopIp.trim() || window.location.hostname;
+  }
+
+  function localLinkBaseUrl(): string {
     const port = window.location.port ? `:${window.location.port}` : '';
-    const host = laptopIp.trim() || window.location.hostname;
+    const host = localLinkHost();
     return `${window.location.protocol}//${host}${port}/`;
   }
 
+  function publicDisplayUrl(mode: 'spectator' | 'beamer'): string {
+    if (!selectedTournament) {
+      return localLinkBaseUrl();
+    }
+
+    const query = new URLSearchParams({
+      view: mode === 'beamer' ? 'beamer' : 'public',
+      tournament: selectedTournament.id,
+      mode
+    });
+    return `${localLinkBaseUrl()}?${query.toString()}`;
+  }
+
+  function operatorPreviewUrl(): string {
+    return localLinkBaseUrl();
+  }
+
   function operatorPreviewHostIsLocal(): boolean {
-    const host = laptopIp.trim() || window.location.hostname;
-    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    return isLoopbackHost(localLinkHost());
+  }
+
+  function localQrIsPhoneReachable(): boolean {
+    return isPrivateLanHost(localLinkHost());
   }
 
   function operatorAlerts(): OperatorAlert[] {
@@ -2771,7 +3096,7 @@ function openRoundPrint(roundNumber: number) {
     <main className={`shell${outdoorMode ? ' outdoor' : ''}`}>
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.43.0</p>
+          <p className="eyebrow">Lokaler Turnierleiter · v0.44.0</p>
           <h1>SchachTurnierManager</h1>
           <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
         </div>
@@ -3199,22 +3524,33 @@ function openRoundPrint(roundNumber: number) {
                     </section>
 
                     <section className="operator-dashboard-panel operator-phone-panel">
-                      <h4>Lokale Handy-/Operator-Preview</h4>
+                      <h4>QR / Handy / Beamer</h4>
+                      <label className="qr-ip-label">
+                        Laptop-IP im WLAN/Hotspot
+                        <input
+                          type="text"
+                          value={laptopIp}
+                          placeholder="z. B. 192.168.0.42"
+                          onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLaptopIp(event.target.value)}
+                        />
+                      </label>
+                      {operatorPreviewHostIsLocal() && <p className="board-dice-warning">Auf dem Handy funktioniert <code>localhost</code> nicht. LAN-IP des Laptops eintragen und im gleichen WLAN/Hotspot testen.</p>}
+                      {!operatorPreviewHostIsLocal() && !localQrIsPhoneReachable() && <p className="board-dice-warning">QR nur für private lokale Adressen anzeigen. Bitte eine 10.x, 172.16-31.x oder 192.168.x Laptop-IP nutzen.</p>}
                       <div className="operator-phone-grid">
-                        <div className="operator-phone-qr"><QrPanel url={operatorPreviewUrl()} /></div>
-                        <div>
-                          <label className="qr-ip-label">
-                            Laptop-IP im WLAN/Hotspot
-                            <input
-                              type="text"
-                              value={laptopIp}
-                              placeholder="z. B. 192.168.0.42"
-                              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLaptopIp(event.target.value)}
-                            />
-                          </label>
+                        <div className="operator-link-card">
+                          <strong>Zuschauer / Beamer</strong>
+                          {localQrIsPhoneReachable() ? <QrPanel url={publicDisplayUrl('spectator')} /> : <p className="muted">QR erscheint nach Eingabe einer privaten LAN-IP.</p>}
+                          <code className="qr-url">{publicDisplayUrl('spectator')}</code>
+                          <div className="actions compact-actions">
+                            <button type="button" className="small secondary" onClick={() => window.open(publicDisplayUrl('spectator'), '_blank', 'noopener,noreferrer')} disabled={!selectedTournament}>Zuschauer öffnen</button>
+                            <button type="button" className="small secondary" onClick={() => window.open(publicDisplayUrl('beamer'), '_blank', 'noopener,noreferrer')} disabled={!selectedTournament}>Beamer öffnen</button>
+                          </div>
+                        </div>
+                        <div className="operator-link-card">
+                          <strong>Operator-Erfassung</strong>
+                          {localQrIsPhoneReachable() ? <QrPanel url={operatorPreviewUrl()} /> : <p className="muted">Operator-QR nur bei privater LAN-IP.</p>}
                           <code className="qr-url">{operatorPreviewUrl()}</code>
-                          {operatorPreviewHostIsLocal() && <p className="board-dice-warning">Auf dem Handy funktioniert <code>localhost</code> nicht. LAN-IP des Laptops eintragen und im gleichen WLAN/Hotspot testen.</p>}
-                          <p className="muted">Vorbereitung für lokalen Handy-/Hotspot-Test. Kein Cloud-Dienst, kein Tunnel.</p>
+                          <p className="muted">Nur für vertrauenswürdige lokale Geräte. Kein Tunnel, keine Cloud, keine öffentliche URL.</p>
                         </div>
                       </div>
                     </section>
@@ -4054,7 +4390,7 @@ function openRoundPrint(roundNumber: number) {
                   <h3>Turnierleiter-Exportcenter</h3>
                   <p className="muted">Schnellzugriff auf Turnierpaket, Aushänge, Tabellen, Paarungen, Audit und Backup. Ideal vor, während und nach einer Runde.</p>
                 </div>
-                <span className="export-center-badge">v0.43</span>
+                <span className="export-center-badge">v0.44</span>
               </div>
 
               <div className="export-center-metrics">
@@ -4088,6 +4424,8 @@ function openRoundPrint(roundNumber: number) {
                   <div className="export-center-actions">
                     <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Gesamt-Druckansicht</button>
                     <button type="button" className="secondary" onClick={() => openTournamentExport('package/print/html')} disabled={!selectedTournament}>Turnierpaket</button>
+                    <button type="button" className="secondary" onClick={() => window.open(publicDisplayUrl('spectator'), '_blank', 'noopener,noreferrer')} disabled={!selectedTournament}>Zuschaueransicht</button>
+                    <button type="button" className="secondary" onClick={() => window.open(publicDisplayUrl('beamer'), '_blank', 'noopener,noreferrer')} disabled={!selectedTournament}>Beamer-Modus</button>
                     <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
                     <button type="button" onClick={openNextRoundPreviewPrint} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau drucken</button>
                   </div>
@@ -4108,6 +4446,76 @@ function openRoundPrint(roundNumber: number) {
 
               <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Paket-HTML/JSON sind lokale Exporte; Restore erfolgt weiter über Backup JSON.</p>
             </article>
+          )}
+
+          {activeMainTab === 'help' && (
+          <article className="card ai-help-card">
+            <div className="ai-help-header">
+              <div>
+                <h3>Hilfe / Assistent</h3>
+                <p className="muted">Lokale Runbook-Hilfe für Start, Backup, QR, Beamer, Import, Export und Korrekturen.</p>
+              </div>
+              <span className={`status-pill ${aiHelpStatus.isConfigured ? 'audit-info' : 'audit-warning'}`}>
+                {aiHelpStatus.isConfigured ? aiHelpStatus.provider : 'KI aus'}
+              </span>
+            </div>
+
+            <div className="ai-help-grid">
+              <section className="ai-help-panel">
+                <h4>Assistentenfrage</h4>
+                <p className={aiHelpStatus.isConfigured ? 'muted' : 'warning-text'}>{aiHelpStatus.message}</p>
+                <textarea
+                  value={aiHelpQuestion}
+                  onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setAiHelpQuestion(event.target.value)}
+                  rows={4}
+                  placeholder="Frage zu Backup, QR, Beamer, Import oder Ergebniskorrektur"
+                />
+                <div className="actions">
+                  <button type="button" onClick={() => void askAiHelp()} disabled={aiHelpLoading}>
+                    {aiHelpStatus.isConfigured ? 'Assistent fragen' : 'Lokale Hilfe suchen'}
+                  </button>
+                </div>
+                <div className="ai-help-answer">
+                  <strong>Antwort</strong>
+                  <p>{aiHelpLoading ? 'Lädt …' : aiHelpAnswer}</p>
+                  {aiHelpWarnings.length > 0 && (
+                    <ul className="message-list">
+                      {aiHelpWarnings.map((warning, index) => <li key={`ai-warning-${index}`}>{warning}</li>)}
+                    </ul>
+                  )}
+                </div>
+                <p className="muted">Provider-Aufrufe sind standardmäßig deaktiviert. OpenAI/Claude/Custom-HTTP bleiben nur Config-Shape; Tests nutzen keine Cloud.</p>
+              </section>
+
+              <section className="ai-help-panel">
+                <h4>Lokale Hilfethemen</h4>
+                <input
+                  type="search"
+                  value={aiHelpSearch}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAiHelpSearch(event.target.value)}
+                  placeholder="Runbooks durchsuchen: backup, qr, beamer, import …"
+                />
+                <div className="ai-topic-list">
+                  {visibleAiHelpTopics.map(topic => (
+                    <details key={topic.id} className="ai-topic" open={visibleAiHelpTopics.length <= 4}>
+                      <summary>{topic.title}<small>{topic.source}</small></summary>
+                      <p>{topic.summary}</p>
+                      <p className="muted">{topic.body}</p>
+                      <div className="ai-topic-tags">
+                        {topic.tags.map(tag => <span key={`${topic.id}-${tag}`}>{tag}</span>)}
+                      </div>
+                    </details>
+                  ))}
+                  {visibleAiHelpTopics.length === 0 && <p className="muted">Kein lokales Hilfethema gefunden.</p>}
+                </div>
+              </section>
+            </div>
+
+            <section className="ai-config-box">
+              <h4>Provider-Config</h4>
+              <p><code>.env.example</code> dokumentiert <code>STM_AI_HELP_ENABLED=false</code>, <code>STM_AI_PROVIDER</code>, leere OpenAI-/Claude-/Custom-Beispielwerte und <code>STM_AI_DOCS_ROOT=docs</code>. Echte Keys gehören nur lokal in Umgebung/User-Secrets, nie ins Git.</p>
+            </section>
+          </article>
           )}
 
           {activeMainTab === 'admin' && (
@@ -4247,6 +4655,11 @@ function openRoundPrint(roundNumber: number) {
 }
 
 const boardDiceParams = parseBoardDiceParams(window.location.search);
+const publicDisplayParams = parsePublicDisplayParams(window.location.search);
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  boardDiceParams ? <MobileDicePage params={boardDiceParams} /> : <App />
+  boardDiceParams
+    ? <MobileDicePage params={boardDiceParams} />
+    : publicDisplayParams
+      ? <PublicDisplayPage params={publicDisplayParams} />
+      : <App />
 );

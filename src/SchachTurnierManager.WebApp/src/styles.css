@@ -83,6 +83,9 @@ textarea {
 .hero h1 {
   margin: 0.2rem 0;
   font-size: clamp(2rem, 4vw, 3.5rem);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.05;
 }
 
 .hero p {
@@ -336,6 +339,16 @@ th {
 
   .status-card {
     min-width: unset;
+  }
+}
+
+@media (max-width: 520px) {
+  .shell {
+    padding: 1rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.45rem, 7vw, 2rem);
   }
 }
 
@@ -2274,7 +2287,7 @@ th {
 
 .operator-phone-grid {
   display: grid;
-  grid-template-columns: minmax(116px, 0.45fr) minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 0.75rem;
   align-items: start;
 }
@@ -2288,6 +2301,29 @@ th {
 .operator-phone-panel .qr-url {
   display: block;
   margin: 0.55rem 0;
+}
+
+.operator-link-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.operator-link-card strong {
+  color: #f8fafc;
+}
+
+.operator-link-card .qr-svg {
+  max-width: 132px;
+  width: 100%;
+  height: auto;
+}
+
+.compact-actions {
+  gap: 0.35rem;
 }
 
 @media (max-width: 720px) {
@@ -2320,4 +2356,220 @@ th {
 .shell.outdoor .overview-grid strong {
   font-size: 1.2rem;
   color: #f8fafc;
+}
+
+/* Lokale Hilfe / Assistent. */
+.ai-help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ai-help-header h3 {
+  margin-bottom: 0.25rem;
+}
+
+.ai-help-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.1fr);
+  gap: 0.85rem;
+}
+
+.ai-help-panel,
+.ai-config-box {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 0.85rem;
+  background: rgba(2, 6, 23, 0.32);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.ai-help-panel h4,
+.ai-config-box h4 {
+  margin: 0;
+}
+
+.ai-help-answer {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.ai-help-answer p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.ai-topic-list {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 34rem;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.ai-topic {
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.ai-topic summary {
+  cursor: pointer;
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.ai-topic summary small {
+  display: block;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 0.2rem;
+  overflow-wrap: anywhere;
+}
+
+.ai-topic p {
+  margin: 0.45rem 0 0;
+}
+
+.ai-topic-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.ai-topic-tags span {
+  padding: 0.14rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+  font-size: 0.75rem;
+}
+
+.ai-config-box {
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 860px) {
+  .ai-help-grid,
+  .ai-help-header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Read-only Zuschauer-/Beamer-Anzeige. */
+.public-display {
+  min-height: 100vh;
+  padding: clamp(1rem, 3vw, 2rem);
+  background: #0b1120;
+  color: #e5e7eb;
+}
+
+.public-display-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.public-display-header h1 {
+  margin: 0.15rem 0 0.25rem;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1.05;
+}
+
+.public-display-status {
+  min-width: 8rem;
+  text-align: center;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.22);
+}
+
+.public-display-status strong {
+  display: block;
+  font-size: 2rem;
+}
+
+.public-display-status span {
+  color: #fecaca;
+  font-size: 0.85rem;
+}
+
+.public-display-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 1rem;
+}
+
+.public-panel {
+  padding: 1rem;
+  border-radius: 0.8rem;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.public-panel h2 {
+  margin: 0 0 0.75rem;
+}
+
+.public-display table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.public-display th,
+.public-display td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.public-display th {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.public-display.beamer {
+  padding: clamp(1.25rem, 4vw, 3rem);
+}
+
+.public-display.beamer .public-display-grid {
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
+.public-display.beamer th,
+.public-display.beamer td {
+  font-size: 1.15rem;
+  padding: 0.75rem 0.65rem;
+}
+
+.public-open-row td {
+  background: rgba(120, 53, 15, 0.22);
+}
+
+@media (max-width: 820px) {
+  .public-display-header,
+  .public-display-grid,
+  .public-display.beamer .public-display-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .public-display-status {
+    text-align: left;
+  }
 }

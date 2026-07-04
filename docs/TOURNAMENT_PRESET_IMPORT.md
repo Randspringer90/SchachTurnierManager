@@ -28,6 +28,10 @@ Das Operator-Dashboard erinnert in der Übersicht an diesen Report-Pfad. Echte
 `local-input/**/*.local.json`-Dateien und erzeugte Reports bleiben lokal und werden nicht
 committet.
 
+Der Reiter **Hilfe / Assistent** enthält ein lokales Hilfethema zum Preset-Import. Diese Hilfe
+indexiert keine echten `local-input/**/*.local.json`-Dateien und sendet keine Teilnehmerdaten
+an Provider; der KI-Provider-Default bleibt `KI-Hilfe nicht konfiguriert`.
+
 ## Import
 
 Backend muss laufen. Vor dem echten Import immer zuerst den Dry-run-Report pruefen. Danach:

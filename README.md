@@ -2,7 +2,7 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.43.x
+## Aktueller Stand bis 0.44.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
@@ -10,6 +10,10 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
   bewusstem `-AllowWarnings` fuer Warnungsimporte.
 - Verdichtetes Operator-Dashboard mit nächstem Schritt, offenen Ergebnissen, Backup-/Audit-Stand,
   Warnungen, Import-/Export-Aktionen und lokaler Handy-/Hotspot-Preview.
+- Read-only Zuschauer-/Beamer-Ansicht für aktuelle Paarungen und Tabelle, per lokaler URL/QR
+  aus dem Dashboard erreichbar.
+- Reiter **Hilfe / Assistent** mit lokalen Runbook-Themen, Suche und sicher deaktiviertem
+  KI-Provider-Default (`KI-Hilfe nicht konfiguriert`).
 - Externe Spielerdaten per FIDE-ID suchen und übernehmen.
 - Schweizer-System-Paarungen mit global optimaler Rematch-Vermeidung bis 20 Spieler,
   Audit, Bye-/kampflos-Prüfungen und Regressionstests.
@@ -19,7 +23,8 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Operator-Readiness-Smoke für lokale synthetische Turniertagsprüfung.
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
-- Kollaborations- und KI-Hilfe-Konzept vorbereitet; KI ist default-aus und nur als BYO-Key/local-secret geplant.
+- Kollaborations- und KI-Hilfe-Konzept vorbereitet; lokale Docs-only-Hilfe ist möglich,
+  echte Provider bleiben default-aus und nur als BYO-Key/local-secret geplant.
 
 ## Bewusste Grenzen
 
@@ -27,6 +32,8 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Felder mit mehr als 20 aktiven Spielern nutzen den dokumentierten Greedy-Fallback.
 - QR/Handy funktioniert nur im gleichen WLAN/Hotspot und muss vor Ort mit echter Laptop-IP
   getestet werden; Browser-Würfeln am Laptop bleibt der Fallback.
+- Zuschauer-/Beamer-Links sind lokale read-only Ansichten; echter Beamer-/Handy-/WLAN-Test
+  bleibt vor Ort manuell.
 
 ## Schnellstart (empfohlen)
 
@@ -144,6 +151,27 @@ Im Tab **Druck / Backup** gibt es das gebündelte Turnierpaket:
 Das HTML-Paket enthält Teilnehmerliste, Tabelle, Ergebnisbogen der aktuellen Runde und klare
 Backup-/Audit-Hinweise. PDF wird nicht nativ erzeugt; bei Bedarf im Browser über **Drucken →
 als PDF speichern**.
+
+## Zuschauer, Handy und Beamer
+
+Die Dashboard-Übersicht zeigt unter **QR / Handy / Beamer** lokale Links:
+
+- **Zuschaueransicht:** `http://<Laptop-IP>:5173/?view=public&tournament=<id>&mode=spectator`
+- **Beamer-Modus:** `http://<Laptop-IP>:5173/?view=beamer&tournament=<id>&mode=beamer`
+- **Operator-Erfassung:** nur als QR sichtbar, wenn eine private LAN-IP eingetragen ist
+  (`10.x`, `172.16-31.x`, `192.168.x`).
+
+Die Zuschauer-/Beamer-Seite ist read-only und zeigt aktuelle Paarungen, offene Bretter und
+Tabelle. Sie nutzt keinen Tunnel und keinen Cloud-Dienst. Für Handy/Beamer immer echte
+Laptop-IP im selben WLAN/Hotspot testen; `localhost` funktioniert nur am Laptop.
+
+## Hilfe / Assistent
+
+Der Reiter **Hilfe / Assistent** durchsucht lokale Hilfethemen aus Runbooks/Doku zu Start,
+Backup, Restore, QR, Beamer, Preset-Import, Export, Ergebnis-Korrektur und Zusammenarbeit.
+Provider-Aufrufe sind standardmäßig deaktiviert und melden klar `KI-Hilfe nicht konfiguriert`.
+`STM_AI_PROVIDER=local-docs` kann lokal für Docs-only-Antworten aktiviert werden; OpenAI,
+Claude und Custom-HTTP sind nur als leere Config-Shape in `.env.example` vorbereitet.
 
 ## Release-Gate
 

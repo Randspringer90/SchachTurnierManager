@@ -146,6 +146,7 @@ public sealed class TournamentExportFormatter
             exportedAt = DateTimeOffset.UtcNow,
             backupHint = "Vor und nach jeder Runde zusätzlich JSON-Backup ziehen; diese Paketdatei ersetzt kein Restore-Backup.",
             auditHint = "Nach jeder Runde und am Turnierende Audit-Bundle exportieren.",
+            displayHint = "Zuschauer-/Beamer-Ansichten sind lokale read-only Links der WebApp und enthalten keine Operator-Controls.",
             tournament = new
             {
                 id = tournament.Id,
@@ -226,7 +227,9 @@ public sealed class TournamentExportFormatter
                 currentPairingsCsv = currentRound is null ? null : $"pairings/export.csv?roundNumber={currentRound.RoundNumber}",
                 allPairingsCsv = "pairings/export.csv",
                 backupJson = "export/json",
-                auditBundleJsonl = "audit-journal/export.jsonl"
+                auditBundleJsonl = "audit-journal/export.jsonl",
+                spectatorView = "?view=public",
+                beamerView = "?view=beamer"
             }
         };
 
@@ -362,12 +365,14 @@ public sealed class TournamentExportFormatter
         builder.AppendLine("<section><h2>Operator-Hinweise</h2>");
         builder.AppendLine("<div class=\"diagnostics\"><strong>Turnierpaket-Inhalt:</strong><ul>");
         builder.AppendLine("<li>Teilnehmerliste</li>");
+        builder.AppendLine($"<li>Paarungen für {Html(currentRoundLabel)}</li>");
         builder.AppendLine("<li>Aktuelle Tabelle / Standings</li>");
         builder.AppendLine($"<li>Ergebnisbogen für {Html(currentRoundLabel)}</li>");
         builder.AppendLine("<li>Backup- und Audit-Erinnerung</li>");
         builder.AppendLine("</ul></div>");
         builder.AppendLine("<div class=\"diagnostics\"><strong>Backup:</strong> Vor Runde 1, nach jeder Runde und am Turnierende ein separates JSON-Backup exportieren. Dieses HTML-Paket ist ein Aushang-/Kontrollpaket und ersetzt kein Restore-Backup.</div>");
         builder.AppendLine("<div class=\"diagnostics\"><strong>Audit:</strong> Nach jeder Runde zusätzlich das Audit-Bundle exportieren, damit Paarungen, Korrekturen und Warnungen forensisch nachvollziehbar bleiben.</div>");
+        builder.AppendLine("<div class=\"diagnostics\"><strong>Zuschauer/Beamer:</strong> Für Anzeige am Handy oder Beamer die lokale read-only Ansicht der WebApp nutzen. Operator-Ansicht nur auf vertrauenswürdigen lokalen Geräten öffnen.</div>");
         builder.AppendLine($"<p class=\"muted\">Geplante Runden: {tournament.Settings.PlannedRounds} · aktuelle Runde: {Html(currentRoundLabel)}</p>");
         builder.AppendLine("</section>");
     }

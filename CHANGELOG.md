@@ -1,3 +1,26 @@
+## 0.44.0 - Hilfe/Assistent, Zuschauer-/Beamer-Ansicht und lokale QR-Härtung
+
+Feature-Scheibe für Turnierleiter-Komfort ohne Pairing-/Wertungsumbau. Keine echten
+KI-Provider-Aufrufe, keine Cloud, keine neuen schweren Dependencies, kein Push/Release/PR.
+
+- **Hilfe / Assistent:** neuer Dashboard-Reiter mit lokalen Hilfethemen aus Runbooks/Doku
+  (Start, Backup/Restore, Audit, Preset-Import, QR/Handy, Beamer/Zuschauer, Export,
+  Ergebnis-Korrektur, Zusammenarbeit). Lokale Suche bleibt nutzbar, auch wenn kein Provider
+  konfiguriert ist.
+- **KI-Provider-Abstraktion:** Application-Vertrag `IAiHelpProvider`, deaktivierter
+  Default-Provider mit klarer Meldung `KI-Hilfe nicht konfiguriert` und Docs-only-Provider
+  `local-docs`. OpenAI/Claude/Custom-HTTP bleiben nur Config-Shape in `.env.example`; Tests
+  rufen keine Provider auf.
+- **Zuschauer-/Beamer-Ansicht:** neue read-only WebApp-Route `?view=public|beamer` zeigt
+  aktuelle Paarungen, offene Bretter und Tabelle ohne Operator-Controls. Auto-Refresh lokal,
+  keine Schreibaktionen.
+- **QR-/LAN-Härtung:** Dashboard trennt Zuschauer/Beamer-QR von Operator-Erfassung. QR-Codes
+  für Handy/Operator erscheinen nur bei privater LAN-IP (`10.x`, `172.16-31.x`, `192.168.x`
+  oder `.local`), nicht bei `localhost`.
+- **Turnierpaket:** HTML/JSON nennt Paarungen, Ergebnisbogen, Backup/Audit und
+  Zuschauer-/Beamer-Hinweis expliziter. PDF bleibt Browser-Druck.
+- **Version:** `0.43.0` -> `0.44.0` (Health, `package.json`, Lockfile-Root).
+
 ## 0.43.0 - Operator-Dashboard und Export-/Print-Turnierpaket
 
 Turniertags-Folgearbeit auf Basis 0.42.0. Fokus: Bedienbarkeit am Spielort, lokales

@@ -15,6 +15,8 @@ Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 - [ ] Operator-Smoke grün: `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
 - [ ] Turnierpaket geprüft: Dashboard → Druck / Backup → Paket HTML drucken / Paket JSON.
 - [ ] QR-Vorabtest am Handy gemacht (Laptop-IP eingetragen, gleiches WLAN) — siehe Runbook §9.
+- [ ] Zuschauer-/Beamer-Ansicht geöffnet und geprüft: keine Operator-Buttons, Paarungen/Tabelle lesbar.
+- [ ] Reiter „Hilfe / Assistent" geöffnet; `KI-Hilfe nicht konfiguriert` ist als Default ok.
 
 ## Turnier anlegen
 
@@ -108,6 +110,8 @@ Invoke-RestMethod "http://localhost:5088/api/tournaments/$tournamentId/export/js
 - Paarungen CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/pairings/export.csv`
 - Turnierpaket HTML: `http://localhost:5088/api/tournaments/<Turnier-Id>/package/print/html`
 - Turnierpaket JSON: `http://localhost:5088/api/tournaments/<Turnier-Id>/package/export.json`
+- Zuschaueransicht: `http://<Laptop-IP>:5173/?view=public&tournament=<Turnier-Id>&mode=spectator`
+- Beamer-Modus: `http://<Laptop-IP>:5173/?view=beamer&tournament=<Turnier-Id>&mode=beamer`
 - Turnierdruck: `http://localhost:5088/api/tournaments/<Turnier-Id>/print/html`
 - Rundenblatt: `http://localhost:5088/api/tournaments/<Turnier-Id>/rounds/<Runde>/print/html`
 - Audit JSONL: `http://localhost:5088/api/tournaments/<Turnier-Id>/audit-journal/export.jsonl`

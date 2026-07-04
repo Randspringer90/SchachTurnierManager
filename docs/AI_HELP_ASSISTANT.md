@@ -1,17 +1,17 @@
 # KI-Hilfe / interner Assistent
 
-Status: Architekturvorbereitung, noch keine produktive Integration. Default bleibt aus.
+Status: erste sichere Integration ab 0.44.0. Default bleibt aus.
 
 ## Ziel
 
-Ein spaeterer In-App-Assistent soll Turnierleitern lokale Hilfe geben:
+Der In-App-Reiter **Hilfe / Assistent** gibt Turnierleitern lokale Hilfe:
 
 - Runbook-Fragen beantworten: Start, Backup, Restore, Import, Export, QR/Chess960.
 - Operator-Checklisten zusammenfassen.
 - Fehlermeldungen aus App/Skripten erklaeren.
 - Keine Paarungen automatisch aendern und keine Turnierdaten ohne bewusste Freigabe senden.
 
-## Nicht-Ziele fuer die erste Umsetzung
+## Nicht-Ziele
 
 - Keine Cloud-Aufrufe in Tests.
 - Keine API-Keys, Tokens oder Provider-Secrets im Git.
@@ -20,27 +20,29 @@ Ein spaeterer In-App-Assistent soll Turnierleitern lokale Hilfe geben:
 
 ## Provider-Abstraktion
 
-Geplanter Application-Vertrag:
+Implementierter Application-Vertrag:
 
 ```csharp
 public interface IAiHelpProvider
 {
+    AiHelpStatus GetStatus();
     Task<AiHelpResponse> AskAsync(AiHelpRequest request, CancellationToken cancellationToken);
 }
 
-public sealed record AiHelpRequest(
-    string Question,
-    IReadOnlyList<AiHelpDocument> LocalContext,
-    AiHelpMode Mode);
+public sealed record AiHelpRequest(string Question);
 
 public sealed record AiHelpResponse(
+    bool IsConfigured,
+    AiHelpMode Mode,
+    string Provider,
     string Answer,
     IReadOnlyList<string> Citations,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<AiHelpTopic> Topics);
 
 public enum AiHelpMode
 {
-    Mock = 0,
+    Disabled = 0,
     LocalDocsOnly = 1,
     OpenAi = 2,
     Anthropic = 3,
@@ -48,15 +50,21 @@ public enum AiHelpMode
 }
 ```
 
-Erste Implementierung soll mit `Mock`/`LocalDocsOnly` starten. Provider wie OpenAI oder Claude
-werden erst danach als optionale Adapter verdrahtet.
+Implementiert sind:
+
+- `DisabledAiHelpProvider`: Default, liefert klar `KI-Hilfe nicht konfiguriert`.
+- `LocalDocsAiHelpProvider`: lokale Docs-only-Antworten aus kuratierten Runbook-Themen.
+
+Nicht implementiert sind echte OpenAI-/Claude-/Custom-HTTP-Adapter. Sie bleiben bewusst nur
+Config-Shape, bis BYO-Key, Kostenkontrolle, Datenschutz und Tests explizit freigegeben sind.
 
 ## Lokale Config-Shape
 
 Siehe `.env.example`. Erwartete Regeln:
 
 - `STM_AI_HELP_ENABLED=false` als Default.
-- `STM_AI_PROVIDER=mock` als Default.
+- `STM_AI_PROVIDER=disabled` als Default.
+- Optional lokal: `STM_AI_PROVIDER=local-docs` mit `STM_AI_HELP_ENABLED=true`.
 - Provider-Keys nur lokal in `.env`, User Secrets oder Prozessumgebung.
 - `.env` bleibt gitignored; `.env.example` enthaelt nur leere Beispielwerte.
 - Tests duerfen keine echten Provider ansprechen.
@@ -73,8 +81,17 @@ Zulaessige erste Quellen:
 - `docs/AUDIT_JOURNAL.md`
 - `docs/SWISS_PAIRING_ENGINE.md`
 
-Private Quellen wie `local-input/**`, `output/**`, Datenbanken, Logs und Backups sind standardmaessig
-ausgeschlossen.
+Private Quellen wie `local-input/**`, `output/**`, Datenbanken, Logs und Backups sind
+ausgeschlossen. Die 0.44.0-Implementierung nutzt kuratierte Themen und indexiert keine
+privaten Rohdaten.
+
+## UI-Verhalten
+
+- Der Reiter **Hilfe / Assistent** zeigt Provider-Status, Fragefeld, Antwortbox und lokale
+  Hilfethemen-Suche.
+- Bei fehlender Konfiguration bleibt die UI bedienbar und zeigt `KI-Hilfe nicht konfiguriert`.
+- Lokale Hilfethemen bleiben auch bei Backend-/Providerfehlern als Fallback sichtbar.
+- Providerfehler duerfen die App nicht blockieren; die API gibt eine weiche Antwort mit Warnung.
 
 ## Secret-Gates
 

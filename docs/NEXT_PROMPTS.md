@@ -1,7 +1,7 @@
 # NEXT_PROMPTS.md
 
 Konsolidierte, vorbereitete Arbeitsauftraege fuer kommende Entwicklungslaeufe.
-Stand: 2026-07-04 (Basis: 0.43.0 Feature-Lauf, Operator-Dashboard und Turnierpaket lokal getestet).
+Stand: 2026-07-04 (Basis: 0.44.0 Feature-Lauf, Hilfe/Assistent und Zuschauer-/Beamer-Ansicht lokal getestet).
 
 ## Erledigt am 2026-07-03
 - Preset-Import fuer Bergfest/lokale Turniere gehaertet:
@@ -26,14 +26,21 @@ Stand: 2026-07-04 (Basis: 0.43.0 Feature-Lauf, Operator-Dashboard und Turnierpak
   bleiben erhalten; PDF nur ueber Browser-Druck.
 - Lokale Handy-/Operator-Preview im Dashboard vorbereitet (Laptop-IP + QR, keine Cloud).
 - Operator-Smoke prueft Paket-HTML/JSON.
+- Sichere Hilfe-/Assistenten-Scheibe umgesetzt: Application-Provider-Interface,
+  deaktivierter Default mit `KI-Hilfe nicht konfiguriert`, lokaler Docs-only-Provider,
+  UI-Reiter mit Runbook-Themensuche; keine echten Provider-/Cloud-Aufrufe.
+- Read-only Zuschauer-/Beamer-Ansicht umgesetzt: lokale WebApp-Route fuer aktuelle Paarungen,
+  offene Bretter und Tabelle; Dashboard trennt Zuschauer/Beamer-QR von Operator-Erfassung.
+- Kollaboration, Runbooks, Operator-Card und Checklist um Rollen, Beamer/Handy und KI-Hilfe
+  erweitert.
 
-## Naechster Prompt - Feature-Scheibe 3
+## Naechster Prompt - Feature-Scheibe 4
 ```text
 Du arbeitest lokal in D:\Schach\SchachTurnierManager.
 Public-Sonderfall: lokale Commits erlaubt, aber kein Push/Release/PR.
 
-Ziel: Echten Vor-Ort-Offline-/Fallback-Test und Zuschauer-/Beamer-Vorbereitung fuer den
-SchachTurnierManager umsetzen.
+Ziel: Echten Vor-Ort-Offline-/Fallback-Test, Handy-/Beamer-Validierung und Mehr-Operator-
+Härtung fuer den SchachTurnierManager umsetzen.
 Erst Ist-Zustand lesen: AGENTS.md, PLANS.md, README.md, CHANGELOG.md,
 docs/BERGFEST_MVP_RUNBOOK.md, docs/TOURNAMENT_PRESET_IMPORT.md,
 docs/COLLABORATION.md, docs/AI_HELP_ASSISTANT.md, docs/completions/**, relevante Tests/Skripte.
@@ -41,24 +48,28 @@ docs/COLLABORATION.md, docs/AI_HELP_ASSISTANT.md, docs/completions/**, relevante
 Umfang:
 - P0: Offline-/Fallback-Betrieb mit synthetischem Vor-Ort-Szenario pruefen und dokumentieren:
   Backend/Frontend-Neustart, direkt nutzbare Export-Links, Backup/Restore, Papier-Fallback.
-- P0: Beamer-/Zuschaueransicht vorbereiten: lokale, read-only Anzeige fuer Tabelle/aktuelle
-  Paarungen ohne Operator-Controls; keine Cloud, kein externer Dienst.
-- P1: Handy-/QR-Testpfad weiter vorbereiten, aber echten Handy/WLAN-Test als manuellen
-  offenen Punkt belassen, falls kein reales Geraet/Netz verfuegbar ist.
+- P0: Zuschauer-/Beamer-Ansicht real mit lokaler Laptop-IP testen und dokumentieren:
+  Desktop-Beamer, schmale Handybreite, gleicher WLAN/Hotspot, Firewall-Hinweise.
+- P0: Ergebnis-Korrektur- und Backup-Hinweise in kritischen Flows weiter haerten:
+  Import/Restore/Reset/Delete, offene Ergebnisse, ungepruefte Runden.
+- P1: Mehr-Operator-Konzept konkretisieren: Rollen, Schreibkonflikte, wer darf erfassen,
+  wie werden parallele Korrekturen vermieden; keine GitHub-/Cloud-/Admin-Aktionen.
+- P1: Hilfe/Assistent weiter lokal ausbauen: mehr Runbook-Themen, ggf. docs-only Provider
+  nur lokal aktivierbar; keine privaten Rohdaten indexieren.
 - Kein FIDE-Dutch-Umbau, keine KI-Cloud-Aufrufe, keine echten local-input-Daten committen.
 
 Checks: dotnet test, npm run build, Import-DryRun mit synthetischem tmp-Preset,
-Smoke-OperatorWorkflow.ps1, Secret-/Token-Scan, .npmrc-Pruefung, git diff --check.
+Smoke-OperatorWorkflow.ps1, Test-RepositoryOpenSourceSafety.ps1, Test-GitCommitSafety.ps1,
+Secret-/Token-Scan, .npmrc-Pruefung, git diff --check, Portable-Package-Gate falls betroffen.
 Bei gruenem Gate lokal committen.
 ```
 
 ## Priorisierte offene Feature-Liste
-- P0: Offline-/Fallback-Test mit echter Vor-Ort-Ausstattung; Beamer-/Zuschaueransicht ohne
-  Operator-Bedienelemente.
+- P0: Offline-/Fallback-Test mit echter Vor-Ort-Ausstattung; realer Handy-/Beamer-/WLAN-Test.
 - P1: Chess960/QR real testen; Tie-Breaks fuer kampflos/unplayed rounds integrieren;
   Swiss-Pairing Richtung FIDE-Dutch vertiefen; lokale Spielersuche beschleunigen.
-- P2: Mehr-Operator-Konzept; Notizen/Kommentare; KI-Hilfe mit BYO-Key und lokaler
-  Runbook-Anbindung; Beamer-/Publikumsmodus; Vereinsseite-/WhatsApp-/PDF-Exports.
+- P2: Mehr-Operator-Konzept; Notizen/Kommentare; echte optionale KI-Adapter erst nach
+  Datenschutz-/Kostenfreigabe; Vereinsseite-/WhatsApp-/PDF-Exports.
 
 ## Erledigt am 2026-06-16
 - Priorisierte `docs/FEATURE_ROADMAP.md` (P1–P5) angelegt.

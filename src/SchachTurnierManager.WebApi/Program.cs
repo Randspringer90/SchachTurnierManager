@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SchachTurnierManager.Application;
+using SchachTurnierManager.Application.Ai;
 using SchachTurnierManager.Application.External;
 using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Infrastructure;
@@ -45,6 +46,7 @@ else
 builder.Services.AddSchachTurnierPersistence(connectionString);
 builder.Services.AddFileAuditJournalSink(auditDirectory);
 builder.Services.AddExternalPlayerLookupAdapters();
+builder.Services.AddSingleton(CreateAiHelpProvider(builder.Configuration));
 builder.Services.AddScoped<TournamentService>();
 builder.Services.AddCors(options =>
 {
@@ -127,12 +129,34 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.43.0",
+    version = "0.44.0",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,
     embeddedDashboard = embeddedDashboardAvailable
 }));
+
+app.MapGet("/api/help/assistant", (IAiHelpProvider provider) => Results.Ok(provider.GetStatus()));
+
+app.MapPost("/api/help/assistant/ask", async (AiHelpRequest request, IAiHelpProvider provider, CancellationToken cancellationToken) =>
+{
+    var status = provider.GetStatus();
+    try
+    {
+        return Results.Ok(await provider.AskAsync(request, cancellationToken));
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new AiHelpResponse(
+            IsConfigured: false,
+            Mode: status.Mode,
+            Provider: status.Provider,
+            Answer: DisabledAiHelpProvider.NotConfiguredMessage,
+            Citations: [],
+            Warnings: [$"Provider-Fehler: {ex.Message}", DisabledAiHelpProvider.NotConfiguredMessage],
+            Topics: status.Topics));
+    }
+});
 
 
 app.MapGet("/api/external-players/providers", (ExternalPlayerLookupService service) => Results.Ok(service.Providers));
@@ -810,6 +834,20 @@ static bool TryParseExternalPlayerSource(string? value, out ExternalPlayerSource
     }
 
     return Enum.TryParse(value, ignoreCase: true, out source);
+}
+
+static IAiHelpProvider CreateAiHelpProvider(IConfiguration configuration)
+{
+    var enabled = bool.TryParse(configuration["STM_AI_HELP_ENABLED"], out var parsedEnabled) && parsedEnabled;
+    var provider = configuration["STM_AI_PROVIDER"]?.Trim() ?? "disabled";
+    var normalizedProvider = provider.ToLowerInvariant();
+
+    if (enabled && (normalizedProvider is "local-docs" or "localdocs" or "docs"))
+    {
+        return new LocalDocsAiHelpProvider();
+    }
+
+    return new DisabledAiHelpProvider(provider);
 }
 
 static IResult ToDownload(ExportDocument document)

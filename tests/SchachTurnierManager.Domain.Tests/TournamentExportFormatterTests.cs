@@ -151,8 +151,10 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("Turnierpaket", document.Content);
         Assert.Contains("Ergebnisbogen / aktuelle Runde", document.Content);
         Assert.Contains("Runde 2", document.Content);
+        Assert.Contains("Paarungen", document.Content);
         Assert.Contains("Backup:", document.Content);
         Assert.Contains("Audit:", document.Content);
+        Assert.Contains("Zuschauer/Beamer:", document.Content);
         Assert.Contains("Alpha", document.Content);
         Assert.Contains("Beta", document.Content);
     }
@@ -185,6 +187,9 @@ public sealed class TournamentExportFormatterTests
         Assert.Equal(2, root.GetProperty("currentRound").GetProperty("roundNumber").GetInt32());
         Assert.Equal(1, root.GetProperty("currentRound").GetProperty("pairings").GetArrayLength());
         Assert.Equal("package/print/html", root.GetProperty("exportFiles").GetProperty("htmlPackage").GetString());
+        Assert.Equal("?view=public", root.GetProperty("exportFiles").GetProperty("spectatorView").GetString());
+        Assert.Equal("?view=beamer", root.GetProperty("exportFiles").GetProperty("beamerView").GetString());
+        Assert.Contains("read-only", root.GetProperty("displayHint").GetString());
     }
 
     private static NextRoundPreview CreatePreview(TournamentState tournament)

@@ -14,7 +14,8 @@ Ein-Seiten-Karte. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
 - Dashboard: http://localhost:5173
 - Optional vorab (eigenes isoliertes Backend, hängesicher): `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
 - Turnierpaket einmal öffnen: Dashboard → Druck / Backup → Paket HTML drucken / Paket JSON.
-- QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) — Runbook §9.
+- QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) und Beamer-/Zuschaueransicht öffnen —
+  Runbook §7a/§9.
 
 ## Start
 
@@ -61,7 +62,10 @@ Danach Startbefehle erneut ausführen.
 - Late Entry: Swiss ab nächster Runde ok; Round-Robin nach Start blockiert.
 - Grenzen: kein vollständiges FIDE-Dutch; >20 Spieler = Greedy-Fallback besonders prüfen.
 - QR/Handy: URL darf nicht `localhost` enthalten; bei Firewall/Netzproblem am Laptop würfeln.
-  Dashboard-Übersicht zeigt zusätzlich eine lokale Operator-Preview-URL/QR für den Hotspot-Test.
+  Dashboard → Übersicht → QR / Handy / Beamer zeigt zusätzlich read-only Zuschauer-/Beamer-Links.
+- Operator-QR nur bei privater LAN-IP und nur auf vertrauenswürdigen lokalen Geräten öffnen.
+- Hilfe: Reiter „Hilfe / Assistent" nutzen. Default-Meldung `KI-Hilfe nicht konfiguriert`
+  ist korrekt, lokale Hilfethemen bleiben verfügbar.
 
 ## Backup/Fallback
 
