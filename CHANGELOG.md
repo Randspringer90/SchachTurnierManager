@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.42.0 - Desktop-Installation, Installer-Vorbereitung, i18n-Fundament, Codex-Roadmap
+
+Installations- und Mehrsprachigkeits-Grundlagen ohne Aenderung an Auslosungs-, Wertungs-
+oder Persistenzlogik. Alle 175 Tests bleiben gruen; Release-Gate (-SkipPack) vor und nach
+den Aenderungen gruen.
+
+- **Desktop-Variante (neu):** `scripts/Publish-DesktopApp.ps1` erzeugt ein self-contained
+  win-x64-Paket unter `output\desktop` (kein .NET beim Endnutzer noetig), Frontend eingebettet
+  in `wwwroot`, Klick-Start ueber `SchachTurnierManager.bat` (`scripts/Start-Desktop.bat`),
+  Daten unter `%LocalAppData%\SchachTurnierManager` (Backend-Default). Smoke-getestet
+  (Health + eingebettetes Dashboard aus dem publizierten Paket).
+- **Installer vorbereitet:** `installer/SchachTurnierManager.iss` (Inno Setup 6, Per-User ohne
+  Adminrechte, Desktop-/Startmenue-Verknuepfung, Uninstaller, Daten bleiben bei Deinstallation
+  erhalten) plus `scripts/Build-Installer.ps1`. Kompilieren/Testen offen, da Inno Setup auf dem
+  Build-Rechner noch nicht installiert ist (RUN-05).
+- **Mehrsprachigkeit (Fundament):** dependency-freies i18n-Modul unter
+  `src/SchachTurnierManager.WebApp/src/i18n/` mit `I18nProvider`, `useI18n()`/`t()`,
+  Sprachumschalter im Header, localStorage-Persistenz, Browsersprach-Erkennung und RTL fuer
+  Arabisch. 18 Sprachen registriert (de/en/es uebersetzt fuer Kern-Schluessel; fr, it, pt, nl,
+  pl, cs, sv, da, hu, ru, uk, tr, ar, zh, ja als Stubs mit Fallback en→de). Hero/Statuskarte
+  als Umstellungs-Muster auf `t('…')`; Rest folgt bereichsweise (RUN-21).
+- **Bugfix UI:** veraltete hartcodierte Version „v0.40.0" im Hero-Header entfernt; dort wird
+  jetzt die Backend-Version aus dem Health-Endpoint angezeigt.
+- **Regel-Reconciliation:** `.gitignore` und CommitGuard (`scripts/Test-GitCommitSafety.ps1`)
+  blockierten pauschal jeden `reports/`-Pfad und widersprachen damit dem KI-Lauf-Standard aus
+  `AGENTS.md` („Abschlussberichte … werden mit committet"). Jetzt ist gezielt nur
+  `docs/ai/reports/` commitfaehig (negative Lookbehind); generische `reports/`-Ordner und der
+  Public-Clean-Snapshot schliessen Reports weiterhin aus.
+- **Codex-Roadmap-Prompts (neu):** `docs/ai/prompts/codex-roadmap/` mit `PROMPT_BASE.md`
+  (Arbeitsregeln), Index/Statustabelle und RUN-01 bis RUN-21 (Audit, Release-Reife, Portable,
+  Desktop, Installer, Clean Snapshot, Website-Paket, PWA, Hosting-Konzept, Chatbot,
+  Wissensbasis, FIDE-Dutch, grosse Turniere, Tie-Breaks, Import/Export, Formate, Assistent,
+  QA, Doku, Release Candidate, i18n).
+- **Version:** `0.41.1` → `0.42.0` (Health, `package.json`).
+- **Bekannt/Offen:** GitHub war waehrend dieses Laufs nicht erreichbar (kein Pull/Push
+  moeglich); beide lokale Checkouts standen synchron auf `dc8d0e1`. Vor dem naechsten Push
+  zuerst `git pull` und PUBLIC-Gate.
+
 ## 0.41.1 - Operator-Smoke und haengesicherer Verifikationslauf
 
 Turniertags-Reife: ein einziger, **haengesicherer** Skript-Lauf verifiziert die wichtigsten

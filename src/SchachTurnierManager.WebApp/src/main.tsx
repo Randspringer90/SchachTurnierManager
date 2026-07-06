@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { encodeText, Ecl } from './qrcodegen';
+import { I18nProvider, LanguageSwitcher, useI18n } from './i18n';
 import './styles.css';
 
 type Health = {
@@ -1292,6 +1293,7 @@ function isMainTab(value: string | null): value is MainTab {
 }
 
 function App() {
+  const { t } = useI18n();
   const [health, setHealth] = React.useState<Health | null>(null);
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [selectedId, setSelectedId] = React.useState<string>('');
@@ -2586,15 +2588,16 @@ function openRoundPrint(roundNumber: number) {
     <main className={`shell${outdoorMode ? ' outdoor' : ''}`}>
       <header className="hero">
         <div>
-          <p className="eyebrow">Lokaler Turnierleiter · v0.40.0</p>
-          <h1>SchachTurnierManager</h1>
-          <p>Persistenter Turnierleiter mit SQLite, Schweizer-System-Audit, manuellen Paarungskorrekturen, Rundensperren, kampflose Ergebnisse, Kategorien, Kreuztabelle und Im-/Export.</p>
+          <p className="eyebrow">{t('hero.eyebrow')}{health?.version ? ` · v${health.version}` : ''}</p>
+          <h1>{t('app.title')}</h1>
+          <p>{t('hero.subtitle')}</p>
         </div>
         <div className="status-card">
-          <strong>Backend</strong>
+          <strong>{t('backend.title')}</strong>
           {health && <span className="ok">{health.app} {health.version}: {health.status}</span>}
-          {!health && !error && <span>Prüfe API…</span>}
+          {!health && !error && <span>{t('backend.checking')}</span>}
           {health?.database && <small>{health.database}</small>}
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -3980,5 +3983,7 @@ function openRoundPrint(roundNumber: number) {
 
 const boardDiceParams = parseBoardDiceParams(window.location.search);
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  boardDiceParams ? <MobileDicePage params={boardDiceParams} /> : <App />
+  <I18nProvider>
+    {boardDiceParams ? <MobileDicePage params={boardDiceParams} /> : <App />}
+  </I18nProvider>
 );

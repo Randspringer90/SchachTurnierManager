@@ -11,7 +11,11 @@ function Stop-GitSafety([string]$Message) { Write-Error "[GitSafety] $Message"; 
 function Info([string]$Message) { Write-Host "[GitSafety] $Message" }
 function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"') -replace '\\', '/') }
 
-$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp|reports)(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+# Hinweis: generische reports/-Ordner (z. B. output-Reports) bleiben blockiert; die KI-Lauf-
+# Berichte unter docs/ai/reports/ sind laut AGENTS.md KI-Lauf-Standard bewusst commitfaehig
+# (negative Lookbehind schliesst nur docs/ai/reports/ aus). Der Public-Clean-Snapshot laesst
+# Reports weiterhin aussen vor (siehe New-OpenSourceSnapshot.ps1).
+$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp)(/|$)|(?<!docs/ai)(^|/)reports(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
 $contentPattern = @(
     (('github') + '_pat_'),

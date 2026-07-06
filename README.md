@@ -31,6 +31,28 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - QR/Handy funktioniert nur im gleichen WLAN/Hotspot und muss vor Ort mit echter Laptop-IP
   getestet werden; Browser-Würfeln am Laptop bleibt der Fallback.
 
+## Desktop-Version für Endnutzer (self-contained)
+
+Für Rechner **ohne** Entwicklerwerkzeuge (kein .NET, kein Node nötig):
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Publish-DesktopApp.ps1"
+```
+
+Ergebnis unter `output\desktop`: Doppelklick auf **`SchachTurnierManager.bat`** startet das
+Backend (minimiert) und öffnet das Dashboard unter `http://127.0.0.1:5088/`. Turnierdaten
+liegen unter `%LocalAppData%\SchachTurnierManager`.
+
+Eine Installer-EXE (Inno Setup, Desktop-Verknüpfung, Startmenü, Uninstaller) ist unter
+`installer/` vorbereitet und wird mit `scripts\Build-Installer.ps1` gebaut (benötigt
+lokal installiertes Inno Setup 6).
+
+## Mehrsprachigkeit
+
+Die WebApp hat ein dependency-freies i18n-Fundament mit Sprachumschalter im Kopfbereich
+(18 Sprachen registriert; Deutsch/Englisch/Spanisch mit Kernübersetzungen, weitere folgen).
+Details und Mitmach-Anleitung: `src/SchachTurnierManager.WebApp/src/i18n/README.md`.
+
 ## Schnellstart (empfohlen)
 
 Zum Starten doppelklicken: **`RUN_TURNIERMANAGER.bat`** (im Repo-Root).

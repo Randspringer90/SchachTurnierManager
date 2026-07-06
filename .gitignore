@@ -33,6 +33,9 @@ logs/
 logs/**
 reports/
 reports/**
+# KI-Lauf-Standard (AGENTS.md): Abschlussberichte unter docs/ai/reports/ werden committet.
+!docs/ai/reports/
+!docs/ai/reports/**
 tmp/
 tmp/**
 *.zip

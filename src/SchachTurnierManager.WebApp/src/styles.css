@@ -117,6 +117,25 @@ textarea {
 .ok { color: #86efac; }
 .error { color: #fecaca; }
 
+.language-switcher {
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.language-switcher select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+}
+
 .status-line {
   margin: 1rem 0;
   display: flex;

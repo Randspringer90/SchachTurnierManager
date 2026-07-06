@@ -1,3 +1,14 @@
+# Aktueller Zusatz 0.42.0
+
+- Desktop-Variante: `scripts/Publish-DesktopApp.ps1` (self-contained, Klick-Start,
+  Daten unter AppData) fertig und smoke-getestet; Installer (Inno Setup) unter
+  `installer/` vorbereitet, Kompilieren/Test offen (Inno Setup lokal installieren, RUN-05).
+- i18n-Fundament in der WebApp: 18 Sprachen registriert, de/en/es Kern-Schluessel,
+  Sprachumschalter, Fallback en→de; vollständige String-Extraktion offen (RUN-21).
+- Codex-Roadmap-Prompts unter `docs/ai/prompts/codex-roadmap/` (RUN-01…RUN-21 +
+  PROMPT_BASE); Folgearbeit läuft über diese Prompts, ein Lauf = ein Arbeitspaket.
+- Offen (unverändert): kein vollständiges FIDE-Dutch, Felder > 20 Spieler Greedy-Fallback.
+
 # Aktueller Zusatz 0.41.1
 
 - Operator-Smoke `scripts/Smoke-OperatorWorkflow.ps1`: ein hängesicherer End-to-End-Lauf gegen
@@ -67,10 +78,10 @@
 - [ ] Import/Export-Adapter für Swiss-/Chess-Results-Ökosystem untersuchen.
 
 ## v0.5 – Installation
-- [ ] Portable Publish inklusive Frontend-Auslieferung über Backend.
-- [ ] Start-BAT/PowerShell ohne Entwicklerwerkzeuge.
-- [ ] Datenpfad unter AppData oder Projektdata konfigurierbar.
-- [ ] Windows-Installer evaluieren.
+- [x] Portable Publish inklusive Frontend-Auslieferung über Backend (v0.8, `Pack-Portable.ps1`).
+- [x] Start-BAT/PowerShell ohne Entwicklerwerkzeuge (`Start-Portable.bat`, `Start-Desktop.bat`).
+- [x] Datenpfad unter AppData oder Projektdata konfigurierbar (Backend-Default AppData, Override per `SchachTurnierManager__DataDirectory`).
+- [x] Windows-Installer evaluieren (Entscheidung: Inno Setup 6; Skript unter `installer/`, Build/Test offen → RUN-05).
 
 
 ## Nächster Fokus ab 0.4.0
