@@ -466,3 +466,12 @@ Nächste Schritte:
 1. 0.49.0 committen, dann 0.50.0 anwenden und `Invoke-ReleaseCandidateReadiness.ps1` testen.
 2. Wenn Inno Setup lokal installiert werden darf: echten Setup-EXE-Build und Install/Uninstall-Test durchführen.
 3. Danach fachlich weiter mit RUN-14 Tie-Breaks oder RUN-15 CSV/Excel-Import/Export vertiefen.
+
+## 0.53.0 - Klick-Installation / Kollegen-Rollout
+
+- [x] Kollegenpaket enthaelt Doppelklick-Bootstrapper fuer Installation und Deinstallation.
+- [x] Installation nutzt `%LocalAppData%\Programs\SchachTurnierManager` und erzeugt Startmenue-Shortcut.
+- [x] Nutzerdaten und DPAPI-Secrets bleiben benutzer-/rechnerlokal und werden nicht mit ausgeliefert.
+- [x] Readiness-Test prueft Paket, Checksums, Installation, Shortcut, Healthcheck, Dashboard, Tournament-API, isolierte SQLite und Uninstall.
+- [ ] Echten Test auf einem Kollegen-PC oder einer frischen Windows-VM ausfuehren und Ergebnis dokumentieren.
+- [ ] Entscheidung treffen: unsignierter Bootstrapper bleibt ausreichend oder signierte Setup-EXE vorbereiten.

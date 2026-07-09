@@ -334,3 +334,19 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseC
 
 Der Lauf prueft ReleaseGate, DPAPI-/Secret-Safety, Desktop-Publish, Portable-ZIP, optional Installer-Readiness und GitSafety. Lokale Secrets liegen ausschliesslich unter `.secrets/local/` beziehungsweise `secrets/local/`, werden per Windows-DPAPI verschluesselt und sind gitignored.
 
+
+## Kollegeninstallation ab 0.53.0
+
+Das Release-/Kollegenpaket enthaelt neben Desktop-/Portable-ZIP auch einen einfachen Klickpfad:
+
+1. `Install-SchachTurnierManager.cmd` per Doppelklick starten.
+2. Danach ueber den Startmenue-Shortcut **SchachTurnierManager** starten.
+3. Bei Bedarf `Uninstall-SchachTurnierManager.cmd` aus dem Paket nutzen.
+
+Die Installation liegt standardmaessig unter `%LocalAppData%\Programs\SchachTurnierManager`. Turnierdaten bleiben getrennt unter `%LocalAppData%\SchachTurnierManager`. Lokale DPAPI-Secrets werden nicht ausgeliefert und muessen je Benutzer/Rechner neu gesetzt werden.
+
+Pruefung fuer Maintainer:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ClickInstallReadiness.ps1 -BuildPackage -BuildInstaller -AllowMissingInnoSetup
+```

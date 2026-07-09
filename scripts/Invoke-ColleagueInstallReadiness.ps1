@@ -161,9 +161,10 @@ SchachTurnierManager $version - Kollegeninstallation
 
 Empfohlene Reihenfolge
 ----------------------
-1. Falls eine Setup-EXE enthalten ist: SchachTurnierManager_Setup_$version.exe per Doppelklick starten.
-2. Falls keine Setup-EXE enthalten ist: SchachTurnierManager_Desktop_$version.zip vollstaendig entpacken und SchachTurnierManager.bat per Doppelklick starten.
-3. Portable-ZIP nur verwenden, wenn bewusst eine portable Variante getestet werden soll.
+1. Einfachster Weg: Install-SchachTurnierManager.cmd per Doppelklick starten. Das installiert nach %LocalAppData%\Programs\SchachTurnierManager und legt einen Startmenue-Shortcut an.
+2. Falls eine Setup-EXE enthalten ist: SchachTurnierManager_Setup_$version.exe per Doppelklick starten.
+3. Ohne Installation: SchachTurnierManager_Desktop_$version.zip vollstaendig entpacken und SchachTurnierManager.bat per Doppelklick starten.
+4. Portable-ZIP nur verwenden, wenn bewusst eine portable Variante getestet werden soll.
 
 Was der Kollege braucht
 -----------------------
@@ -190,12 +191,55 @@ Die Setup-EXE ist unsigniert. SmartScreen-Warnungen sind bis zu einer spaeteren 
 "@
     $readme | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $kitRoot 'README_START_HIER.txt')
 
+    $installScriptSource = Join-Path $Root 'scripts\Install-ColleagueDesktopApp.ps1'
+    $uninstallScriptSource = Join-Path $Root 'scripts\Uninstall-ColleagueDesktopApp.ps1'
+    if (-not (Test-Path -LiteralPath $installScriptSource -PathType Leaf)) { throw "Installationsskript fehlt: $installScriptSource" }
+    if (-not (Test-Path -LiteralPath $uninstallScriptSource -PathType Leaf)) { throw "Deinstallationsskript fehlt: $uninstallScriptSource" }
+
+    Copy-Item -LiteralPath $installScriptSource -Destination (Join-Path $kitRoot 'Install-SchachTurnierManager.ps1') -Force
+    Copy-Item -LiteralPath $uninstallScriptSource -Destination (Join-Path $kitRoot 'Uninstall-SchachTurnierManager.ps1') -Force
+
+    @'
+@echo off
+setlocal
+set "SCRIPT_DIR=%~dp0"
+where pwsh >nul 2>nul
+if %ERRORLEVEL% EQU 0 (
+  pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%Install-SchachTurnierManager.ps1"
+) else (
+  powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%Install-SchachTurnierManager.ps1"
+)
+echo.
+echo Installation beendet. Dieses Fenster kann geschlossen werden.
+pause
+'@ | Set-Content -Encoding ASCII -LiteralPath (Join-Path $kitRoot 'Install-SchachTurnierManager.cmd')
+
+    @'
+@echo off
+setlocal
+set "SCRIPT_DIR=%~dp0"
+where pwsh >nul 2>nul
+if %ERRORLEVEL% EQU 0 (
+  pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%Uninstall-SchachTurnierManager.ps1"
+) else (
+  powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%Uninstall-SchachTurnierManager.ps1"
+)
+echo.
+echo Deinstallation beendet. Dieses Fenster kann geschlossen werden.
+pause
+'@ | Set-Content -Encoding ASCII -LiteralPath (Join-Path $kitRoot 'Uninstall-SchachTurnierManager.cmd')
+
     $manifest = @(
         'SchachTurnierManager Kollegenpaket',
         "Version: $version",
         "Created: $(Get-Date -Format o)",
         "Root: $Root",
         "InstallerIncluded: $([bool]$setupFile)",
+        'ClickInstallFiles:',
+        '- Install-SchachTurnierManager.cmd',
+        '- Install-SchachTurnierManager.ps1',
+        '- Uninstall-SchachTurnierManager.cmd',
+        '- Uninstall-SchachTurnierManager.ps1',
         'Artifacts:',
         ($copied | ForEach-Object { "- $_" })
     )

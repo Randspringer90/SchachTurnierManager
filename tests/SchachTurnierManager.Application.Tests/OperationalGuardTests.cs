@@ -139,6 +139,44 @@ public sealed class OperationalGuardTests
         Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-fresh-run.md")));
     }
 
+    [Fact]
+    public void ClickInstallReadiness_VerifiesInstallUninstallShortcutsAndFreshSmoke()
+    {
+        var installScript = File.ReadAllText(FindRepositoryFile("scripts", "Install-ColleagueDesktopApp.ps1"));
+        var uninstallScript = File.ReadAllText(FindRepositoryFile("scripts", "Uninstall-ColleagueDesktopApp.ps1"));
+        var readiness = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ClickInstallReadiness.ps1"));
+        var colleaguePackageScript = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ColleagueInstallReadiness.ps1"));
+        var docs = File.ReadAllText(FindRepositoryFile("docs", "release", "CLICK_INSTALLER.md"));
+
+        Assert.Contains("SchachTurnierManager_Desktop_*.zip", installScript);
+        Assert.Contains("Programs\\SchachTurnierManager", installScript);
+        Assert.Contains("WScript.Shell", installScript);
+        Assert.Contains("INSTALLATION_MANIFEST.txt", installScript);
+        Assert.Contains("ShortcutDirectory", installScript);
+        Assert.Contains("RemoveUserData", uninstallScript);
+
+        Assert.Contains("Invoke-ColleagueInstallReadiness.ps1", readiness);
+        Assert.Contains("Install-SchachTurnierManager.cmd", readiness);
+        Assert.Contains("Uninstall-SchachTurnierManager.cmd", readiness);
+        Assert.Contains("Test-Checksums", readiness);
+        Assert.Contains("Test-InstalledAppSmoke", readiness);
+        Assert.Contains("CLICK_INSTALL=OK", readiness);
+        Assert.Contains("UPLOAD_ZIP=", readiness);
+        Assert.DoesNotContain("System.Object[]", readiness);
+
+        Assert.Contains("Install-ColleagueDesktopApp.ps1", colleaguePackageScript);
+        Assert.Contains("Install-SchachTurnierManager.cmd", colleaguePackageScript);
+        Assert.Contains("Uninstall-SchachTurnierManager.cmd", colleaguePackageScript);
+        Assert.Contains("ClickInstallFiles", colleaguePackageScript);
+
+        Assert.Contains("Doppelklick", docs);
+        Assert.Contains("%LocalAppData%\\Programs\\SchachTurnierManager", docs);
+        Assert.Contains("Startmenue-Shortcut", docs);
+        Assert.Contains("DPAPI-Secrets", docs);
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "click-installation.md")));
+    }
+
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

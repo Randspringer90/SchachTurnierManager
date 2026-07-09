@@ -1097,3 +1097,12 @@ Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.m
 - Agenten-Skills ergänzt: Release Operations, Logging/Observability und Repository Security.
 - Release-/Betriebsdokumentation unter `docs/architecture/RELEASE_OPERATIONS.md` ergänzt.
 - Unit-/Contract-Tests für Logging-Konfiguration, Secret-Schutz, Release-Skripte und Agenten-Skills ergänzt.
+
+## 0.53.0 - Klick-Installation fuer Kollegen
+
+- Kollegenpaket erweitert um `Install-SchachTurnierManager.cmd` und `Uninstall-SchachTurnierManager.cmd` als Doppelklickpfad.
+- Neue Skripte `Install-ColleagueDesktopApp.ps1` und `Uninstall-ColleagueDesktopApp.ps1` installieren die Desktop-Variante nach `%LocalAppData%\Programs\SchachTurnierManager`, erzeugen einen Startmenue-Shortcut und halten Nutzerdaten getrennt.
+- `Invoke-ColleagueInstallReadiness.ps1` legt Install-/Uninstall-Bootstrapper, Manifest und Checksums direkt ins Kollegenpaket.
+- `Invoke-ClickInstallReadiness.ps1` prueft Paket, Checksums, Installation, Shortcut, App-Smoke-Test, isolierte SQLite-Daten und Uninstall in einem frischen Testordner.
+- Doku und Skill fuer Klick-Installation/Release-Rollout ergaenzt.
+- Unit-/Guard-Test fuer Bootstrapper, Readiness-Skript und Kollegenpaket ergänzt.

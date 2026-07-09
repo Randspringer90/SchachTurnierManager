@@ -68,10 +68,12 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
 
 ## Release-/Betriebsregeln ab 0.50.0
 
-- Vor Arbeiten an Logging, Secrets, Packaging oder Installation die Skills `.agents/skills/release-operations.md`, `.agents/skills/logging-observability.md`, `.agents/skills/repository-security.md`, `.agents/skills/installer-packaging.md` und `.agents/skills/colleague-installation.md` lesen.
+- Vor Arbeiten an Logging, Secrets, Packaging oder Installation die Skills `.agents/skills/release-operations.md`, `.agents/skills/logging-observability.md`, `.agents/skills/repository-security.md` und `.agents/skills/installer-packaging.md` lesen.
 - Projekt bleibt eigenständig: keine Abhängigkeiten auf externe lokale Projekte oder fremde Maschinenpfade.
 - Lokale Secrets liegen innerhalb des Projektordners unter `.secrets/local/`, sind DPAPI-verschlüsselt und per `.gitignore` ausgeschlossen.
 - Sichtbare Konsole bleibt ruhig; ausführliche Logs gehen in einen eigenen `D:\Temp\<RunName>_<Timestamp>`-Ordner und am Ende in ein Upload-ZIP.
 - Für Kollegen-/Vereinsinstallation zählt `scripts/Invoke-ReleaseCandidateReadiness.ps1` als Standardprüfung.
 
-- Fuer Kolleginnen-/Kollegeninstallation ist `scripts/Invoke-ColleagueInstallReadiness.ps1` der Standardlauf: eigenstaendiges Paket, keine externen Projektabhaengigkeiten, keine Secrets im Artefakt.
+## Klick-Installation / Kollegen-Rollout
+
+Bei Aenderungen an Release-, Setup-, Desktop-, Portable- oder Kollegenpaketen den Skill `.agents/skills/click-installation.md` beachten. Installation muss eigenstaendig bleiben, keine Nachbarprojekt-Abhaengigkeiten einfuehren und lokale Secrets aus dem Paket heraushalten. Vor Commit mindestens `Invoke-ClickInstallReadiness.ps1` oder den passenden Release-/Kollegen-Readiness-Lauf ausfuehren.
