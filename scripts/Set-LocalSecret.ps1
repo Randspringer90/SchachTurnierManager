@@ -24,12 +24,20 @@ if ($InputFile) {
         throw "InputFile nicht gefunden: $InputFile"
     }
     $plainText = Get-Content -Raw -LiteralPath $InputFile
+    if ($null -eq $plainText) { $plainText = '' }
     $secure = ConvertTo-SecureString -String $plainText -AsPlainText -Force
 }
 else {
     $secure = Read-Host -AsSecureString "Wert fuer $Name eingeben"
 }
 
-$secure | ConvertFrom-SecureString | Set-Content -Encoding UTF8 -LiteralPath $target
+$serializedSecret = $secure | ConvertFrom-SecureString
+if ([string]::IsNullOrWhiteSpace($serializedSecret)) {
+    throw 'DPAPI-Serialisierung lieferte keinen Wert. Secret wurde nicht gespeichert.'
+}
+
+# Keine abschliessende neue Zeile schreiben: Get-LocalSecret liest den DPAPI-Blob zwar robust,
+# aber die lokale Datei soll maschinenlesbar und editorunabhaengig bleiben.
+Set-Content -Encoding UTF8 -NoNewline -LiteralPath $target -Value $serializedSecret
 Write-Info "Gespeichert: .secrets/local/$Name.dpapi.txt"
 Write-Info 'Der Secret-Wert wurde nicht ausgegeben. Datei bleibt lokal/gitignored.'

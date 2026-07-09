@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Force -Path $RunDirectory | Out-Null
 $resolvedRunDirectory = (Resolve-Path -LiteralPath $RunDirectory).Path
 
 if ($CreateOnly) {
-    Write-Host $resolvedRunDirectory
+    Write-Output $resolvedRunDirectory
     return
 }
 
@@ -58,4 +58,4 @@ finally {
 $zipPath = Join-Path (Split-Path -Parent $resolvedRunDirectory) ("$(Split-Path -Leaf $resolvedRunDirectory).zip")
 Remove-Item -Force -LiteralPath $zipPath -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $resolvedRunDirectory '*') -DestinationPath $zipPath -Force
-Write-Host $zipPath
+Write-Output $zipPath

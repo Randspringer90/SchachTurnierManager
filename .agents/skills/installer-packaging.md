@@ -23,3 +23,10 @@ Regeln:
 - `scripts/Invoke-InstallerReadiness.ps1` ist der Standard fuer RUN-05: ruhiger Run-Ordner unter `D:\Temp`, Desktop-Publish, Manifestpruefung und optionaler Inno-Setup-Build.
 - Inno Setup wird nicht automatisch installiert; fehlendes `ISCC.exe` ist ein dokumentierter Blocker, kein Grund fuer Downloads/Kostenaktionen.
 - Manuelle Installationstests muessen Datenpersistenz unter `%LocalAppData%\SchachTurnierManager`, Uninstaller-Verhalten und SmartScreen-Hinweis pruefen.
+
+## Stand 0.50.0
+
+- Release-Kandidaten werden mit `scripts/Invoke-ReleaseCandidateReadiness.ps1` geprüft.
+- Für Kollegeninstallation ist `output/desktop/SchachTurnierManager.bat` aktuell der sichere Klick-Start; echte Setup-EXE folgt, sobald Inno Setup lokal verfügbar ist.
+- Das Release-Artefaktmanifest enthält SHA256-Prüfsummen für ZIP-/EXE-Dateien.
+- Installer/ZIP dürfen keine Datenbanken, Logs, `.secrets`, `.npmrc`, `.env` oder echten Turnierdaten enthalten.

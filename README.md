@@ -2,7 +2,7 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.46.x
+## Aktueller Stand bis 0.50.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
@@ -25,6 +25,18 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - `scripts/`: aktive Skripte mit Übersicht in `scripts/README.md`; historische After-Apply-Skripte unter `scripts/archive/after-apply/`.
 - `AGENTS.md`: verbindliche, providerneutrale Regeln für KI-Agenten; `.agents/skills/` enthält wiederverwendbare Skills, `.claude/` nur einen Adapter.
 
+
+### Release/Ops, Logging und lokale Secrets
+
+Seit 0.50.x enthaelt das Projekt einen eigenen Release-/Betriebsunterbau:
+
+- WebApi-Logging mit konfigurierbaren LogLeveln und Single-Line-Konsole.
+- HTTP-Request-Logging ohne Querystrings, damit keine Tokens oder API-Keys in Logs landen.
+- `.secrets/local/` und `secrets/local/` bleiben lokale, gitignored Ablagen fuer DPAPI-verschluesselte Werte.
+- `scripts/Set-LocalSecret.ps1` und `scripts/Get-LocalSecret.ps1` bilden den lokalen DPAPI-Roundtrip ab.
+- `scripts/Invoke-ReleaseCandidateReadiness.ps1` sammelt ReleaseGate, SecretSafety, Desktop, Portable und optional Installer in einem Run-ZIP unter `D:\Temp`.
+- Agentenregeln und Skills liegen im Projekt selbst unter `AGENTS.md` und `.agents/skills/`, damit Codex, Claude Code und lokale KI-Workflows ohne externe Projektabhaengigkeiten arbeiten koennen.
+
 ## Bewusste Grenzen
 
 - Schweizer-System ist noch kein vollständiges FIDE-Dutch.
@@ -39,6 +51,11 @@ Der Reiter **Assistent** enthält eine lokale Chat-Hilfe. Seit 0.48.0 werden die
 ### Exportmanifest fuer Turnierleiter
 
 Seit 0.49.0 erzeugt der Turniermanager ein lokales Exportmanifest unter `exports/manifest.json`. Es listet die wichtigsten Downloadpfade fuer Teilnehmer-CSV, Tabelle, Paarungen, Druckansicht und Audit-Bundles, nennt offene Bretter/Byes/kampflose Ergebnisse und enthaelt einen empfohlenen Veroeffentlichungs-Workflow. Das Manifest ist local-only und fuehrt keine Uploads aus.
+
+
+### Lokale Secrets und DPAPI
+
+Lokale Secrets liegen bevorzugt unter `.secrets/local/*.dpapi.txt` und werden nicht eingecheckt. `scripts/Set-LocalSecret.ps1` speichert Werte per Windows-DPAPI fuer den aktuellen Benutzer und Rechner; `scripts/Get-LocalSecret.ps1` liest sie wieder aus. Die Dateien sind dadurch nicht portabel und muessen pro Rechner/Benutzer neu gesetzt werden. Der Release-Check `scripts/Invoke-SecretSafetyReadiness.ps1` prueft GitSafety, DPAPI-Roundtrip und Gitignore-Schutz.
 
 
 ## Desktop-Version für Endnutzer (self-contained)
@@ -263,3 +280,32 @@ pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-PwaR
 ```
 
 Am Ende wird ein `UPLOAD_ZIP=...` unter `D:\Temp` erzeugt.
+
+## Release- und Kollegeninstallation
+
+Für eine weitergebbare Windows-Version gibt es ab 0.50.0 einen gebündelten Release-Check:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseCandidateReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup
+```
+
+Der Lauf erzeugt ein `UPLOAD_ZIP=...` mit Logs und Manifest. Für normale Nutzer ist aktuell die Desktop-Variante relevant:
+
+```text
+output\desktop\SchachTurnierManager.bat
+```
+
+Diese Variante ist self-contained und benötigt beim Nutzer keine separate .NET-Installation. Die echte Setup-EXE wird gebaut, sobald Inno Setup 6 lokal verfügbar ist.
+
+Lokale Secrets für spätere KI-/Provider-Anbindungen werden innerhalb des Projekts unter `.secrets/local/` DPAPI-verschlüsselt abgelegt und nicht committed.
+
+## Release-/Betriebspruefung
+
+Der Release-Candidate-Lauf sammelt alle Detailausgaben in einem eigenen Ordner unter `D:\Temp` und erzeugt am Ende genau ein `UPLOAD_ZIP=...` fuer die Uebergabe an den naechsten KI-/Review-Lauf:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseCandidateReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
+```
+
+Der Lauf prueft ReleaseGate, DPAPI-/Secret-Safety, Desktop-Publish, Portable-ZIP, optional Installer-Readiness und GitSafety. Lokale Secrets liegen ausschliesslich unter `.secrets/local/` beziehungsweise `secrets/local/`, werden per Windows-DPAPI verschluesselt und sind gitignored.
+

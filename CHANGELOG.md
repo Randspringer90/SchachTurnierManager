@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.50.3 - RUN-50 DPAPI-Blob-Trim-Hotfix
+
+- **Bugfix:** `scripts/Get-LocalSecret.ps1` liest lokale DPAPI-Dateien jetzt robust: abschliessende Zeilenumbrueche/Whitespace werden vor `ConvertTo-SecureString` entfernt, leere Dateien liefern eine klare Fehlermeldung.
+- **Bugfix:** `scripts/Set-LocalSecret.ps1` schreibt den `ConvertFrom-SecureString`-Blob ohne abschliessende neue Zeile (`-NoNewline`).
+- **Readiness:** `scripts/Invoke-SecretSafetyReadiness.ps1` prueft, dass die erzeugte `.dpapi.txt`-Datei nicht leer ist, bevor der Roundtrip gelesen wird.
+- **Qualitaet:** `OperationalGuardTests` prueft DPAPI-Trim, Leerdatei-Diagnose und newlinefreie Speicherung.
+- **Scope:** Keine fachliche Turnierlogik geaendert.
+- **Version:** `0.50.2` → `0.50.3` (Health, `package.json`, `package-lock.json`).
+
+## 0.50.2 - RUN-50 SecretSafety/UploadZip-Hotfix
+
+- **Bugfix:** `scripts/Invoke-SecretSafetyReadiness.ps1` erstellt seinen Run-Ordner jetzt selbst und ist nicht mehr von der Host-/Pipeline-Ausgabe von `New-RunLogBundle.ps1 -CreateOnly` abhaengig. Dadurch bleibt der DPAPI-/Secret-Safety-Selftest auch im Release-Candidate-Orchestrator stabil.
+- **Bugfix:** `scripts/New-RunLogBundle.ps1` gibt Run-/ZIP-Pfade maschinenlesbar ueber die Pipeline aus. Direkte Aufrufe zeigen den Pfad weiterhin an, verschachtelte Skripte koennen ihn aber korrekt in Variablen uebernehmen.
+- **Bugfix:** `scripts/Invoke-ReleaseCandidateReadiness.ps1` validiert den erzeugten Upload-ZIP-Pfad und schreibt `UPLOAD_ZIP=...` nicht mehr leer aus.
+- **Qualitaet:** `OperationalGuardTests` prueft jetzt die robuste RunDirectory-/UploadZip-Behandlung fuer ReleaseCandidateReadiness, SecretSafety und New-RunLogBundle.
+- **Scope:** Keine fachliche Turnierlogik geaendert.
+- **Version:** `0.50.1` → `0.50.2` (Health, `package.json`, `package-lock.json`).
+
+## 0.50.1 - ReleaseCandidateReadiness RunDirectory-Hotfix
+
+- **Bugfix:** `scripts/Invoke-ReleaseCandidateReadiness.ps1` erstellt den Run-Ordner jetzt selbst und gibt `RUN_DIR=...` aus, statt sich auf die Pipeline-Ausgabe von `New-RunLogBundle.ps1 -CreateOnly` zu verlassen. Dadurch bleibt `$runDirectory` auch innerhalb des Skripts gesetzt.
+- **Fehlerbehandlung:** `FAILED.txt`, Artefaktmanifest und `UPLOAD_ZIP=...` werden auch bei Folgefehlern sauber in den Run-Ordner geschrieben.
+- **Qualitaet:** `OperationalGuardTests` prueft die robuste RunDirectory-Erzeugung und verhindert eine Rueckkehr zur fehlerhaften Capture-Variante.
+- **Scope:** Keine fachliche Turnierlogik geaendert.
+- **Version:** `0.50.0` → `0.50.1` (Health, `package.json`, `package-lock.json`).
+
+## 0.50.0 - RUN-50 Release/Ops, Logging und lokale Secrets
+
+RUN-50 staerkt den Betriebs- und Release-Unterbau, bevor weitere Fachfeatures gestapelt werden.
+
+- **Logging:** WebApi nutzt konfigurierte LogLevel, Single-Line-Konsole und Request-Logging ohne Querystrings/Secrets.
+- **Konfiguration:** `appsettings.json` und `appsettings.Development.json` definieren sinnvolle LogLevel fuer Microsoft, EF Core und `SchachTurnierManager`.
+- **Secrets:** `Get-LocalSecret.ps1` ergaenzt DPAPI-Readback; `Invoke-SecretSafetyReadiness.ps1` prueft lokalen DPAPI-Roundtrip und GitSafety.
+- **Release:** `Invoke-ReleaseCandidateReadiness.ps1` prueft ReleaseGate, SecretSafety, Desktop, Portable, optional Installer und schreibt ein Release-Artefaktmanifest mit SHA256.
+- **Agenten/Skills:** Neue Skills fuer Release Operations, Logging/Observability und Repository Security plus `docs/architecture/RELEASE_OPERATIONS.md`.
+- **Tests:** Contract-/Guard-Tests pruefen Logging-Konfiguration, Secret-/Git-Safety, Release-Skripte und Agenten-Struktur.
+- **Version:** `0.49.0` → `0.50.0` (Health, `package.json`, `package-lock.json`).
+
+# Changelog
+
 ## 0.49.0 - RUN-15 Exportmanifest fuer Turnierleiter
 
 RUN-15 erweitert Import/Export um ein maschinenlesbares Exportmanifest. Turnierleiter bekommen damit einen lokalen Downloadplan fuer Teilnehmer, Tabelle, Paarungen, Druckansicht und Audit-Bundles.
@@ -1011,3 +1051,15 @@ Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.m
 - Entfernt die separate Helper-Funktionsstrategie der vorherigen Fixes.
 - Ergaenzt den Query-Endpunkt als eigenstaendigen Inline-Minimal-API-Handler ohne zusaetzliche lokale Helfer.
 
+
+## 0.50.0 - Release Operations, Logging, Secrets und Agenten-Skills
+
+- WebApi-Logging auf konfigurierbare Single-Line-Console-Logs umgestellt (`appsettings.json`, `appsettings.Development.json`).
+- HTTP-Request-Logging ergänzt, ohne Querystrings/Secrets zu loggen.
+- `/api/health` zeigt die aktiven Logging-Grundlevel.
+- `Get-LocalSecret.ps1` ergänzt, um DPAPI-Secrets aus `.secrets/local/` oder legacy `secrets/local/` sicher zu laden.
+- `Invoke-SecretSafetyReadiness.ps1` ergänzt: GitSafety + temporärer DPAPI-Roundtrip + Gitignore-Prüfung in einem Upload-ZIP.
+- `Invoke-ReleaseCandidateReadiness.ps1` ergänzt: ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paketierung, optionale Installer-Readiness und SHA256-Artefaktmanifest.
+- Agenten-Skills ergänzt: Release Operations, Logging/Observability und Repository Security.
+- Release-/Betriebsdokumentation unter `docs/architecture/RELEASE_OPERATIONS.md` ergänzt.
+- Unit-/Contract-Tests für Logging-Konfiguration, Secret-Schutz, Release-Skripte und Agenten-Skills ergänzt.

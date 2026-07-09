@@ -1,3 +1,35 @@
+# Aktueller Zusatz 0.50.3
+
+- Hotfix fuer den DPAPI-Secret-Roundtrip: `Get-LocalSecret.ps1` trimmt serialisierte DPAPI-Blobs vor `ConvertTo-SecureString`; `Set-LocalSecret.ps1` schreibt ohne abschliessende neue Zeile.
+- `SecretSafetyReadiness` erkennt leere/Whitespace-Secret-Dateien frueh und schreibt verstaendlichere Diagnosen ins Run-ZIP.
+- Naechster Schritt: 0.50.3 testen; wenn gruen, lokal committen. Danach Release-/Kollegeninstallation weiter konkretisieren: Inno Setup/EXE, Portable-ZIP, Installationsanleitung und Frisch-Windows-Test.
+
+---
+
+# Aktueller Zusatz 0.50.2
+
+- Hotfix fuer den RUN-50-Orchestrator: `SecretSafetyReadiness` erstellt den Run-Ordner jetzt selbst; `New-RunLogBundle` liefert Pfade maschinenlesbar; `ReleaseCandidateReadiness` schreibt `UPLOAD_ZIP=...` nicht mehr leer.
+- Damit bleiben verschachtelte Run-Bundles unter `D:\Temp` robust und liefern bei Erfolg oder Fehler genau ein Upload-ZIP.
+- Naechster Schritt: 0.50.2 testen; wenn gruen, lokal committen. Danach Installations-/Kollegen-Setup und ReleaseCandidate ohne Inno-Setup-Blocker weiter absichern.
+
+---
+
+# Aktueller Zusatz 0.50.1
+
+- Hotfix fuer `scripts/Invoke-ReleaseCandidateReadiness.ps1`: Der Run-Ordner wird jetzt direkt im Skript erstellt und mit `RUN_DIR=...` angezeigt.
+- Dadurch kann der Release-Candidate-Readiness-Lauf seine Logs, `FAILED.txt`, Artefaktmanifest und `UPLOAD_ZIP` auch dann sauber erzeugen, wenn ein nachgelagerter Check fehlschlaegt.
+- Naechster Schritt: 0.50.1 testen; wenn gruen, lokal committen. Danach echten Installer-Test mit installiertem Inno Setup oder naechsten Release-/Featureblock fortsetzen.
+
+---
+
+# Aktueller Zusatz 0.50.0
+
+- Release-/Betriebsunterbau wurde gestaerkt: Logging-Level, Request-Logging ohne Querystrings, DPAPI-Secret-Readback, Secret-Safety-Readiness, Release-Candidate-Readiness und Agenten-Skills.
+- Neue Tests decken Logging-Konfiguration, Secret-Schutz, Release-Skripte und Agenten-/Skill-Struktur ab.
+- Ziel bleibt: eigenstaendige, installierbare Release-Version fuer Kolleginnen/Kollegen ohne Abhaengigkeit zu anderen Projekten.
+
+---
+
 # Aktueller Zusatz 0.49.0
 
 - RUN-15 Import/Export wurde als erster produktiver Ausbau umgesetzt: ein lokales Exportmanifest beschreibt die wichtigsten Downloads, Turnier-Metadaten, offene Bretter, kampflose Bretter, Byes und den empfohlenen Veroeffentlichungs-Workflow.
@@ -387,3 +419,18 @@ Dateiablage-Regeln: dauerhafte Konzepte nach `docs/architecture/`, Planung/Proze
 - [x] `docs/planning/PROJECT_ORCHESTRATION.md`: Aufgaben→Skripte/Skills, Release-Gate, CommitGuard, Clean Snapshot, Handoff-Erzeugung.
 - [x] `.claude/CLAUDE.md` als reiner Adapter auf `AGENTS.md` und Skills.
 - [ ] Aktive Skripte in `scripts/dev|test|release|git|security|maintenance/` migrieren (Zielzustand dokumentiert; eigener Lauf mit gleichzeitiger Anpassung aller Pfadverweise und Release-Gate-Verifikation).
+
+## Zusatz 0.50.0 – Release-/Betriebsunterbau, Logging und Secrets
+
+- Logging-Konfiguration über `appsettings.json` / `appsettings.Development.json` ergänzt: App-Logs steuerbar per Loglevel, Microsoft/EF standardmäßig reduziert.
+- HTTP-Request-Logging ergänzt: Methode, Pfad ohne Querystring, Status und Laufzeit; `/api/health` nur Debug.
+- Lokale Secret-Struktur ausgebaut: `Get-LocalSecret.ps1`, DPAPI-Roundtrip-Selftest und GitSafety-Integration.
+- Release-Readiness-Skript ergänzt: ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paket, optional Installer-Readiness, SHA256-Manifest und ein Upload-ZIP.
+- Agenten-/Skill-Struktur erweitert: Release Operations, Logging/Observability, Repository Security.
+- Unit-/Contract-Tests ergänzen Schutz gegen Regressionen bei Logging, Secret-Ablage, Release-Skripten und Skills.
+
+Nächste Schritte:
+
+1. 0.49.0 committen, dann 0.50.0 anwenden und `Invoke-ReleaseCandidateReadiness.ps1` testen.
+2. Wenn Inno Setup lokal installiert werden darf: echten Setup-EXE-Build und Install/Uninstall-Test durchführen.
+3. Danach fachlich weiter mit RUN-14 Tie-Breaks oder RUN-15 CSV/Excel-Import/Export vertiefen.

@@ -57,3 +57,17 @@ Die Unterordner `dev/`, `test/`, `release/`, `git/`, `security/`, `maintenance/`
 - `Invoke-KnowledgeBaseReadiness.ps1` prueft RUN-11: ausgelagerte lokale JSON-Wissensbasis, Quellen-/Privacy-Regeln, UI-Import und Frontend-Build.
 
 - `Invoke-ExportManifestReadiness.ps1` prueft RUN-15: ReleaseGate, Frontend-Build, Domain-Test, API-Endpunkt und UI-Exportmanifest.
+
+## Release-/Betriebs-Skripte ab 0.50.0
+
+- `Invoke-SecretSafetyReadiness.ps1` prüft GitSafety, lokale DPAPI-Secret-Ablage unter `.secrets/local/` und Gitignore-Schutz. Der Test legt nur einen temporären Selftest-Wert an, loggt ihn nicht und löscht ihn wieder.
+- `Get-LocalSecret.ps1` liest DPAPI-geschützte lokale Secrets. Standardausgabe ist `SecureString`; Klartext ist nur mit `-AsPlainTextForChildProcessOnly` für direkte Child-Prozess-Übergaben vorgesehen.
+- `Invoke-ReleaseCandidateReadiness.ps1` bündelt ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paketierung und optional Installer-Readiness in einem `D:\Temp`-Run-ZIP.
+
+Beispiel:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseCandidateReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup
+```
+
+Am Ende wird genau ein `UPLOAD_ZIP=...` ausgegeben.

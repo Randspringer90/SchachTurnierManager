@@ -5,13 +5,30 @@ namespace SchachTurnierManager.Application.Tests;
 public sealed class BergfestWebApiStartupContractTests
 {
     [Fact]
-    public void WebApi_UsesConsoleLoggingForLocalOperatorStartup()
+    public void WebApi_UsesConfiguredSingleLineConsoleLoggingForLocalOperatorStartup()
     {
         var programPath = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Program.cs");
         var program = File.ReadAllText(programPath);
 
         Assert.Contains("builder.Logging.ClearProviders();", program);
-        Assert.Contains("builder.Logging.AddConsole();", program);
+        Assert.Contains("builder.Logging.AddConfiguration(builder.Configuration.GetSection(\"Logging\"));", program);
+        Assert.Contains("builder.Logging.AddSimpleConsole", program);
+        Assert.Contains("options.SingleLine = true;", program);
+        Assert.Contains("SchachTurnierManager.Http", program);
+    }
+
+    [Fact]
+    public void WebApi_ContainsDefaultLoggingConfigurationFiles()
+    {
+        var appSettings = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "appsettings.json");
+        var developmentSettings = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "appsettings.Development.json");
+
+        var appSettingsText = File.ReadAllText(appSettings);
+        var developmentSettingsText = File.ReadAllText(developmentSettings);
+
+        Assert.Contains("\"SchachTurnierManager\": \"Information\"", appSettingsText);
+        Assert.Contains("\"SchachTurnierManager\": \"Debug\"", developmentSettingsText);
+        Assert.Contains("\"Microsoft.EntityFrameworkCore\": \"Warning\"", appSettingsText);
     }
 
     private static string FindRepositoryFile(params string[] relativeParts)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,15 @@ using SchachTurnierManager.WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.SingleLine = true;
+    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+});
+
+var configuredDefaultLogLevel = builder.Configuration["Logging:LogLevel:Default"] ?? "Information";
+var configuredApplicationLogLevel = builder.Configuration["Logging:LogLevel:SchachTurnierManager"] ?? configuredDefaultLogLevel;
 
 var configuredConnectionString = builder.Configuration.GetConnectionString("SchachTurnierManager");
 string connectionString;
@@ -26,7 +35,8 @@ string auditDirectory;
 var defaultDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
 if (string.IsNullOrWhiteSpace(configuredConnectionString))
 {
-    var dataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"] ?? defaultDataDirectory;
+    var configuredDataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"];
+    var dataDirectory = string.IsNullOrWhiteSpace(configuredDataDirectory) ? defaultDataDirectory : configuredDataDirectory;
     Directory.CreateDirectory(dataDirectory);
     var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
     connectionString = $"Data Source={databasePath}";
@@ -101,6 +111,30 @@ catch (Exception ex)
 
 app.UseCors();
 
+var httpLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SchachTurnierManager.Http");
+app.Use(async (context, next) =>
+{
+    var stopwatch = Stopwatch.StartNew();
+    try
+    {
+        await next(context);
+    }
+    finally
+    {
+        stopwatch.Stop();
+        var path = context.Request.Path.Value ?? "/";
+        var statusCode = context.Response.StatusCode;
+        if (string.Equals(path, "/api/health", StringComparison.OrdinalIgnoreCase))
+        {
+            httpLogger.LogDebug("HTTP {Method} {Path} => {StatusCode} in {ElapsedMilliseconds}ms", context.Request.Method, path, statusCode, stopwatch.ElapsedMilliseconds);
+        }
+        else
+        {
+            httpLogger.LogInformation("HTTP {Method} {Path} => {StatusCode} in {ElapsedMilliseconds}ms", context.Request.Method, path, statusCode, stopwatch.ElapsedMilliseconds);
+        }
+    }
+});
+
 if (embeddedDashboardAvailable)
 {
     app.UseDefaultFiles();
@@ -127,11 +161,17 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.49.0",
+    version = "0.50.3",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,
-    embeddedDashboard = embeddedDashboardAvailable
+    embeddedDashboard = embeddedDashboardAvailable,
+    logging = new
+    {
+        defaultLevel = configuredDefaultLogLevel,
+        applicationLevel = configuredApplicationLogLevel,
+        console = "simple-single-line"
+    }
 }));
 
 
