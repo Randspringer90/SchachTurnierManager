@@ -20,6 +20,7 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Publish-DesktopApp.ps1` / `Start-Desktop.bat` – self-contained Desktop-Paket (`output\desktop`), Klick-Start, Daten unter `%LocalAppData%\SchachTurnierManager`.
 - `Build-Installer.ps1` – Installer-EXE über Inno Setup 6 aus `installer\SchachTurnierManager.iss` bauen (ISCC.exe erforderlich).
 - `Invoke-InstallerReadiness.ps1` – RUN-05-Readiness mit Run-Log-Bundle, Desktop-Publish, optionalem Installer-Build und Manifesten.
+- `Invoke-PwaReadiness.ps1` – RUN-08: PWA-Manifest, Icons, Service Worker und Vite-Ausgabe prüfen; `/api` bleibt network-only und wird nicht offline gecacht.
 
 ## Git (git)
 

@@ -2213,3 +2213,35 @@ th {
   font-size: 1.2rem;
   color: #f8fafc;
 }
+
+.pwa-status {
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.76);
+  color: #cbd5e1;
+  font-size: 0.82rem;
+}
+
+.pwa-status.ready,
+.pwa-status.installed,
+.pwa-status.installable {
+  border-color: rgba(134, 239, 172, 0.36);
+  color: #bbf7d0;
+}
+
+.pwa-status.update-available {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
+.pwa-status.error,
+.pwa-status.unsupported {
+  border-color: rgba(248, 113, 113, 0.34);
+  color: #fecaca;
+}

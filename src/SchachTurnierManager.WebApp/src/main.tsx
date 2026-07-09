@@ -13,6 +13,13 @@ type Health = {
   databasePath?: string;
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
+type PwaStatus = 'checking' | 'unsupported' | 'ready' | 'installable' | 'installed' | 'update-available' | 'error';
+
 type RatingProfile = {
   manualTwz?: number | null;
   elo?: number | null;
@@ -561,6 +568,24 @@ function writeLocalStorage(key: string, value: string): void {
     window.localStorage.setItem(key, value);
   } catch {
     // localStorage kann im Privatmodus blockiert sein – Bedienung darf trotzdem weiterlaufen.
+  }
+}
+
+function isStandaloneDisplayMode(): boolean {
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+  return Boolean(navigatorWithStandalone.standalone) || window.matchMedia?.('(display-mode: standalone)').matches === true;
+}
+
+function pwaStatusLabel(status: PwaStatus): string {
+  switch (status) {
+    case 'checking': return 'PWA wird geprüft…';
+    case 'unsupported': return 'PWA nicht unterstützt';
+    case 'ready': return 'PWA bereit';
+    case 'installable': return 'PWA installierbar';
+    case 'installed': return 'PWA installiert';
+    case 'update-available': return 'PWA-Update verfügbar';
+    case 'error': return 'PWA-Serviceworker blockiert';
+    default: return 'PWA-Status unbekannt';
   }
 }
 
@@ -1295,6 +1320,8 @@ function isMainTab(value: string | null): value is MainTab {
 function App() {
   const { t } = useI18n();
   const [health, setHealth] = React.useState<Health | null>(null);
+  const [pwaStatus, setPwaStatus] = React.useState<PwaStatus>(() => isStandaloneDisplayMode() ? 'installed' : 'checking');
+  const [pwaInstallPrompt, setPwaInstallPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [selectedId, setSelectedId] = React.useState<string>('');
   const [standings, setStandings] = React.useState<StandingRow[]>([]);
@@ -1403,6 +1430,61 @@ function App() {
   }, [loadTournaments]);
 
   React.useEffect(() => {
+    if (!('serviceWorker' in navigator)) {
+      setPwaStatus('unsupported');
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const beforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setPwaInstallPrompt(event as BeforeInstallPromptEvent);
+      setPwaStatus('installable');
+    };
+    const appInstalled = () => {
+      setPwaInstallPrompt(null);
+      setPwaStatus('installed');
+    };
+
+    window.addEventListener('beforeinstallprompt', beforeInstallPrompt);
+    window.addEventListener('appinstalled', appInstalled);
+
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        if (isCancelled) {
+          return;
+        }
+
+        if (registration.waiting) {
+          setPwaStatus('update-available');
+        } else {
+          setPwaStatus(isStandaloneDisplayMode() ? 'installed' : 'ready');
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const installing = registration.installing;
+          installing?.addEventListener('statechange', () => {
+            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+              setPwaStatus('update-available');
+            }
+          });
+        });
+      })
+      .catch((err: unknown) => {
+        console.warn('PWA-Serviceworker konnte nicht registriert werden.', err);
+        if (!isCancelled) {
+          setPwaStatus('error');
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('beforeinstallprompt', beforeInstallPrompt);
+      window.removeEventListener('appinstalled', appInstalled);
+    };
+  }, []);
+
+  React.useEffect(() => {
     if (selectedTournament?.id) {
       loadDerived(selectedTournament.id).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
     }
@@ -1474,6 +1556,24 @@ function App() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [isNextRoundPreviewDialogOpen, chess960DialogRound, boardDiceModal]);
+
+  async function installPwa(): Promise<void> {
+    if (!pwaInstallPrompt) {
+      setStatus('Der Browser bietet aktuell keinen Installationsdialog an. Nutze ggf. das Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“.');
+      return;
+    }
+
+    try {
+      await pwaInstallPrompt.prompt();
+      const choice = await pwaInstallPrompt.userChoice;
+      setPwaInstallPrompt(null);
+      setPwaStatus(choice.outcome === 'accepted' ? 'installed' : 'ready');
+      setStatus(choice.outcome === 'accepted' ? 'PWA-Installation gestartet.' : 'PWA-Installation abgebrochen.');
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex));
+      setPwaStatus('error');
+    }
+  }
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2598,6 +2698,10 @@ function openRoundPrint(roundNumber: number) {
           {!health && !error && <span>{t('backend.checking')}</span>}
           {health?.database && <small>{health.database}</small>}
           <LanguageSwitcher />
+          <div className={`pwa-status ${pwaStatus}`}>
+            <span>{pwaStatusLabel(pwaStatus)}</span>
+            {pwaInstallPrompt && <button type="button" className="small secondary" onClick={() => void installPwa()}>Installieren</button>}
+          </div>
         </div>
       </header>
 

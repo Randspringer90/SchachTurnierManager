@@ -1,3 +1,14 @@
+# Aktueller Zusatz 0.45.0
+
+- RUN-08 PWA-/Handy-Basis umgesetzt: Manifest, SVG-Icons, Service Worker und PWA-Status
+  im Header. Der Service Worker cached nur App-Shell/statische Assets und schliesst
+  `/api/*` bewusst aus, damit Turnierdaten nicht versehentlich offline dupliziert werden.
+- Neues `scripts/Invoke-PwaReadiness.ps1` prueft die Vite-Ausgabe und buendelt Logs/Reports
+  wieder als `D:\Temp\...zip`.
+- Naechste sinnvolle Schritte: 0.45.0 lokal committen, dann RUN-02 Release-Reife-Audit
+  oder RUN-17 Turnierassistent im UI. Fuer echte Handy-Offline-Ergebnisaufnahme braucht
+  es zuerst ein gesondertes Sync-/Konfliktkonzept.
+
 # Aktueller Zusatz 0.44.2
 
 - RUN-03-Hotfix: Die Manifest-Auflistung im Portable-Fresh-Folder-Test nutzt jetzt explizite

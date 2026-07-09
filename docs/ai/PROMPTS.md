@@ -18,3 +18,4 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
 - 2026-07-09 ChatGPT: RUN-03 Hotfix 0.44.1 fuer Portable-Fresh-Folder-Test; leerer data-Ordner ist optional, Manifest/Root-Erkennung robuster.
 | 2026-07-09 | ChatGPT 5.5 Thinking | RUN-03-Hotfix: Portable-Manifest verwendet robuste char[]-Trim-/Pfadsegmentlogik statt fehleranfaelligem TrimStart-Aufruf, Version 0.44.2 | [prompts/2026-07-09-chatgpt-run03-portable-trimstart-hotfix.md](prompts/2026-07-09-chatgpt-run03-portable-trimstart-hotfix.md) | [reports/2026-07-09-chatgpt-run03-portable-trimstart-hotfix.md](reports/2026-07-09-chatgpt-run03-portable-trimstart-hotfix.md) |
+- 2026-07-09: RUN-08 PWA-Readiness via ChatGPT-Patch `docs/ai/prompts/2026-07-09-chatgpt-run08-pwa-readiness.md`.

@@ -1,0 +1,27 @@
+{
+  "name": "SchachTurnierManager",
+  "short_name": "STM",
+  "description": "Lokaler Schach-Turniermanager fuer Vereine, Turnierleiter und mobile Ergebnisansichten.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["productivity", "sports", "utilities"],
+  "lang": "de-DE",
+  "icons": [
+    {
+      "src": "/icons/stm-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/stm-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

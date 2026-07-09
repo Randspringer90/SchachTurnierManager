@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SchachTurnierManager">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <path d="M128 384h256v48H128z" fill="#60a5fa"/>
+  <path d="M176 336h160l24 48H152z" fill="#e5e7eb"/>
+  <path d="M224 144h64v64h-64z" fill="#60a5fa"/>
+  <path d="M176 208h160v64H176z" fill="#e5e7eb"/>
+  <path d="M204 272h104l28 64H176z" fill="#60a5fa"/>
+  <circle cx="256" cy="104" r="40" fill="#e5e7eb"/>
+  <path d="M128 80h48v48h-48zM336 80h48v48h-48zM104 152h48v48h-48zM360 152h48v48h-48z" fill="#93c5fd" opacity=".85"/>
+</svg>

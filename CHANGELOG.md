@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.45.0 - RUN-08 PWA-/Handy-Installationsbasis
+
+RUN-08 beginnt die PWA-/Handy-Faehigkeit als echte Produktfunktion: Die WebApp wird
+installierbar, bekommt ein Manifest, Icons, einen Service Worker und eine Readiness-Pruefung.
+Die Turnierdaten-API bleibt bewusst network-only; es werden keine privaten Turnierdaten
+offline im Service-Worker-Cache gespiegelt.
+
+- **PWA-Manifest:** `public/manifest.webmanifest` mit App-Name, Standalone-Modus,
+  Theme-Farbe, Kategorien und Icons.
+- **Icons:** SVG-App-Icon und maskierbares Icon unter `public/icons/`.
+- **Service Worker:** App-Shell-/statische Asset-Caches, aber expliziter Ausschluss von
+  `/api/*`, damit Turnierdaten nicht unkontrolliert gecacht werden.
+- **UI-Hinweis:** Header zeigt PWA-Status und, wenn der Browser es anbietet, einen
+  Installieren-Button.
+- **Readiness-Skript:** `scripts/Invoke-PwaReadiness.ps1` baut die WebApp, prueft
+  Manifest, Icons, Service Worker und `index.html` und buendelt alles als Run-ZIP.
+- **Version:** `0.44.2` → `0.45.0` (Health, `package.json`, `package-lock.json`).
+
 ## 0.44.2 - RUN-03 Portable-Manifest PowerShell-TrimStart-Hotfix
 
 Hotfix zum RUN-03-Frischordner-Test: Der Portable-Build war weiterhin OK, aber die

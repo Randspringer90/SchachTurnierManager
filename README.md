@@ -2,7 +2,7 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.41.x
+## Aktueller Stand bis 0.45.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
@@ -215,3 +215,20 @@ Er baut das Portable-ZIP, entpackt es in einen isolierten Ordner unter `D:\Temp`
 die WebApi auf einem Testport und prueft Health, eingebettetes Dashboard, Turnierlisten-API
 und SQLite-Datenpfad. Leere Paketordner wie `data` werden im Manifest als optional
 behandelt, weil ZIP-Werkzeuge leere Ordner nicht immer erhalten.
+
+### RUN-08 PWA-/Handy-Basis
+
+Die WebApp ist als Progressive Web App vorbereitet: `manifest.webmanifest`, SVG-Icons,
+Theme-Farbe und Service Worker werden beim Frontend-Build in die eingebettete WebApp
+uebernommen. Der Service Worker cached nur App-Shell und statische Assets. API-Aufrufe
+unter `/api/*` bleiben bewusst network-only, damit Turnierdaten nicht unkontrolliert im
+Browser-Cache landen.
+
+Readiness-Test:
+
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-PwaReadiness.ps1"
+```
+
+Am Ende wird ein `UPLOAD_ZIP=...` unter `D:\Temp` erzeugt.
