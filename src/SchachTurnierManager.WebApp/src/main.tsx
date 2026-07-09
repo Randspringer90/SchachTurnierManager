@@ -396,6 +396,175 @@ type SettingsForm = {
   tiebreaks: number[];
 };
 
+type TournamentAssistantScenario = 'club-night' | 'youth' | 'open' | 'blitz' | 'chess960' | 'team';
+
+type TournamentAssistantForm = {
+  playerCount: string;
+  availableMinutes: string;
+  boardCount: string;
+  scenario: TournamentAssistantScenario;
+  rated: boolean;
+  chess960: boolean;
+  needsQr: boolean;
+};
+
+type TournamentAssistantRecommendation = {
+  title: string;
+  format: number;
+  formatLabel: string;
+  plannedRounds: number;
+  scoringSystem: number;
+  scoringLabel: string;
+  estimatedRoundMinutes: number;
+  estimatedTotalMinutes: number;
+  estimatedBoards: number;
+  timeFit: 'ok' | 'tight' | 'blocked';
+  timeFitLabel: string;
+  setupSteps: string[];
+  warnings: string[];
+  operatorChecklist: string[];
+  exportPlan: string[];
+  handoffPrompt: string;
+};
+
+const assistantScenarioOptions: Array<{ value: TournamentAssistantScenario; label: string; description: string }> = [
+  { value: 'club-night', label: 'Vereinsabend / Schnellturnier', description: 'Robuste Standardempfehlung für 8–30 Spieler und begrenzte Zeit.' },
+  { value: 'youth', label: 'Jugendturnier', description: 'Kürzere Runden, klare Checklisten, viele Ausdrucke.' },
+  { value: 'open', label: 'Open / großes Feld', description: 'Schweizer System, Audit, Backup und Veröffentlichung im Vordergrund.' },
+  { value: 'blitz', label: 'Blitz / Schnellschach', description: 'Viele kurze Runden und einfache Wertung.' },
+  { value: 'chess960', label: 'Chess960 / Freestyle', description: 'QR-/Handy-Würfeln und Startstellungs-Audit einplanen.' },
+  { value: 'team', label: 'Mannschaft / Teamturnier', description: 'Noch nicht vollständig implementiert; aktuell als Planungshinweis.' }
+];
+
+const defaultTournamentAssistantForm: TournamentAssistantForm = {
+  playerCount: '12',
+  availableMinutes: '180',
+  boardCount: '6',
+  scenario: 'club-night',
+  rated: false,
+  chess960: false,
+  needsQr: true
+};
+
+function assistantNumber(value: string, fallback: number, min: number, max: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, Math.round(parsed)));
+}
+
+function recommendedSwissRounds(playerCount: number): number {
+  if (playerCount <= 4) return 3;
+  if (playerCount <= 8) return 5;
+  if (playerCount <= 16) return 5;
+  if (playerCount <= 32) return 6;
+  if (playerCount <= 64) return 7;
+  return 9;
+}
+
+function assistantScenarioRoundMinutes(form: TournamentAssistantForm): number {
+  switch (form.scenario) {
+    case 'blitz': return 12;
+    case 'youth': return 18;
+    case 'chess960': return 22;
+    case 'open': return 30;
+    case 'team': return 35;
+    default: return 20;
+  }
+}
+
+function buildTournamentAssistantRecommendation(form: TournamentAssistantForm): TournamentAssistantRecommendation {
+  const playerCount = assistantNumber(form.playerCount, 12, 2, 512);
+  const availableMinutes = assistantNumber(form.availableMinutes, 180, 30, 1440);
+  const boardCount = assistantNumber(form.boardCount, Math.max(1, Math.ceil(playerCount / 2)), 1, 256);
+  const activeChess960 = form.chess960 || form.scenario === 'chess960';
+  const canRoundRobin = playerCount <= 8 && form.scenario !== 'open' && form.scenario !== 'team';
+  const formatValue = canRoundRobin && availableMinutes >= Math.max(3, playerCount - 1) * assistantScenarioRoundMinutes(form) ? 0 : 1;
+  const plannedRounds = formatValue === 0 ? Math.max(1, playerCount - 1) : recommendedSwissRounds(playerCount);
+  const scoringSystem = form.scenario === 'blitz' ? 0 : 0;
+  const estimatedRoundMinutes = assistantScenarioRoundMinutes(form);
+  const estimatedTotalMinutes = plannedRounds * estimatedRoundMinutes + 20;
+  const estimatedBoards = Math.ceil(playerCount / 2);
+  const timeFit: TournamentAssistantRecommendation['timeFit'] = estimatedTotalMinutes <= availableMinutes
+    ? 'ok'
+    : estimatedTotalMinutes <= availableMinutes + 30
+      ? 'tight'
+      : 'blocked';
+  const timeFitLabel = timeFit === 'ok'
+    ? 'Zeitfenster passt'
+    : timeFit === 'tight'
+      ? 'Zeitfenster knapp – Rundenlänge oder Rundenzahl prüfen'
+      : 'Zeitfenster reicht voraussichtlich nicht';
+  const formatLabel = formatOptions.find(option => option.value === formatValue)?.label ?? 'Schweizer System';
+  const scoringLabel = scoringOptions.find(option => option.value === scoringSystem)?.label ?? scoringOptions[0].label;
+  const setupSteps = [
+    `${formatLabel} mit ${plannedRounds} Runde(n) vorbereiten`,
+    `Teilnehmerliste importieren oder erfassen; erwartete Bretter: ${estimatedBoards}`,
+    'Vor Runde 1 Backup ziehen und Datenbankpfad prüfen',
+    'Auslosungsvorschau öffnen, Pairing-Qualität prüfen und erst dann auslosen',
+    'Nach jeder Runde Ergebnisse vollständig erfassen, Runde prüfen und Backup exportieren'
+  ];
+
+  if (activeChess960) {
+    setupSteps.splice(3, 0, 'Chess960/QR-Würfeln vor Rundenstart testen und WLAN-/Hotspot-Link prüfen');
+  }
+
+  const warnings: string[] = [];
+  if (boardCount < estimatedBoards) {
+    warnings.push(`Nur ${boardCount} Brett(er) angegeben, aber ${estimatedBoards} Brett(er) benötigt. BYE/Schichtbetrieb oder weniger Teilnehmer einplanen.`);
+  }
+  if (timeFit !== 'ok') {
+    warnings.push(timeFitLabel);
+  }
+  if (playerCount > 20) {
+    warnings.push('Großes Schweizer Feld: Pairing-Audit besonders prüfen; FIDE-Dutch-Ausbau ist weiterhin eigener Roadmap-Punkt.');
+  }
+  if (form.rated) {
+    warnings.push('Gewertetes Turnier: Ausschreibung, Bedenkzeit, Bye-/Kampflos-Regeln und Exportformat vorab mit Verband/Turnierordnung abgleichen.');
+  }
+  if (form.scenario === 'team') {
+    warnings.push('Team-/Mannschaftsturniere sind aktuell noch Planungsszenario; vollständige Mehrbrett-Teamlogik folgt in RUN-16.');
+  }
+
+  const operatorChecklist = [
+    'Laptop am Netzteil betreiben und Energiesparen/Bildschirmsperre deaktivieren',
+    'Startdatei/Backend-Fenster offen lassen und Browser nicht schließen',
+    'Drucker oder PDF-Export vor Runde 1 testen',
+    'Ergebniszettel/QR-Aushang vorbereiten',
+    'Nach jeder Runde Audit/Backup sichern'
+  ];
+
+  const exportPlan = [
+    'Teilnehmerliste vor Turnierstart exportieren',
+    'Rundenblatt je Runde drucken oder als PDF ablegen',
+    'Tabelle nach jeder Runde veröffentlichen',
+    'Abschluss-Backup und finale Tabelle exportieren'
+  ];
+
+  const handoffPrompt = `Plane ein ${assistantScenarioOptions.find(option => option.value === form.scenario)?.label ?? 'Turnier'} mit ${playerCount} Teilnehmern, ${availableMinutes} Minuten Zeit, ${boardCount} Brettern, Format ${formatLabel}, ${plannedRounds} Runden${activeChess960 ? ', Chess960/Freestyle mit QR-Würfeln' : ''}. Prüfe Pairing, Wertung, Backup, Druck und Veröffentlichung Schritt für Schritt.`;
+
+  return {
+    title: `${formatLabel} · ${plannedRounds} Runde(n) · ca. ${estimatedTotalMinutes} Min.`,
+    format: formatValue,
+    formatLabel,
+    plannedRounds,
+    scoringSystem,
+    scoringLabel,
+    estimatedRoundMinutes,
+    estimatedTotalMinutes,
+    estimatedBoards,
+    timeFit,
+    timeFitLabel,
+    setupSteps,
+    warnings,
+    operatorChecklist,
+    exportPlan,
+    handoffPrompt
+  };
+}
+
 type PlayerForm = {
   name: string;
   club: string;
@@ -1304,6 +1473,7 @@ function MobileDicePage({ params }: { params: BoardDiceParams }): React.ReactEle
 
 const mainTabs = [
   { id: 'overview', label: 'Übersicht' },
+  { id: 'assistant', label: 'Assistent' },
   { id: 'participants', label: 'Teilnehmer' },
   { id: 'rounds', label: 'Runden / Auslosung' },
   { id: 'standings', label: 'Tabelle / Ergebnisse' },
@@ -1344,6 +1514,8 @@ function App() {
   const [diceUrlCopied, setDiceUrlCopied] = React.useState(false);
   const [newTournamentName, setNewTournamentName] = React.useState('Vereinsturnier');
   const [format, setFormat] = React.useState(1);
+  const [assistantForm, setAssistantForm] = React.useState<TournamentAssistantForm>(defaultTournamentAssistantForm);
+  const assistantRecommendation = React.useMemo(() => buildTournamentAssistantRecommendation(assistantForm), [assistantForm]);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
   const [externalQuery, setExternalQuery] = React.useState('');
@@ -2570,6 +2742,20 @@ function openRoundPrint(roundNumber: number) {
       action: () => void previewNextRound()
     };
   }
+  function applyAssistantRecommendation(): void {
+    setFormat(assistantRecommendation.format);
+    setSettingsForm({
+      ...settingsForm,
+      format: assistantRecommendation.format,
+      scoringSystem: assistantRecommendation.scoringSystem,
+      plannedRounds: assistantRecommendation.plannedRounds.toString(),
+      tiebreaks: assistantRecommendation.format === 0 ? [4, 0, 1, 99] : defaultTiebreaks
+    });
+    setNewTournamentName(`${assistantScenarioOptions.find(option => option.value === assistantForm.scenario)?.label ?? 'Turnier'} ${new Date().getFullYear()}`);
+    setStatus('Assistenten-Empfehlung in Neuanlage und Einstellungen übernommen. Bei bestehendem Turnier bitte Einstellungen speichern.');
+    setActiveMainTab('admin');
+  }
+
   function correctionJournalItems() {
     if (!selectedTournament) {
       return [];
@@ -3097,6 +3283,85 @@ function openRoundPrint(roundNumber: number) {
                   </details>
                 </>
               )}
+            </article>
+          )}
+
+          {activeMainTab === 'assistant' && (
+            <article className="card assistant-card">
+              <div className="assistant-header">
+                <div>
+                  <p className="eyebrow">Turnierassistent · lokal &amp; ohne KI-API</p>
+                  <h3>Welches Format passt?</h3>
+                  <p className="muted">Der Assistent empfiehlt auf Basis von Teilnehmerzahl, Zeit, Brettern und Szenario eine robuste Turnier-Konfiguration. Er sendet keine Daten an externe Dienste.</p>
+                </div>
+                <div className={`assistant-fit ${assistantRecommendation.timeFit}`}>
+                  <strong>{assistantRecommendation.timeFitLabel}</strong>
+                  <span>{assistantRecommendation.estimatedTotalMinutes} Min. geschätzt</span>
+                </div>
+              </div>
+              <div className="assistant-grid">
+                <section className="assistant-form">
+                  <label>Szenario
+                    <select value={assistantForm.scenario} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setAssistantForm({ ...assistantForm, scenario: event.target.value as TournamentAssistantScenario })}>
+                      {assistantScenarioOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <p className="muted">{assistantScenarioOptions.find(option => option.value === assistantForm.scenario)?.description}</p>
+                  <div className="settings-grid compact">
+                    <label>Teilnehmer
+                      <input type="number" min="2" max="512" value={assistantForm.playerCount} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, playerCount: event.target.value })} />
+                    </label>
+                    <label>Zeit in Minuten
+                      <input type="number" min="30" max="1440" value={assistantForm.availableMinutes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, availableMinutes: event.target.value })} />
+                    </label>
+                    <label>Bretter
+                      <input type="number" min="1" max="256" value={assistantForm.boardCount} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, boardCount: event.target.value })} />
+                    </label>
+                  </div>
+                  <div className="checkbox-row">
+                    <label className="checkbox"><input type="checkbox" checked={assistantForm.rated} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, rated: event.target.checked })} /> gewertetes Turnier geplant</label>
+                    <label className="checkbox"><input type="checkbox" checked={assistantForm.chess960} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, chess960: event.target.checked })} /> Chess960/Freestyle</label>
+                    <label className="checkbox"><input type="checkbox" checked={assistantForm.needsQr} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, needsQr: event.target.checked })} /> QR/Handy am Brett nutzen</label>
+                  </div>
+                  <div className="actions">
+                    <button type="button" onClick={applyAssistantRecommendation}>Empfehlung übernehmen</button>
+                    <button type="button" className="secondary" onClick={() => downloadText(`turnierassistent-${backupTimestampSlug(new Date())}.txt`, assistantRecommendation.handoffPrompt, 'text/plain;charset=utf-8')}>Prompt/Plan exportieren</button>
+                  </div>
+                </section>
+                <section className="assistant-result">
+                  <h4>{assistantRecommendation.title}</h4>
+                  <div className="overview-grid assistant-metrics">
+                    <div><span>Format</span><strong>{assistantRecommendation.formatLabel}</strong></div>
+                    <div><span>Runden</span><strong>{assistantRecommendation.plannedRounds}</strong></div>
+                    <div><span>Bretter</span><strong>{assistantRecommendation.estimatedBoards}</strong></div>
+                    <div><span>Punkte</span><strong>{assistantRecommendation.scoringLabel}</strong></div>
+                  </div>
+                  {assistantRecommendation.warnings.length > 0 && (
+                    <div className="assistant-warning">
+                      <strong>Prüfen</strong>
+                      <ul>{assistantRecommendation.warnings.map((warning, index) => <li key={`assistant-warning-${index}`}>{warning}</li>)}</ul>
+                    </div>
+                  )}
+                  <div className="assistant-columns">
+                    <section>
+                      <strong>Setup-Schritte</strong>
+                      <ol>{assistantRecommendation.setupSteps.map((step, index) => <li key={`assistant-step-${index}`}>{step}</li>)}</ol>
+                    </section>
+                    <section>
+                      <strong>Turniertag-Check</strong>
+                      <ul>{assistantRecommendation.operatorChecklist.map((item, index) => <li key={`assistant-check-${index}`}>{item}</li>)}</ul>
+                    </section>
+                    <section>
+                      <strong>Export/Veröffentlichung</strong>
+                      <ul>{assistantRecommendation.exportPlan.map((item, index) => <li key={`assistant-export-${index}`}>{item}</li>)}</ul>
+                    </section>
+                  </div>
+                  <details className="audit-box assistant-handoff">
+                    <summary>Handoff-Prompt anzeigen</summary>
+                    <p>{assistantRecommendation.handoffPrompt}</p>
+                  </details>
+                </section>
+              </div>
             </article>
           )}
 

@@ -51,3 +51,5 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 ## Zielstruktur
 
 Die Unterordner `dev/`, `test/`, `release/`, `git/`, `security/`, `maintenance/` sind als Zielzustand in `docs/planning/PROJECT_ORCHESTRATION.md` dokumentiert. Die Migration erfolgt in einem eigenen Lauf, weil dabei alle gegenseitigen Skriptaufrufe, Doku-Verweise und Regex-Pfadmuster (`patternSourceRegex`, Snapshot-Excludes) gleichzeitig angepasst und über das Release-Gate verifiziert werden müssen.
+
+- `Invoke-TournamentAssistantReadiness.ps1`: RUN-17-Readiness fuer den lokalen Turnierassistenten; ReleaseGate, Frontend-Build und UI-/Privacy-Merkmale als Run-ZIP.

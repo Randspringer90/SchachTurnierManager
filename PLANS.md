@@ -1,3 +1,16 @@
+# Aktueller Zusatz 0.46.0
+
+- RUN-17 Turnierassistent im UI umgesetzt: neuer Hauptreiter `Assistent` mit lokalen,
+  regelbasierten Empfehlungen fuer Szenario, Format, Rundenzahl, Zeitbedarf, Bretter,
+  Setup-Schritte, Turniertag-Checkliste und Exportplan.
+- Keine KI-API, keine externen Requests, keine Secrets: Der Assistent ist bewusst Produkt-/
+  Bedienhilfe und bildet die Grundlage fuer spaetere KI-Chatbot-/Wissensbasis-Features.
+- Neues `scripts/Invoke-TournamentAssistantReadiness.ps1` prueft ReleaseGate, Frontend-Build
+  und zentrale UI-/Privacy-Merkmale und buendelt wieder ein Upload-ZIP unter `D:\Temp`.
+- Naechste sinnvolle Schritte: 0.46.0 lokal committen, danach RUN-10/11 KI-Chatbot-/
+  Wissensbasis-Konzept technisch vorbereiten oder RUN-14 Wertungs-/Tie-Break-Erklaerungen
+  im UI vertiefen.
+
 # Aktueller Zusatz 0.45.0
 
 - RUN-08 PWA-/Handy-Basis umgesetzt: Manifest, SVG-Icons, Service Worker und PWA-Status

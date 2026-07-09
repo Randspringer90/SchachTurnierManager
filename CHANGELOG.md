@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.46.0 - RUN-17 lokaler Turnierassistent
+
+RUN-17 fuegt einen ersten produktiven Turnierassistenten in der WebApp hinzu. Der Assistent
+ist bewusst lokal und regelbasiert: Er nutzt Teilnehmerzahl, Zeitfenster, Bretter und Szenario,
+sendet keine Daten an KI-Anbieter und benoetigt keine API-Keys.
+
+- **Neuer Reiter:** `Assistent` als eigener Hauptbereich zwischen Uebersicht und Teilnehmern.
+- **Formatempfehlung:** lokale Empfehlung fuer Schweizer System oder Jeder-gegen-Jeden,
+  geplante Runden, benoetigte Bretter, Zeitbedarf und Punktesystem.
+- **Szenarien:** Vereinsabend, Jugendturnier, Open, Blitz/Schnellschach, Chess960/Freestyle
+  und Team/Mannschaft als klar markiertes Planungsszenario.
+- **Turniertag-Hilfe:** Setup-Schritte, Turniertag-Checkliste, Export-/Veroeffentlichungsplan
+  und Warnungen bei knapper Zeit, zu wenigen Brettern, grossen Feldern oder gewerteten Turnieren.
+- **Uebernahme:** Empfehlung kann Neuanlage und Turniereinstellungen vorbefuellen; bestehende
+  Turniere muessen Einstellungen danach bewusst speichern.
+- **Readiness-Skript:** `scripts/Invoke-TournamentAssistantReadiness.ps1` prueft ReleaseGate,
+  Frontend-Build und Assistenten-Quellmerkmale in einem Run-ZIP.
+- **Version:** `0.45.0` → `0.46.0` (Health, `package.json`, `package-lock.json`).
+
 ## 0.45.0 - RUN-08 PWA-/Handy-Installationsbasis
 
 RUN-08 beginnt die PWA-/Handy-Faehigkeit als echte Produktfunktion: Die WebApp wird

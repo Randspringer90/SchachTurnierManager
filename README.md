@@ -2,7 +2,7 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.45.x
+## Aktueller Stand bis 0.46.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
@@ -12,6 +12,7 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Ergebnisse, Tabellen, Kategorien, Kreuztabelle, Rundenblätter und Exporte.
 - Persistentes Audit-Journal mit Dashboard, Exporten und Query-API.
 - Operator-Readiness-Smoke für lokale synthetische Turniertagsprüfung.
+- Lokaler Turnierassistent für Format-, Runden-, Zeit-, Brett- und Turniertagsempfehlungen ohne externe KI-API.
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
 
@@ -69,6 +70,22 @@ Dashboard, Turnierlisten-API und den isolierten SQLite-Datenpfad. Am Ende wird e
 
 Der Paketmanifest-Teil toleriert leere ZIP-Ordner wie `data` und listet die
 erkannten Portable-Dateien robust bis Tiefe 3 auf.
+
+
+## Turnierassistent
+
+Der Reiter **Assistent** hilft Turnierleitern bei der Vorbereitung: Teilnehmerzahl, Zeitfenster,
+Bretter und Szenario erfassen; die App empfiehlt Format, Rundenzahl, Zeitbedarf, Setup-Schritte,
+Turniertag-Checkliste und Exportplan. Der Assistent ist rein lokal und regelbasiert. Es werden
+keine Turnierdaten, Logs, Secrets oder personenbezogenen Daten an externe KI-Dienste gesendet.
+
+Prüflauf:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-TournamentAssistantReadiness.ps1"
+```
+
+Der Lauf erzeugt ein `UPLOAD_ZIP=...` unter `D:\Temp`.
 
 ## Mehrsprachigkeit
 
