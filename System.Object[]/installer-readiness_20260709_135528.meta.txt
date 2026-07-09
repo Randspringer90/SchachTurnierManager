@@ -1,0 +1,5 @@
+Name: installer-readiness
+Start: 2026-07-09T13:55:28.4850139+02:00
+WorkingDirectory: D:\KFM\KI-Projekte\schach\SchachTurnierManager
+CommandLine: pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-InstallerReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup
+LogPath: D:\KFM\KI-Projekte\schach\SchachTurnierManager\System.Object[]\installer-readiness_20260709_135528.log

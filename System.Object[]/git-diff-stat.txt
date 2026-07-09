@@ -1,0 +1,14 @@
+warning: in the working copy of 'src/SchachTurnierManager.WebApi/Program.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/SchachTurnierManager.Application.Tests/OperationalGuardTests.cs', LF will be replaced by CRLF the next time Git touches it
+ .agents/skills/installer-packaging.md              |  6 +++++
+ AGENTS.md                                          |  4 +++-
+ CHANGELOG.md                                       |  9 +++++++
+ PLANS.md                                           |  8 +++++++
+ README.md                                          | 14 ++++++++++-
+ docs/ai/PROMPTS.md                                 |  1 +
+ scripts/README.md                                  |  2 ++
+ src/SchachTurnierManager.WebApi/Program.cs         |  2 +-
+ src/SchachTurnierManager.WebApp/package-lock.json  |  4 ++--
+ src/SchachTurnierManager.WebApp/package.json       |  2 +-
+ .../OperationalGuardTests.cs                       | 28 ++++++++++++++++++++++
+ 11 files changed, 74 insertions(+), 6 deletions(-)

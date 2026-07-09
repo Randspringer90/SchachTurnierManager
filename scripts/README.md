@@ -71,3 +71,5 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseCa
 ```
 
 Am Ende wird genau ein `UPLOAD_ZIP=...` ausgegeben.
+
+- `Invoke-ColleagueInstallReadiness.ps1` erzeugt RUN-51: eigenstaendiges Kollegenpaket mit Desktop-ZIP, Portable-ZIP, optionaler Setup-EXE, README, Manifest und SHA256-Pruefsummen.

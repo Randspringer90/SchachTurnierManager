@@ -1,0 +1,4 @@
+RunName: STM_RUN51_ColleagueInstallReadiness
+Created: 2026-07-09T13:56:18.1473374+02:00
+RepositoryRoot: D:\KFM\KI-Projekte\schach\SchachTurnierManager
+RunDirectory: D:\KFM\KI-Projekte\schach\SchachTurnierManager\System.Object[]

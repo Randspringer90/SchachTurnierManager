@@ -1,0 +1,18 @@
+## main...origin/main [ahead 9]
+ M .agents/skills/installer-packaging.md
+ M AGENTS.md
+ M CHANGELOG.md
+ M PLANS.md
+ M README.md
+ M docs/ai/PROMPTS.md
+ M scripts/README.md
+ M src/SchachTurnierManager.WebApi/Program.cs
+ M src/SchachTurnierManager.WebApp/package-lock.json
+ M src/SchachTurnierManager.WebApp/package.json
+ M tests/SchachTurnierManager.Application.Tests/OperationalGuardTests.cs
+?? .agents/skills/colleague-installation.md
+?? System.Object[]/
+?? docs/ai/prompts/2026-07-09-chatgpt-run51-colleague-install-kit.md
+?? docs/ai/reports/2026-07-09-chatgpt-run51-colleague-install-kit.md
+?? docs/release/COLLEAGUE_INSTALLATION.md
+?? scripts/Invoke-ColleagueInstallReadiness.ps1

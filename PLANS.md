@@ -1,3 +1,19 @@
+# Aktueller Zusatz 0.51.1
+
+- Hotfix fuer `scripts/Invoke-ColleagueInstallReadiness.ps1`: Run-Ordner und Upload-ZIP werden direkt/deterministisch berechnet, damit keine `System.Object[]`-Pfade mehr entstehen.
+- RUN-51 bleibt der richtige naechste Release-Schritt: Kollegenpaket mit Desktop-ZIP, Portable-ZIP, optionalem Setup, README, Manifest und SHA256-Pruefsummen.
+- Naechster Schritt: 0.51.1 testen; wenn gruen, lokal committen und pushen. Danach echten Kollegen-/Frisch-Windows-Test oder Inno Setup fuer echte Setup-EXE nachziehen.
+
+---
+
+# Aktueller Zusatz 0.51.0
+
+- RUN-51 konkretisiert die Kollegeninstallation: eigenstaendiges `SchachTurnierManager_Kollegenpaket_<Version>.zip` mit Desktop-ZIP, Portable-ZIP, optionaler Setup-EXE, README, Manifest und SHA256-Pruefsummen.
+- Der Standardlauf ist `scripts/Invoke-ColleagueInstallReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup`; fehlendes Inno Setup bleibt ein dokumentierter Blocker, aber Desktop-/Portable-Auslieferung bleibt moeglich.
+- Naechster Schritt: 0.51.0 testen, committen und pushen; danach echten Kollegen-/Frisch-Windows-Test oder weitere Fachfeatures (RUN-14 Tie-Breaks, RUN-12 FIDE-Dutch, RUN-15 Excel/TRF).
+
+---
+
 # Aktueller Zusatz 0.50.4
 
 - Hotfix fuer den DPAPI-Secret-Roundtrip: `Get-LocalSecret.ps1` verwendet jetzt robuste `System.IO.Path`-Separatorzeichen statt der fehlerhaften `[char]'\\'`-Konvertierung.

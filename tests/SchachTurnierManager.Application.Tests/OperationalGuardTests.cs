@@ -75,6 +75,40 @@ public sealed class OperationalGuardTests
         Assert.True(File.Exists(FindRepositoryFile("docs", "architecture", "RELEASE_OPERATIONS.md")));
     }
 
+
+    [Fact]
+    public void ColleagueInstallReadiness_BuildsStandalonePackageWithChecksumsAndDocs()
+    {
+        var scriptPath = FindRepositoryFile("scripts", "Invoke-ColleagueInstallReadiness.ps1");
+        var script = File.ReadAllText(scriptPath);
+        var docs = File.ReadAllText(FindRepositoryFile("docs", "release", "COLLEAGUE_INSTALLATION.md"));
+
+        Assert.Contains("Publish-DesktopApp.ps1", script);
+        Assert.Contains("Pack-Portable.ps1 -SelfContained", script);
+        Assert.Contains("Invoke-InstallerReadiness.ps1", script);
+        Assert.Contains("README_START_HIER.txt", script);
+        Assert.Contains("KOLLEGENPAKET_MANIFEST.txt", script);
+        Assert.Contains("CHECKSUMS_SHA256.txt", script);
+        Assert.Contains("KOLLEGENPAKET=", script);
+        Assert.Contains("UPLOAD_ZIP=", script);
+        Assert.Contains("New-ColleagueRunDirectory", script);
+        Assert.Contains("Resolve-UploadZipPath", script);
+        Assert.Contains("Test-Path -LiteralPath $expectedUploadZip", script);
+        Assert.DoesNotContain("$runDirectory = pwsh.exe", script);
+        Assert.DoesNotContain("Select-Object -Last 1).ToString()", script);
+        Assert.DoesNotContain("System.Object[]", script);
+        Assert.Contains("AllowMissingInnoSetup", script);
+        Assert.Contains(".secrets/local/", script);
+        Assert.Contains("Keine .NET-Installation", script);
+        Assert.Contains("Keine Verbindung zu anderen lokalen Projekten", script);
+
+        Assert.Contains("SchachTurnierManager_Kollegenpaket", docs);
+        Assert.Contains("%LocalAppData%\\SchachTurnierManager", docs);
+        Assert.Contains(".secrets/local/", docs);
+        Assert.Contains("DPAPI", docs);
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-installation.md")));
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

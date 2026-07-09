@@ -1,0 +1,5 @@
+Name: portable-selfcontained
+Start: 2026-07-09T13:55:10.2957578+02:00
+WorkingDirectory: D:\KFM\KI-Projekte\schach\SchachTurnierManager
+CommandLine: pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-Portable.ps1 -SelfContained
+LogPath: D:\KFM\KI-Projekte\schach\SchachTurnierManager\System.Object[]\portable-selfcontained_20260709_135510.log

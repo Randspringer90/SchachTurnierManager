@@ -2,7 +2,7 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.50.x
+## Aktueller Stand bis 0.51.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
@@ -36,6 +36,18 @@ Seit 0.50.x enthaelt das Projekt einen eigenen Release-/Betriebsunterbau:
 - `scripts/Set-LocalSecret.ps1` und `scripts/Get-LocalSecret.ps1` bilden den lokalen DPAPI-Roundtrip ab.
 - `scripts/Invoke-ReleaseCandidateReadiness.ps1` sammelt ReleaseGate, SecretSafety, Desktop, Portable und optional Installer in einem Run-ZIP unter `D:\Temp`.
 - Agentenregeln und Skills liegen im Projekt selbst unter `AGENTS.md` und `.agents/skills/`, damit Codex, Claude Code und lokale KI-Workflows ohne externe Projektabhaengigkeiten arbeiten koennen.
+
+
+
+### Kollegenpaket / einfache Installation
+
+Seit 0.51.1 erzeugt `scripts/Invoke-ColleagueInstallReadiness.ps1` ein eigenstaendiges Kollegenpaket unter `output\SchachTurnierManager_Kollegenpaket_<Version>.zip`. Das Paket enthaelt Desktop-ZIP, Portable-ZIP, optional die Setup-EXE, ein `README_START_HIER.txt`, ein Manifest und SHA256-Pruefsummen.
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ColleagueInstallReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
+```
+
+Beim Kollegen gilt: Setup-EXE per Doppelklick verwenden, falls vorhanden; sonst Desktop-ZIP entpacken und `SchachTurnierManager.bat` per Doppelklick starten. Es wird kein .NET, Node oder npm auf dem Zielrechner benoetigt.
 
 ## Bewusste Grenzen
 

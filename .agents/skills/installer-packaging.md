@@ -30,3 +30,9 @@ Regeln:
 - Für Kollegeninstallation ist `output/desktop/SchachTurnierManager.bat` aktuell der sichere Klick-Start; echte Setup-EXE folgt, sobald Inno Setup lokal verfügbar ist.
 - Das Release-Artefaktmanifest enthält SHA256-Prüfsummen für ZIP-/EXE-Dateien.
 - Installer/ZIP dürfen keine Datenbanken, Logs, `.secrets`, `.npmrc`, `.env` oder echten Turnierdaten enthalten.
+
+## Stand 0.51.0
+
+- `scripts/Invoke-ColleagueInstallReadiness.ps1` erzeugt ein eigenstaendiges Kollegenpaket mit Desktop-ZIP, Portable-ZIP, optionaler Setup-EXE, README, Manifest und SHA256-Pruefsummen.
+- Ziel ist die Weitergabe an Kolleginnen/Kollegen ohne Entwicklerwerkzeuge und ohne Abhaengigkeit zu anderen lokalen Projekten.
+- Fehlendes Inno Setup bleibt mit `-AllowMissingInnoSetup` ein dokumentierter Blocker; Desktop-ZIP und Portable-ZIP bleiben trotzdem auslieferbar.

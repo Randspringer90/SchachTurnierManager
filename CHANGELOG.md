@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.51.1 - RUN-51 Kollegeninstallation RunBundle-Hotfix
+
+- **Bugfix:** `scripts/Invoke-ColleagueInstallReadiness.ps1` erzeugt den Run-Ordner jetzt selbst und berechnet das Upload-ZIP deterministisch, statt Pipeline-Ausgaben von `New-RunLogBundle.ps1` in Variablen zu uebernehmen. Dadurch entstehen keine `System.Object[]`-Pfade mehr.
+- **Readiness:** `RUN_DIR=...`, `KOLLEGENPAKET=...` und `UPLOAD_ZIP=...` bleiben maschinenlesbar; Fehler werden weiterhin im Run-ZIP dokumentiert.
+- **Qualitaet:** `OperationalGuardTests` pruefen die robuste RunDirectory-/UploadZip-Behandlung im Kollegeninstallationslauf.
+- **Scope:** Keine fachliche Turnierlogik geaendert.
+- **Version:** `0.51.0` → `0.51.1` (Health, `package.json`, `package-lock.json`).
+
+## 0.51.0 - RUN-51 Kollegeninstallation und Release-Paket
+
+- **Kollegenpaket:** Neues `scripts/Invoke-ColleagueInstallReadiness.ps1` baut ein eigenstaendiges Paket mit Desktop-ZIP, Portable-ZIP, optionaler Setup-EXE, `README_START_HIER.txt`, Manifest und SHA256-Pruefsummen.
+- **Installation:** Neue Doku `docs/release/COLLEAGUE_INSTALLATION.md` beschreibt Doppelklick-Start, Setup-Fallback, Healthcheck und Datenpfade fuer Kollegenrechner.
+- **Agenten/Skills:** Neuer Skill `.agents/skills/colleague-installation.md`; `AGENTS.md` und `installer-packaging.md` verweisen auf die eigenstaendige Distribution ohne externe Projektabhaengigkeiten.
+- **Qualitaet:** `OperationalGuardTests` prueft den Kollegeninstallationslauf, Artefaktregeln, Checksums und Dokumentation.
+- **Version:** `0.50.4` → `0.51.0` (Health, `package.json`, `package-lock.json`).
+
+
 ## 0.50.4 - RUN-50 DPAPI-Pfadtrim-Hotfix
 
 - **Bugfix:** `scripts/Get-LocalSecret.ps1` nutzt fuer relative Secret-Anzeigepfade jetzt `System.IO.Path.DirectorySeparatorChar`/`AltDirectorySeparatorChar` statt einer fehleranfaelligen `[char]'\\'`-Konvertierung. Dadurch bricht der DPAPI-Roundtrip nicht mehr beim Anzeigen von `.secrets/local/...`-Pfaden ab.
