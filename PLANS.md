@@ -1,3 +1,81 @@
+# Aktueller Zusatz 0.43.1
+
+- CommitGuard/Safety-Hotfix: `NEXT_PROMPT.md` ist lokale Projekt-Registry-/Handoff-Datei und
+  wird nicht mehr automatisch gestaged oder committet. Vor dem naechsten Commit einmalig
+  `git reset` ausfuehren, damit der fehlgeschlagene Stage-Zustand geloest wird; lokale
+  Aenderungen bleiben erhalten.
+- `Test-GitCommitSafety.ps1` meldet bei internen Referenzen jetzt Datei und hinzugefuegte
+  Zeile. Danach kann die 0.42.6/0.43.x-Basis erneut ueber `Commit-If-Green.ps1` gesichert
+  werden.
+- RUN-05-Readiness bleibt fachlich gueltig: ReleaseGate und Desktop-Publish OK; Installer-Build
+  wartet auf lokal verfuegbares Inno Setup (`ISCC.exe`).
+
+# Aktueller Zusatz 0.43.0
+
+- RUN-05 Installer-Readiness ist jetzt als eigener, ruhiger Lauf automatisiert:
+  `scripts/Invoke-InstallerReadiness.ps1` erzeugt Desktop-Paket, prueft Pflichtartefakte
+  und baut bei vorhandenem Inno Setup optional die Setup-EXE.
+- Installer-Testcheckliste und README liegen unter `docs/release/INSTALLER_TEST_CHECKLIST.md`
+  bzw. `installer/README.md`; SmartScreen/Code-Signing bleibt bewusst dokumentierte spaetere
+  Entscheidung.
+- Inno Setup wird nicht automatisch installiert; falls `ISCC.exe` fehlt, wird das im Run-ZIP
+  als Blocker dokumentiert. Keine Downloads/Kostenaktionen.
+- Naechster Schritt nach erfolgreichem RUN-05-Readiness: echten Installer bauen/testen, wenn
+  Inno Setup lokal verfuegbar ist; danach RUN-03 frischer Portable-ZIP-Test oder RUN-02
+  Release-Reife-Pruefung.
+
+# Aktueller Zusatz 0.42.6
+
+- `Invoke-NpmSafe.ps1` nimmt fuer ruhige npm-Installationen jetzt `-NoAudit -NoFund` statt
+  `-NpmArguments @('--no-audit','--fund=false')`. Damit werden PowerShell-Argumentfallen
+  mit dash-beginnenden npm-Flags vermieden.
+- Run-Log-Bundles unter `D:\Temp\<RunName>_<Zeit>.zip` bleiben ab jetzt Standard fuer
+  lokale Verifikation und Uploads in den Chat.
+- Nach erfolgreichem 0.42.6-Gate: grüne Basis committen, danach RUN-05 Installer-Test.
+
+# Aktueller Zusatz 0.42.5
+
+- `npm ci` ist auf der aktuellen Windows/npm-Kombination nicht belastbar; WebApp-
+  Dependencies sind deshalb exakt gepinnt und ReleaseGate/Paketierung nutzen wieder
+  `npm install` ueber `Invoke-NpmSafe.ps1`, ohne `latest`-Neuaufloesung.
+- Neues Run-Logging: lange Befehle sollen kuenftig unter `D:\Temp\<Projekt>_<Run>_<Zeit>`
+  gesammelt und per `New-RunLogBundle.ps1` als ZIP hochgeladen werden. Terminalausgaben
+  bleiben kurz; Details stehen in Logs.
+- Nächster fachlicher Schritt bleibt nach erneut grünem Release-Gate: RUN-05 Installer-Test
+  oder RUN-02 Release-Reife-Prüfung.
+
+# Aktueller Zusatz 0.42.4
+
+- ReleaseGate/Paketierung nutzen bei vorhandener `package-lock.json` deterministisch
+  `npm ci` statt `npm install`. Das verhindert erneute `latest`-Aufloesungen und den
+  beobachteten Windows-Fehler durch `n@10.2.0`.
+- Nächster fachlicher Schritt bleibt nach erneut grünem Release-Gate: RUN-05 Installer-Test
+  oder RUN-02 Release-Reife-Prüfung.
+
+# Aktueller Zusatz 0.42.3
+
+- Hotfix fuer `Invoke-NpmSafe.ps1`: mehrteilige npm-Befehle werden nicht mehr ueber
+  `-NpmArguments @('run','build')` uebergeben, sondern robust als `-NpmCommand run
+  -NpmScript build`. ReleaseGate, Portable- und Desktop-Publish nutzen diese Syntax.
+- Nächster fachlicher Schritt bleibt nach erneut grünem Release-Gate: RUN-05 Installer-Test
+  oder RUN-02 Release-Reife-Prüfung.
+
+# Aktueller Zusatz 0.42.2
+
+- Lokale Secret-/Auth-Struktur nachgeschaerft: bevorzugt `.secrets/local/`, legacy
+  `secrets/local/` bleibt lesbar; echte Werte bleiben gitignored und werden nicht geloggt.
+- npm-Aufrufe laufen im Release-/Paketierungsweg ueber `Invoke-NpmSafe.ps1` mit isolierter
+  temporaerer npmrc. Das reduziert globale `.npmrc`-Nebenwirkungen wie `always-auth`-Warnungen.
+- Nächster fachlicher Schritt bleibt nach erneut grünem Release-Gate: RUN-05 Installer-Test
+  oder RUN-02 Release-Reife-Prüfung.
+
+# Aktueller Zusatz 0.42.1
+
+- Build-Fix nach Pull auf 0.42.0: alte lokale `src/**/obj`-/`tests/**/obj`-Ordner werden
+  durch MSBuild-Globs nicht mehr kompiliert; `Clean-Generated.ps1` räumt sie aktiv weg.
+- Nächster fachlicher Schritt bleibt erst nach grünem Release-Gate: RUN-05 Installer-Test
+  oder RUN-02 Release-Reife-Prüfung.
+
 # Aktueller Zusatz 0.42.0
 
 - Desktop-Variante: `scripts/Publish-DesktopApp.ps1` (self-contained, Klick-Start,
@@ -81,7 +159,7 @@
 - [x] Portable Publish inklusive Frontend-Auslieferung über Backend (v0.8, `Pack-Portable.ps1`).
 - [x] Start-BAT/PowerShell ohne Entwicklerwerkzeuge (`Start-Portable.bat`, `Start-Desktop.bat`).
 - [x] Datenpfad unter AppData oder Projektdata konfigurierbar (Backend-Default AppData, Override per `SchachTurnierManager__DataDirectory`).
-- [x] Windows-Installer evaluieren (Entscheidung: Inno Setup 6; Skript unter `installer/`, Build/Test offen → RUN-05).
+- [x] Windows-Installer evaluieren (Entscheidung: Inno Setup 6; Skript unter `installer/`, Readiness/Checkliste automatisiert; echter lokaler Build/Test haengt von installiertem Inno Setup ab).
 
 
 ## Nächster Fokus ab 0.4.0

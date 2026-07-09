@@ -11,11 +11,18 @@
     <RepositoryRoot>$(MSBuildThisFileDirectory)</RepositoryRoot>
     <BaseIntermediateOutputPath>$(RepositoryRoot)tmp\dotnet-obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(RepositoryRoot)tmp\dotnet-bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <!--
+      Redirected MSBuild outputs use tmp\dotnet-* as the active obj/bin roots.
+      Existing checkouts can still contain legacy src/**/obj or tests/**/obj folders
+      from older builds; exclude them explicitly so stale generated AssemblyInfo files
+      are never picked up by SDK compile globs.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);output/**;tmp/**;**/bin/**;**/obj/**</DefaultItemExcludes>
+    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);output/**;tmp/**;**/bin/**;**/obj/**</DefaultItemExcludesInProjectFolder>
     <DisableMsCoverageReferencedPathMaps>true</DisableMsCoverageReferencedPathMaps>
     <DisableRarCache>true</DisableRarCache>
     <UseAppHost>false</UseAppHost>
     <AfterMicrosoftNETSdkTargets>$(AfterMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)Directory.AfterMicrosoftNETSdk.targets</AfterMicrosoftNETSdkTargets>
-    <DefaultItemExcludes>$(DefaultItemExcludes);output/**;tmp/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Directory.GlobalUsings.cs" Link="Directory.GlobalUsings.cs" />

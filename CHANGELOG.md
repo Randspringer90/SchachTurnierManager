@@ -1,5 +1,147 @@
 # Changelog
 
+## 0.43.1 - CommitGuard lokal-only Handoff und Safety-Diagnose
+
+Hotfix/Folgearbeit nach RUN-05: Der 0.42.6-Commit wurde nicht erstellt, weil ein bereits
+lokal vorhandenes `NEXT_PROMPT.md` aus der externen Projekt-Registry automatisch mitgestaged
+wurde. Diese Datei ist kein Produktartefakt und kann lokale Maschinenpfade oder interne
+Blocker-Hinweise enthalten. Keine fachliche Turnier-, Pairing-, Persistenz- oder UI-Logik
+geaendert.
+
+- **Local-only Handoff:** `NEXT_PROMPT.md` wird nun in `.gitignore` ausgeschlossen und vom
+  CommitGuard nicht automatisch gestaged. Bereits gestagte Altzustaende muessen einmalig per
+  `git reset` entstaged werden; die Arbeitsdatei bleibt dabei erhalten.
+- **GitSafety-Diagnose:** Staged-Content-Pruefung meldet kuenftig Datei und hinzugefuegte
+  Zeile statt nur einen Sammelfehler. Das macht echte Treffer und False Positives schneller
+  nachvollziehbar.
+- **Safety-Grenze:** `NEXT_PROMPT.md` ist zusaetzlich als verbotener Commit-Pfad markiert;
+  lokale Folgeprompt-/Registry-Dateien bleiben ausserhalb von Git.
+- **Version:** `0.43.0` → `0.43.1` (Health, `package.json`, `package-lock.json`).
+
+## 0.43.0 - RUN-05 Installer-Readiness und Testcheckliste
+
+RUN-05 macht den vorbereiteten Inno-Setup-Installer pruefbar, ohne automatisch Downloads,
+Installationen, Releases oder Kostenaktionen auszufuehren. Keine fachliche Turnier-,
+Pairing-, Persistenz- oder UI-Logik geaendert.
+
+- **Installer-Readiness:** `scripts/Invoke-InstallerReadiness.ps1` erzeugt einen ruhigen
+  Run-Ordner unter `D:\Temp`, fuehrt optional ReleaseGate `-SkipPack`, Desktop-Publish und
+  Installer-Build aus und buendelt Logs/Manifeste/Git-Status als Upload-ZIP.
+- **Desktop-/Installer-Manifeste:** Der Readiness-Lauf prueft BAT, README, WebApi-EXE und
+  eingebettetes `wwwroot/index.html`; bei Installer-Build werden Setup-EXE, Groesse und
+  SHA256 dokumentiert.
+- **Installer-Konfiguration:** `installer/SchachTurnierManager.iss` nutzt jetzt explizit
+  `%LocalAppData%\Programs\SchachTurnierManager` als Per-User-Installationspfad und
+  fuehrt Versionsmetadaten.
+- **Build-Skript:** `scripts/Build-Installer.ps1` akzeptiert optional `-InnoSetupCompiler`
+  und gibt bei erfolgreichem Build den SHA256 der Setup-EXE aus.
+- **Doku:** `docs/release/INSTALLER_TEST_CHECKLIST.md` und `installer/README.md` beschreiben
+  Readiness-Lauf, manuellen Installationstest, Datenpersistenz nach Neustart/Deinstallation
+  und SmartScreen-Grenze fuer unsignierte EXE.
+- **Version:** `0.42.6` → `0.43.0` (Health, `package.json`, `package-lock.json`).
+
+## 0.42.6 - npm-Safe-Flags ohne PowerShell-Argumentfallen
+
+Hotfix fuer den 0.42.5-Run-Log-Lauf: Der neue Run-Log-Bundler funktioniert, aber
+PowerShell wertete `--fund=false` beim Skriptaufruf als Parametername statt als npm-Argument.
+Keine fachliche Turnier-, Pairing-, Persistenz- oder UI-Logik geaendert.
+
+- **NpmSafe:** `Invoke-NpmSafe.ps1` hat nun explizite Schalter `-NoAudit` und `-NoFund`.
+  Das Skript erzeugt daraus intern die npm-Argumente `--no-audit` und `--fund=false`;
+  aufrufende Skripte muessen keine dash-beginnenden Array-Werte mehr uebergeben.
+- **Release-/Paketierungsskripte:** `Invoke-ReleaseGate.ps1`, `Pack-Portable.ps1` und
+  `Publish-DesktopApp.ps1` verwenden `-NoAudit -NoFund`.
+- **Run-Logging:** Das neue Log-ZIP-Verfahren bleibt unveraendert und soll fuer die naechsten
+  Laeufe als Standard genutzt werden.
+- **Version:** `0.42.5` → `0.42.6` (Health, `package.json`, `package-lock.json`).
+
+## 0.42.5 - npm-Versionen pinnen und Run-Log-Bundles ergaenzen
+
+Hotfix/Folgearbeit nach 0.42.4: Auf der Windows-Workstation funktioniert der direkte
+Frontend-Build ueber `Invoke-NpmSafe.ps1`, aber `npm ci` landet bei der npm-config-Hilfe.
+Keine fachliche Turnier-, Pairing-, Persistenz- oder UI-Logik geaendert.
+
+- **npm-Reproduzierbarkeit:** WebApp-Abhaengigkeiten sind nun exakt auf den Lockfile-Stand
+  gepinnt (`react`/`react-dom` 19.2.7, `vite` 8.0.16, `typescript` 6.0.3,
+  `@vitejs/plugin-react` 6.0.2, Typings passend). Dadurch kann `npm install` verwendet
+  werden, ohne erneut gegen `latest` aufzuloesen.
+- **Release-/Paketierungsskripte:** `Invoke-ReleaseGate.ps1`, `Pack-Portable.ps1` und
+  `Publish-DesktopApp.ps1` nutzen wieder `npm install`, aber weiter ueber
+  `Invoke-NpmSafe.ps1` und mit `--no-audit --fund=false` fuer ruhigere Logs.
+- **Run-Logging:** `Invoke-LoggedCommand.ps1` und `New-RunLogBundle.ps1` ergaenzt.
+  Zukuenftige lokale Laeufe koennen ihre Detailausgaben in einem Run-Ordner unter
+  `D:\Temp` sammeln und am Ende als ZIP hochladen.
+- **Version:** `0.42.4` → `0.42.5` (Health, `package.json`, `package-lock.json`).
+
+## 0.42.4 - npm-Installationsweg deterministisch auf package-lock umstellen
+
+Hotfix fuer den Release-Gate-Abbruch unter Windows: `npm install` konnte wegen `latest`-
+Abhaengigkeiten trotz vorhandener Lockdatei erneut Registry-Aufloesungen anstossen und dabei
+ein nicht Windows-kompatibles Paket (`n@10.2.0`) ziehen. Keine fachliche Turnier-, Pairing-,
+Persistenz- oder UI-Logik geaendert.
+
+- **ReleaseGate:** nutzt bei vorhandener `package-lock.json` nun `npm ci` statt `npm install`.
+  Dadurch wird exakt der eingecheckte Lockfile-Stand installiert und nicht neu gegen `latest`
+  aufgeloest. Ohne Lockfile bleibt `npm install` der Fallback.
+- **Paketierung:** `Pack-Portable.ps1` und `Publish-DesktopApp.ps1` verwenden denselben
+  deterministischen npm-Installationsweg.
+- **npm-Safe bleibt aktiv:** alle npm-Aufrufe laufen weiter ueber `Invoke-NpmSafe.ps1` mit
+  isolierter temporaerer npmrc und lokaler `.secrets/local`-/`secrets/local`-Unterstuetzung.
+- **Version:** `0.42.3` → `0.42.4` (Health, `package.json`, `package-lock.json`).
+
+## 0.42.3 - npm-Safe-Runner Argumentbindung korrigiert
+
+Hotfix fuer den 0.42.2-npm-Safe-Runner. Keine fachliche Turnier-, Pairing-,
+Persistenz- oder UI-Logik geaendert.
+
+- **Bugfix:** `Invoke-NpmSafe.ps1` nutzt nun explizite Parameter `-NpmCommand`,
+  `-NpmScript` und optional `-NpmArguments`. Dadurch werden mehrteilige npm-Befehle wie
+  `npm run build` nicht mehr teilweise als positionaler `Root`-Parameter gebunden.
+- **Skriptaufrufe angepasst:** `Invoke-ReleaseGate.ps1`, `Pack-Portable.ps1` und
+  `Publish-DesktopApp.ps1` verwenden die neue robuste Syntax.
+- **Sicherheit bleibt erhalten:** npm laeuft weiter mit isolierter temporaerer `user.npmrc`,
+  lokaler `.secrets/local`-/`secrets/local`-Erkennung und ohne `always-auth`-Altlasten.
+- **Version:** `0.42.2` → `0.42.3` (Health, `package.json`, `package-lock.json`).
+
+
+## 0.42.2 - Lokale Secret-/npm-Auth-Haertung
+
+Sicherheits- und Build-Hygiene-Folgearbeit nach dem gruenen 0.42.1-Release-Gate.
+Keine fachliche Turnier-, Pairing-, Persistenz- oder UI-Logik geaendert.
+
+- **Lokale Secrets:** `.secrets/README.md` ergaenzt und `.gitignore` so erweitert, dass
+  `.secrets/local/` genauso strikt lokal bleibt wie `secrets/local/`. `secrets/README.md`
+  verweist auf `.secrets/local/` als bevorzugten Ort, bleibt aber als Legacy-Ablage dokumentiert.
+- **DPAPI-Helfer:** `scripts/Set-LocalSecret.ps1` speichert lokale Werte Windows-Benutzer-
+  gebunden unter `.secrets/local/<Name>.dpapi.txt`, ohne den Wert auszugeben.
+- **npm-Safe-Runner:** `scripts/Invoke-NpmSafe.ps1` fuehrt npm mit einer isolierten temporaeren
+  `tmp/npm-safe/user.npmrc` aus. Dadurch werden globale/userweite `.npmrc`-Altlasten nicht in
+  Release-Gate, Portable- und Desktop-Publish hineingezogen; lokale npmrc aus `.secrets/local/`
+  oder legacy `secrets/local/` wird bei Bedarf sicher verwendet. Veraltete `always-auth`-Zeilen
+  werden entfernt.
+- **Skripte verdrahtet:** `Invoke-ReleaseGate.ps1`, `Pack-Portable.ps1` und
+  `Publish-DesktopApp.ps1` nutzen den npm-Safe-Runner.
+- **CommitGuard:** blockiert getrackte oder gestagte lokale Secret-Ablagen unter
+  `.secrets/local/` und `secrets/local/`.
+- **Version:** `0.42.1` → `0.42.2` (Health, `package.json`, `package-lock.json`).
+
+## 0.42.1 - Build-Fix nach Pull: Legacy-obj/bin sicher ausschließen
+
+Fix für rote Release-Gate-Basis nach dem Pull auf 0.42.0. In bestehenden Worktrees konnten
+alte `src/**/obj`-Dateien aus früheren Builds von den SDK-Compile-Globs wieder erfasst
+werden, nachdem die aktiven MSBuild-Ausgaben nach `tmp/dotnet-*` umgeleitet wurden. Dadurch
+entstanden doppelte Assembly-Attribute im Domain-Projekt.
+
+- **Build-Fix:** `Directory.Build.props` schließt `**/bin/**` und `**/obj/**` nun explizit
+  über `DefaultItemExcludes` und `DefaultItemExcludesInProjectFolder` aus. Stale
+  `*.AssemblyInfo.cs`/`*.AssemblyAttributes.cs` unter alten Projekt-`obj`-Ordnern werden nicht
+  mehr kompiliert.
+- **Wartung:** `scripts/Clean-Generated.ps1` entfernt zusätzlich alte `bin`/`obj`-Ordner unter
+  `src/` und `tests/` und schreibt eine kurze Abschlusszusammenfassung.
+- **Version:** `0.42.0` → `0.42.1` (Health, `package.json`, `package-lock.json`).
+- **Hinweis:** Nach dem Patch zuerst `Clean-Generated.ps1`, dann Release-Gate `-SkipPack`
+  ausführen. Kein Feature-Scope, kein Push/Release.
+
 ## 0.42.0 - Desktop-Installation, Installer-Vorbereitung, i18n-Fundament, Codex-Roadmap
 
 Installations- und Mehrsprachigkeits-Grundlagen ohne Aenderung an Auslosungs-, Wertungs-
@@ -449,8 +591,6 @@ Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.m
 - Entfernt defekte Zwischenstandsdateien aus v0.22.0 und v0.22.1.
 - Behält die Auslosungsvorschau ohne Persistenz aus v0.22 bei.
 - Nachkontrolle bricht bei fehlgeschlagenem Restore, Build, Test, Frontend-Build oder Portable-Packaging hart ab.
-# Changelog
-
 ## 0.21.0 - Pairing-Audit mit Qualitätsbericht
 
 - Pairing-Qualität wird nach jeder automatisch erzeugten Runde direkt in das Runden-Audit geschrieben.

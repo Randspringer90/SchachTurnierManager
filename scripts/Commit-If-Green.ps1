@@ -12,6 +12,14 @@ function Run-Step([string]$Name, [scriptblock]$Block) {
     if ($LASTEXITCODE -ne 0) { throw "$Name ist fehlgeschlagen mit Exitcode $LASTEXITCODE." }
 }
 function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"') -replace '\\', '/') }
+function Test-IsCommitGuardLocalOnly([string]$Path) {
+    $normalized = Normalize-GitPath $Path
+    if ([string]::IsNullOrWhiteSpace($normalized)) { return $true }
+    # NEXT_PROMPT.md ist ein lokales Handoff aus der externen Projekt-Registry und kann
+    # Maschinenpfade/interne Blocker enthalten. Es wird nie automatisch committet.
+    if ($normalized -match '^(?i:NEXT_PROMPT\.md)$') { return $true }
+    return $false
+}
 function Get-WorktreeStatusItems {
     $lines = git -c core.quotepath=false status --porcelain=v1 --untracked-files=all
     foreach ($line in $lines) {
@@ -35,8 +43,14 @@ function Add-SafeChangedFiles {
     Write-Host '[CommitGuard] Dateien vor Stage:'
     $items | ForEach-Object { Write-Host ("  {0} {1}" -f $_.Status, $_.Path) }
 
-    $paths = @($items | ForEach-Object { $_.Path } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    $paths = @($items | ForEach-Object { $_.Path } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not (Test-IsCommitGuardLocalOnly $_) } | Select-Object -Unique)
     if ($paths.Count -eq 0) { Write-Host '[CommitGuard] Keine stagebaren Pfade gefunden.'; return }
+
+    $skipped = @($items | ForEach-Object { $_.Path } | Where-Object { Test-IsCommitGuardLocalOnly $_ } | Select-Object -Unique)
+    if ($skipped.Count -gt 0) {
+        Write-Host '[CommitGuard] Lokal-only/ignorierte Pfade werden nicht gestaged:'
+        $skipped | ForEach-Object { Write-Host "  $_" }
+    }
 
     Write-Host '[CommitGuard] Stage explizit gepruefter Pfade, kein git add --all:'
     $paths | ForEach-Object { Write-Host "  $_" }

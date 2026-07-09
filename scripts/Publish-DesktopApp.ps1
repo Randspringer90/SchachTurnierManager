@@ -47,8 +47,9 @@ New-Item -ItemType Directory -Force -Path $appOutput | Out-Null
 
 Push-Location $webApp
 try {
-    Invoke-Checked "npm install" { npm install }
-    Invoke-Checked "npm run build" { npm run build }
+    $npmInstallCommand = "install"
+    Invoke-Checked "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
+    Invoke-Checked "npm run build" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
 }
 finally {
     Pop-Location

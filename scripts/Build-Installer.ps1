@@ -1,5 +1,6 @@
 param(
-    [switch]$SkipPublish
+    [switch]$SkipPublish,
+    [string]$InnoSetupCompiler
 )
 
 # Baut die Installer-EXE (Inno Setup) aus dem Desktop-Paket.
@@ -30,12 +31,24 @@ if (-not $SkipPublish -or -not (Test-Path (Join-Path $desktopRoot "app"))) {
     }
 }
 
-$isccCandidates = @(
-    (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source),
-    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-    "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
-    "$env:LocalAppData\Programs\Inno Setup 6\ISCC.exe"
-) | Where-Object { $_ -and (Test-Path $_) }
+if (-not [string]::IsNullOrWhiteSpace($InnoSetupCompiler)) {
+    if (-not (Test-Path -LiteralPath $InnoSetupCompiler)) {
+        Write-Error "Angegebener Inno-Setup-Compiler wurde nicht gefunden: $InnoSetupCompiler"
+        exit 1
+    }
+    $isccCandidates = @((Resolve-Path -LiteralPath $InnoSetupCompiler).Path)
+}
+else {
+    $command = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    $isccCandidates = @()
+    if ($command) { $isccCandidates += $command.Source }
+    $isccCandidates += @(
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+        "$env:LocalAppData\Programs\Inno Setup 6\ISCC.exe"
+    )
+    $isccCandidates = @($isccCandidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)
+}
 
 if (-not $isccCandidates) {
     Write-Error @"
@@ -43,6 +56,8 @@ ISCC.exe (Inno Setup 6) wurde nicht gefunden.
 Installation (Open Source, kostenlos): https://jrsoftware.org/isinfo.php
 Danach erneut ausfuehren:
     pwsh -File .\scripts\Build-Installer.ps1 -SkipPublish
+Oder den Pfad explizit angeben:
+    pwsh -File .\scripts\Build-Installer.ps1 -SkipPublish -InnoSetupCompiler "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 "@
     exit 1
 }
@@ -57,3 +72,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "[Build-Installer] Installer erstellt unter: $(Join-Path $root 'output\installer')"
+
+$installerRoot = Join-Path $root 'output\installer'
+$setupFiles = @(Get-ChildItem -LiteralPath $installerRoot -Filter 'SchachTurnierManager_Setup_*.exe' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
+if ($setupFiles.Count -gt 0) {
+    $latest = $setupFiles | Select-Object -First 1
+    $hash = Get-FileHash -LiteralPath $latest.FullName -Algorithm SHA256
+    Write-Host "[Build-Installer] Setup: $($latest.FullName)"
+    Write-Host "[Build-Installer] SHA256: $($hash.Hash)"
+}

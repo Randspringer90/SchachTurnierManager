@@ -45,7 +45,13 @@ liegen unter `%LocalAppData%\SchachTurnierManager`.
 
 Eine Installer-EXE (Inno Setup, Desktop-Verknüpfung, Startmenü, Uninstaller) ist unter
 `installer/` vorbereitet und wird mit `scripts\Build-Installer.ps1` gebaut (benötigt
-lokal installiertes Inno Setup 6).
+lokal installiertes Inno Setup 6). Der empfohlene Prüflauf ist:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-InstallerReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
+```
+
+Der Prüflauf erzeugt ein ZIP unter `D:\Temp` mit Logs, Manifesten und manueller Testcheckliste.
 
 ## Mehrsprachigkeit
 

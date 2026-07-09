@@ -7,9 +7,9 @@ Diese Datei ist die zentrale, providerneutrale Regeldatei für alle KI-Agenten (
 - Qualität vor Geschwindigkeit.
 - Erst Ist-Zustand, Build, Tests und Struktur verstehen.
 - Keine Pushes, Releases, Deployments, Uploads oder Kostenaktionen ohne ausdrückliche Freigabe.
-- Keine Secrets, Tokens, privaten Datenbanken oder Logs committen.
+- Keine Secrets, Tokens, `.npmrc`, privaten Datenbanken oder Logs committen; lokale Authentifizierung nur über `.secrets/local/` oder Prozess-Environment.
 - Lokale Commits sind erwünscht, wenn Build und Tests sauber sind.
-- `.git`, `logs`, `output`, `tmp`, Datenbanken und `.env` bleiben außerhalb von Austausch-ZIPs.
+- `.git`, `logs`, `output`, `tmp`, Datenbanken, `.env`, `.npmrc`, `.secrets/local/` und `secrets/local/` bleiben außerhalb von Austausch-ZIPs.
 
 ## Projektstruktur – wo gehört was hin?
 - `AGENTS.md` (Root): verbindliche Agentenregeln, providerneutral.

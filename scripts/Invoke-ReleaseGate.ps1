@@ -86,12 +86,13 @@ try {
 
     Push-Location $webApp
     try {
+        $npmInstallCommand = 'install'
         if (-not $NoNpmInstall) {
-            Invoke-NativeStep 'npm install' { npm install }
+            Invoke-NativeStep "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
         } else {
-            Write-Host '[ReleaseGate] npm install übersprungen.'
+            Write-Host "[ReleaseGate] npm $npmInstallCommand übersprungen."
         }
-        Invoke-NativeStep 'npm run build' { npm run build }
+        Invoke-NativeStep 'npm run build' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
     } finally {
         Pop-Location
     }

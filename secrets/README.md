@@ -1,12 +1,17 @@
 # secrets/ – lokale Geheimnisse, niemals committen
 
+
+> Hinweis: Neue lokale Secrets bitte bevorzugt unter `.secrets/local/` ablegen.
+> Dieser Ordner bleibt als Legacy-/Kompatibilitaetsablage erhalten. Die Skripte pruefen
+> beide Orte, bevorzugen aber `.secrets/local/`.
+
 Dieser Ordner ist für **lokale** Zugangsdaten gedacht. In das (öffentlich vorgesehene)
 Repository gehören **keine** echten Secrets, Tokens, Passwörter, Zertifikate oder
 privaten Konfigurationen.
 
 ## Regeln
 
-- Echte Secrets liegen ausschließlich lokal unter `secrets/local/` und sind per
+- Echte Secrets liegen ausschließlich lokal unter `.secrets/local/` oder legacy `secrets/local/` und sind per
   `.gitignore` ausgeschlossen. Nur diese `README.md` ist getrackt.
 - Keine `.npmrc` mit Token, keine `.env`, keine API-Keys, keine privaten Schlüssel
   oder Teilnehmer-/PII-Daten im Repo.
@@ -17,15 +22,15 @@ privaten Konfigurationen.
 ## Lokales Secret sicher ablegen (Windows, DPAPI)
 
 ```powershell
-# Verschlüsselt nur für den aktuellen Windows-Benutzer; Datei bleibt unter secrets/local/ (gitignored).
+# Verschlüsselt nur für den aktuellen Windows-Benutzer; Datei bleibt unter .secrets/local/ (gitignored).
 $secure = Read-Host -AsSecureString 'Wert eingeben'
-New-Item -ItemType Directory -Force secrets/local | Out-Null
-$secure | ConvertFrom-SecureString | Set-Content secrets/local/<name>.dpapi.txt
+New-Item -ItemType Directory -Force .secrets/local | Out-Null
+$secure | ConvertFrom-SecureString | Set-Content .secrets/local/<name>.dpapi.txt
 ```
 
 ```powershell
 # Laden und nur als Prozess-Environment setzen (nicht loggen, nicht ausgeben):
-$enc = Get-Content secrets/local/<name>.dpapi.txt
+$enc = Get-Content .secrets/local/<name>.dpapi.txt
 $sec = $enc | ConvertTo-SecureString
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
 $env:MY_SECRET = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)

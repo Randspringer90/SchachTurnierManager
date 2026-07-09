@@ -4,6 +4,7 @@
 ;
 ; Eigenschaften:
 ; - Per-User-Installation ohne Adminrechte (PrivilegesRequired=lowest).
+; - Standardpfad: %LocalAppData%\Programs\SchachTurnierManager.
 ; - Desktop-Verknuepfung (optional) und Startmenue-Eintrag auf SchachTurnierManager.bat.
 ; - Uninstaller inklusive; Turnierdaten unter %LocalAppData%\SchachTurnierManager bleiben
 ;   bei der Deinstallation bewusst erhalten (keine Datenvernichtung ohne Nutzerentscheidung).
@@ -18,7 +19,7 @@ AppId={{8CE2230B-3B02-45C3-9D25-037E26DDB180}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=SchachTurnierManager-Projekt
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
@@ -28,6 +29,10 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName={#MyAppName}
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany=SchachTurnierManager-Projekt
+VersionInfoDescription=Lokaler Schachturnier-Manager
+VersionInfoProductName={#MyAppName}
 CloseApplications=yes
 
 [Languages]

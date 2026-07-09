@@ -16,3 +16,10 @@ Regeln:
 - `Start-SchachTurnierManager.bat` startet die lokale API auf `127.0.0.1:5088` und öffnet das Dashboard.
 - Daten liegen portable unter `data\SchachTurnierManager.sqlite`, wenn die Start-BAT genutzt wird.
 - Keine Installer-/Release-Aktionen ohne explizite Freigabe.
+
+
+## Stand 0.43.0
+
+- `scripts/Invoke-InstallerReadiness.ps1` ist der Standard fuer RUN-05: ruhiger Run-Ordner unter `D:\Temp`, Desktop-Publish, Manifestpruefung und optionaler Inno-Setup-Build.
+- Inno Setup wird nicht automatisch installiert; fehlendes `ISCC.exe` ist ein dokumentierter Blocker, kein Grund fuer Downloads/Kostenaktionen.
+- Manuelle Installationstests muessen Datenpersistenz unter `%LocalAppData%\SchachTurnierManager`, Uninstaller-Verhalten und SmartScreen-Hinweis pruefen.

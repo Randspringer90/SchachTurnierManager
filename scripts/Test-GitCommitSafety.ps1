@@ -15,7 +15,7 @@ function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"
 # Berichte unter docs/ai/reports/ sind laut AGENTS.md KI-Lauf-Standard bewusst commitfaehig
 # (negative Lookbehind schliesst nur docs/ai/reports/ aus). Der Public-Clean-Snapshot laesst
 # Reports weiterhin aussen vor (siehe New-OpenSourceSnapshot.ps1).
-$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp)(/|$)|(?<!docs/ai)(^|/)reports(/|$)|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp)(/|$)|(^|/)(\.secrets|secrets)/local(/|$)|(?<!docs/ai)(^|/)reports(/|$)|(^|/)NEXT_PROMPT\.md$|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
 $contentPattern = @(
     (('github') + '_pat_'),
@@ -95,18 +95,34 @@ function Test-ContentText([string]$Text, [string]$Context) {
     if ($Text -match $contentPattern) { Stop-GitSafety "Kritisches Zugangsdaten-Muster gefunden: $Context" }
 }
 
-function Get-StagedAddedText([string[]]$Files) {
-    $chunks = New-Object System.Collections.Generic.List[string]
+function Get-AddedLinesForFile([string]$NormalizedPath) {
+    $diffLines = git diff --cached --unified=0 -- $NormalizedPath
+    foreach ($line in $diffLines) {
+        if ($line -like '+*' -and $line -notlike '+++ *') {
+            $line.Substring(1)
+        }
+    }
+}
+
+function Test-StagedAddedContent([string[]]$Files) {
     foreach ($file in $Files) {
         $normalized = Normalize-GitPath $file
         if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
         $worktreeContent = Get-Content -Raw -LiteralPath $file -ErrorAction SilentlyContinue
         if (Test-IsPatternSource $normalized $worktreeContent) { continue }
-        $diffLines = git diff --cached --unified=0 -- $normalized
-        $addedText = ($diffLines | Where-Object { $_ -like '+*' -and $_ -notlike '+++ *' }) -join "`n"
-        if (-not [string]::IsNullOrEmpty($addedText)) { $chunks.Add($addedText) }
+
+        $index = 0
+        foreach ($line in (Get-AddedLinesForFile $normalized)) {
+            $index++
+            if ([string]::IsNullOrEmpty($line)) { continue }
+            if ($line -match $internalPattern) {
+                Stop-GitSafety "Interne URL/Registry-/Projekt-Referenz gefunden: $normalized (added line $index): $line"
+            }
+            if ($line -match $contentPattern) {
+                Stop-GitSafety "Kritisches Zugangsdaten-Muster gefunden: $normalized (added line $index)"
+            }
+        }
     }
-    return ($chunks -join "`n")
 }
 
 Test-RepositoryKind
@@ -127,8 +143,7 @@ if ($Staged) {
     Test-PathList $items -AllowDeletes
 
     $stagedFiles = @(git diff --cached --name-only)
-    $addedText = Get-StagedAddedText $stagedFiles
-    Test-ContentText $addedText 'neu hinzugefuegte staged Zeilen'
+    Test-StagedAddedContent $stagedFiles
     Info 'OK: Staging ist frei von verbotenen Pfaden, internen Referenzen und kritischen Zugangsdaten-Mustern.'
     exit 0
 }

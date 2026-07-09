@@ -18,21 +18,29 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Pack-Portable.ps1` / `Start-Portable.bat` – portables Paket bauen und starten.
 - `Publish-DesktopApp.ps1` / `Start-Desktop.bat` – self-contained Desktop-Paket (`output\desktop`), Klick-Start, Daten unter `%LocalAppData%\SchachTurnierManager`.
 - `Build-Installer.ps1` – Installer-EXE über Inno Setup 6 aus `installer\SchachTurnierManager.iss` bauen (ISCC.exe erforderlich).
+- `Invoke-InstallerReadiness.ps1` – RUN-05-Readiness mit Run-Log-Bundle, Desktop-Publish, optionalem Installer-Build und Manifesten.
 
 ## Git (git)
 
-- `Commit-If-Green.ps1` – CommitGuard: Release-Gate + Sicherheitsprüfungen + explizites Staging + Commit.
+- `Commit-If-Green.ps1` – CommitGuard: Release-Gate + Sicherheitsprüfungen + explizites Staging + Commit. Lokale `NEXT_PROMPT.md`-Handoffs werden nicht automatisch gestaged.
 - `Commit-Checkpoint.ps1` – älteres Checkpoint-Skript; bevorzugt `Commit-If-Green.ps1` verwenden.
 
 ## Sicherheit (security)
 
 - `Test-GitCommitSafety.ps1` – Commit-Sicherheitsprüfung (Pfade, interne Referenzen, Zugangsdaten-Muster).
+- `Invoke-NpmSafe.ps1` – npm-Aufrufe mit isolierter temporärer npmrc ausführen; lokale Auth optional aus `.secrets/local/`.
+- `Set-LocalSecret.ps1` – lokale Secrets per Windows-DPAPI unter `.secrets/local/` speichern, ohne Werte zu loggen.
 - `Test-RepositoryOpenSourceSafety.ps1` – Public-Snapshot-Kandidaten prüfen, Reports unter `output/repo-open-source-safety/`.
 - `New-OpenSourceSnapshot.ps1` – Clean Snapshot ohne Git-Historie für Open-Source-Veröffentlichung.
 
 ## Wartung (maintenance)
 
 - `Clean-Generated.ps1` – generierte Artefakte entfernen.
+
+## Lauf-Logging (operator/diagnostics)
+
+- `Invoke-LoggedCommand.ps1` – lange Befehle mit kurzer Terminalausgabe ausführen; vollständige Ausgabe landet im Run-Logordner.
+- `New-RunLogBundle.ps1` – Run-Ordner unter `D:\Temp` anlegen bzw. Logs, Git-Status und Diff-Stat zu einem ZIP bündeln.
 
 ## Archiv
 
