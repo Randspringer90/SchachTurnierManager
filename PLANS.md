@@ -1,3 +1,20 @@
+# Aktueller Zusatz 0.47.0
+
+- RUN-10/11 wurde als lokales, sicheres Fundament begonnen: Der Reiter **Assistent** enthaelt jetzt eine lokale Chat-Hilfe mit Wissensbasis fuer Turnierstart, Pairing, Wertungen, Backup, QR/Handy, Import/Export und KI-Datenschutz.
+- Die Chat-Hilfe ist bewusst regelbasiert und sendet keine Turnierdaten, Logs, Personendaten oder Secrets an externe Anbieter.
+- Antworten beruecksichtigen den aktuellen Turnierkontext und die aktuelle Assistenten-Empfehlung.
+- Schnellfragen und Chat-Export sind vorbereitet, damit Turnierleiter die Hilfe am Turniertag schnell nutzen koennen.
+- Provider-Anbindung fuer Claude/OpenAI bleibt offen und muss spaeter mit BYOK, sicherer lokaler Secret-Ablage, Quellenanzeige, Tool-Rechten und Datenschutz-Gates umgesetzt werden.
+
+## Naechste sinnvolle Schritte
+
+1. 0.47.0 lokal committen, wenn `Invoke-KnowledgeChatReadiness.ps1` gruen ist.
+2. RUN-11 ausbauen: Markdown-/JSON-Wissensbasis aus UI-Code herausloesen und mit Quellen/Versionen pflegen.
+3. RUN-10 Provider-Konzept: OpenAI/Claude-Adapter nur mit BYOK und ohne automatische destruktive Aktionen.
+4. Danach RUN-15 Import/Export oder RUN-14 Tie-Break-Konfiguration weiter ausbauen.
+
+---
+
 # Aktueller Zusatz 0.46.0
 
 - RUN-17 Turnierassistent im UI umgesetzt: neuer Hauptreiter `Assistent` mit lokalen,

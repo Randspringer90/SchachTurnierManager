@@ -427,6 +427,155 @@ type TournamentAssistantRecommendation = {
   handoffPrompt: string;
 };
 
+
+type KnowledgeChatRole = 'user' | 'assistant';
+
+type KnowledgeChatMessage = {
+  id: string;
+  role: KnowledgeChatRole;
+  text: string;
+  sources: string[];
+};
+
+type KnowledgeTopic = {
+  id: string;
+  title: string;
+  keywords: string[];
+  answer: string;
+  steps: string[];
+  sources: string[];
+};
+
+const knowledgeQuickQuestions = [
+  'Wie starte ich ein Turnier?',
+  'Warum diese Paarung?',
+  'Was nach Runde 3 tun?',
+  'Was bedeutet Buchholz Cut?',
+  'Wie sichere ich das Turnier?',
+  'Wie nutze ich QR/Handy?'
+];
+
+const knowledgeTopics: KnowledgeTopic[] = [
+  {
+    id: 'start',
+    title: 'Turnierstart',
+    keywords: ['start', 'beginnen', 'anlegen', 'neues turnier', 'vereinsabend', 'erste runde'],
+    answer: 'Lege zuerst das Turnier mit passendem Format an, importiere oder erfasse die Teilnehmer, prüfe Einstellungen und erstelle vor Runde 1 ein Backup. Danach öffnest du die Auslosungsvorschau, prüfst die Qualität und veröffentlichst erst dann die Runde.',
+    steps: ['Assistenten-Empfehlung übernehmen oder Einstellungen manuell setzen.', 'Teilnehmer erfassen/importieren und Startreihenfolge prüfen.', 'Backup exportieren.', 'Auslosungsvorschau öffnen und Pairing-Audit prüfen.', 'Runde auslosen, Rundenblatt drucken und nach Ergebnissen erneut sichern.'],
+    sources: ['Assistent', 'Runden / Auslosung', 'Druck / Backup']
+  },
+  {
+    id: 'pairing',
+    title: 'Auslosung und Pairing-Audit',
+    keywords: ['paarung', 'auslosung', 'warum', 'rematch', 'farben', 'qualität', 'pairing', 'fide'],
+    answer: 'Die App zeigt vor der Veröffentlichung eine Auslosungsvorschau mit Qualitätsbericht. Bei Schweizer System werden Rematches vermieden und Farb-/Score-Hinweise im Audit dokumentiert. Für große Open bleibt FIDE-Dutch ein eigener Roadmap-Punkt; deshalb bei mehr als 20 Spielern die Vorschau besonders prüfen.',
+    steps: ['Vorschau für nächste Runde öffnen.', 'Pairing-Qualität und Warnungen prüfen.', 'Bei Auffälligkeiten manuelle Paarung nutzen oder Runde nicht veröffentlichen.', 'Nach Veröffentlichung Rundenblatt/Aushang exportieren.'],
+    sources: ['Auslosungsvorschau', 'Pairing-Qualität', 'Audit-Journal']
+  },
+  {
+    id: 'tiebreak',
+    title: 'Wertungen und Tie-Breaks',
+    keywords: ['buchholz', 'cut', 'sonneborn', 'wertung', 'tie', 'tiebreak', 'direktvergleich', 'performance', 'bye', 'kampflos'],
+    answer: 'Buchholz zählt die Punkte der Gegner; Buchholz Cut streicht typischerweise den schwächsten Gegnerwert. Kampflos/Bye sind heikel, deshalb zeigt die App Bye- und kampflose Bretter separat und verweist auf die gewählte Wertungslogik. Vor gewerteten Turnieren die Ausschreibung und Verbandsregeln festlegen.',
+    steps: ['Wertungskette in den Turniereinstellungen prüfen.', 'Bye-/Kampflos-Regel vor Turnierstart festlegen.', 'Nach jeder Runde Tabellen und Diagnose prüfen.', 'Abschlussbericht erst nach Backup und finaler Plausibilitätsprüfung veröffentlichen.'],
+    sources: ['Tabelle / Ergebnisse', 'Rundendiagnose', 'docs/TIEBREAK_UNPLAYED_ROUNDS.md']
+  },
+  {
+    id: 'backup',
+    title: 'Backup und Wiederherstellung',
+    keywords: ['backup', 'sichern', 'restore', 'wiederherstellen', 'json', 'datenbank', 'sqlite', 'verlust'],
+    answer: 'Nach jeder wichtigen Aktion sollte ein JSON-Backup exportiert werden. Für den Turniertag ist das wichtiger als Komfort: Vor Runde 1, nach jeder Runde und vor Veröffentlichung der Endtabelle sichern.',
+    steps: ['Druck / Backup öffnen.', 'Backup exportieren und Datei extern ablegen.', 'Nach Ergebniserfassung erneut sichern.', 'Bei Restore Backup-JSON prüfen, importieren und danach Health/Turnierliste kontrollieren.'],
+    sources: ['Druck / Backup', 'Audit-Bundle', 'Portable-Frischordner-Test']
+  },
+  {
+    id: 'mobile',
+    title: 'QR/Handy und Chess960',
+    keywords: ['qr', 'handy', 'mobil', 'pwa', 'chess960', 'freestyle', 'würfeln', 'hotspot', 'wlan'],
+    answer: 'QR/Handy funktioniert im lokalen WLAN oder Hotspot gegen den Laptop. Die PWA-Basis macht die App installierbar; echte Offline-Ergebnis-Synchronisation ist bewusst noch nicht aktiv, damit keine Datenkonflikte entstehen.',
+    steps: ['Laptop-IP/Hotspot prüfen.', 'QR-Link vor Runde 1 testen.', 'Für Chess960 Startstellung je Brett würfeln und Audit prüfen.', 'Bei Verbindungsproblemen Ergebnis am Laptop erfassen.'],
+    sources: ['PWA-Readiness', 'Chess960/QR-Dialog', 'Service Worker network-only für /api']
+  },
+  {
+    id: 'export',
+    title: 'Import, Export und Veröffentlichung',
+    keywords: ['import', 'export', 'csv', 'excel', 'trf', 'chess-results', 'veröffentlichen', 'aushang', 'druck'],
+    answer: 'Teilnehmer, Tabellen, Paarungen, Rundenblätter und Backup-JSON können lokal exportiert werden. CSV ist der robuste erste Schritt; TRF/FIDE und Swiss-Manager-/Chess-Results-Kompatibilität bleiben eigene Ausbaustufen.',
+    steps: ['Teilnehmer-CSV vor Turnierstart prüfen.', 'Nach jeder Runde Tabelle/Paarungen exportieren.', 'Audit-Bundle für Nachvollziehbarkeit sichern.', 'Finale Ergebnisse erst nach Backup und Plausibilitätsprüfung veröffentlichen.'],
+    sources: ['Import / Export', 'Turnierleiter-Exportcenter', 'RUN-15 Roadmap']
+  },
+  {
+    id: 'ki',
+    title: 'KI-Chatbot und Datenschutz',
+    keywords: ['ki', 'chatbot', 'openai', 'claude', 'api', 'key', 'secret', 'datenschutz', 'wissen', 'rag'],
+    answer: 'Diese Hilfe ist aktuell lokal und regelbasiert. Sie sendet keine Turnierdaten, Logs oder personenbezogenen Daten an externe Anbieter. Eine spätere Claude/OpenAI-Anbindung muss BYOK, sichere lokale Secret-Ablage, Quellenanzeige und klare Tool-Rechte bekommen.',
+    steps: ['Zuerst lokale Wissensbasis und Quellen stabilisieren.', 'Danach Provider-Adapter und BYOK-Konzept implementieren.', 'Keine destruktiven Aktionen automatisch ausführen lassen.', 'Vor externer KI-Nutzung Datenschutz und Personenbezug prüfen.'],
+    sources: ['RUN-10 KI-Chatbot', 'RUN-11 Wissensbasis', '.secrets/README.md']
+  }
+];
+
+function normalizeKnowledgeText(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function topicScore(question: string, topic: KnowledgeTopic): number {
+  const normalizedQuestion = normalizeKnowledgeText(question);
+  return topic.keywords.reduce((score, keyword) => normalizedQuestion.includes(normalizeKnowledgeText(keyword)) ? score + 2 : score, 0)
+    + normalizeKnowledgeText(topic.title).split(/\s+/).filter(part => part.length > 3 && normalizedQuestion.includes(part)).length;
+}
+
+function buildKnowledgeContext(tournament: Tournament | undefined, recommendation: TournamentAssistantRecommendation): string[] {
+  const context: string[] = [];
+  if (tournament) {
+    const roundCount = tournament.rounds.length;
+    const activePlayers = tournament.players.filter(player => player.status === 0).length;
+    context.push(`Aktueller Kontext: „${tournament.name}“ mit ${activePlayers}/${tournament.players.length} aktiven Teilnehmern und ${roundCount} Runde(n).`);
+    if (roundCount === 0) {
+      context.push('Noch keine Runde ausgelost: zuerst Teilnehmer/Einstellungen prüfen und ein Startbackup erstellen.');
+    }
+    else {
+      const latestRound = tournament.rounds.reduce((max, round) => Math.max(max, round.roundNumber), 0);
+      context.push(`Letzte bekannte Runde: ${latestRound}. Nach Ergebniserfassung Backup und Tabelle prüfen.`);
+    }
+  }
+  else {
+    context.push('Kein Turnier ausgewählt: Empfehlung bezieht sich auf die aktuelle Assistenten-Eingabe.');
+  }
+
+  context.push(`Assistenten-Vorschlag: ${recommendation.formatLabel}, ${recommendation.plannedRounds} Runde(n), ca. ${recommendation.estimatedTotalMinutes} Minuten.`);
+  if (recommendation.warnings.length > 0) {
+    context.push(`Prüfhinweis: ${recommendation.warnings[0]}`);
+  }
+
+  return context;
+}
+
+function buildLocalKnowledgeAnswer(question: string, tournament: Tournament | undefined, recommendation: TournamentAssistantRecommendation): KnowledgeChatMessage {
+  const scored = knowledgeTopics
+    .map(topic => ({ topic, score: topicScore(question, topic) }))
+    .sort((left, right) => right.score - left.score);
+  const best = scored[0]?.score > 0 ? scored[0].topic : knowledgeTopics[0];
+  const context = buildKnowledgeContext(tournament, recommendation);
+  const text = [
+    `**${best.title}**`,
+    best.answer,
+    '',
+    ...context.map(item => `• ${item}`),
+    '',
+    'Nächste Schritte:',
+    ...best.steps.map((step, index) => `${index + 1}. ${step}`),
+    '',
+    'Hinweis: Diese Antwort kommt aus der lokalen Wissensbasis. Es wurden keine Daten an externe KI-Dienste gesendet.'
+  ].join('\n');
+
+  return {
+    id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    role: 'assistant',
+    text,
+    sources: best.sources
+  };
+}
+
 const assistantScenarioOptions: Array<{ value: TournamentAssistantScenario; label: string; description: string }> = [
   { value: 'club-night', label: 'Vereinsabend / Schnellturnier', description: 'Robuste Standardempfehlung für 8–30 Spieler und begrenzte Zeit.' },
   { value: 'youth', label: 'Jugendturnier', description: 'Kürzere Runden, klare Checklisten, viele Ausdrucke.' },
@@ -1516,6 +1665,13 @@ function App() {
   const [format, setFormat] = React.useState(1);
   const [assistantForm, setAssistantForm] = React.useState<TournamentAssistantForm>(defaultTournamentAssistantForm);
   const assistantRecommendation = React.useMemo(() => buildTournamentAssistantRecommendation(assistantForm), [assistantForm]);
+  const [knowledgeChatInput, setKnowledgeChatInput] = React.useState('Wie starte ich ein Turnier?');
+  const [knowledgeChatMessages, setKnowledgeChatMessages] = React.useState<KnowledgeChatMessage[]>(() => [{
+    id: 'knowledge-welcome',
+    role: 'assistant',
+    text: 'Ich bin die lokale Turnierhilfe. Frag mich zu Turnierstart, Auslosung, Wertungen, Backup, QR/Handy, Import/Export oder KI-Datenschutz. Ich nutze nur lokale Regeln und sende keine Daten an externe Anbieter.',
+    sources: ['Lokale Wissensbasis']
+  }]);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
   const [externalQuery, setExternalQuery] = React.useState('');
@@ -2756,6 +2912,26 @@ function openRoundPrint(roundNumber: number) {
     setActiveMainTab('admin');
   }
 
+
+  function askKnowledgeChat(questionOverride?: string): void {
+    const question = (questionOverride ?? knowledgeChatInput).trim();
+    if (!question) {
+      setError('Bitte eine Frage für die lokale Turnierhilfe eingeben.');
+      return;
+    }
+
+    const userMessage: KnowledgeChatMessage = {
+      id: `user-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      role: 'user',
+      text: question,
+      sources: []
+    };
+    const answer = buildLocalKnowledgeAnswer(question, selectedTournament, assistantRecommendation);
+    setKnowledgeChatMessages(previous => [...previous, userMessage, answer]);
+    setKnowledgeChatInput('');
+    setStatus('Lokale Turnierhilfe hat geantwortet. Keine externen KI-Dienste verwendet.');
+  }
+
   function correctionJournalItems() {
     if (!selectedTournament) {
       return [];
@@ -3362,6 +3538,46 @@ function openRoundPrint(roundNumber: number) {
                   </details>
                 </section>
               </div>
+              <section className="knowledge-chat-card">
+                <div className="assistant-header compact-header">
+                  <div>
+                    <p className="eyebrow">Lokale Chat-Hilfe · RUN-10/11 Fundament</p>
+                    <h4>Frag die Turnierhilfe</h4>
+                    <p className="muted">Regelbasierte Wissensbasis für Bedienung, Pairing, Wertung, Backup und Datenschutz. Keine Provider-Anbindung, keine externen Requests, keine Secrets.</p>
+                  </div>
+                  <span className="knowledge-privacy-pill">offline/lokal</span>
+                </div>
+                <div className="knowledge-quick-actions">
+                  {knowledgeQuickQuestions.map(question => (
+                    <button key={question} type="button" className="small secondary" onClick={() => askKnowledgeChat(question)}>{question}</button>
+                  ))}
+                </div>
+                <div className="knowledge-chat-log" aria-live="polite">
+                  {knowledgeChatMessages.map(message => (
+                    <article key={message.id} className={`knowledge-message ${message.role}`}>
+                      <strong>{message.role === 'user' ? 'Du' : 'Turnierhilfe'}</strong>
+                      {message.text.split('\n').map((line, index) => line ? <p key={`${message.id}-${index}`}>{line}</p> : <br key={`${message.id}-${index}`} />)}
+                      {message.sources.length > 0 && <small>Quellen: {message.sources.join(' · ')}</small>}
+                    </article>
+                  ))}
+                </div>
+                <div className="knowledge-chat-input">
+                  <input
+                    type="text"
+                    value={knowledgeChatInput}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => setKnowledgeChatInput(event.target.value)}
+                    onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        askKnowledgeChat();
+                      }
+                    }}
+                    placeholder="Frage stellen, z.B. Was muss ich nach Runde 3 tun?"
+                  />
+                  <button type="button" onClick={() => askKnowledgeChat()} disabled={!knowledgeChatInput.trim()}>Antwort</button>
+                  <button type="button" className="secondary" onClick={() => downloadText(`lokale-turnierhilfe-${backupTimestampSlug(new Date())}.txt`, knowledgeChatMessages.map(message => `${message.role === 'user' ? 'Du' : 'Turnierhilfe'}:\n${message.text}`).join('\n\n---\n\n'), 'text/plain;charset=utf-8')}>Chat exportieren</button>
+                </div>
+              </section>
             </article>
           )}
 

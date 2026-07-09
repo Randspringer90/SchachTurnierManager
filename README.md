@@ -93,6 +93,11 @@ Die WebApp hat ein dependency-freies i18n-Fundament mit Sprachumschalter im Kopf
 (18 Sprachen registriert; Deutsch/Englisch/Spanisch mit Kernübersetzungen, weitere folgen).
 Details und Mitmach-Anleitung: `src/SchachTurnierManager.WebApp/src/i18n/README.md`.
 
+
+### Lokale Chat-Hilfe
+
+Der Reiter **Assistent** enthaelt eine lokale, regelbasierte Chat-Hilfe. Sie beantwortet Fragen zu Turnierstart, Auslosung, Wertungen, Backup, QR/Handy, Import/Export und KI-Datenschutz. Es werden keine Daten an Claude, OpenAI oder andere externe Anbieter gesendet. Die spaetere echte KI-Anbindung ist als BYOK-/Provider-Adapter geplant und bleibt ein eigener Roadmap-Schritt.
+
 ## Schnellstart (empfohlen)
 
 Zum Starten doppelklicken: **`RUN_TURNIERMANAGER.bat`** (im Repo-Root).

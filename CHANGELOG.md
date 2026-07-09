@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.47.0 - RUN-10/11 lokale Chat-Hilfe und Wissensbasis
+
+- Neuer lokaler Hilfe-Chat im Reiter **Assistent**.
+- Regelbasierte Wissensbasis fuer Turnierstart, Pairing, Wertungen, Backup, QR/Handy, Import/Export und KI-Datenschutz.
+- Kontextantworten beruecksichtigen ausgewaehltes Turnier und aktuelle Assistenten-Empfehlung.
+- Schnellfragen und Chat-Export ergaenzt.
+- Bewusst keine Claude/OpenAI/API-Anbindung, keine externen Requests, keine Secrets.
+- Neues Readiness-Skript `scripts/Invoke-KnowledgeChatReadiness.ps1`.
+- **Version:** `0.46.0` → `0.47.0` (Health, `package.json`, `package-lock.json`).
+
 ## 0.46.0 - RUN-17 lokaler Turnierassistent
 
 RUN-17 fuegt einen ersten produktiven Turnierassistenten in der WebApp hinzu. Der Assistent
