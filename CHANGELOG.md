@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.48.1 - RUN-11 Knowledge-Base-Readiness Parser-Hotfix
+
+- **Bugfix:** `scripts/Invoke-KnowledgeBaseReadiness.ps1` nutzt bei Fehlermeldungen jetzt `${index}`/`${field}`, damit PowerShell Text wie `Topic 1:` nicht als fehlerhafte Variablenreferenz parst.
+- **Scope:** Keine fachliche Aenderung an Chat-Hilfe, Wissensbasis, Pairing, Wertungen oder Datenmodell.
+- **Version:** `0.48.0` → `0.48.1` (Health, `package.json`, `package-lock.json`).
+
 ## 0.48.0 - RUN-11 lokale Wissensbasis auslagern
 
 RUN-11 trennt die lokale Chat-Hilfe weiter vom UI-Code: Die Wissensartikel und Schnellfragen liegen jetzt als gepflegte JSON-Wissensbasis unter `src/SchachTurnierManager.WebApp/src/knowledge/`.

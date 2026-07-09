@@ -1,3 +1,4 @@
+- 2026-07-09: ChatGPT RUN-11 Knowledge-Base-Readiness Parser-Hotfix (`scripts/Invoke-KnowledgeBaseReadiness.ps1`) -> 0.48.1.
 # KI-Prompt-Log — SchachTurnierManager
 
 Jeder relevante KI-Lauf (Claude Code, Codex, andere) traegt sich hier ein.

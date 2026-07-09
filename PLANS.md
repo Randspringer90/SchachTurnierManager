@@ -1,3 +1,11 @@
+# Aktueller Zusatz 0.48.1
+
+- RUN-11-Hotfix: Das Knowledge-Base-Readiness-Skript parst jetzt korrekt, weil die Fehlermeldung `Topic ${index}: Feld ${field} fehlt.` verwendet.
+- Der Fehler betraf nur das Pruefskript; die Wissensbasis-/UI-Implementierung aus 0.48.0 bleibt unveraendert.
+- Naechster Schritt: 0.48.1 testen, danach 0.48.1 lokal committen und mit RUN-15 Import/Export oder RUN-14 Wertungen/Tie-Breaks weitermachen.
+
+---
+
 # Aktueller Zusatz 0.48.0
 
 - RUN-11 wurde weiter umgesetzt: Die lokale Wissensbasis ist jetzt aus dem UI-Monolithen in `src/SchachTurnierManager.WebApp/src/knowledge/localKnowledgeBase.json` ausgelagert.

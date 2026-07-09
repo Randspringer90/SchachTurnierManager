@@ -70,7 +70,7 @@ function Assert-KnowledgeBase([string]$Path) {
         $index++
         foreach ($field in @('id','title','answer')) {
             if (-not $topic.$field) {
-                throw "Topic $index: Feld $field fehlt."
+                throw "Topic ${index}: Feld ${field} fehlt."
             }
         }
         if (-not $topic.keywords -or $topic.keywords.Count -lt 3) {
