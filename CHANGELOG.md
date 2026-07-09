@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.52.0 - RUN-52 Kollegenpaket-Frischlauf-Test
+
+- **Frischlauf:** Neues `scripts/Invoke-ColleagueFreshRunTest.ps1` prueft das erzeugte Kollegenpaket in einem frischen Ordner: Entpacken, SHA256-Pruefsummen, Desktop-ZIP, Starter, WebApi-EXE, eingebettetes Dashboard, Health/API-Smoke und isolierten Datenpfad.
+- **Portwahl:** Das Skript prueft den gewuenschten Loopback-Port und weicht automatisch auf den naechsten freien Port aus, statt unnoetige manuelle Fallback-Kommandos zu verlangen.
+- **Release:** Neue Doku `docs/release/COLLEAGUE_FRESH_RUN_TEST.md` beschreibt den Kollegentest vor Weitergabe des Pakets.
+- **Agenten/Skills:** Neuer Skill `.agents/skills/colleague-fresh-run.md` fuer Codex/Claude-Code-Releasechecks.
+- **Qualitaet:** `OperationalGuardTests` prueft Frischlauf-Vertrag, Checksums, isolierten Datenpfad und Upload-ZIP-Konvention.
+- **Version:** `0.51.1` → `0.52.0` (Health, `package.json`, `package-lock.json`).
+
+
 ## 0.51.1 - RUN-51 Kollegeninstallation RunBundle-Hotfix
 
 - **Bugfix:** `scripts/Invoke-ColleagueInstallReadiness.ps1` erzeugt den Run-Ordner jetzt selbst und berechnet das Upload-ZIP deterministisch, statt Pipeline-Ausgaben von `New-RunLogBundle.ps1` in Variablen zu uebernehmen. Dadurch entstehen keine `System.Object[]`-Pfade mehr.

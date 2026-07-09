@@ -49,6 +49,19 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-Colleagu
 
 Beim Kollegen gilt: Setup-EXE per Doppelklick verwenden, falls vorhanden; sonst Desktop-ZIP entpacken und `SchachTurnierManager.bat` per Doppelklick starten. Es wird kein .NET, Node oder npm auf dem Zielrechner benoetigt.
 
+
+
+### Kollegenpaket-Frischlauf testen
+
+Seit 0.52.0 kann das erzeugte Kollegenpaket in einem frischen Testordner automatisch geprueft werden. Der Test entpackt das Paket, validiert SHA256-Pruefsummen, entpackt das Desktop-ZIP, startet die WebApi auf einem freien Loopback-Port und prueft Health, Dashboard, Turnierliste und isolierten SQLite-Datenpfad.
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ColleagueFreshRunTest.ps1" -BuildPackage -BuildInstaller -AllowMissingInnoSetup
+```
+
+Am Ende wird ein Run-ZIP unter `D:\Temp` ausgegeben. Ein echter Test auf einem Kollegenrechner bleibt fuer die finale Freigabe sinnvoll, aber der Frischlauf schliesst die haeufigsten Paketierungsfehler bereits lokal aus.
+
+
 ## Bewusste Grenzen
 
 - Schweizer-System ist noch kein vollständiges FIDE-Dutch.

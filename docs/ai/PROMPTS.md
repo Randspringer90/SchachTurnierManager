@@ -33,3 +33,5 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 - 2026-07-09: RUN-15 Exportmanifest (`docs/ai/prompts/2026-07-09-chatgpt-run15-exportmanifest.md`)
 
 - 2026-07-09 ChatGPT RUN-50: Release-/Betriebsunterbau mit Logging-Leveln, DPAPI-Secret-Selftest, ReleaseCandidateReadiness, Agenten-Skills und Unit-/Contract-Tests.
+
+| 2026-07-09 | ChatGPT 5.5 Thinking | RUN-52: Kollegenpaket-Frischlauf-Test mit Checksums, Desktop-ZIP-Entpackung, Auto-Port, Health/Dashboard/API-Smoke und isoliertem Datenpfad, Version 0.52.0 | [prompts/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md](prompts/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md) | [reports/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md](reports/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md) |

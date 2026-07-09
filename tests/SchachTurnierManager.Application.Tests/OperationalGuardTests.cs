@@ -109,6 +109,36 @@ public sealed class OperationalGuardTests
         Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-installation.md")));
     }
 
+
+
+    [Fact]
+    public void ColleagueFreshRunTest_VerifiesPackageChecksumDesktopStartAndIsolatedData()
+    {
+        var script = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ColleagueFreshRunTest.ps1"));
+        var docs = File.ReadAllText(FindRepositoryFile("docs", "release", "COLLEAGUE_FRESH_RUN_TEST.md"));
+
+        Assert.Contains("SchachTurnierManager_Kollegenpaket_", script);
+        Assert.Contains("CHECKSUMS_SHA256.txt", script);
+        Assert.Contains("README_START_HIER.txt", script);
+        Assert.Contains("KOLLEGENPAKET_MANIFEST.txt", script);
+        Assert.Contains("SchachTurnierManager_Desktop_*.zip", script);
+        Assert.Contains("SchachTurnierManager.WebApi.exe", script);
+        Assert.Contains("wwwroot", script);
+        Assert.Contains("Get-AvailableLoopbackPort", script);
+        Assert.Contains("ASPNETCORE_URLS", script);
+        Assert.Contains("SchachTurnierManager__DataDirectory", script);
+        Assert.Contains("/api/health", script);
+        Assert.Contains("/api/tournaments", script);
+        Assert.Contains("FRESH_RUN=OK", script);
+        Assert.Contains("UPLOAD_ZIP=", script);
+        Assert.DoesNotContain("System.Object[]", script);
+
+        Assert.Contains("frischen Ordner", docs);
+        Assert.Contains("isolierten Testdatenordner", docs);
+        Assert.Contains("DPAPI-Secrets", docs);
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-fresh-run.md")));
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

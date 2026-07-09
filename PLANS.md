@@ -1,3 +1,11 @@
+# Aktueller Zusatz 0.52.0
+
+- RUN-52 ergaenzt den echten Frischordner-Test fuer das Kollegenpaket: ZIP entpacken, Checksums pruefen, Desktop-ZIP entpacken, WebApi auf freiem Loopback-Port starten, Health/Dashboard/API und isolierte SQLite-Datenbank pruefen.
+- Der Test waehlt automatisch den naechsten freien Port ab dem Wunschport; manuelle 5098/5099-Fallbacks sollen nur noch bei echtem Port-/Startfehler noetig sein.
+- Naechster Schritt: 0.52.0 testen, committen und pushen. Danach echten Kollegenrechner-Test oder Setup-EXE mit installiertem Inno Setup finalisieren.
+
+---
+
 # Aktueller Zusatz 0.51.1
 
 - Hotfix fuer `scripts/Invoke-ColleagueInstallReadiness.ps1`: Run-Ordner und Upload-ZIP werden direkt/deterministisch berechnet, damit keine `System.Object[]`-Pfade mehr entstehen.
