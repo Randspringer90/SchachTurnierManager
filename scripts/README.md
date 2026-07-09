@@ -55,3 +55,5 @@ Die Unterordner `dev/`, `test/`, `release/`, `git/`, `security/`, `maintenance/`
 - `Invoke-TournamentAssistantReadiness.ps1`: RUN-17-Readiness fuer den lokalen Turnierassistenten; ReleaseGate, Frontend-Build und UI-/Privacy-Merkmale als Run-ZIP.
 - `Invoke-KnowledgeChatReadiness.ps1` prueft RUN-10/11: lokale Chat-Hilfe/Wissensbasis, Datenschutz-Hinweis, Schnellfragen, Chat-Export und Frontend-Build.
 - `Invoke-KnowledgeBaseReadiness.ps1` prueft RUN-11: ausgelagerte lokale JSON-Wissensbasis, Quellen-/Privacy-Regeln, UI-Import und Frontend-Build.
+
+- `Invoke-ExportManifestReadiness.ps1` prueft RUN-15: ReleaseGate, Frontend-Build, Domain-Test, API-Endpunkt und UI-Exportmanifest.

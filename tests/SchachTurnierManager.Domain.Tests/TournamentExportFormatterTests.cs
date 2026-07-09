@@ -31,6 +31,23 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("1-0", document.Content);
     }
 
+
+    [Fact]
+    public void ExportDownloadManifestJson_ContainsDownloadsAndChecks()
+    {
+        var tournament = CreateTournament();
+        var standings = new StandingsCalculator().Calculate(tournament);
+        var document = new TournamentExportFormatter().ExportDownloadManifestJson(tournament, standings);
+
+        Assert.Equal("application/json; charset=utf-8", document.ContentType);
+        Assert.EndsWith("_Exportmanifest.json", document.FileName);
+        Assert.Contains("schach-turnier-manager.export-manifest.v1", document.Content);
+        Assert.Contains("Teilnehmer CSV", document.Content);
+        Assert.Contains("/players/export.csv", document.Content);
+        Assert.Contains("publishReady", document.Content);
+        Assert.Contains("local-only", document.Content);
+    }
+
     [Fact]
     public void ExportPrintableTournamentHtml_EncodesTournamentName()
     {

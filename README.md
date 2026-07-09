@@ -36,6 +36,10 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 ### Lokale Turnierhilfe / Wissensbasis
 
 Der Reiter **Assistent** enthält eine lokale Chat-Hilfe. Seit 0.48.0 werden die Schnellfragen und Wissensartikel unter `src/SchachTurnierManager.WebApp/src/knowledge/localKnowledgeBase.json` gepflegt. Die Hilfe ist lokal-only: Es werden keine Turnierdaten, Logs, Personendaten oder Secrets an externe KI-Anbieter gesendet.
+### Exportmanifest fuer Turnierleiter
+
+Seit 0.49.0 erzeugt der Turniermanager ein lokales Exportmanifest unter `exports/manifest.json`. Es listet die wichtigsten Downloadpfade fuer Teilnehmer-CSV, Tabelle, Paarungen, Druckansicht und Audit-Bundles, nennt offene Bretter/Byes/kampflose Ergebnisse und enthaelt einen empfohlenen Veroeffentlichungs-Workflow. Das Manifest ist local-only und fuehrt keine Uploads aus.
+
 
 ## Desktop-Version für Endnutzer (self-contained)
 

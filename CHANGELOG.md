@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.49.0 - RUN-15 Exportmanifest fuer Turnierleiter
+
+RUN-15 erweitert Import/Export um ein maschinenlesbares Exportmanifest. Turnierleiter bekommen damit einen lokalen Downloadplan fuer Teilnehmer, Tabelle, Paarungen, Druckansicht und Audit-Bundles.
+
+- **Exportmanifest:** Neuer Domain-Formatter `ExportDownloadManifestJson` erzeugt `*_Exportmanifest.json` mit Turnier-Metadaten, Checks, Downloadpfaden, Workflow und Privacy-Hinweis.
+- **API:** Neuer Endpunkt `/api/tournaments/{id}/exports/manifest.json`.
+- **UI:** Exportcenter bietet `Exportmanifest JSON` neben CSV, Druckansicht, Audit und Backup an.
+- **Qualitaet:** Domain-Test prueft Schema, Downloads, Checks und lokale Datenschutzgrenze.
+- **Readiness:** Neues `scripts/Invoke-ExportManifestReadiness.ps1` prueft ReleaseGate, Frontend-Build, API-/UI-Verdrahtung und Tests/Quellmerkmale.
+- **Version:** `0.48.1` → `0.49.0` (Health, `package.json`, `package-lock.json`).
+
 ## 0.48.1 - RUN-11 Knowledge-Base-Readiness Parser-Hotfix
 
 - **Bugfix:** `scripts/Invoke-KnowledgeBaseReadiness.ps1` nutzt bei Fehlermeldungen jetzt `${index}`/`${field}`, damit PowerShell Text wie `Topic 1:` nicht als fehlerhafte Variablenreferenz parst.

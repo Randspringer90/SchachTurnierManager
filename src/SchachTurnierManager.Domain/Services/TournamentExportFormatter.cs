@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using SchachTurnierManager.Domain.Models;
 
 namespace SchachTurnierManager.Domain.Services;
@@ -74,6 +75,87 @@ public sealed class TournamentExportFormatter
 
         var suffix = roundNumber is null ? "Paarungen" : $"Runde_{roundNumber.Value:D2}";
         return CsvDocument($"{SafeFileName(tournament.Name)}_{suffix}.csv", builder.ToString());
+    }
+
+
+    public ExportDocument ExportDownloadManifestJson(TournamentState tournament, IReadOnlyList<StandingRow> standings)
+    {
+        var latestRound = tournament.Rounds.Count == 0
+            ? (int?)null
+            : tournament.Rounds.Max(round => round.RoundNumber);
+
+        var downloads = new List<object>
+        {
+            DownloadEntry("players-csv", "Teilnehmer CSV", $"/api/tournaments/{tournament.Id}/players/export.csv", "Teilnehmerliste mit Verein, IDs, Titel, Status und Notizen."),
+            DownloadEntry("standings-csv", "Tabelle CSV", $"/api/tournaments/{tournament.Id}/standings/export.csv", "Aktuelle Tabelle mit Wertungskette und Tie-Break-Werten."),
+            DownloadEntry("pairings-csv", "Alle Paarungen CSV", $"/api/tournaments/{tournament.Id}/pairings/export.csv", "Alle gespeicherten Runden und Bretter inklusive Ergebnis und Chess960-Information."),
+            DownloadEntry("print-html", "Turnier-Druckansicht HTML", $"/api/tournaments/{tournament.Id}/print/html", "Kompletter Turnierbericht für Aushang, PDF-Druck oder Archiv."),
+            DownloadEntry("audit-jsonl", "Audit-Bundle JSONL", $"/api/tournaments/{tournament.Id}/audit-journal/export.jsonl", "Forensisches Audit-Bundle für Nachvollziehbarkeit nach jeder Runde."),
+            DownloadEntry("audit-json", "Audit-Bundle JSON", $"/api/tournaments/{tournament.Id}/audit-journal/export.json", "Strukturiertes Audit-Bundle für Review und spätere Auswertung.")
+        };
+
+        if (latestRound is not null)
+        {
+            downloads.Add(DownloadEntry(
+                "latest-pairings-csv",
+                "Aktuelle Runde CSV",
+                $"/api/tournaments/{tournament.Id}/pairings/export.csv?roundNumber={latestRound.Value}",
+                $"Nur Runde {latestRound.Value} für schnellen Aushang oder Ergebniszettel."));
+            downloads.Add(DownloadEntry(
+                "latest-round-html",
+                "Aktuelle Runde HTML",
+                $"/api/tournaments/{tournament.Id}/rounds/{latestRound.Value}/print/html",
+                $"Rundenblatt für Runde {latestRound.Value}."));
+        }
+
+        var openBoards = tournament.Rounds.Sum(round => round.Pairings.Count(pairing => !pairing.IsBye && pairing.Result.Kind == GameResultKind.NotPlayed));
+        var byeBoards = tournament.Rounds.Sum(round => round.Pairings.Count(pairing => pairing.IsBye));
+        var forfeitBoards = tournament.Rounds.Sum(round => round.Pairings.Count(pairing => pairing.Result.Kind is GameResultKind.WhiteForfeitWin or GameResultKind.BlackForfeitWin or GameResultKind.DoubleForfeit));
+        var manifest = new
+        {
+            schema = "schach-turnier-manager.export-manifest.v1",
+            generatedAt = DateTimeOffset.Now,
+            tournament = new
+            {
+                tournament.Id,
+                tournament.Name,
+                format = tournament.Settings.Format.ToString(),
+                scoringSystem = tournament.Settings.ScoringSystem.ToString(),
+                players = tournament.Players.Count,
+                activePlayers = tournament.Players.Count(player => player.Status == PlayerStatus.Active),
+                rounds = tournament.Rounds.Count,
+                standingsRows = standings.Count
+            },
+            checks = new
+            {
+                openBoards,
+                byeBoards,
+                forfeitBoards,
+                latestRound,
+                publishReady = openBoards == 0
+            },
+            downloads,
+            recommendedWorkflow = new[]
+            {
+                "Vor Veröffentlichung offene Bretter und kampflose Ergebnisse prüfen.",
+                "Teilnehmer-CSV, Tabelle-CSV, Paarungen-CSV und Druckansicht exportieren.",
+                "Nach jeder Runde ein Audit-Bundle JSONL lokal sichern.",
+                "Bei Finale/Abschluss zusätzlich dieses Manifest zum Exportpaket legen."
+            },
+            privacy = new
+            {
+                mode = "local-only",
+                note = "Das Manifest enthält nur lokale Downloadpfade und Turnier-Metadaten; es lädt keine Daten zu externen Diensten hoch."
+            }
+        };
+
+        var content = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+        return new ExportDocument
+        {
+            FileName = $"{SafeFileName(tournament.Name)}_Exportmanifest.json",
+            ContentType = "application/json; charset=utf-8",
+            Content = content
+        };
     }
 
     public ExportDocument ExportPrintableTournamentHtml(TournamentState tournament, IReadOnlyList<StandingRow> standings, IReadOnlyList<RoundDiagnostics> diagnostics)
@@ -308,6 +390,16 @@ public sealed class TournamentExportFormatter
         builder.AppendLine("<footer class=\"muted\">Erzeugt mit SchachTurnierManager · lokale Druckansicht</footer>");
         builder.AppendLine("</body></html>");
     }
+
+
+    private static object DownloadEntry(string key, string label, string path, string description) => new
+    {
+        key,
+        label,
+        method = "GET",
+        path,
+        description
+    };
 
     private static ExportDocument CsvDocument(string fileName, string content) => new()
     {

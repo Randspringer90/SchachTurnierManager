@@ -757,6 +757,13 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
     }
 
 
+
+    public ExportDocument ExportDownloadManifestJson(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportDownloadManifestJson(tournament, _standings.Calculate(tournament));
+    }
+
     public ExportDocument ExportStandingsCsv(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);

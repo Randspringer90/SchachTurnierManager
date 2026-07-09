@@ -2404,6 +2404,10 @@ function App() {
     window.open(`/api/tournaments/${selectedTournament.id}/${path}`, '_blank', 'noopener,noreferrer');
   }
 
+  function openExportManifest(): void {
+    openTournamentExport('exports/manifest.json');
+  }
+
   function latestRoundNumber(): number | null {
     if (!selectedTournament || selectedTournament.rounds.length === 0) {
       return null;
@@ -4345,7 +4349,7 @@ function openRoundPrint(roundNumber: number) {
                   <h3>Turnierleiter-Exportcenter</h3>
                   <p className="muted">Schnellzugriff auf Aushänge, Tabellen, Paarungen, Vorschau und Backup. Ideal vor, während und nach einer Runde.</p>
                 </div>
-                <span className="export-center-badge">v0.25</span>
+                <span className="export-center-badge">RUN-15 · v0.49</span>
               </div>
 
               <div className="export-center-metrics">
@@ -4377,6 +4381,7 @@ function openRoundPrint(roundNumber: number) {
                     <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen CSV</button>
                     <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Paarungen CSV</button>
                     <button type="button" className="secondary" onClick={openNextRoundPreviewCsv} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau CSV</button>
+                    <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>Exportmanifest JSON</button>
                     <button type="button" className="secondary" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup JSON</button>
                   </div>
                 </section>
@@ -4506,6 +4511,7 @@ function openRoundPrint(roundNumber: number) {
                   <button type="button" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle als CSV</button>
                   <button type="button" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen als CSV</button>
                   <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnier-Druckansicht</button>
+                  <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>Exportmanifest JSON</button>
                 </div>
                 <div className="round-print-list">
                   {selectedTournament?.rounds.map(round => (

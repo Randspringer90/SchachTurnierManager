@@ -1,3 +1,12 @@
+# Aktueller Zusatz 0.49.0
+
+- RUN-15 Import/Export wurde als erster produktiver Ausbau umgesetzt: ein lokales Exportmanifest beschreibt die wichtigsten Downloads, Turnier-Metadaten, offene Bretter, kampflose Bretter, Byes und den empfohlenen Veroeffentlichungs-Workflow.
+- Der neue API-Endpunkt `/api/tournaments/{id}/exports/manifest.json` ist bewusst read-only und local-only. Er laedt nichts hoch und enthaelt nur lokale Downloadpfade.
+- Das Exportcenter bietet den Manifest-Download sichtbar neben CSV, Druckansicht und Backup an.
+- Naechste sinnvolle Schritte: 0.49.0 testen und committen; danach RUN-14 Tie-Break-/Wertungs-Erklaerungen oder RUN-15 weiter mit Excel-/TRF-Vorbereitung fortsetzen.
+
+---
+
 # Aktueller Zusatz 0.48.1
 
 - RUN-11-Hotfix: Das Knowledge-Base-Readiness-Skript parst jetzt korrekt, weil die Fehlermeldung `Topic ${index}: Feld ${field} fehlt.` verwendet.
