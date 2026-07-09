@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.44.1 - RUN-03 Portable-Manifest toleriert leere Datenordner
+
+Hotfix zum RUN-03-Frischordner-Test: Das Portable-ZIP wurde korrekt gebaut, aber der
+Test behandelte den leeren `data`-Ordner als zwingenden ZIP-Inhalt. `Compress-Archive`
+uebernimmt leere Ordner unter Windows nicht verlaesslich; der Runtime-Smoke nutzt ohnehin
+einen separaten isolierten Test-Datenordner. Keine fachliche Turnier-, Pairing-,
+Persistenz- oder UI-Logik geaendert.
+
+- **Manifest-Fix:** `scripts/Invoke-PortableFreshFolderTest.ps1` wertet `data` jetzt als
+  optionalen leeren Ordner und schreibt einen klaren WARN-Hinweis statt den Lauf hart
+  abzubrechen.
+- **Robustere ZIP-Erkennung:** Der Test erkennt die Portable-Root anhand
+  `Start-SchachTurnierManager.bat`, auch falls ein ZIP spaeter doch mit zusaetzlichem
+  Wurzelordner erzeugt wird.
+- **Bessere Diagnose:** Das Manifest listet den erkannten Portable-Root und relevante
+  Dateien bis Tiefe 3 auf.
+- **Version:** `0.44.0` → `0.44.1` (Health, `package.json`, `package-lock.json`).
+
+## 0.44.0 - RUN-03 Portable-ZIP-Frischordner-Test
+
+RUN-03 macht das Portable-Paket als Endnutzer-Artefakt belastbarer: nicht nur bauen,
+sondern in einen frischen Ordner entpacken, isoliert starten und gegen Health/Dashboard/API
+prüfen. Keine fachliche Turnier-, Pairing-, Persistenz- oder UI-Logik geändert.
+
+- **Fresh-Folder-Smoke:** `scripts/Invoke-PortableFreshFolderTest.ps1` erzeugt einen
+  Run-Ordner unter `D:\Temp`, führt optional ReleaseGate `-SkipPack`, baut das Portable-ZIP
+  self-contained, entpackt es in einen frischen Testordner und startet die WebApi auf einem
+  Testport.
+- **Artefaktprüfung:** Manifest mit ZIP-Größe/SHA256, Pflichtdateien (`Start-...bat`,
+  README, WebApi-EXE, `wwwroot/index.html`, `data`-Ordner) und Hashes.
+- **Runtime-Smoke:** Healthcheck, eingebettetes Dashboard, Turnierlisten-API und SQLite-
+  Datenpfad im isolierten Testdatenordner werden geprüft; Backend-stdout/stderr landen im
+  Upload-ZIP.
+- **Run-Log-Standard:** Der Lauf gibt am Ende nur `UPLOAD_ZIP=...` aus; Details liegen im
+  ZIP.
+- **Version:** `0.43.1` → `0.44.0` (Health, `package.json`, `package-lock.json`).
+
 ## 0.43.1 - CommitGuard lokal-only Handoff und Safety-Diagnose
 
 Hotfix/Folgearbeit nach RUN-05: Der 0.42.6-Commit wurde nicht erstellt, weil ein bereits

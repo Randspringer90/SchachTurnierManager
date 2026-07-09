@@ -53,6 +53,20 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-Installe
 
 Der Prüflauf erzeugt ein ZIP unter `D:\Temp` mit Logs, Manifesten und manueller Testcheckliste.
 
+
+## Portable-ZIP-Frischordner-Test
+
+Für eine Endnutzer-nahe Prüfung des Portable-Pakets ohne manuelle Logflut:
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-PortableFreshFolderTest.ps1"
+```
+
+Der Lauf baut standardmäßig ein self-contained Portable-ZIP, entpackt es in einen frischen
+Ordner unter `D:\Temp`, startet die App auf einem Testport, prüft Healthcheck, eingebettetes
+Dashboard, Turnierlisten-API und den isolierten SQLite-Datenpfad. Am Ende wird ein
+`UPLOAD_ZIP=...` ausgegeben.
+
 ## Mehrsprachigkeit
 
 Die WebApp hat ein dependency-freies i18n-Fundament mit Sprachumschalter im Kopfbereich
@@ -190,3 +204,11 @@ Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -Exec
 ```
 
 Der Snapshot liegt unter `output\open-source-snapshot`, enthält einen Report und schließt lokale Artefakte, historische Handoffs/After-Apply-Skripte, `.codex`, `.vs`, Build-Ausgaben, Logs, Dumps, Datenbanken und Zugangsdaten-Muster aus.
+
+### RUN-03 Frischordner-Smoke
+
+Der Portable-Frischordner-Test liegt unter `scripts\Invoke-PortableFreshFolderTest.ps1`.
+Er baut das Portable-ZIP, entpackt es in einen isolierten Ordner unter `D:\Temp`, startet
+die WebApi auf einem Testport und prueft Health, eingebettetes Dashboard, Turnierlisten-API
+und SQLite-Datenpfad. Leere Paketordner wie `data` werden im Manifest als optional
+behandelt, weil ZIP-Werkzeuge leere Ordner nicht immer erhalten.

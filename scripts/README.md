@@ -16,6 +16,7 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 
 - `Invoke-ReleaseGate.ps1` – Pflicht-Gate: restore, build, test, Frontend-Build, Pack-Portable.
 - `Pack-Portable.ps1` / `Start-Portable.bat` – portables Paket bauen und starten.
+- `Invoke-PortableFreshFolderTest.ps1` – RUN-03: Portable-ZIP bauen, frisch entpacken, Health/Dashboard/API/SQLite-Datenpfad smoke-testen und als Run-ZIP bündeln.
 - `Publish-DesktopApp.ps1` / `Start-Desktop.bat` – self-contained Desktop-Paket (`output\desktop`), Klick-Start, Daten unter `%LocalAppData%\SchachTurnierManager`.
 - `Build-Installer.ps1` – Installer-EXE über Inno Setup 6 aus `installer\SchachTurnierManager.iss` bauen (ISCC.exe erforderlich).
 - `Invoke-InstallerReadiness.ps1` – RUN-05-Readiness mit Run-Log-Bundle, Desktop-Publish, optionalem Installer-Build und Manifesten.

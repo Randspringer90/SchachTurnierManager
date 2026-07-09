@@ -1,3 +1,24 @@
+# Aktueller Zusatz 0.44.1
+
+- RUN-03-Hotfix: Das Portable-Fresh-Folder-Skript behandelt den leeren `data`-Ordner im
+  ZIP jetzt als optional, weil `Compress-Archive` leere Ordner nicht verlaesslich ins ZIP
+  uebernimmt. Der Smoke-Test nutzt weiterhin einen separaten isolierten Test-Datenordner
+  unter `D:\Temp`.
+- Portable-Root-Erkennung ist robuster und Manifest-Diagnose listet relevante Dateien auf.
+- Nach erneut gruenem RUN-03: 0.44.x lokal committen, dann als naechsten Roadmap-Schritt
+  RUN-02 Release-Reife-Audit oder RUN-21 i18n-Bereichsextraktion.
+
+# Aktueller Zusatz 0.44.0
+
+- RUN-03 Portable-ZIP-Frischordner-Test automatisiert: `scripts/Invoke-PortableFreshFolderTest.ps1`
+  baut optional ein self-contained Portable-ZIP, entpackt es in einen frischen Ordner unter
+  `D:\Temp`, startet die WebApi isoliert auf einem Testport und prüft Health, Dashboard,
+  Turnierlisten-API und SQLite-Datenpfad.
+- Portable-Manifest mit ZIP-SHA256, Pflichtdateien und Backend-Logs landet im Upload-ZIP;
+  Terminal bleibt kurz.
+- RUN-03 ist damit technisch prüfbar; nächster sinnvoller Schritt bleibt wahlweise echter
+  Inno-Setup-Test für RUN-05, RUN-02 Release-Reife-Audit oder RUN-21/i18n-Bereichsextraktion.
+
 # Aktueller Zusatz 0.43.1
 
 - CommitGuard/Safety-Hotfix: `NEXT_PROMPT.md` ist lokale Projekt-Registry-/Handoff-Datei und
