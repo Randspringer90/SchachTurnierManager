@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.50.4 - RUN-50 DPAPI-Pfadtrim-Hotfix
+
+- **Bugfix:** `scripts/Get-LocalSecret.ps1` nutzt fuer relative Secret-Anzeigepfade jetzt `System.IO.Path.DirectorySeparatorChar`/`AltDirectorySeparatorChar` statt einer fehleranfaelligen `[char]'\\'`-Konvertierung. Dadurch bricht der DPAPI-Roundtrip nicht mehr beim Anzeigen von `.secrets/local/...`-Pfaden ab.
+- **Qualitaet:** `OperationalGuardTests` schuetzen gegen eine Rueckkehr der PowerShell-`TrimStart`-Variante und pruefen die plattformrobuste Pfadtrim-Logik.
+- **Scope:** Keine fachliche Turnierlogik geaendert.
+- **Version:** `0.50.3` → `0.50.4` (Health, `package.json`, `package-lock.json`).
+
 ## 0.50.3 - RUN-50 DPAPI-Blob-Trim-Hotfix
 
 - **Bugfix:** `scripts/Get-LocalSecret.ps1` liest lokale DPAPI-Dateien jetzt robust: abschliessende Zeilenumbrueche/Whitespace werden vor `ConvertTo-SecureString` entfernt, leere Dateien liefern eine klare Fehlermeldung.

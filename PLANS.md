@@ -1,3 +1,11 @@
+# Aktueller Zusatz 0.50.4
+
+- Hotfix fuer den DPAPI-Secret-Roundtrip: `Get-LocalSecret.ps1` verwendet jetzt robuste `System.IO.Path`-Separatorzeichen statt der fehlerhaften `[char]'\\'`-Konvertierung.
+- Damit sollte `secret-safety` im ReleaseCandidateReadiness-Lauf vollstaendig gruen werden.
+- Naechster Schritt: 0.50.4 testen; wenn gruen, 0.50.x lokal committen und danach Setup/EXE/Kollegeninstallation konkretisieren.
+
+---
+
 # Aktueller Zusatz 0.50.3
 
 - Hotfix fuer den DPAPI-Secret-Roundtrip: `Get-LocalSecret.ps1` trimmt serialisierte DPAPI-Blobs vor `ConvertTo-SecureString`; `Set-LocalSecret.ps1` schreibt ohne abschliessende neue Zeile.

@@ -33,7 +33,12 @@ function ConvertTo-RelativeDisplayPath {
 
     $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
     if ($Path.StartsWith($resolvedRoot, [StringComparison]::OrdinalIgnoreCase)) {
-        return $Path.Substring($resolvedRoot.Length).TrimStart([char]'\\', [char]'/')
+        $relative = $Path.Substring($resolvedRoot.Length)
+        $trimChars = [char[]]@(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar
+        )
+        return $relative.TrimStart($trimChars)
     }
 
     return $Path

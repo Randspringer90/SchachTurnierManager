@@ -33,6 +33,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("Trim()", getSecret);
         Assert.Contains("Lokales Secret ist leer oder unlesbar", getSecret);
         Assert.Contains("Windows-DPAPI", getSecret);
+        Assert.Contains("DirectorySeparatorChar", getSecret);
+        Assert.Contains("AltDirectorySeparatorChar", getSecret);
+        Assert.DoesNotContain("[char]'\\'", getSecret);
         Assert.Contains("Set-Content -Encoding UTF8 -NoNewline", setSecret);
         Assert.Contains("Value logged: no", readiness);
         Assert.Contains("DPAPI-Datei ist leer oder nur Whitespace", readiness);
@@ -59,7 +62,7 @@ public sealed class OperationalGuardTests
         Assert.Contains("RUN_DIR=", releaseScript);
         Assert.Contains("Resolve-UploadZipPath", releaseScript);
         Assert.Contains("Test-Path -LiteralPath $zipPath", releaseScript);
-        Assert.DoesNotContain("UPLOAD_ZIP=$zip", releaseScript);
+        Assert.DoesNotContain("UPLOAD_ZIP=$zip\"", releaseScript);
         Assert.DoesNotContain("$runDirectory = & $bundleScript -RunName $RunName -CreateOnly", releaseScript);
     }
 

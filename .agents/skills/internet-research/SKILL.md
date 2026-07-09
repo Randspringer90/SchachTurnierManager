@@ -15,6 +15,7 @@ description: Internet-Recherche fuer aktuelle Informationen (Versionen, Breaking
 1. Websuche des jeweiligen Tools nutzen (Claude Code: WebSearch/WebFetch;
    Codex: Browsing, falls aktiviert; sonst explizit nachfragen).
 2. GitHub/Netz nur ueber den konfigurierten Proxy erreichen
-   (hwfwdevws204: `10.236.76.16:8080`, prozesslokal setzen).
+   (Proxy-Host/-Port lokal/prozesslokal aus der Umgebung setzen,
+   keine konkreten internen Adressen im oeffentlichen Repo).
 3. Ergebnisse mit URL + Abrufdatum in den Lauf-Report uebernehmen.
 4. Keine internen Namen, Pfade, Secrets oder Kundendaten in Suchanfragen.

@@ -161,7 +161,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.50.3",
+    version = "0.50.4",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,
