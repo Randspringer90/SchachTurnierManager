@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.48.0 - RUN-11 lokale Wissensbasis auslagern
+
+RUN-11 trennt die lokale Chat-Hilfe weiter vom UI-Code: Die Wissensartikel und Schnellfragen liegen jetzt als gepflegte JSON-Wissensbasis unter `src/SchachTurnierManager.WebApp/src/knowledge/`.
+
+- **Wissensbasis ausgelagert:** `localKnowledgeBase.json` enthaelt Topics, Keywords, Schritte, Quellen, Schnellfragen, Stand und Privacy-Hinweis.
+- **UI entkoppelt:** `main.tsx` importiert die Wissensbasis statt lange Artikel direkt im Komponenten-Code zu halten.
+- **Quellen/Version sichtbar:** Der Assistent zeigt Stand/Version der Wissensbasis und nutzt den Privacy-Hinweis aus der JSON-Datei.
+- **Datenschutz-Grenze:** README-Regeln verhindern echte Turnierdaten, Logs, Secrets oder private Notizen in der Wissensbasis.
+- **Readiness-Skript:** `scripts/Invoke-KnowledgeBaseReadiness.ps1` prueft JSON-Struktur, lokale Provider-Grenze, UI-Import und Frontend-Build.
+- **Version:** `0.47.0` → `0.48.0` (Health, `package.json`, `package-lock.json`).
+
+# Changelog
+
 ## 0.47.0 - RUN-10/11 lokale Chat-Hilfe und Wissensbasis
 
 - Neuer lokaler Hilfe-Chat im Reiter **Assistent**.

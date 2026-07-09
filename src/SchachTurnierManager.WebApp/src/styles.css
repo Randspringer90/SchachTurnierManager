@@ -2430,3 +2430,11 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+
+.knowledge-source-meta {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #93c5fd;
+  font-size: 0.78rem;
+}

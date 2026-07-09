@@ -15,6 +15,7 @@ $sourceReportPath = Join-Path $runDirectory 'knowledge-chat-source-report.txt'
 $webAppRoot = Join-Path $root 'src\SchachTurnierManager.WebApp'
 $mainTsx = Join-Path $webAppRoot 'src\main.tsx'
 $stylesCss = Join-Path $webAppRoot 'src\styles.css'
+$knowledgeJson = Join-Path $webAppRoot 'src\knowledge\localKnowledgeBase.json'
 
 function Add-Summary([string]$Line) {
     $Line | Add-Content -Encoding UTF8 -LiteralPath $summaryPath
@@ -70,7 +71,9 @@ try {
         ''
     ) | Set-Content -Encoding UTF8 -LiteralPath $sourceReportPath
 
-    Assert-Contains $mainTsx 'knowledgeTopics' 'Lokale Wissensbasis'
+    Assert-Contains $mainTsx 'rawLocalKnowledgeBase' 'Lokale Wissensbasis aus JSON'
+    Assert-Contains $knowledgeJson 'providerMode' 'Knowledge-JSON providerMode'
+    Assert-Contains $knowledgeJson 'local-only' 'Knowledge-JSON lokal-only'
     Assert-Contains $mainTsx 'buildLocalKnowledgeAnswer' 'Antwortlogik'
     Assert-Contains $mainTsx 'knowledgeQuickQuestions' 'Schnellfragen'
     Assert-Contains $mainTsx 'Keine externen KI-Dienste' 'Datenschutz-Hinweis'

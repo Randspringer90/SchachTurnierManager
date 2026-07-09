@@ -1,3 +1,19 @@
+# Aktueller Zusatz 0.48.0
+
+- RUN-11 wurde weiter umgesetzt: Die lokale Wissensbasis ist jetzt aus dem UI-Monolithen in `src/SchachTurnierManager.WebApp/src/knowledge/localKnowledgeBase.json` ausgelagert.
+- Jeder Wissensartikel enthaelt `id`, `title`, `keywords`, `answer`, `steps` und `sources`; Schnellfragen, Stand, Source-Version und Privacy-Hinweis werden zentral gepflegt.
+- Die Chat-Hilfe bleibt lokal-only: keine externe KI, keine API-Keys, keine Uebertragung von Turnierdaten.
+- Neues `scripts/Invoke-KnowledgeBaseReadiness.ps1` prueft Build, JSON-Struktur, Provider-Grenze, Quellenregeln und UI-Import.
+
+## Naechste sinnvolle Schritte
+
+1. 0.48.0 lokal committen, wenn `Invoke-KnowledgeBaseReadiness.ps1` gruen ist.
+2. RUN-15 Import/Export erweitern: CSV/Excel-Exportcenter fuer Teilnehmer, Paarungen und Tabellen vertiefen.
+3. RUN-14 Tie-Break-/Wertungs-Erklaerungen im UI ausbauen.
+4. RUN-10 Provider-Konzept erst danach: BYOK, `.secrets/local`, Datenschutz-Gates und keine destruktiven Tool-Aktionen.
+
+---
+
 # Aktueller Zusatz 0.47.0
 
 - RUN-10/11 wurde als lokales, sicheres Fundament begonnen: Der Reiter **Assistent** enthaelt jetzt eine lokale Chat-Hilfe mit Wissensbasis fuer Turnierstart, Pairing, Wertungen, Backup, QR/Handy, Import/Export und KI-Datenschutz.

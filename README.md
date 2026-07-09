@@ -32,6 +32,11 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - QR/Handy funktioniert nur im gleichen WLAN/Hotspot und muss vor Ort mit echter Laptop-IP
   getestet werden; Browser-Würfeln am Laptop bleibt der Fallback.
 
+
+### Lokale Turnierhilfe / Wissensbasis
+
+Der Reiter **Assistent** enthält eine lokale Chat-Hilfe. Seit 0.48.0 werden die Schnellfragen und Wissensartikel unter `src/SchachTurnierManager.WebApp/src/knowledge/localKnowledgeBase.json` gepflegt. Die Hilfe ist lokal-only: Es werden keine Turnierdaten, Logs, Personendaten oder Secrets an externe KI-Anbieter gesendet.
+
 ## Desktop-Version für Endnutzer (self-contained)
 
 Für Rechner **ohne** Entwicklerwerkzeuge (kein .NET, kein Node nötig):

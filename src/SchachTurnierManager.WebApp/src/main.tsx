@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { encodeText, Ecl } from './qrcodegen';
 import { I18nProvider, LanguageSwitcher, useI18n } from './i18n';
+import rawLocalKnowledgeBase from './knowledge/localKnowledgeBase.json';
 import './styles.css';
 
 type Health = {
@@ -446,73 +447,19 @@ type KnowledgeTopic = {
   sources: string[];
 };
 
-const knowledgeQuickQuestions = [
-  'Wie starte ich ein Turnier?',
-  'Warum diese Paarung?',
-  'Was nach Runde 3 tun?',
-  'Was bedeutet Buchholz Cut?',
-  'Wie sichere ich das Turnier?',
-  'Wie nutze ich QR/Handy?'
-];
+type KnowledgeBase = {
+  sourceVersion: string;
+  sourceUpdated: string;
+  providerMode: 'local-only';
+  privacyNotice: string;
+  quickQuestions: string[];
+  topics: KnowledgeTopic[];
+};
 
-const knowledgeTopics: KnowledgeTopic[] = [
-  {
-    id: 'start',
-    title: 'Turnierstart',
-    keywords: ['start', 'beginnen', 'anlegen', 'neues turnier', 'vereinsabend', 'erste runde'],
-    answer: 'Lege zuerst das Turnier mit passendem Format an, importiere oder erfasse die Teilnehmer, prüfe Einstellungen und erstelle vor Runde 1 ein Backup. Danach öffnest du die Auslosungsvorschau, prüfst die Qualität und veröffentlichst erst dann die Runde.',
-    steps: ['Assistenten-Empfehlung übernehmen oder Einstellungen manuell setzen.', 'Teilnehmer erfassen/importieren und Startreihenfolge prüfen.', 'Backup exportieren.', 'Auslosungsvorschau öffnen und Pairing-Audit prüfen.', 'Runde auslosen, Rundenblatt drucken und nach Ergebnissen erneut sichern.'],
-    sources: ['Assistent', 'Runden / Auslosung', 'Druck / Backup']
-  },
-  {
-    id: 'pairing',
-    title: 'Auslosung und Pairing-Audit',
-    keywords: ['paarung', 'auslosung', 'warum', 'rematch', 'farben', 'qualität', 'pairing', 'fide'],
-    answer: 'Die App zeigt vor der Veröffentlichung eine Auslosungsvorschau mit Qualitätsbericht. Bei Schweizer System werden Rematches vermieden und Farb-/Score-Hinweise im Audit dokumentiert. Für große Open bleibt FIDE-Dutch ein eigener Roadmap-Punkt; deshalb bei mehr als 20 Spielern die Vorschau besonders prüfen.',
-    steps: ['Vorschau für nächste Runde öffnen.', 'Pairing-Qualität und Warnungen prüfen.', 'Bei Auffälligkeiten manuelle Paarung nutzen oder Runde nicht veröffentlichen.', 'Nach Veröffentlichung Rundenblatt/Aushang exportieren.'],
-    sources: ['Auslosungsvorschau', 'Pairing-Qualität', 'Audit-Journal']
-  },
-  {
-    id: 'tiebreak',
-    title: 'Wertungen und Tie-Breaks',
-    keywords: ['buchholz', 'cut', 'sonneborn', 'wertung', 'tie', 'tiebreak', 'direktvergleich', 'performance', 'bye', 'kampflos'],
-    answer: 'Buchholz zählt die Punkte der Gegner; Buchholz Cut streicht typischerweise den schwächsten Gegnerwert. Kampflos/Bye sind heikel, deshalb zeigt die App Bye- und kampflose Bretter separat und verweist auf die gewählte Wertungslogik. Vor gewerteten Turnieren die Ausschreibung und Verbandsregeln festlegen.',
-    steps: ['Wertungskette in den Turniereinstellungen prüfen.', 'Bye-/Kampflos-Regel vor Turnierstart festlegen.', 'Nach jeder Runde Tabellen und Diagnose prüfen.', 'Abschlussbericht erst nach Backup und finaler Plausibilitätsprüfung veröffentlichen.'],
-    sources: ['Tabelle / Ergebnisse', 'Rundendiagnose', 'docs/TIEBREAK_UNPLAYED_ROUNDS.md']
-  },
-  {
-    id: 'backup',
-    title: 'Backup und Wiederherstellung',
-    keywords: ['backup', 'sichern', 'restore', 'wiederherstellen', 'json', 'datenbank', 'sqlite', 'verlust'],
-    answer: 'Nach jeder wichtigen Aktion sollte ein JSON-Backup exportiert werden. Für den Turniertag ist das wichtiger als Komfort: Vor Runde 1, nach jeder Runde und vor Veröffentlichung der Endtabelle sichern.',
-    steps: ['Druck / Backup öffnen.', 'Backup exportieren und Datei extern ablegen.', 'Nach Ergebniserfassung erneut sichern.', 'Bei Restore Backup-JSON prüfen, importieren und danach Health/Turnierliste kontrollieren.'],
-    sources: ['Druck / Backup', 'Audit-Bundle', 'Portable-Frischordner-Test']
-  },
-  {
-    id: 'mobile',
-    title: 'QR/Handy und Chess960',
-    keywords: ['qr', 'handy', 'mobil', 'pwa', 'chess960', 'freestyle', 'würfeln', 'hotspot', 'wlan'],
-    answer: 'QR/Handy funktioniert im lokalen WLAN oder Hotspot gegen den Laptop. Die PWA-Basis macht die App installierbar; echte Offline-Ergebnis-Synchronisation ist bewusst noch nicht aktiv, damit keine Datenkonflikte entstehen.',
-    steps: ['Laptop-IP/Hotspot prüfen.', 'QR-Link vor Runde 1 testen.', 'Für Chess960 Startstellung je Brett würfeln und Audit prüfen.', 'Bei Verbindungsproblemen Ergebnis am Laptop erfassen.'],
-    sources: ['PWA-Readiness', 'Chess960/QR-Dialog', 'Service Worker network-only für /api']
-  },
-  {
-    id: 'export',
-    title: 'Import, Export und Veröffentlichung',
-    keywords: ['import', 'export', 'csv', 'excel', 'trf', 'chess-results', 'veröffentlichen', 'aushang', 'druck'],
-    answer: 'Teilnehmer, Tabellen, Paarungen, Rundenblätter und Backup-JSON können lokal exportiert werden. CSV ist der robuste erste Schritt; TRF/FIDE und Swiss-Manager-/Chess-Results-Kompatibilität bleiben eigene Ausbaustufen.',
-    steps: ['Teilnehmer-CSV vor Turnierstart prüfen.', 'Nach jeder Runde Tabelle/Paarungen exportieren.', 'Audit-Bundle für Nachvollziehbarkeit sichern.', 'Finale Ergebnisse erst nach Backup und Plausibilitätsprüfung veröffentlichen.'],
-    sources: ['Import / Export', 'Turnierleiter-Exportcenter', 'RUN-15 Roadmap']
-  },
-  {
-    id: 'ki',
-    title: 'KI-Chatbot und Datenschutz',
-    keywords: ['ki', 'chatbot', 'openai', 'claude', 'api', 'key', 'secret', 'datenschutz', 'wissen', 'rag'],
-    answer: 'Diese Hilfe ist aktuell lokal und regelbasiert. Sie sendet keine Turnierdaten, Logs oder personenbezogenen Daten an externe Anbieter. Eine spätere Claude/OpenAI-Anbindung muss BYOK, sichere lokale Secret-Ablage, Quellenanzeige und klare Tool-Rechte bekommen.',
-    steps: ['Zuerst lokale Wissensbasis und Quellen stabilisieren.', 'Danach Provider-Adapter und BYOK-Konzept implementieren.', 'Keine destruktiven Aktionen automatisch ausführen lassen.', 'Vor externer KI-Nutzung Datenschutz und Personenbezug prüfen.'],
-    sources: ['RUN-10 KI-Chatbot', 'RUN-11 Wissensbasis', '.secrets/README.md']
-  }
-];
+const localKnowledgeBase = rawLocalKnowledgeBase as KnowledgeBase;
+const knowledgeQuickQuestions = localKnowledgeBase.quickQuestions;
+const knowledgeTopics = localKnowledgeBase.topics;
+
 
 function normalizeKnowledgeText(value: string): string {
   return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -555,6 +502,14 @@ function buildLocalKnowledgeAnswer(question: string, tournament: Tournament | un
     .map(topic => ({ topic, score: topicScore(question, topic) }))
     .sort((left, right) => right.score - left.score);
   const best = scored[0]?.score > 0 ? scored[0].topic : knowledgeTopics[0];
+  if (!best) {
+    return {
+      id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      role: 'assistant',
+      text: `Die lokale Wissensbasis ist leer. Bitte src/knowledge/localKnowledgeBase.json pruefen.\n\nHinweis: ${localKnowledgeBase.privacyNotice}`,
+      sources: ['src/knowledge/localKnowledgeBase.json']
+    };
+  }
   const context = buildKnowledgeContext(tournament, recommendation);
   const text = [
     `**${best.title}**`,
@@ -565,7 +520,7 @@ function buildLocalKnowledgeAnswer(question: string, tournament: Tournament | un
     'Nächste Schritte:',
     ...best.steps.map((step, index) => `${index + 1}. ${step}`),
     '',
-    'Hinweis: Diese Antwort kommt aus der lokalen Wissensbasis. Es wurden keine Daten an externe KI-Dienste gesendet.'
+    `Hinweis: ${localKnowledgeBase.privacyNotice}`
   ].join('\n');
 
   return {
@@ -3544,8 +3499,9 @@ function openRoundPrint(roundNumber: number) {
                     <p className="eyebrow">Lokale Chat-Hilfe · RUN-10/11 Fundament</p>
                     <h4>Frag die Turnierhilfe</h4>
                     <p className="muted">Regelbasierte Wissensbasis für Bedienung, Pairing, Wertung, Backup und Datenschutz. Keine Provider-Anbindung, keine externen Requests, keine Secrets.</p>
+                    <small className="knowledge-source-meta">Wissensbasis {localKnowledgeBase.sourceVersion} · Stand {localKnowledgeBase.sourceUpdated}</small>
                   </div>
-                  <span className="knowledge-privacy-pill">offline/lokal</span>
+                  <span className="knowledge-privacy-pill" title={localKnowledgeBase.privacyNotice}>offline/lokal</span>
                 </div>
                 <div className="knowledge-quick-actions">
                   {knowledgeQuickQuestions.map(question => (

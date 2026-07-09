@@ -1,0 +1,232 @@
+{
+  "sourceVersion": "2026-07-09.1",
+  "sourceUpdated": "2026-07-09",
+  "providerMode": "local-only",
+  "privacyNotice": "Diese Antwort kommt aus der lokalen Wissensbasis. Es wurden keine Turnierdaten an externe KI-Dienste gesendet.",
+  "quickQuestions": [
+    "Wie starte ich ein Turnier?",
+    "Warum diese Paarung?",
+    "Was nach Runde 3 tun?",
+    "Was bedeutet Buchholz Cut?",
+    "Wie sichere ich das Turnier?",
+    "Wie nutze ich QR/Handy?",
+    "Wann brauche ich den Assistenten?",
+    "Welche Daten gehen an KI?"
+  ],
+  "topics": [
+    {
+      "id": "start",
+      "title": "Turnierstart",
+      "keywords": [
+        "start",
+        "beginnen",
+        "anlegen",
+        "neues turnier",
+        "vereinsabend",
+        "erste runde",
+        "checkliste"
+      ],
+      "answer": "Lege zuerst das Turnier mit passendem Format an, importiere oder erfasse die Teilnehmer, prüfe Einstellungen und erstelle vor Runde 1 ein Backup. Danach öffnest du die Auslosungsvorschau, prüfst die Qualität und veröffentlichst erst dann die Runde.",
+      "steps": [
+        "Assistenten-Empfehlung übernehmen oder Einstellungen manuell setzen.",
+        "Teilnehmer erfassen/importieren und Startreihenfolge prüfen.",
+        "Backup exportieren.",
+        "Auslosungsvorschau öffnen und Pairing-Audit prüfen.",
+        "Runde auslosen, Rundenblatt drucken und nach Ergebnissen erneut sichern."
+      ],
+      "sources": [
+        "Assistent",
+        "Runden / Auslosung",
+        "Druck / Backup"
+      ]
+    },
+    {
+      "id": "pairing",
+      "title": "Auslosung und Pairing-Audit",
+      "keywords": [
+        "paarung",
+        "auslosung",
+        "warum",
+        "rematch",
+        "farben",
+        "qualität",
+        "pairing",
+        "fide",
+        "audit"
+      ],
+      "answer": "Die App zeigt vor der Veröffentlichung eine Auslosungsvorschau mit Qualitätsbericht. Bei Schweizer System werden Rematches vermieden und Farb-/Score-Hinweise im Audit dokumentiert. Für große Open bleibt FIDE-Dutch ein eigener Roadmap-Punkt; deshalb bei mehr als 20 Spielern die Vorschau besonders prüfen.",
+      "steps": [
+        "Vorschau für nächste Runde öffnen.",
+        "Pairing-Qualität und Warnungen prüfen.",
+        "Bei Auffälligkeiten manuelle Paarung nutzen oder Runde nicht veröffentlichen.",
+        "Nach Veröffentlichung Rundenblatt/Aushang exportieren."
+      ],
+      "sources": [
+        "Auslosungsvorschau",
+        "Pairing-Qualität",
+        "Audit-Journal"
+      ]
+    },
+    {
+      "id": "tiebreak",
+      "title": "Wertungen und Tie-Breaks",
+      "keywords": [
+        "buchholz",
+        "cut",
+        "sonneborn",
+        "wertung",
+        "tie",
+        "tiebreak",
+        "direktvergleich",
+        "performance",
+        "bye",
+        "kampflos"
+      ],
+      "answer": "Buchholz zählt die Punkte der Gegner; Buchholz Cut streicht typischerweise den schwächsten Gegnerwert. Kampflos/Bye sind heikel, deshalb zeigt die App Bye- und kampflose Bretter separat und verweist auf die gewählte Wertungslogik. Vor gewerteten Turnieren die Ausschreibung und Verbandsregeln festlegen.",
+      "steps": [
+        "Wertungskette in den Turniereinstellungen prüfen.",
+        "Bye-/Kampflos-Regel vor Turnierstart festlegen.",
+        "Nach jeder Runde Tabellen und Diagnose prüfen.",
+        "Abschlussbericht erst nach Backup und finaler Plausibilitätsprüfung veröffentlichen."
+      ],
+      "sources": [
+        "Tabelle / Ergebnisse",
+        "Rundendiagnose",
+        "docs/TIEBREAK_UNPLAYED_ROUNDS.md"
+      ]
+    },
+    {
+      "id": "backup",
+      "title": "Backup und Wiederherstellung",
+      "keywords": [
+        "backup",
+        "sichern",
+        "restore",
+        "wiederherstellen",
+        "json",
+        "datenbank",
+        "sqlite",
+        "verlust"
+      ],
+      "answer": "Nach jeder wichtigen Aktion sollte ein JSON-Backup exportiert werden. Für den Turniertag ist das wichtiger als Komfort: Vor Runde 1, nach jeder Runde und vor Veröffentlichung der Endtabelle sichern.",
+      "steps": [
+        "Druck / Backup öffnen.",
+        "Backup exportieren und Datei extern ablegen.",
+        "Nach Ergebniserfassung erneut sichern.",
+        "Bei Restore Backup-JSON prüfen, importieren und danach Health/Turnierliste kontrollieren."
+      ],
+      "sources": [
+        "Druck / Backup",
+        "Audit-Bundle",
+        "Portable-Frischordner-Test"
+      ]
+    },
+    {
+      "id": "mobile",
+      "title": "QR/Handy und Chess960",
+      "keywords": [
+        "qr",
+        "handy",
+        "mobil",
+        "pwa",
+        "chess960",
+        "freestyle",
+        "würfeln",
+        "hotspot",
+        "wlan"
+      ],
+      "answer": "QR/Handy funktioniert im lokalen WLAN oder Hotspot gegen den Laptop. Die PWA-Basis macht die App installierbar; echte Offline-Ergebnis-Synchronisation ist bewusst noch nicht aktiv, damit keine Datenkonflikte entstehen.",
+      "steps": [
+        "Laptop-IP/Hotspot prüfen.",
+        "QR-Link vor Runde 1 testen.",
+        "Für Chess960 Startstellung je Brett würfeln und Audit prüfen.",
+        "Bei Verbindungsproblemen Ergebnis am Laptop erfassen."
+      ],
+      "sources": [
+        "PWA-Readiness",
+        "Chess960/QR-Dialog",
+        "Service Worker network-only für /api"
+      ]
+    },
+    {
+      "id": "export",
+      "title": "Import, Export und Veröffentlichung",
+      "keywords": [
+        "import",
+        "export",
+        "csv",
+        "excel",
+        "trf",
+        "chess-results",
+        "veröffentlichen",
+        "aushang",
+        "druck"
+      ],
+      "answer": "Teilnehmer, Tabellen, Paarungen, Rundenblätter und Backup-JSON können lokal exportiert werden. CSV ist der robuste erste Schritt; TRF/FIDE und Swiss-Manager-/Chess-Results-Kompatibilität bleiben eigene Ausbaustufen.",
+      "steps": [
+        "Teilnehmer-CSV vor Turnierstart prüfen.",
+        "Nach jeder Runde Tabelle/Paarungen exportieren.",
+        "Audit-Bundle für Nachvollziehbarkeit sichern.",
+        "Finale Ergebnisse erst nach Backup und Plausibilitätsprüfung veröffentlichen."
+      ],
+      "sources": [
+        "Import / Export",
+        "Turnierleiter-Exportcenter",
+        "RUN-15 Roadmap"
+      ]
+    },
+    {
+      "id": "ki",
+      "title": "KI-Chatbot und Datenschutz",
+      "keywords": [
+        "ki",
+        "chatbot",
+        "openai",
+        "claude",
+        "api",
+        "key",
+        "secret",
+        "datenschutz",
+        "wissen",
+        "rag",
+        "provider"
+      ],
+      "answer": "Diese Hilfe ist aktuell lokal und regelbasiert. Sie sendet keine Turnierdaten, Logs oder personenbezogenen Daten an externe Anbieter. Eine spätere Claude/OpenAI-Anbindung muss BYOK, sichere lokale Secret-Ablage, Quellenanzeige und klare Tool-Rechte bekommen.",
+      "steps": [
+        "Zuerst lokale Wissensbasis und Quellen stabilisieren.",
+        "Danach Provider-Adapter und BYOK-Konzept implementieren.",
+        "Keine destruktiven Aktionen automatisch ausführen lassen.",
+        "Vor externer KI-Nutzung Datenschutz und Personenbezug prüfen."
+      ],
+      "sources": [
+        "RUN-10 KI-Chatbot",
+        "RUN-11 Wissensbasis",
+        ".secrets/README.md"
+      ]
+    },
+    {
+      "id": "assistant",
+      "title": "Turnierassistent nutzen",
+      "keywords": [
+        "assistent",
+        "empfehlung",
+        "welches format",
+        "wie viele runden",
+        "zeitplan",
+        "bretter"
+      ],
+      "answer": "Der Turnierassistent ist die schnelle Vorplanung für Turnierleiter. Er empfiehlt Format, Rundenzahl, Zeitbedarf und Checklisten auf Basis von Teilnehmerzahl, Brettern, Zeitfenster und Szenario.",
+      "steps": [
+        "Szenario auswählen und Teilnehmer/Zeit/Bretter prüfen.",
+        "Warnungen lesen und ggf. Rundenzahl oder Format anpassen.",
+        "Empfehlung übernehmen oder als Plan exportieren.",
+        "Vor Runde 1 trotzdem Einstellungen und Pairing-Vorschau manuell prüfen."
+      ],
+      "sources": [
+        "RUN-17 Turnierassistent",
+        "Assistent-Reiter",
+        "PLANS.md"
+      ]
+    }
+  ]
+}
