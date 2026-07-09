@@ -128,11 +128,17 @@ function Write-PortableManifest([string]$ZipPath, [string]$ExtractRoot, [string]
 
     $lines += ''
     $lines += 'PortableRoot-Inhalt (Tiefe 3):'
+    $trimChars = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $separatorPattern = '[\\/]'
     $lines += Get-ChildItem -LiteralPath $PortableRoot -Recurse -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName.Substring($PortableRoot.Length).TrimStart('\\','/').Split([char[]]@('\\','/')).Count -le 3 } |
         ForEach-Object {
-            if ($_.PSIsContainer) { "DIR   $($_.FullName)" } else { "FILE  $($_.FullName)  Size=$($_.Length)" }
-        }
+            $relativePath = $_.FullName.Substring($PortableRoot.Length).TrimStart($trimChars)
+            $depth = @(($relativePath -split $separatorPattern) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+            if ($depth -le 3) {
+                if ($_.PSIsContainer) { "DIR   $($_.FullName)" } else { "FILE  $($_.FullName)  Size=$($_.Length)" }
+            }
+        } |
+        Where-Object { $_ }
 
     $lines | Set-Content -Encoding UTF8 -LiteralPath $packageManifestPath
     if ($hasMissingRequired) {

@@ -1,3 +1,12 @@
+# Aktueller Zusatz 0.44.2
+
+- RUN-03-Hotfix: Die Manifest-Auflistung im Portable-Fresh-Folder-Test nutzt jetzt explizite
+  `char[]`-Trimzeichen statt der fehleranfaelligen `TrimStart('\\','/')`-Variante.
+  Damit sollte der Lauf nach `releasegate-skip-pack` und `pack-portable` in den eigentlichen
+  Smoke-Test weiterlaufen.
+- Nach erneut gruenem RUN-03: 0.44.x lokal committen, danach planmaessig RUN-02
+  Release-Reife-Audit oder RUN-21 i18n-Bereichsextraktion fortsetzen.
+
 # Aktueller Zusatz 0.44.1
 
 - RUN-03-Hotfix: Das Portable-Fresh-Folder-Skript behandelt den leeren `data`-Ordner im

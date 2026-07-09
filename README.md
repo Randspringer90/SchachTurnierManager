@@ -67,6 +67,9 @@ Ordner unter `D:\Temp`, startet die App auf einem Testport, prüft Healthcheck, 
 Dashboard, Turnierlisten-API und den isolierten SQLite-Datenpfad. Am Ende wird ein
 `UPLOAD_ZIP=...` ausgegeben.
 
+Der Paketmanifest-Teil toleriert leere ZIP-Ordner wie `data` und listet die
+erkannten Portable-Dateien robust bis Tiefe 3 auf.
+
 ## Mehrsprachigkeit
 
 Die WebApp hat ein dependency-freies i18n-Fundament mit Sprachumschalter im Kopfbereich

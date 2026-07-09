@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.44.2 - RUN-03 Portable-Manifest PowerShell-TrimStart-Hotfix
+
+Hotfix zum RUN-03-Frischordner-Test: Der Portable-Build war weiterhin OK, aber die
+Manifest-Auflistung brach auf Windows/PowerShell 7 ab, weil `TrimStart('\\','/')`
+versehentlich einen zweizeiligen Backslash-String statt einzelner `char`-Werte uebergab.
+Keine fachliche Turnier-, Pairing-, Persistenz- oder UI-Logik geaendert.
+
+- **Manifest-Fix:** `scripts/Invoke-PortableFreshFolderTest.ps1` nutzt jetzt explizite
+  `char[]`-Trimmzeichen und eine robuste Pfadsegment-Zaehllogik fuer die Tiefe-3-Liste.
+- **RUN-03 bleibt Ziel:** frischer Portable-Ordner, Healthcheck, eingebettetes Dashboard,
+  Turnierlisten-API und isolierter SQLite-Datenpfad werden weiter automatisch geprueft.
+- **Version:** `0.44.1` → `0.44.2` (Health, `package.json`, `package-lock.json`).
+
 ## 0.44.1 - RUN-03 Portable-Manifest toleriert leere Datenordner
 
 Hotfix zum RUN-03-Frischordner-Test: Das Portable-ZIP wurde korrekt gebaut, aber der
