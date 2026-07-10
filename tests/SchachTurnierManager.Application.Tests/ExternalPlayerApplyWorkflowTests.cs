@@ -12,12 +12,12 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         var existing = service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
+            Name = "Lina Weißbach",
             BirthYear = 1990,
-            FideId = "4610563"
+            FideId = "99900123"
         });
 
-        var duplicateCheck = service.CheckExternalPlayerDuplicates(tournament.Id, MarcoFideProfile());
+        var duplicateCheck = service.CheckExternalPlayerDuplicates(tournament.Id, SyntheticFideProfile());
 
         var match = Assert.Single(duplicateCheck.Matches);
         Assert.True(duplicateCheck.HasLikelyDuplicate);
@@ -33,11 +33,11 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         var existing = service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geisshirt",
+            Name = "Lina Weissbach",
             BirthYear = 1990
         });
 
-        var duplicateCheck = service.CheckExternalPlayerDuplicates(tournament.Id, MarcoFideProfile());
+        var duplicateCheck = service.CheckExternalPlayerDuplicates(tournament.Id, SyntheticFideProfile());
 
         var match = Assert.Single(duplicateCheck.Matches);
         Assert.True(duplicateCheck.HasLikelyDuplicate);
@@ -53,13 +53,13 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         var existing = service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
+            Name = "Lina Weißbach",
             BirthYear = 1989,
-            FideId = "4610563",
+            FideId = "99900123",
             Rating = new RatingProfile { Elo = 1900 }
         });
 
-        var duplicateCheck = service.CheckExternalPlayerDuplicates(tournament.Id, MarcoFideProfile());
+        var duplicateCheck = service.CheckExternalPlayerDuplicates(tournament.Id, SyntheticFideProfile());
 
         Assert.True(duplicateCheck.HasLikelyDuplicate);
         Assert.True(duplicateCheck.HasCriticalConflict);
@@ -84,19 +84,19 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
+            Name = "Lina Weißbach",
             BirthYear = 1990,
-            FideId = "4610563"
+            FideId = "99900123"
         });
 
-        var result = service.ApplyExternalPlayer(tournament.Id, MarcoFideProfile(), targetPlayerId: null, createIfNoTarget: true, overwriteExistingValues: false);
+        var result = service.ApplyExternalPlayer(tournament.Id, SyntheticFideProfile(), targetPlayerId: null, createIfNoTarget: true, overwriteExistingValues: false);
         var updated = service.RequireTournament(tournament.Id);
 
         Assert.True(result.Created);
         Assert.False(result.Updated);
         Assert.True(result.DuplicateCheck.HasLikelyDuplicate);
         Assert.Equal(2, updated.Players.Count);
-        Assert.Equal("4610563", result.Player.FideId);
+        Assert.Equal("99900123", result.Player.FideId);
         Assert.Contains("FIDE-ID", result.ChangedFields);
     }
 
@@ -107,22 +107,22 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         var existing = service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
-            Club = "Ilmenauer SV",
+            Name = "Lina Weißbach",
+            Club = "Beispiel SV",
             BirthYear = 1990,
             Rating = new RatingProfile { ManualTwz = 2000, Elo = 1900 }
         });
 
-        var result = service.ApplyExternalPlayer(tournament.Id, MarcoFideProfile(), existing.Id, createIfNoTarget: false, overwriteExistingValues: false);
+        var result = service.ApplyExternalPlayer(tournament.Id, SyntheticFideProfile(), existing.Id, createIfNoTarget: false, overwriteExistingValues: false);
 
         Assert.True(result.Updated);
         Assert.False(result.Created);
         Assert.Equal(existing.Id, result.Player.Id);
         Assert.Equal(existing.StartingRank, result.Player.StartingRank);
-        Assert.Equal("Ilmenauer SV", result.Player.Club);
+        Assert.Equal("Beispiel SV", result.Player.Club);
         Assert.Equal(1900, result.Player.Rating.Elo);
         Assert.Equal(2000, result.Player.Rating.ManualTwz);
-        Assert.Equal("4610563", result.Player.FideId);
+        Assert.Equal("99900123", result.Player.FideId);
         Assert.Contains("FIDE-ID", result.ChangedFields);
         Assert.DoesNotContain("Elo", result.ChangedFields);
         Assert.Contains("Externe Spielerdaten übernommen", result.Player.Notes);
@@ -135,12 +135,12 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         var existing = service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
+            Name = "Lina Weißbach",
             BirthYear = 1990,
             Rating = new RatingProfile { Elo = 1900 }
         });
 
-        var result = service.ApplyExternalPlayer(tournament.Id, MarcoFideProfile(), existing.Id, createIfNoTarget: false, overwriteExistingValues: false);
+        var result = service.ApplyExternalPlayer(tournament.Id, SyntheticFideProfile(), existing.Id, createIfNoTarget: false, overwriteExistingValues: false);
 
         Assert.Equal(1900, result.Player.Rating.Elo);
         Assert.Contains(result.Conflicts, conflict =>
@@ -157,11 +157,11 @@ public sealed class ExternalPlayerApplyWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         var existing = service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
+            Name = "Lina Weißbach",
             Rating = new RatingProfile { Elo = 1900 }
         });
 
-        var result = service.ApplyExternalPlayer(tournament.Id, MarcoFideProfile(), existing.Id, createIfNoTarget: false, overwriteExistingValues: true);
+        var result = service.ApplyExternalPlayer(tournament.Id, SyntheticFideProfile(), existing.Id, createIfNoTarget: false, overwriteExistingValues: true);
 
         Assert.Equal(1968, result.Player.Rating.Elo);
         Assert.Contains("Elo", result.ChangedFields);
@@ -170,20 +170,20 @@ public sealed class ExternalPlayerApplyWorkflowTests
         Assert.Equal(1990, result.Player.BirthYear);
     }
 
-    private static ExternalPlayerProfile MarcoFideProfile() => new()
+    private static ExternalPlayerProfile SyntheticFideProfile() => new()
     {
         Source = ExternalPlayerSource.Fide,
-        ExternalId = "4610563",
-        Name = "Geisshirt, Marco",
+        ExternalId = "99900123",
+        Name = "Weissbach, Lina",
         Federation = "Germany",
         Country = "Germany",
         BirthYear = 1990,
         Gender = GenderCategory.Male,
-        FideId = "4610563",
+        FideId = "99900123",
         Elo = 1968,
         RapidElo = 1800,
         BlitzElo = 1750,
-        ProfileUrl = "https://ratings.fide.com/profile/4610563",
+        ProfileUrl = "https://ratings.fide.com/profile/99900123",
         Notes = "Aus FIDE-Ratings-Profil importiert."
     };
 }

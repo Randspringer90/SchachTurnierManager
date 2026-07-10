@@ -36,6 +36,6 @@ Invoke-Step "Pack-Portable" {
 
 Write-Host "[v0.10.1] Optionaler Live-Test:"
 Write-Host "  Backend starten: .\scripts\Start-Dev.ps1"
-Write-Host "  Smoke-Test:      .\scripts\Run-ExternalLookupSmoke.ps1 -FideId 4610563"
-Write-Host "  Live-xUnit:      .\scripts\Run-ExternalLookupSmoke.ps1 -FideId 4610563 -RunLiveTests"
+Write-Host "  Smoke-Test:      .\scripts\Run-ExternalLookupSmoke.ps1 -FideId 99900123"
+Write-Host "  Live-xUnit:      .\scripts\Run-ExternalLookupSmoke.ps1 -FideId 99900123 -RunLiveTests"
 Write-Host "[v0.10.1] Nachkontrolle abgeschlossen. Bitte danach git status prüfen und committen."

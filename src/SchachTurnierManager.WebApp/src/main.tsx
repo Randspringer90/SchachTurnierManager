@@ -783,7 +783,7 @@ const emptyPlayerForm: PlayerForm = {
 };
 
 const sampleCsvTemplate = `Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen
-Geisshirt, Marco;Ilmenauer SV;1990;männlich;1987;;1968;;4610563;;CM;Active;Beispielzeile bitte vor Import prüfen
+Weissbach, Lina;Beispiel SV;1990;männlich;1987;;1968;;99900123;;CM;Active;Beispielzeile bitte vor Import prüfen
 Musterfrau, Anna;Beispielverein;2012;weiblich;1200;;1300;;;;Active;U14-Beispiel
 `;
 
@@ -3678,7 +3678,7 @@ function openRoundPrint(roundNumber: number) {
               <h3>Spieler suchen</h3>
               <p className="muted">Eine Suche – alle verfügbaren Quellen werden automatisch geprüft und Treffer zusammengeführt. FIDE-ID-Abruf ist aktiv; DSB/DeWIS und ThSB sind vorbereitet und werden klar als „aktuell nicht aktiv" markiert.</p>
               <form onSubmit={(event) => void searchExternalPlayers(event)} className="external-lookup-form single">
-                <input value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder="Name oder FIDE-ID (z. B. 4610563)" />
+                <input value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder="Name oder FIDE-ID (z. B. 99900123)" />
                 <button type="submit" disabled={externalSearching}>{externalSearching ? 'Suche läuft …' : 'Spieler suchen'}</button>
               </form>
               {externalLookup && (

@@ -12,11 +12,11 @@ function Info([string]$Message) { Write-Host "[GitSafety] $Message" }
 function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"') -replace '\\', '/') }
 
 # Hinweis: generische reports/-Ordner (z. B. output-Reports) bleiben blockiert; die KI-Lauf-
-# Berichte unter docs/ai/reports/ sind laut AGENTS.md KI-Lauf-Standard bewusst commitfaehig
-# (negative Lookbehind schliesst nur docs/ai/reports/ aus). Der Public-Clean-Snapshot laesst
-# Reports weiterhin aussen vor (siehe New-OpenSourceSnapshot.ps1).
+# Berichte unter docs/ai/reports/ sind laut AGENTS.md KI-Lauf-Standard bewusst commitfaehig.
+# Dauerhafte Gate-Reports unter docs/reports/*.md sind ebenfalls erlaubt.
 $blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp)(/|$)|(^|/)(\.secrets|secrets)/local(/|$)|(?<!docs/ai)(^|/)reports(/|$)|(^|/)NEXT_PROMPT\.md$|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
+$knownPersonalFixturePattern = @((('Mar') + 'co'), (('Gei') + 'sshirt'), (('Geiß') + 'hirt'), (('461') + '0563'), (('Ilme') + 'nauer')) -join '|'
 $contentPattern = @(
     (('github') + '_pat_'),
     ('g' + 'hp_'),
@@ -37,6 +37,19 @@ $patternSourceRegex = '(?i)(^|/)(scripts/(Test-GitCommitSafety|Test-RepositoryOp
 # duerfen Detection-Patterns enthalten, wenn sie diesen Marker klar tragen.
 $patternSourceMarker = 'SECURITY-' + 'PATTERN-FILE'
 $patternSourceDirRegex = '(?i)^(scripts|\.agents/skills)/'
+
+
+function Test-IsAllowedTrackedLogAnchor([string]$NormalizedPath) {
+    return $NormalizedPath -in @('logs/README.md', 'logs/.gitkeep')
+}
+
+function Test-IsAllowedTrackedReport([string]$NormalizedPath) {
+    return $NormalizedPath -match '^(?i:docs/reports/[^/]+\.md)$'
+}
+
+function Test-IsAllowedBlockedPath([string]$NormalizedPath) {
+    return (Test-IsAllowedTrackedLogAnchor $NormalizedPath) -or (Test-IsAllowedTrackedReport $NormalizedPath)
+}
 
 function Test-IsPatternSource([string]$NormalizedPath, [string]$Content) {
     if ([string]::IsNullOrWhiteSpace($NormalizedPath)) { return $false }
@@ -85,13 +98,14 @@ function Test-PathList([object[]]$Items, [switch]$AllowDeletes) {
         if ([string]::IsNullOrWhiteSpace($path)) { continue }
         $isDelete = ($status.Trim() -eq 'D') -or ($status -eq 'D ' -or $status -eq ' D')
         if ($AllowDeletes -and $isDelete) { continue }
-        if ($path -match $blockedPathRegex) { Stop-GitSafety "Verbotener Pfad: $path" }
+        if ((-not (Test-IsAllowedBlockedPath $path)) -and ($path -match $blockedPathRegex)) { Stop-GitSafety "Verbotener Pfad: $path" }
     }
 }
 
 function Test-ContentText([string]$Text, [string]$Context) {
     if ([string]::IsNullOrEmpty($Text)) { return }
     if ($Text -match $internalPattern) { Stop-GitSafety "Interne URL/Registry-/Projekt-Referenz gefunden: $Context" }
+    if ($Text -match $knownPersonalFixturePattern) { Stop-GitSafety "Bekannter personenbezogener Test-/Doku-Anker gefunden: $Context" }
     if ($Text -match $contentPattern) { Stop-GitSafety "Kritisches Zugangsdaten-Muster gefunden: $Context" }
 }
 
@@ -117,6 +131,9 @@ function Test-StagedAddedContent([string[]]$Files) {
             if ([string]::IsNullOrEmpty($line)) { continue }
             if ($line -match $internalPattern) {
                 Stop-GitSafety "Interne URL/Registry-/Projekt-Referenz gefunden: $normalized (added line $index): $line"
+            }
+            if ($line -match $knownPersonalFixturePattern) {
+                Stop-GitSafety "Bekannter personenbezogener Test-/Doku-Anker gefunden: $normalized (added line $index)"
             }
             if ($line -match $contentPattern) {
                 Stop-GitSafety "Kritisches Zugangsdaten-Muster gefunden: $normalized (added line $index)"
@@ -162,12 +179,13 @@ $trackedFiles = git ls-files
 $hits = New-Object System.Collections.Generic.List[string]
 foreach ($file in $trackedFiles) {
     $normalized = Normalize-GitPath $file
-    if ($normalized -match $blockedPathRegex) { Stop-GitSafety "Verbotener getrackter Pfad im Repository: $normalized" }
+    if ((-not (Test-IsAllowedBlockedPath $normalized)) -and ($normalized -match $blockedPathRegex)) { Stop-GitSafety "Verbotener getrackter Pfad im Repository: $normalized" }
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
     $content = Get-Content -Raw -LiteralPath $file -ErrorAction SilentlyContinue
     if ($null -eq $content) { continue }
     if (Test-IsPatternSource $normalized $content) { continue }
     if ($content -match $internalPattern) { $hits.Add("internal:$normalized") }
+    if ($content -match $knownPersonalFixturePattern) { $hits.Add("known-personal-fixture:$normalized") }
     if ($content -match $contentPattern) { $hits.Add("credential-pattern:$normalized") }
 }
 if ($hits.Count -gt 0) { Stop-GitSafety ("Treffer in getrackten Dateien: " + ($hits -join ', ')) }

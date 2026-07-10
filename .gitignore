@@ -29,13 +29,19 @@ output/**
 **/obj/
 **/dist/
 **/node_modules/
-logs/
+# Keep logs directory documentation, but never commit generated log files.
 logs/**
+!logs/
+!logs/.gitkeep
+!logs/README.md
 reports/
 reports/**
 # KI-Lauf-Standard (AGENTS.md): Abschlussberichte unter docs/ai/reports/ werden committet.
 !docs/ai/reports/
 !docs/ai/reports/**
+# Dauerhafte Gate-/Statusreports duerfen unter docs/reports/ versioniert werden.
+!docs/reports/
+!docs/reports/*.md
 tmp/
 tmp/**
 *.zip
@@ -107,3 +113,7 @@ Dumps/**
 TEILNEHMER_*.txt
 /IMPORT_*_COMMANDS.txt
 /README_*_IMPORT.md
+
+# Remove malformed legacy run-output folder if it ever reappears.
+/System.Object[]/
+System.Object[]/

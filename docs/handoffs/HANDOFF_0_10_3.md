@@ -10,7 +10,7 @@ Fix-Forward für v0.10.1/v0.10.2: Die neuen Infrastructure-Tests griffen auf Pro
 - `DsbPlayerLookupProvider` und `ThsbPlayerLookupProvider` sind jetzt `public sealed`.
 - `LiveExternalPlayerLookupTests` nutzt die Provider über `IExternalPlayerLookupProvider`.
 - FIDE-Live-Test bleibt standardmäßig inaktiv und wird nur über `STM_RUN_LIVE_LOOKUP_TESTS=1` ausgeführt.
-- Offline-Snapshot-Test für Marco/FIDE-ID `4610563`, DSB/DeWIS- und ThSB-Ankerdaten bleibt stabil.
+- Offline-Snapshot-Test für Maintainer/FIDE-ID `99900123`, DSB/DeWIS- und ThSB-Ankerdaten bleibt stabil.
 - Neues Prüfsript: `scripts/After-Apply-V0.10.3.ps1`.
 
 ## Nachkontrolle

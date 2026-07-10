@@ -12,17 +12,17 @@ Externe Spielerdaten sind volatil. Webseiten und Schnittstellen können sich än
 - **Unit-/Snapshot-Tests:** offline, stabil, schnell.
 - **Live-/Smoke-Tests:** optional, bewusst manuell aktiviert.
 
-## Bekannter Testspieler
+## Synthetischer Testspieler
 
-Für die Entwicklung verwenden wir Marco Geißhirt als bekannten Datensatz:
+Für Offline-/Snapshot-Tests verwendet das Projekt einen synthetischen Datensatz:
 
-- FIDE-ID: `4610563`
-- Name bei FIDE: `Geisshirt, Marco`
+- FIDE-ID: `99900123`
+- Name bei FIDE: `Weissbach, Lina`
 - Geburtsjahr: `1990`
 - Federation: `Germany`
-- Vereins-/Regionalbezug: `Ilmenauer SV` / Thüringen
+- Vereins-/Regionalbezug: `Beispiel SV` / Thüringen
 
-Die genauen Ratings dürfen sich ändern. Live-Tests sollen daher keine fragilen exakten Ratingwerte erzwingen.
+Die Daten sind bewusst fiktiv. Live-Tests sollen keine fragilen exakten Ratingwerte erzwingen und nur mit bewusst gesetzter echter Test-ID laufen.
 
 ## Snapshot-Tests
 
@@ -57,6 +57,7 @@ Standardmäßig wird der echte Live-Abruf nicht ausgeführt. Aktivierung:
 
 ```powershell
 $env:STM_RUN_LIVE_LOOKUP_TESTS = "1"
+$env:STM_LIVE_FIDE_ID = "<FIDE-ID bewusst setzen>"
 dotnet test --filter "FullyQualifiedName~LiveExternalPlayerLookupTests"
 ```
 
@@ -65,13 +66,13 @@ dotnet test --filter "FullyQualifiedName~LiveExternalPlayerLookupTests"
 Wenn das Backend läuft:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId 4610563
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId "<FIDE-ID bewusst setzen>"
 ```
 
 Optional inklusive Live-xUnit:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId 4610563 -RunLiveTests
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId "<FIDE-ID bewusst setzen>" -RunLiveTests
 ```
 
 ## DSB/ThSB

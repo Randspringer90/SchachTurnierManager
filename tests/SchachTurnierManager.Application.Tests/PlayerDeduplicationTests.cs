@@ -11,10 +11,10 @@ public sealed class PlayerDeduplicationTests
     {
         var service = new TournamentService(new InMemoryTournamentStore());
         var tournament = service.CreateTournament("Dedupe");
-        service.AddPlayer(tournament.Id, new Player { Name = "Marco Geißhirt", FideId = "4610563" });
+        service.AddPlayer(tournament.Id, new Player { Name = "Lina Weißbach", FideId = "99900123" });
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            service.AddPlayer(tournament.Id, new Player { Name = "Anderer Name", FideId = "4610563" }));
+            service.AddPlayer(tournament.Id, new Player { Name = "Anderer Name", FideId = "99900123" }));
 
         Assert.Contains("FIDE-ID", ex.Message);
         Assert.Single(service.RequireTournament(tournament.Id).Players);
@@ -51,8 +51,8 @@ public sealed class PlayerDeduplicationTests
         var tournament = service.CreateTournament("Import Dedupe");
         const string csv =
             "Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n"
-            + "Marco Geißhirt;;;;;;;;4610563;;;;\n"
-            + "Doppelter Eintrag;;;;;;;;4610563;;;;\n"
+            + "Lina Weißbach;;;;;;;;99900123;;;;\n"
+            + "Doppelter Eintrag;;;;;;;;99900123;;;;\n"
             + "Andere Person;;;;;;;;1111111;;;;\n";
 
         var added = service.ImportPlayersCsv(tournament.Id, csv, replaceExisting: false);

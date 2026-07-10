@@ -95,7 +95,7 @@ Replace-RegexRequired -Path $mainTsx `
     -Pattern '(const emptyPlayerForm: PlayerForm = \{.*?\};\s*)const defaultTiebreaks' `
     -Replacement ('$1' + @'
 const sampleCsvTemplate = `Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen
-Geisshirt, Marco;Ilmenauer SV;1990;männlich;1987;;1968;;4610563;;CM;Active;Beispielzeile bitte vor Import prüfen
+Weissbach, Lina;Beispiel SV;1990;männlich;1987;;1968;;99900123;;CM;Active;Beispielzeile bitte vor Import prüfen
 Musterfrau, Anna;Beispielverein;2012;weiblich;1200;;1300;;;;Active;U14-Beispiel
 `;
 

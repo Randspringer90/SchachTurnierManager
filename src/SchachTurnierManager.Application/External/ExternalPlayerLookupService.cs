@@ -142,7 +142,7 @@ public sealed class ExternalPlayerLookupService(IEnumerable<IExternalPlayerLooku
         {
             parts.Add(isId
                 ? "Keine aktive Quelle für ID-Abfrage verfügbar."
-                : "Namenssuche ist in diesem Stand bei keiner Quelle aktiv. Bitte eine FIDE-ID eingeben (z. B. 4610563).");
+                : "Namenssuche ist in diesem Stand bei keiner Quelle aktiv. Bitte eine FIDE-ID eingeben (z. B. 99900123).");
         }
 
         if (preparedSources.Count > 0)

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string] $BaseUrl = "http://localhost:5088",
-    [string] $FideId = "4610563",
+    [string] $FideId = $env:STM_LIVE_FIDE_ID,
     [switch] $RunLiveTests
 )
 
@@ -22,6 +22,9 @@ function Invoke-Step {
 }
 
 $base = $BaseUrl.TrimEnd('/')
+if ([string]::IsNullOrWhiteSpace($FideId)) {
+    throw "FIDE-ID fuer Live-Smoke fehlt. Bitte -FideId oder STM_LIVE_FIDE_ID bewusst setzen."
+}
 
 Write-Host "[ExternalLookupSmoke] Backend: $base"
 Write-Host "[ExternalLookupSmoke] FIDE-ID: $FideId"
@@ -50,6 +53,7 @@ if ($player.fideId -ne $FideId) {
 
 if ($RunLiveTests) {
     $env:STM_RUN_LIVE_LOOKUP_TESTS = "1"
+    $env:STM_LIVE_FIDE_ID = $FideId
     Invoke-Step "dotnet test LiveExternalPlayerLookupTests" {
         dotnet test --filter "FullyQualifiedName~LiveExternalPlayerLookupTests"
     }

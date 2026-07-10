@@ -8,7 +8,7 @@ Der FIDE-Provider soll nicht nur live manuell prüfbar sein, sondern auch offlin
 
 - `FidePlayerLookupProvider` akzeptiert jetzt einen injizierten `HttpClient`.
 - Standardkonstruktor bleibt für die produktive DI-Registrierung erhalten.
-- Offline-Parser-Test mit HTML-Snapshot für `4610563` ergänzt.
+- Offline-Parser-Test mit HTML-Snapshot für `99900123` ergänzt.
 - Invalid-ID-Test ergänzt.
 - Versionen auf `0.11.0` angehoben.
 - Nachkontrollskript `scripts/After-Apply-V0.11.ps1` ergänzt.

@@ -5,7 +5,7 @@ namespace SchachTurnierManager.Domain.Services;
 
 /// <summary>
 /// Diakritik- und reihenfolgetolerante Namens-Normalisierung für Spielersuche und Dublettenabgleich.
-/// "Marco Geißhirt", "Geißhirt, Marco", "Geisshirt Marco" und "Marco Geishirt" ergeben dieselbe Token-Menge.
+/// "Lina Weißbach", "Weißbach, Lina", "Weissbach Lina" und "Lina Weisbach" ergeben dieselbe Token-Menge.
 /// </summary>
 public static class PlayerNameNormalizer
 {
@@ -64,7 +64,7 @@ public static class PlayerNameNormalizer
             .ToArray();
     }
 
-    // Vereinheitlicht Doppelbuchstaben, damit "Geißhirt" (ss), "Geisshirt" (ss) und "Geishirt" (s)
+    // Vereinheitlicht Doppelbuchstaben, damit "Weißbach" (ss), "Weissbach" (ss) und "Weisbach" (s)
     // dieselbe Form ergeben. Symmetrisch auf Such- und Kandidatennamen angewendet.
     private static string CollapseRepeatedLetters(string token)
     {
@@ -92,7 +92,7 @@ public static class PlayerNameNormalizer
 
     /// <summary>
     /// True, wenn alle Such-Tokens im Kandidatennamen vorkommen (Teilsuche).
-    /// "Marco" findet "Marco Geißhirt"; "Geishirt Marco" findet "Geißhirt, Marco".
+    /// "Lina" findet "Lina Weißbach"; "Weisbach Lina" findet "Weißbach, Lina".
     /// </summary>
     public static bool Matches(string? query, string? candidate)
     {

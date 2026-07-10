@@ -1,5 +1,0 @@
-Name: releasegate-skip-pack
-Start: 2026-07-09T13:54:10.3466779+02:00
-WorkingDirectory: D:\KFM\KI-Projekte\schach\SchachTurnierManager
-CommandLine: pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseGate.ps1 -SkipPack
-LogPath: D:\KFM\KI-Projekte\schach\SchachTurnierManager\System.Object[]\releasegate-skip-pack_20260709_135410.log

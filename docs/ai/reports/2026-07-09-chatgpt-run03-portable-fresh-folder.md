@@ -23,7 +23,7 @@ SQLite-Datenpfad im isolierten Testdatenordner.
 
 ## Tests
 
-In ChatGPT nicht lokal auf Marcos Windows-Workstation ausgeführt. Erwartete Verifikation:
+In ChatGPT nicht lokal auf lokaler Windows-Workstation ausgeführt. Erwartete Verifikation:
 
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-PortableFreshFolderTest.ps1

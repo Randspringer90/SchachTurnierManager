@@ -1,3 +1,20 @@
+# Aktueller Zusatz 0.54.1
+
+- Stabilisierung nach RUN-54: Runtime-Logging-Pfade, Public-/Secret-Gates, synthetische externe Lookup-Fixtures und dauerhafte Gate-Reports wurden nachgezogen.
+- Aktuelle Dateien sind forward-redacted; die Git-Historie bleibt als Public-History-Blocker dokumentiert. Direkte öffentliche Freischaltung nur ueber Clean Snapshot ohne alte `.git`-Historie.
+- Naechster Schritt nach gruenem Commit/Push: Kein organisatorischer Folgeprompt offen; fachlich spaeter wahlweise RUN-14 Tie-Breaks oder RUN-15 Excel-/TRF-Import-Export.
+
+---
+
+# Aktueller Zusatz 0.54.0
+
+- RUN-54 fuehrt ein festes `logs/`-Konzept ein: Entwicklungslaeufe schreiben in das Projekt-Logverzeichnis, Desktop-/Kollegeninstallationen nach `%LocalAppData%\SchachTurnierManager\logs`, portable Pakete nach `logs\` neben dem Starter.
+- Die WebApi hat einen lokalen bounded File-Logger mit Rotation, LogLevel-Konfiguration, Health-Ausgabe des aktiven Logordners und Redaction fuer typische Secret-Muster.
+- `scripts/Invoke-LoggingReadiness.ps1` prueft ReleaseGate, Desktop-Publish, isolierten App-Start, Health/Dashboard/API, erzeugte Logdateien und dass Querystrings nicht geloggt werden.
+- Naechster Schritt nach gruenem RUN-54: committen/pushen und dann fachlich weiter mit RUN-14 Tie-Breaks oder RUN-15 Excel-/TRF-Import-Export.
+
+---
+
 # Aktueller Zusatz 0.52.0
 
 - RUN-52 ergaenzt den echten Frischordner-Test fuer das Kollegenpaket: ZIP entpacken, Checksums pruefen, Desktop-ZIP entpacken, WebApi auf freiem Loopback-Port starten, Health/Dashboard/API und isolierte SQLite-Datenbank pruefen.

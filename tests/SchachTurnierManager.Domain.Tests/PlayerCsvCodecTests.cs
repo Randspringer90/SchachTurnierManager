@@ -9,12 +9,12 @@ public sealed class PlayerCsvCodecTests
     [Fact]
     public void ImportPlayers_ReadsCommonChessFields()
     {
-        const string csv = "Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\nAnna Beispiel;Ilmenauer SV;2014;Female;1450;7;1500;1510;123;DE-1;WCM;Active;U12";
+        const string csv = "Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\nAnna Beispiel;Beispiel SV;2014;Female;1450;7;1500;1510;123;DE-1;WCM;Active;U12";
 
         var player = Assert.Single(PlayerCsvCodec.ImportPlayers(csv));
 
         Assert.Equal("Anna Beispiel", player.Name);
-        Assert.Equal("Ilmenauer SV", player.Club);
+        Assert.Equal("Beispiel SV", player.Club);
         Assert.Equal(2014, player.BirthYear);
         Assert.Equal(GenderCategory.Female, player.Gender);
         Assert.Equal(1450, player.Rating.Dwz);

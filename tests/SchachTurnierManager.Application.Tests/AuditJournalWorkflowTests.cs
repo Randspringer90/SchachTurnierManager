@@ -15,7 +15,7 @@ public sealed class AuditJournalWorkflowTests
         service.AddPlayer(tournament.Id, new Player { Name = "Carla", Rating = new RatingProfile { ManualTwz = 1900 } });
         service.AddPlayer(tournament.Id, new Player { Name = "David", Rating = new RatingProfile { ManualTwz = 1800 } });
 
-        service.UpdatePlayer(tournament.Id, bob.Id, bob with { Club = "Ilmenauer SV" });
+        service.UpdatePlayer(tournament.Id, bob.Id, bob with { Club = "Beispiel SV" });
         service.SetPlayerStatus(tournament.Id, alice.Id, PlayerStatus.Paused);
         service.SetPlayerStatus(tournament.Id, alice.Id, PlayerStatus.Active);
         var round = service.GenerateNextRound(tournament.Id);

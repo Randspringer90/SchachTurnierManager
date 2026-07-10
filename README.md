@@ -2,7 +2,7 @@
 
 Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
 
-## Aktueller Stand bis 0.51.x
+## Aktueller Stand bis 0.54.x
 
 - Turniere lokal anlegen, speichern und als portable Version starten.
 - Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
@@ -30,7 +30,8 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 
 Seit 0.50.x enthaelt das Projekt einen eigenen Release-/Betriebsunterbau:
 
-- WebApi-Logging mit konfigurierbaren LogLeveln und Single-Line-Konsole.
+- WebApi-Logging mit konfigurierbaren LogLeveln, Single-Line-Konsole und lokalem File-Logger.
+- Projektanker `logs/` fuer Entwicklungslaeufe; installierte Versionen schreiben nach `%LocalAppData%\SchachTurnierManager\logs`, portable Pakete nach `logs\` neben dem Starter.
 - HTTP-Request-Logging ohne Querystrings, damit keine Tokens oder API-Keys in Logs landen.
 - `.secrets/local/` und `secrets/local/` bleiben lokale, gitignored Ablagen fuer DPAPI-verschluesselte Werte.
 - `scripts/Set-LocalSecret.ps1` und `scripts/Get-LocalSecret.ps1` bilden den lokalen DPAPI-Roundtrip ab.
@@ -60,6 +61,17 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-Colleagu
 ```
 
 Am Ende wird ein Run-ZIP unter `D:\Temp` ausgegeben. Ein echter Test auf einem Kollegenrechner bleibt fuer die finale Freigabe sinnvoll, aber der Frischlauf schliesst die haeufigsten Paketierungsfehler bereits lokal aus.
+
+
+### Laufzeitlogs pruefen
+
+Seit 0.54.0 besitzt die WebApi einen lokalen File-Logger mit Rotation. Entwicklungslaeufe schreiben nach `logs\` im Projekt, Desktop-/Kollegeninstallationen nach `%LocalAppData%\SchachTurnierManager\logs` und portable Pakete nach `logs\` neben dem Starter.
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-LoggingReadiness.ps1" -BuildDesktop
+```
+
+Der Test startet eine isolierte App-Instanz, prueft Health/Dashboard/API, verifiziert erzeugte Logdateien und stellt sicher, dass Querystrings nicht geloggt werden.
 
 
 ## Bewusste Grenzen

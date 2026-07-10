@@ -24,7 +24,7 @@ Set-Location -LiteralPath "D:\KFM\KI-Projekte\SchachTurnierManager"; pwsh -NoLog
 3. vorhandene Safety-Skripte ausfuehren, insbesondere `Test-RepositoryOpenSourceSafety.ps1` und `Test-GitCommitSafety.ps1`
 4. Build/Test/Smoke passend zum geplanten Release
 5. Public-Safety-Report lesen
-6. Marco-Freigabe fuer genau diesen Push einholen
+6. Maintainer-Freigabe fuer genau diesen Push einholen
 
 ## Stop-Regeln
 

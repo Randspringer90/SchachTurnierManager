@@ -4,9 +4,9 @@ $fixedPaths = @(
     "src\SchachTurnierManager.WebApp\dist",
     "src\SchachTurnierManager.WebApp\node_modules",
     "src\SchachTurnierManager.WebApp\tsconfig.tsbuildinfo",
-    "logs",
     "output",
-    "tmp"
+    "tmp",
+    "System.Object[]"
 )
 
 $legacyBuildDirs = @()
@@ -27,6 +27,17 @@ foreach ($relative in $fixedPaths) {
         Write-Host "Entfernt: $path"
         $removed++
     }
+}
+
+$logDirectory = Join-Path $root 'logs'
+if (Test-Path -LiteralPath $logDirectory -PathType Container) {
+    Get-ChildItem -LiteralPath $logDirectory -File -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notin @('README.md', '.gitkeep') } |
+        ForEach-Object {
+            Remove-Item -LiteralPath $_.FullName -Force
+            Write-Host "Entfernt: $($_.FullName)"
+            $script:removed++
+        }
 }
 
 foreach ($path in ($legacyBuildDirs | Sort-Object -Unique)) {

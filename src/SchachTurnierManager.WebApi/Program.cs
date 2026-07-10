@@ -14,8 +14,25 @@ using SchachTurnierManager.Infrastructure;
 using SchachTurnierManager.Infrastructure.Persistence;
 using SchachTurnierManager.Infrastructure.External;
 using SchachTurnierManager.WebApi;
+using SchachTurnierManager.WebApi.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var repositoryRoot = FindRepositoryRoot(builder.Environment.ContentRootPath) ?? builder.Environment.ContentRootPath;
+var defaultDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
+var configuredDataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"];
+var dataDirectory = string.IsNullOrWhiteSpace(configuredDataDirectory)
+    ? defaultDataDirectory
+    : ResolveConfiguredPath(configuredDataDirectory, repositoryRoot);
+
+var configuredLogDirectory = builder.Configuration["SchachTurnierManager:LogDirectory"];
+var runtimeLogDirectory = string.IsNullOrWhiteSpace(configuredLogDirectory)
+    ? Path.Combine(dataDirectory, "logs")
+    : ResolveConfiguredPath(configuredLogDirectory, repositoryRoot);
+var fileLoggingEnabled = !string.Equals(builder.Configuration["SchachTurnierManager:FileLogging:Enabled"], "false", StringComparison.OrdinalIgnoreCase);
+var retainedLogFileCount = ParsePositiveInt(builder.Configuration["SchachTurnierManager:FileLogging:RetainedFileCount"], 14);
+var maxLogFileSizeBytes = ParsePositiveLong(builder.Configuration["SchachTurnierManager:FileLogging:MaxFileSizeBytes"], 5 * 1024 * 1024);
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
 builder.Logging.AddSimpleConsole(options =>
@@ -23,6 +40,10 @@ builder.Logging.AddSimpleConsole(options =>
     options.SingleLine = true;
     options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
 });
+if (fileLoggingEnabled)
+{
+    builder.Logging.AddProvider(new BoundedFileLoggerProvider(runtimeLogDirectory, "schachturniermanager", retainedLogFileCount, maxLogFileSizeBytes));
+}
 
 var configuredDefaultLogLevel = builder.Configuration["Logging:LogLevel:Default"] ?? "Information";
 var configuredApplicationLogLevel = builder.Configuration["Logging:LogLevel:SchachTurnierManager"] ?? configuredDefaultLogLevel;
@@ -32,11 +53,8 @@ string connectionString;
 string databaseHealthLabel;
 string databaseFullPath;
 string auditDirectory;
-var defaultDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");
 if (string.IsNullOrWhiteSpace(configuredConnectionString))
 {
-    var configuredDataDirectory = builder.Configuration["SchachTurnierManager:DataDirectory"];
-    var dataDirectory = string.IsNullOrWhiteSpace(configuredDataDirectory) ? defaultDataDirectory : configuredDataDirectory;
     Directory.CreateDirectory(dataDirectory);
     var databasePath = Path.Combine(dataDirectory, "SchachTurnierManager.sqlite");
     connectionString = $"Data Source={databasePath}";
@@ -49,7 +67,7 @@ else
     connectionString = configuredConnectionString;
     databaseHealthLabel = "custom connection";
     databaseFullPath = "custom connection";
-    auditDirectory = Path.Combine(defaultDataDirectory, "audit");
+    auditDirectory = Path.Combine(dataDirectory, "audit");
 }
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
@@ -161,7 +179,7 @@ app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ok",
     app = "SchachTurnierManager",
-    version = "0.52.0",
+    version = "0.54.1",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
     databasePath = databaseFullPath,
@@ -170,7 +188,11 @@ app.MapGet("/api/health", () => Results.Ok(new
     {
         defaultLevel = configuredDefaultLogLevel,
         applicationLevel = configuredApplicationLogLevel,
-        console = "simple-single-line"
+        console = "simple-single-line",
+        file = fileLoggingEnabled ? "enabled" : "disabled",
+        directory = runtimeLogDirectory,
+        retainedFiles = retainedLogFileCount,
+        maxFileSizeBytes = maxLogFileSizeBytes
     }
 }));
 
@@ -823,6 +845,40 @@ if (embeddedDashboardAvailable)
 
 app.Run();
 
+
+static string ResolveConfiguredPath(string path, string contentRootPath)
+{
+    var expanded = Environment.ExpandEnvironmentVariables(path);
+    return Path.IsPathRooted(expanded)
+        ? expanded
+        : Path.GetFullPath(Path.Combine(contentRootPath, expanded));
+}
+
+static string? FindRepositoryRoot(string startDirectory)
+{
+    var current = new DirectoryInfo(startDirectory);
+    while (current is not null)
+    {
+        if (File.Exists(Path.Combine(current.FullName, "AGENTS.md")) && Directory.Exists(Path.Combine(current.FullName, "src")))
+        {
+            return current.FullName;
+        }
+
+        current = current.Parent;
+    }
+
+    return null;
+}
+
+static int ParsePositiveInt(string? value, int fallback)
+{
+    return int.TryParse(value, out var parsed) && parsed > 0 ? parsed : fallback;
+}
+
+static long ParsePositiveLong(string? value, long fallback)
+{
+    return long.TryParse(value, out var parsed) && parsed > 0 ? parsed : fallback;
+}
 
 static bool TryParseExternalPlayerSource(string? value, out ExternalPlayerSource source)
 {

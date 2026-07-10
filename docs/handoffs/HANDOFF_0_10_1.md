@@ -6,8 +6,8 @@ Dieser Patch stabilisiert den neuen externen Spielerdaten-Block aus v0.10.0. Sch
 
 ## Enthalten
 
-- Snapshot-Tests für Marco Geißhirt als bekannten Spieler:
-  - FIDE-Kontext mit FIDE-ID `4610563`
+- Snapshot-Tests für Lina Weißbach als bekannten Spieler:
+  - FIDE-Kontext mit FIDE-ID `99900123`
   - DSB/DeWIS-Kontext als Mapping-Snapshot
   - ThSB-Kontext als Regional-/Vereins-Snapshot
 - Optionaler Live-Test `LiveExternalPlayerLookupTests`:
@@ -45,14 +45,14 @@ Dann in einem zweiten Terminal:
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId 4610563
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId 99900123
 ```
 
 Optional inklusive Live-xUnit:
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId 4610563 -RunLiveTests
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Run-ExternalLookupSmoke.ps1" -FideId 99900123 -RunLiveTests
 ```
 
 ## Nächster Schritt

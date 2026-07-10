@@ -12,10 +12,10 @@ public sealed class ExternalPlayerLookupServiceTests
         var provider = new FakeExternalProvider();
         var service = new ExternalPlayerLookupService(new[] { provider });
 
-        var result = await service.SearchAsync(ExternalPlayerSource.Fide, "4610563");
+        var result = await service.SearchAsync(ExternalPlayerSource.Fide, "99900123");
 
         Assert.Equal(ExternalPlayerLookupStatus.Found, result.Status);
-        Assert.Equal("4610563", provider.LastIdLookup);
+        Assert.Equal("99900123", provider.LastIdLookup);
         Assert.Null(provider.LastNameSearch);
     }
 
@@ -25,10 +25,10 @@ public sealed class ExternalPlayerLookupServiceTests
         var provider = new FakeExternalProvider();
         var service = new ExternalPlayerLookupService(new[] { provider });
 
-        var result = await service.SearchAsync(ExternalPlayerSource.Fide, "Geisshirt");
+        var result = await service.SearchAsync(ExternalPlayerSource.Fide, "Weissbach");
 
         Assert.Equal(ExternalPlayerLookupStatus.Unsupported, result.Status);
-        Assert.Equal("Geisshirt", provider.LastNameSearch);
+        Assert.Equal("Weissbach", provider.LastNameSearch);
         Assert.Null(provider.LastIdLookup);
     }
 
@@ -38,13 +38,13 @@ public sealed class ExternalPlayerLookupServiceTests
         var profile = new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Fide,
-            ExternalId = "4610563",
-            Name = "Geisshirt, Marco",
+            ExternalId = "99900123",
+            Name = "Weissbach, Lina",
             Federation = "Germany",
             Country = "Germany",
             BirthYear = 1990,
             Gender = GenderCategory.Male,
-            FideId = "4610563",
+            FideId = "99900123",
             Title = "FM",
             Elo = 1968,
             RapidElo = 1800,
@@ -53,8 +53,8 @@ public sealed class ExternalPlayerLookupServiceTests
 
         var player = profile.ToPlayer();
 
-        Assert.Equal("Geisshirt, Marco", player.Name);
-        Assert.Equal("4610563", player.FideId);
+        Assert.Equal("Weissbach, Lina", player.Name);
+        Assert.Equal("99900123", player.FideId);
         Assert.Equal(1968, player.Rating.Elo);
         Assert.Equal(1800, player.Rating.RapidElo);
         Assert.Equal(1750, player.Rating.BlitzElo);
@@ -67,9 +67,9 @@ public sealed class ExternalPlayerLookupServiceTests
         var fide = new StubProvider(ExternalPlayerSource.Fide, supportsId: true, supportsName: false, new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Fide,
-            ExternalId = "4610563",
-            Name = "Geisshirt, Marco",
-            FideId = "4610563",
+            ExternalId = "99900123",
+            Name = "Weissbach, Lina",
+            FideId = "99900123",
             BirthYear = 1990,
             Elo = 1968,
             Confidence = 0.95
@@ -77,18 +77,18 @@ public sealed class ExternalPlayerLookupServiceTests
         var local = new StubProvider(ExternalPlayerSource.Local, supportsId: true, supportsName: true, new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Local,
-            ExternalId = "4610563",
-            Name = "Marco Geißhirt",
-            FideId = "4610563",
+            ExternalId = "99900123",
+            Name = "Lina Weißbach",
+            FideId = "99900123",
             Dwz = 1987,
             Confidence = 0.6
         });
         var service = new ExternalPlayerLookupService(new IExternalPlayerLookupProvider[] { fide, local });
 
-        var result = await service.SearchAllAsync("4610563");
+        var result = await service.SearchAllAsync("99900123");
 
         var profile = Assert.Single(result.Players);
-        Assert.Equal("4610563", profile.FideId);
+        Assert.Equal("99900123", profile.FideId);
         Assert.Equal(1968, profile.Elo);
         Assert.Equal(1987, profile.Dwz);
         Assert.Contains(result.Sources, s => s.Source == ExternalPlayerSource.Local && s.IsActive && s.Count == 1);
@@ -101,15 +101,15 @@ public sealed class ExternalPlayerLookupServiceTests
         var local = new StubProvider(ExternalPlayerSource.Local, supportsId: true, supportsName: true, new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Local,
-            ExternalId = "4610563",
-            Name = "Marco Geißhirt",
-            FideId = "4610563",
+            ExternalId = "99900123",
+            Name = "Lina Weißbach",
+            FideId = "99900123",
             Dwz = 1987,
             Confidence = 0.6
         });
         var service = new ExternalPlayerLookupService(new IExternalPlayerLookupProvider[] { fide, local });
 
-        var result = await service.SearchAllAsync("Marco Geißhirt");
+        var result = await service.SearchAllAsync("Lina Weißbach");
 
         Assert.Single(result.Players);
         Assert.Contains(result.Sources, s => s.Source == ExternalPlayerSource.Fide && !s.IsActive);

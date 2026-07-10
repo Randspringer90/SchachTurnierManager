@@ -6,38 +6,37 @@ namespace SchachTurnierManager.Infrastructure.Tests;
 
 public sealed class LiveExternalPlayerLookupTests
 {
-    private const string MarcoFideId = "4610563";
+    private const string SyntheticReferenceFideId = "99900123";
 
     [Fact]
-    public async Task FideLookupByKnownId_ReturnsMarco_WhenLiveTestsEnabled()
+    public async Task FideLookupByKnownId_ReturnsConfiguredProfile_WhenLiveTestsEnabled()
     {
-        if (!LiveLookupTestsEnabled())
+        var liveFideId = Environment.GetEnvironmentVariable("STM_LIVE_FIDE_ID");
+        if (!LiveLookupTestsEnabled() || string.IsNullOrWhiteSpace(liveFideId))
         {
             return;
         }
 
         var provider = new FidePlayerLookupProvider();
 
-        var result = await provider.LookupByIdAsync(MarcoFideId);
+        var result = await provider.LookupByIdAsync(liveFideId);
 
         Assert.Equal(ExternalPlayerLookupStatus.Found, result.Status);
         var player = Assert.Single(result.Players);
-        Assert.Equal(MarcoFideId, player.FideId);
-        Assert.Contains("geisshirt", player.Name.ToLowerInvariant());
-        Assert.Equal(1990, player.BirthYear);
-        Assert.Equal(GenderCategory.Male, player.Gender);
-        Assert.True(player.Elo is >= 1000, $"Unerwartetes oder fehlendes FIDE-Standardrating: {player.Elo}");
+        Assert.Equal(liveFideId, player.FideId);
+        Assert.False(string.IsNullOrWhiteSpace(player.Name));
+        Assert.NotNull(player.ProfileUrl);
     }
 
     [Fact]
-    public void KnownExternalLookupSnapshots_ContainMarcoReferenceData()
+    public void KnownExternalLookupSnapshots_ContainSyntheticReferenceData()
     {
         var fide = new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Fide,
-            ExternalId = MarcoFideId,
-            FideId = MarcoFideId,
-            Name = "Geisshirt, Marco",
+            ExternalId = SyntheticReferenceFideId,
+            FideId = SyntheticReferenceFideId,
+            Name = "Weissbach, Lina",
             Federation = "Germany",
             Country = "Germany",
             BirthYear = 1990,
@@ -50,14 +49,14 @@ public sealed class LiveExternalPlayerLookupTests
         var dsb = new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Dsb,
-            ExternalId = "dewis-placeholder-4610563",
-            Name = "Geisshirt, Marco",
-            Club = "Ilmenauer SV",
+            ExternalId = "dewis-placeholder-99900123",
+            Name = "Weissbach, Lina",
+            Club = "Beispiel SV",
             Federation = "Thüringen",
             Country = "Germany",
             BirthYear = 1990,
             Gender = GenderCategory.Male,
-            FideId = MarcoFideId,
+            FideId = SyntheticReferenceFideId,
             Dwz = 1987,
             Confidence = 0.75,
             Warnings = new[] { "DSB/DeWIS-Livezugriff ist noch nicht aktiviert; Snapshot dient nur als Offline-Testanker." }
@@ -66,24 +65,24 @@ public sealed class LiveExternalPlayerLookupTests
         var thsb = new ExternalPlayerProfile
         {
             Source = ExternalPlayerSource.Thsb,
-            ExternalId = "thsb-placeholder-ilmenauer-sv",
-            Name = "Geisshirt, Marco",
-            Club = "Ilmenauer SV",
+            ExternalId = "thsb-placeholder-beispiel-sv",
+            Name = "Weissbach, Lina",
+            Club = "Beispiel SV",
             Federation = "Thüringer Schachbund",
             Country = "Germany",
             BirthYear = 1990,
             Gender = GenderCategory.Male,
-            FideId = MarcoFideId,
+            FideId = SyntheticReferenceFideId,
             Confidence = 0.7,
             Warnings = new[] { "ThSB wird fachlich über DSB/DeWIS-Verbands-/Vereinsfilter vorbereitet." }
         };
 
-        Assert.Equal(MarcoFideId, fide.FideId);
+        Assert.Equal(SyntheticReferenceFideId, fide.FideId);
         Assert.Equal(1968, fide.Elo);
         Assert.Equal(1987, dsb.Dwz);
-        Assert.Equal("Ilmenauer SV", dsb.Club);
+        Assert.Equal("Beispiel SV", dsb.Club);
         Assert.Equal("Thüringer Schachbund", thsb.Federation);
-        Assert.All(new[] { fide, dsb, thsb }, profile => Assert.Contains("geisshirt", profile.Name.ToLowerInvariant()));
+        Assert.All(new[] { fide, dsb, thsb }, profile => Assert.Contains("weissbach", profile.Name.ToLowerInvariant()));
     }
 
     private static bool LiveLookupTestsEnabled()

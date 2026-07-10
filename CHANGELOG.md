@@ -1,3 +1,25 @@
+## 0.54.1 - Stabilisierung, Public-Gate und Runtime-Logging-Hotfixes
+
+- RUN-54 stabilisiert: relative Development-Logpfade werden am Repo-Root-Anker ausgerichtet; installierte/portable Starts nutzen weiterhin explizite Logordner.
+- Public-Gate nachgeschaerft: bekannte personenbezogene Test-/Doku-Anker im aktuellen Arbeitsstand forward-redacted und kuenftig im GitSafety/OpenSourceSafety-Scan blockiert.
+- Externe Lookup-Live-Smokes verlangen jetzt eine bewusst gesetzte FIDE-ID per Parameter oder Environment; Offline-Tests verwenden synthetische Fixtures.
+- `docs/reports/` als dauerhafte Gate-/Statusreport-Ablage freigeschaltet; generische Report-/Artefaktordner bleiben blockiert.
+- `scripts/Invoke-LoggingReadiness.ps1` startet die isolierte App-Instanz ohne sichtbares Fenster.
+- Public-History-Gate dokumentiert: aktuelle Dateien forward-safe; direkte Public-Freischaltung bleibt wegen Git-Historie nur per Clean Snapshot erlaubt.
+- Version auf `0.54.1` angehoben.
+
+## 0.54.0 - RUN-54 Runtime-Logging und logs-Verzeichnis
+
+- Projektinternes `logs/`-Verzeichnis mit `README.md` und `.gitkeep` als dokumentierter Anker ergaenzt; echte Logdateien bleiben gitignored.
+- WebApi um lokalen `BoundedFileLoggerProvider` erweitert: taegliche Logdateien, Groessenlimit, Retention und einfache Redaction typischer Secret-Muster.
+- `appsettings.json` und `appsettings.Development.json` um FileLogging-Konfiguration erweitert; Development schreibt standardmaessig nach `logs/`.
+- Desktop- und Portable-Starter setzen `SchachTurnierManager__LogDirectory`, erzeugen den Logordner und zeigen den Pfad bei Startproblemen an.
+- `/api/health` meldet File-Logging-Status, Logordner, Retention und Maximalgroesse.
+- `scripts/Invoke-LoggingReadiness.ps1` prueft isolierten App-Start, Health/Dashboard/API, erzeugte Logdateien und Querystring-Schutz in einem Upload-ZIP.
+- `Clean-Generated.ps1` entfernt den fehlerhaften Altordner `System.Object[]` und loescht im `logs/`-Ordner nur generierte Dateien, nicht README/.gitkeep.
+- Doku/Skills ergaenzt: `docs/architecture/RUNTIME_LOGGING.md`, `.agents/skills/runtime-logging.md`, README, AGENTS und Skriptuebersicht.
+- Version auf `0.54.0` angehoben.
+
 # Changelog
 
 ## 0.52.0 - RUN-52 Kollegenpaket-Frischlauf-Test
@@ -840,11 +862,11 @@ Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.m
 - Externe Treffer können direkt als neuer Teilnehmer gespeichert oder auf bestehende Teilnehmer angewendet werden.
 - Dashboard zeigt mögliche Dubletten und bietet Aktionen zum Ergänzen oder Überschreiben bestehender Teilnehmer.
 - API-Endpunkte für Dublettenprüfung und Apply-Workflow ergänzt.
-- Tests für FIDE-ID `4610563`, Name+Geburtsjahr-Matching und externe Aktualisierung ergänzt.
+- Tests für FIDE-ID `99900123`, Name+Geburtsjahr-Matching und externe Aktualisierung ergänzt.
 
 ## 0.11.3 - FIDE-Testassert endgültig stabilisiert
 
-- FIDE-Provider-Test prüft die Request-URI jetzt tolerant auf das Suffix `profile/4610563`.
+- FIDE-Provider-Test prüft die Request-URI jetzt tolerant auf das Suffix `profile/99900123`.
 - Nachkontrollskript ersetzt alte Assert-Zeilen per Regex und bricht ab, falls der alte Assert weiterhin vorhanden ist.
 - Versionen auf `0.11.3` angehoben.
 
@@ -856,7 +878,7 @@ Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.m
 
 ## 0.11.1 - FIDE-Test und Ticket-Vorbereitung stabilisiert
 
-- Korrigiert den FIDE-Provider-Test: `HttpClient` liefert bei gesetzter BaseAddress eine absolute `RequestUri`; der Test prüft nun robust auf `/profile/4610563`.
+- Korrigiert den FIDE-Provider-Test: `HttpClient` liefert bei gesetzter BaseAddress eine absolute `RequestUri`; der Test prüft nun robust auf `/profile/99900123`.
 - GitHub-Issue-Templates für Bugreports und Feature-Wünsche ergänzt.
 - Ticket-/Feedback-Workflow dokumentiert: GitHub Issues für öffentliche Nutzer, optional später In-App-Link mit Diagnosepaket.
 - Versionen auf `0.11.1` angehoben.
@@ -864,7 +886,7 @@ Stabilisierung statt neuer Features. Details in `docs/POSTMORTEM_BERGFEST_2026.m
 ## 0.11.0 - FIDE-Adapter testbar gemacht
 
 - FIDE-Provider akzeptiert jetzt einen injizierten `HttpClient`, bleibt aber per Standardkonstruktor produktiv nutzbar.
-- Offline-Parser-Test für FIDE-ID `4610563` ergänzt.
+- Offline-Parser-Test für FIDE-ID `99900123` ergänzt.
 - Invalid-ID-Test für den FIDE-Provider ergänzt.
 - Externe Lookup-Tests sind damit stabiler und weniger abhängig von Live-Webseiten.
 

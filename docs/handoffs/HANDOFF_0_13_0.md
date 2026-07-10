@@ -20,7 +20,7 @@ v0.13.0 erweitert den externen Spielerdaten-Workflow um eine explizite Konflikta
 
 Neue/erweiterte Tests in `ExternalPlayerApplyWorkflowTests` prüfen:
 
-- Konflikte bei wahrscheinlicher Dublette mit FIDE-ID `4610563`.
+- Konflikte bei wahrscheinlicher Dublette mit FIDE-ID `99900123`.
 - Geburtsjahrkonflikt als kritisch.
 - Elo-Konflikt als Warnung.
 - Verhalten ohne Überschreiben: lokale Werte bleiben erhalten.

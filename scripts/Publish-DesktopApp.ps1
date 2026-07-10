@@ -91,6 +91,7 @@ Hinweise:
 
 - Diese Version ist self-contained: es muss kein .NET installiert sein.
 - Beim Beenden das minimierte Fenster "SchachTurnierManager" schliessen.
+- Laufzeitlogs liegen unter `%LocalAppData%\SchachTurnierManager\logs`.
 - Backups im Dashboard ueber den JSON-Export erstellen.
 - Keine Dateien in app\ manuell bearbeiten.
 "@ | Set-Content -Encoding UTF8 (Join-Path $desktopRoot "README-Desktop.md")

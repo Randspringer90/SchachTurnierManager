@@ -83,7 +83,7 @@ public sealed class FidePlayerLookupProvider : IExternalPlayerLookupProvider
     public Task<ExternalPlayerLookupResult> SearchByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(ExternalPlayerLookupResult.Unsupported(Source, name,
-            "FIDE-Namenssuche ist vorbereitet, aber in diesem Stand noch nicht aktiviert. Bitte zunächst eine FIDE-ID eingeben, z. B. 4610563."));
+            "FIDE-Namenssuche ist vorbereitet, aber in diesem Stand noch nicht aktiviert. Bitte zunächst eine FIDE-ID eingeben, z. B. 99900123."));
     }
 
     private static string NormalizeId(string value) => new(value.Where(char.IsDigit).ToArray());

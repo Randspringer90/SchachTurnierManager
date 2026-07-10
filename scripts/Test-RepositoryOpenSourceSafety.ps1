@@ -17,6 +17,7 @@ $blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.loca
 # Artefakte, die im privaten Repo erlaubt sind, aber NIE in einen Public Snapshot gehoeren.
 $snapshotExcludeRegex = '(?i)(^|/)scripts/(archive/after-apply/)?After-Apply-.*\.ps1$|(^|/)scripts/archive(/|$)|(^|/)docs/(handoffs/)?HANDOFF_.*\.md$|(^|/)docs/handoffs(/|$)|(^|/)files/|\.(patch|diff|diffstat)$'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
+$knownPersonalFixturePattern = @((('Mar') + 'co'), (('Gei') + 'sshirt'), (('Geiß') + 'hirt'), (('461') + '0563'), (('Ilme') + 'nauer')) -join '|'
 $contentPattern = @(
     (('github') + '_pat_'),
     ('g' + 'hp_'),
@@ -41,6 +42,10 @@ function Test-IsPatternSource([string]$NormalizedPath, [string]$Content) {
     return $false
 }
 
+function Test-IsAllowedBlockedPath([string]$NormalizedPath) {
+    return $NormalizedPath -in @('logs/README.md', 'logs/.gitkeep') -or $NormalizedPath -match '^(?i:docs/(ai/reports|reports)/[^/]+\.md)$'
+}
+
 function Test-RepositoryKind {
     $remoteText = (git remote -v 2>$null | Out-String)
     if ($remoteText -match $internalPattern) {
@@ -61,7 +66,7 @@ Info "Pruefe $($tracked.Count) getrackte Public-Snapshot-Kandidaten."
 
 foreach ($file in $tracked) {
     if ([string]::IsNullOrWhiteSpace($file)) { continue }
-    if ($file -match $blockedPathRegex) {
+    if ((-not (Test-IsAllowedBlockedPath $file)) -and ($file -match $blockedPathRegex)) {
         Add-Finding 'error' 'blocked-path' $file 'Lokaler/Build-/Artefaktpfad darf nicht im Repo getrackt sein.'
         continue
     }
@@ -75,6 +80,7 @@ foreach ($file in $tracked) {
     if ($null -eq $content) { continue }
     if (Test-IsPatternSource $file $content) { continue }
     if ($content -match $internalPattern) { Add-Finding 'error' 'internal-reference' $file 'Interne Registry-/TFS-/Projekt-Referenz im Inhalt.' }
+    if ($content -match $knownPersonalFixturePattern) { Add-Finding 'error' 'known-personal-fixture' $file 'Bekannter personenbezogener Test-/Doku-Anker im Inhalt.' }
     if ($content -match $contentPattern) { Add-Finding 'error' 'credential-pattern' $file 'Typisches Zugangsdaten-/Token-Muster im Inhalt.' }
 }
 

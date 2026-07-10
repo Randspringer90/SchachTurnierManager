@@ -180,4 +180,4 @@ Ziel dieses Dokuments ist eine belastbare Funktionsmatrix für den SchachTurnier
 
 ## Praktischer Maßstab
 
-Für Ilmenauer Vereins- und Schnellschachturniere ist der aktuelle Stand bereits als lokaler Prototyp nutzbar. Für offizielle, große, DWZ-/FIDE-auswertbare Open fehlt aber noch vor allem: FIDE-Dutch, DWZ/FIDE-Export, robuste Drucklisten, Undo/Historie und Swiss-Chess-kompatible Import-/Exportwege.
+Für lokale Vereins- und Schnellschachturniere ist der aktuelle Stand bereits als lokaler Prototyp nutzbar. Für offizielle, große, DWZ-/FIDE-auswertbare Open fehlt aber noch vor allem: FIDE-Dutch, DWZ/FIDE-Export, robuste Drucklisten, Undo/Historie und Swiss-Chess-kompatible Import-/Exportwege.

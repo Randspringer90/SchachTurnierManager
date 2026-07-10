@@ -1,5 +1,0 @@
-KOLLEGENPAKET=D:\KFM\KI-Projekte\schach\SchachTurnierManager\output\SchachTurnierManager_Kollegenpaket_0.51.0.zip
-SHA256=956A4030A44036E02F8AEEC78EF9ABB7D503859E8380953A3E9BEFDC6F6963F2
-Version=0.51.0
-InstallerIncluded=False
-Artifacts=SchachTurnierManager_Desktop_0.51.0.zip, SchachTurnierManager_Portable_0.51.0.zip

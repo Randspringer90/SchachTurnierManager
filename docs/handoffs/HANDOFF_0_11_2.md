@@ -2,11 +2,11 @@
 
 ## Ziel
 
-Fix-Forward für den roten v0.11.1-Stand. Der FIDE-Parser-Test darf nicht mehr auf exakt `profile/4610563` prüfen, weil `HttpClient` bei gesetzter `BaseAddress` die absolute Request-URI `https://ratings.fide.com/profile/4610563` an den Handler übergibt.
+Fix-Forward für den roten v0.11.1-Stand. Der FIDE-Parser-Test darf nicht mehr auf exakt `profile/99900123` prüfen, weil `HttpClient` bei gesetzter `BaseAddress` die absolute Request-URI `https://ratings.fide.com/profile/99900123` an den Handler übergibt.
 
 ## Änderungen
 
-- `FidePlayerLookupProviderTests` prüft robust per `Assert.EndsWith("/profile/4610563", ...)`.
+- `FidePlayerLookupProviderTests` prüft robust per `Assert.EndsWith("/profile/99900123", ...)`.
 - `After-Apply-V0.11.2.ps1` enthält eine Schutzkorrektur für versehentlich nicht überschriebene alte Assert-Zeilen.
 - Versionen auf `0.11.2` gesetzt.
 

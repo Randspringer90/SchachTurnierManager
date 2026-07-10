@@ -12,12 +12,12 @@ public sealed class PlayerImportPreviewWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
         service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
+            Name = "Lina Weißbach",
             BirthYear = 1990,
-            FideId = "4610563"
+            FideId = "99900123"
         });
 
-        var preview = service.PreviewPlayersCsv(tournament.Id, MarcoCsv(), replaceExisting: false);
+        var preview = service.PreviewPlayersCsv(tournament.Id, SyntheticCsv(), replaceExisting: false);
 
         var row = Assert.Single(preview.Rows);
         Assert.Equal(PlayerImportPreviewRowStatus.Warning, row.Status);
@@ -33,8 +33,8 @@ public sealed class PlayerImportPreviewWorkflowTests
         var tournament = service.CreateTournament("Vereinsturnier");
 
         var preview = service.PreviewPlayersCsv(tournament.Id, Header() + """
-Geisshirt, Marco;Ilmenauer SV;1990;männlich;;;1968;;4610563;;;;
-Geißhirt, Marco;Ilmenauer SV;1990;männlich;;;1968;;4610563;;;;
+Weissbach, Lina;Beispiel SV;1990;männlich;;;1968;;99900123;;;;
+Weißbach, Lina;Beispiel SV;1990;männlich;;;1968;;99900123;;;;
 """, replaceExisting: false);
 
         Assert.Equal(2, preview.Rows.Count);
@@ -53,7 +53,7 @@ Geißhirt, Marco;Ilmenauer SV;1990;männlich;;;1968;;4610563;;;;
         service.AddPlayer(tournament.Id, new Player { Name = "Spieler B" });
         service.GenerateNextRound(tournament.Id);
 
-        var preview = service.PreviewPlayersCsv(tournament.Id, MarcoCsv(), replaceExisting: true);
+        var preview = service.PreviewPlayersCsv(tournament.Id, SyntheticCsv(), replaceExisting: true);
 
         Assert.True(preview.HasBlockingIssues);
         Assert.Single(preview.Rows);
@@ -63,5 +63,5 @@ Geißhirt, Marco;Ilmenauer SV;1990;männlich;;;1968;;4610563;;;;
 
     private static string Header() => "Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n";
 
-    private static string MarcoCsv() => Header() + "Geisshirt, Marco;Ilmenauer SV;1990;männlich;;;1968;;4610563;;IA;;Importtest\n";
+    private static string SyntheticCsv() => Header() + "Weissbach, Lina;Beispiel SV;1990;männlich;;;1968;;99900123;;IA;;Importtest\n";
 }

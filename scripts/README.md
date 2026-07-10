@@ -43,6 +43,7 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 
 - `Invoke-LoggedCommand.ps1` – lange Befehle mit kurzer Terminalausgabe ausführen; vollständige Ausgabe landet im Run-Logordner.
 - `New-RunLogBundle.ps1` – Run-Ordner unter `D:\Temp` anlegen bzw. Logs, Git-Status und Diff-Stat zu einem ZIP bündeln.
+- `Invoke-LoggingReadiness.ps1` – RUN-54: WebApi-Laufzeitlogs in isoliertem Daten-/Logordner pruefen, Health/Dashboard/API aufrufen und sicherstellen, dass Querystrings nicht in Logdateien landen.
 
 ## Archiv
 

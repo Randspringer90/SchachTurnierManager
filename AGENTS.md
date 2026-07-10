@@ -68,10 +68,10 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
 
 ## Release-/Betriebsregeln ab 0.50.0
 
-- Vor Arbeiten an Logging, Secrets, Packaging oder Installation die Skills `.agents/skills/release-operations.md`, `.agents/skills/logging-observability.md`, `.agents/skills/repository-security.md` und `.agents/skills/installer-packaging.md` lesen.
+- Vor Arbeiten an Logging, Secrets, Packaging oder Installation die Skills `.agents/skills/release-operations.md`, `.agents/skills/logging-observability.md`, `.agents/skills/runtime-logging.md`, `.agents/skills/repository-security.md` und `.agents/skills/installer-packaging.md` lesen.
 - Projekt bleibt eigenständig: keine Abhängigkeiten auf externe lokale Projekte oder fremde Maschinenpfade.
 - Lokale Secrets liegen innerhalb des Projektordners unter `.secrets/local/`, sind DPAPI-verschlüsselt und per `.gitignore` ausgeschlossen.
-- Sichtbare Konsole bleibt ruhig; ausführliche Logs gehen in einen eigenen `D:\Temp\<RunName>_<Timestamp>`-Ordner und am Ende in ein Upload-ZIP.
+- Sichtbare Konsole bleibt ruhig; ausführliche Build-/Testlogs gehen in einen eigenen `D:\Temp\<RunName>_<Timestamp>`-Ordner und am Ende in ein Upload-ZIP. Laufzeitlogs der App gehoeren je nach Laufart nach `logs/`, `%LocalAppData%\SchachTurnierManager\logs` oder ins portable `logs\`.
 - Für Kollegen-/Vereinsinstallation zählt `scripts/Invoke-ReleaseCandidateReadiness.ps1` als Standardprüfung.
 
 ## Klick-Installation / Kollegen-Rollout

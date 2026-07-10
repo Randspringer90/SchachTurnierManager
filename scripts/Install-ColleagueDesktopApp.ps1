@@ -92,7 +92,8 @@ try {
         "InstallDirectory=$InstallDirectory",
         "StartMenuShortcut=$startMenuShortcut",
         "DesktopShortcut=$desktopShortcutPath",
-        "UserDataDefault=%LocalAppData%\SchachTurnierManager"
+        "UserDataDefault=%LocalAppData%\SchachTurnierManager",
+        "UserLogDefault=%LocalAppData%\SchachTurnierManager\logs"
     ) | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $InstallDirectory 'INSTALLATION_MANIFEST.txt')
 
     Write-InstallInfo "INSTALLED=$InstallDirectory"

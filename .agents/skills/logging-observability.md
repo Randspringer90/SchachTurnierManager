@@ -15,3 +15,7 @@ Ziel: Lokale Turnierleiter sollen Fehler verstehen können, ohne Debugger oder E
 - `scripts/Invoke-ReleaseGate.ps1` grün.
 - `scripts/Invoke-SecretSafetyReadiness.ps1` grün.
 - `tests/SchachTurnierManager.Application.Tests/OperationalGuardTests.cs` grün.
+
+## Ergaenzung ab 0.54.0
+
+Fuer konkrete Laufzeitlog-Orte, Rotation und Kollegendiagnose zusaetzlich `.agents/skills/runtime-logging.md` und `docs/architecture/RUNTIME_LOGGING.md` beachten.

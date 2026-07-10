@@ -17,7 +17,7 @@ einen ungueltigen Stringwert.
 
 ## Verifikation
 
-Lokal in diesem Paket nicht ausgefuehrt; bitte auf Marcos Windows-Workstation erneut ausfuehren:
+Lokal in diesem Paket nicht ausgefuehrt; bitte auf lokaler Windows-Workstation erneut ausfuehren:
 
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-PortableFreshFolderTest.ps1

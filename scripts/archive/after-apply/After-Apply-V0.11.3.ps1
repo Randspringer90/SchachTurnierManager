@@ -21,8 +21,8 @@ if (Test-Path $testFile) {
     $content = Get-Content -LiteralPath $testFile -Raw
     $fixed = [regex]::Replace(
         $content,
-        'Assert\.Equal\("profile/4610563",\s*handler\.LastRequestUri\?\.ToString\(\)\);',
-        'var requestUri = handler.LastRequestUri?.ToString() ?? string.Empty;'+[Environment]::NewLine+'        Assert.True(requestUri.EndsWith("profile/4610563", StringComparison.OrdinalIgnoreCase), $"Unexpected request URI: {requestUri}");'
+        'Assert\.Equal\("profile/99900123",\s*handler\.LastRequestUri\?\.ToString\(\)\);',
+        'var requestUri = handler.LastRequestUri?.ToString() ?? string.Empty;'+[Environment]::NewLine+'        Assert.True(requestUri.EndsWith("profile/99900123", StringComparison.OrdinalIgnoreCase), $"Unexpected request URI: {requestUri}");'
     )
     if ($fixed -ne $content) {
         Set-Content -LiteralPath $testFile -Value $fixed -Encoding utf8NoBOM
@@ -30,7 +30,7 @@ if (Test-Path $testFile) {
     }
 
     $verify = Get-Content -LiteralPath $testFile -Raw
-    if ($verify -match 'Assert\.Equal\("profile/4610563"') {
+    if ($verify -match 'Assert\.Equal\("profile/99900123"') {
         throw 'FIDE-Test enthält weiterhin den alten URI-Assert. Bitte Patch-ZIP erneut mit Überschreiben entpacken.'
     }
 }

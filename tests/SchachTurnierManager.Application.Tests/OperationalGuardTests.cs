@@ -177,6 +177,64 @@ public sealed class OperationalGuardTests
     }
 
 
+    [Fact]
+    public void RuntimeLogging_WritesToBoundedProjectLogsWithoutSecretsOrQuerystrings()
+    {
+        var gitignore = File.ReadAllText(FindRepositoryFile(".gitignore"));
+        var appsettings = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "appsettings.json"));
+        var devSettings = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "appsettings.Development.json"));
+        var program = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Program.cs"));
+        var provider = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Logging", "BoundedFileLoggerProvider.cs"));
+        var desktopStarter = File.ReadAllText(FindRepositoryFile("scripts", "Start-Desktop.bat"));
+        var portableStarter = File.ReadAllText(FindRepositoryFile("scripts", "Start-Portable.bat"));
+        var readiness = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-LoggingReadiness.ps1"));
+        var cleanGenerated = File.ReadAllText(FindRepositoryFile("scripts", "Clean-Generated.ps1"));
+        var gitSafety = File.ReadAllText(FindRepositoryFile("scripts", "Test-GitCommitSafety.ps1"));
+
+        Assert.Contains("BoundedFileLoggerProvider", program);
+        Assert.Contains("runtimeLogDirectory", program);
+        Assert.Contains("FindRepositoryRoot", program);
+        Assert.Contains("SchachTurnierManager:LogDirectory", program);
+        Assert.Contains("SchachTurnierManager:FileLogging:RetainedFileCount", program);
+        Assert.Contains("directory = runtimeLogDirectory", program);
+        Assert.Contains("Path.Value", program);
+        Assert.DoesNotContain("QueryString", program);
+
+        Assert.Contains("FileLogging", appsettings);
+        Assert.Contains("RetainedFileCount", appsettings);
+        Assert.Contains("MaxFileSizeBytes", appsettings);
+        Assert.Contains("\"LogDirectory\": \"logs\"", devSettings);
+
+        Assert.Contains("RedactSensitiveContent", provider);
+        Assert.Contains("token", provider, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("api_key", provider, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("PruneOldLogs", provider);
+
+        Assert.Contains("SchachTurnierManager__LogDirectory", desktopStarter);
+        Assert.Contains(@"set ""DATA_DIR=%LOCALAPPDATA%\SchachTurnierManager""", desktopStarter);
+        Assert.Contains(@"set ""LOG_DIR=%DATA_DIR%\logs""", desktopStarter);
+        Assert.Contains("SchachTurnierManager__LogDirectory", portableStarter);
+        Assert.Contains(@"%ROOT%logs", portableStarter);
+
+        Assert.Contains("LOGGING_READINESS=OK", readiness);
+        Assert.Contains("/api/health?token=should-not-appear", readiness);
+        Assert.Contains("should-not-appear", readiness);
+        Assert.Contains("HTTP GET /api/tournaments", readiness);
+        Assert.DoesNotContain("System.Object[]", readiness);
+
+        Assert.Contains("!logs/README.md", gitignore);
+        Assert.Contains("System.Object[]", gitignore);
+        Assert.Contains("System.Object[]", cleanGenerated);
+        Assert.Contains("Test-IsAllowedTrackedLogAnchor", gitSafety);
+        Assert.Contains("logs/README.md", gitSafety);
+        Assert.Contains("README.md", cleanGenerated);
+        Assert.True(File.Exists(FindRepositoryFile("logs", "README.md")));
+        Assert.True(File.Exists(FindRepositoryFile("logs", ".gitkeep")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "runtime-logging.md")));
+        Assert.True(File.Exists(FindRepositoryFile("docs", "architecture", "RUNTIME_LOGGING.md")));
+    }
+
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

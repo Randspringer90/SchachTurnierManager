@@ -14,9 +14,9 @@ public sealed class FidePlayerLookupProviderTests
         var html = """
             <html>
               <body>
-                <h1>Geisshirt, Marco</h1>
+                <h1>Weissbach, Lina</h1>
                 <dl>
-                  <dt>FIDE ID</dt><dd>4610563</dd>
+                  <dt>FIDE ID</dt><dd>99900123</dd>
                   <dt>Federation</dt><dd>Germany</dd>
                   <dt>B-Year</dt><dd>1990</dd>
                   <dt>Gender</dt><dd>Male</dd>
@@ -37,14 +37,14 @@ public sealed class FidePlayerLookupProviderTests
         };
         var provider = new FidePlayerLookupProvider(httpClient);
 
-        var result = await provider.LookupByIdAsync("4610563");
+        var result = await provider.LookupByIdAsync("99900123");
 
         Assert.Equal(ExternalPlayerLookupStatus.Found, result.Status);
         var requestUri = handler.LastRequestUri?.ToString() ?? string.Empty;
-        Assert.True(requestUri.EndsWith("profile/4610563", StringComparison.OrdinalIgnoreCase), $"Unexpected request URI: {requestUri}");
+        Assert.True(requestUri.EndsWith("profile/99900123", StringComparison.OrdinalIgnoreCase), $"Unexpected request URI: {requestUri}");
         var player = Assert.Single(result.Players);
-        Assert.Equal("4610563", player.FideId);
-        Assert.Equal("Geisshirt, Marco", player.Name);
+        Assert.Equal("99900123", player.FideId);
+        Assert.Equal("Weissbach, Lina", player.Name);
         Assert.Equal("Germany", player.Federation);
         Assert.Equal(1990, player.BirthYear);
         Assert.Equal(GenderCategory.Male, player.Gender);

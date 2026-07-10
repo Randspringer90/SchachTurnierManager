@@ -93,6 +93,7 @@ Hinweise:
 - Dieses Paket ist eine portable lokale Version.
 - Es benötigt bei framework-dependent Publish ein installiertes .NET 10 Runtime/SDK.
 - Für ein paketiertes .NET kann Pack-Portable.ps1 mit -SelfContained ausgeführt werden.
+- Laufzeitlogs liegen im portablen Ordner `logs\`.
 - Keine Dateien aus app\ manuell bearbeiten.
 - Für Backups im Dashboard JSON-Export verwenden.
 "@ | Set-Content -Encoding UTF8 (Join-Path $portableRoot "README-Portable.md")

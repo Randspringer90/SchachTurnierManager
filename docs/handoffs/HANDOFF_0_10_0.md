@@ -7,7 +7,7 @@
 - DSB/DeWIS- und ThSB-Provider als vorbereitete Adapter mit klarer Unsupported-Rückmeldung.
 - Neue API-Endpunkte:
   - `GET /api/external-players/providers`
-  - `GET /api/external-players/search?source=0&query=4610563`
+  - `GET /api/external-players/search?source=0&query=99900123`
   - `GET /api/external-players/fide/{fideId}`
 - Dashboard-Bereich „Spielerdaten suchen“.
 - Suchtreffer können ins Teilnehmerformular übernommen werden.

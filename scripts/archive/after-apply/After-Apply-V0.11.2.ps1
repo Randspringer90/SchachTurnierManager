@@ -19,7 +19,7 @@ Set-Location $root
 $testFile = Join-Path $root 'tests/SchachTurnierManager.Infrastructure.Tests/FidePlayerLookupProviderTests.cs'
 if (Test-Path $testFile) {
     $content = Get-Content -LiteralPath $testFile -Raw
-    $fixed = $content.Replace('Assert.Equal("profile/4610563", handler.LastRequestUri?.ToString());', 'Assert.EndsWith("/profile/4610563", handler.LastRequestUri?.ToString());')
+    $fixed = $content.Replace('Assert.Equal("profile/99900123", handler.LastRequestUri?.ToString());', 'Assert.EndsWith("/profile/99900123", handler.LastRequestUri?.ToString());')
     if ($fixed -ne $content) {
         Set-Content -LiteralPath $testFile -Value $fixed -Encoding utf8NoBOM
         Write-Host '[v0.11.2] Alte FIDE-Testassert-Zeile automatisch korrigiert.' -ForegroundColor Yellow

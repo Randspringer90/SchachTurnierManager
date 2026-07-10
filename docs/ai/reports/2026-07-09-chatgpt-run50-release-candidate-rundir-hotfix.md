@@ -22,7 +22,7 @@ $runDirectory = & $bundleScript -RunName $RunName -CreateOnly
 
 ## Tests
 
-Noch lokal durch Marco auszufuehren:
+Noch lokal durch Maintainer auszufuehren:
 
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseCandidateReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup

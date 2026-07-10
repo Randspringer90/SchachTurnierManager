@@ -11,58 +11,58 @@ public sealed class LocalRosterPlayerLookupProviderTests
     public async Task LookupById_FindsLocalPlayerAndExposesDwz()
     {
         var store = new InMemoryTournamentStore();
-        SeedMarco(store);
+        SeedSyntheticPlayer(store);
         var provider = new LocalRosterPlayerLookupProvider(store);
 
-        var result = await provider.LookupByIdAsync("4610563");
+        var result = await provider.LookupByIdAsync("99900123");
 
         var profile = Assert.Single(result.Players);
         Assert.Equal(ExternalPlayerLookupStatus.Found, result.Status);
-        Assert.Equal("4610563", profile.FideId);
+        Assert.Equal("99900123", profile.FideId);
         Assert.Equal(1987, profile.Dwz);
         Assert.Equal(ExternalPlayerSource.Local, profile.Source);
     }
 
     [Theory]
-    [InlineData("Marco Geißhirt")]
-    [InlineData("Marco Geisshirt")]
-    [InlineData("Marco Geishirt")]
-    [InlineData("Geißhirt, Marco")]
-    [InlineData("Geisshirt Marco")]
+    [InlineData("Lina Weißbach")]
+    [InlineData("Lina Weissbach")]
+    [InlineData("Lina Weisbach")]
+    [InlineData("Weißbach, Lina")]
+    [InlineData("Weissbach Lina")]
     public async Task SearchByName_IsDiacriticAndOrderTolerant(string query)
     {
         var store = new InMemoryTournamentStore();
-        SeedMarco(store);
+        SeedSyntheticPlayer(store);
         var provider = new LocalRosterPlayerLookupProvider(store);
 
         var result = await provider.SearchByNameAsync(query);
 
         Assert.NotEmpty(result.Players);
-        Assert.Contains(result.Players, p => p.FideId == "4610563");
+        Assert.Contains(result.Players, p => p.FideId == "99900123");
     }
 
     [Fact]
     public async Task SearchByName_UnknownPerson_ReturnsEmpty()
     {
         var store = new InMemoryTournamentStore();
-        SeedMarco(store);
+        SeedSyntheticPlayer(store);
         var provider = new LocalRosterPlayerLookupProvider(store);
 
-        var result = await provider.SearchByNameAsync("Magnus Carlsen");
+        var result = await provider.SearchByNameAsync("Unbekannt Beispiel");
 
         Assert.Empty(result.Players);
     }
 
-    private static void SeedMarco(InMemoryTournamentStore store)
+    private static void SeedSyntheticPlayer(InMemoryTournamentStore store)
     {
         var service = new TournamentService(store);
         var tournament = service.CreateTournament("Bergfest");
         service.AddPlayer(tournament.Id, new Player
         {
-            Name = "Marco Geißhirt",
-            Club = "Ilmenauer SV",
+            Name = "Lina Weißbach",
+            Club = "Beispiel SV",
             BirthYear = 1990,
-            FideId = "4610563",
+            FideId = "99900123",
             Rating = new RatingProfile { Dwz = 1987 }
         });
     }
