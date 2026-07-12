@@ -42,11 +42,11 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-AI-004 | Nightly-/Resume-Unterbau | P3 | Backlog | ai | owner | – | post-1.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
-| STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | **Ready** | pairing | friend | – | v1.0.0 |
+| STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | **Ready** | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Backlog | pairing | owner | – | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | – | v1.0.0 |
-| STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | **Ready** | tiebreaks | friend | – | v1.0.0 |
-| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | **Ready** | import-export | friend | – | v1.0.0 |
+| STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | **Ready** | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) | v1.0.0 |
+| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | **Ready** | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | v1.0.0 |
 | STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Backlog | import-export | either | – | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
 | STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | – | v1.0.0 |
@@ -58,7 +58,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | **Ready** | documentation | friend | – | v1.0.0 |
+| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | **Ready** | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) | v1.0.0 |
 
 ---
 
@@ -69,7 +69,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   müssen in Paarung und Wertung regelkonform behandelt werden (Punkte, aber i. d. R. keine
   Tie-Break-Beiträge aus ungespielten Runden).
 - **Priorität:** P1 · **Status:** Ready · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
-- **GitHub-Issue:** _(wird in Phase 6 eingetragen)_ · **Branch:** `feature/STM-FACH-001-kampflose-partien`
+- **GitHub-Issue:** [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) · **Branch:** `feature/STM-FACH-001-kampflose-partien`
 - **Abhängigkeiten:** keine (baut auf bestehender Wertungslogik/`TournamentService`).
 - **Akzeptanzkriterien:**
   - Freilos/Bye vergibt korrekte Punkte, erzeugt keine Gegner-Paarung.
@@ -86,7 +86,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Golden-Test-Abdeckung der bestehenden Tie-Break-Berechnungen erweitern und
   gegen dokumentierte Beispielturniere absichern; keine Verhaltensänderung, nur Absicherung/Doku.
 - **Priorität:** P2 · **Status:** Ready · **Kategorie:** tiebreaks · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
-- **GitHub-Issue:** _(Phase 6)_ · **Branch:** `feature/STM-TB-001-tiebreak-golden-tests`
+- **GitHub-Issue:** [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) · **Branch:** `feature/STM-TB-001-tiebreak-golden-tests`
 - **Abhängigkeiten:** keine.
 - **Akzeptanzkriterien:**
   - Deterministische Golden-Tests für Buchholz, Buchholz-Cut-1 und Sonneborn-Berger an ≥ 2 Beispielturnieren.
@@ -101,7 +101,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Read-only-Export der Turnierdaten ins TRF(x)-Format (FIDE) und/oder Excel,
   ohne Änderung der Turnierlogik.
 - **Priorität:** P1 · **Status:** Ready · **Kategorie:** import-export · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
-- **GitHub-Issue:** _(Phase 6)_ · **Branch:** `feature/STM-IE-001-trf-export`
+- **GitHub-Issue:** [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) · **Branch:** `feature/STM-IE-001-trf-export`
 - **Abhängigkeiten:** `TournamentExportFormatter` (bereits vorhanden).
 - **Akzeptanzkriterien:**
   - Gültige TRF(x)-Datei für ein abgeschlossenes Beispielturnier.
@@ -116,7 +116,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Onboarding-/Contributing-Doku praktisch nachvollziehen und Lücken/Fehler
   korrigieren (Befehle, Versionsangaben, Links).
 - **Priorität:** P3 · **Status:** Ready · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
-- **GitHub-Issue:** _(Phase 6)_ · **Branch:** `docs/STM-DOC-001-contributor-review`
+- **GitHub-Issue:** [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) · **Branch:** `docs/STM-DOC-001-contributor-review`
 - **Abhängigkeiten:** keine.
 - **Akzeptanzkriterien:** Alle in `CONTRIBUTING.md`/Onboarding genannten Befehle funktionieren
   auf einem frischen Klon; tote Links behoben.
