@@ -17,7 +17,8 @@ Stand: 2026-07-12 (development). Reifegrad je Fachbereich. Details/Aufgaben in
 | i18n | Fundament (18 Sprachen) | vervollständigen | STM-UX-001 |
 | PWA / Offline / Sync | Basis | offen | STM-UX-002 |
 | Backup/Restore | vorhanden | UX offen | STM-UX-003 |
-| Lokale KI-Hilfe / BYOK | vorhanden (lokal) | erweitern | STM-UX-004, STM-INT-001 |
+| Lokale KI-Hilfe (kanonisch: Frontend-Wissensbasis, offline/providerlos) | vorhanden, konsolidiert | stabil | – |
+| BYOK-KI-Provider (später, Infrastructure) | – | offen | STM-UX-004 |
 | Installation / Setup-EXE | Kollegenpaket, Klick-Install | härten | STM-REL-001, STM-REL-002, STM-REL-003 |
 | Security / Public-Reife | Gates vorhanden | härten | STM-SEC-001..004 |
 | KI-Agenten / Skills / Wissen | strukturiert | konsolidieren | STM-AI-001..004 |

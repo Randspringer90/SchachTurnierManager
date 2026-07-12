@@ -11,6 +11,10 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 > **2026-07-12 (Claude Opus 4.8):** Codex-Contributor-Starterpaket (Anleitung, Promptvorlage
 > `templates/CODEX_CHESS_FEATURE.md`, Generator `New-ContributorTaskPrompt.ps1`, Tests).
 > Abschlussbericht: `reports/2026-07-12-claude-contributor-kickoff-pack.md`.
+>
+> **2026-07-12 (Claude Opus 4.8):** STM-INT-001 v0.41-Reconcile – kanonische KI-Hilfe = Frontend,
+> totes `Application.Ai`-Backend-Modul entfernt. Bericht:
+> `reports/2026-07-12-claude-stm-int-001-reconciliation.md`.
 
 | Datum | Tool/Modell | Kurzbeschreibung | Prompt | Report |
 |---|---|---|---|---|

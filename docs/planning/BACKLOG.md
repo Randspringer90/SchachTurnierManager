@@ -31,7 +31,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 
 | ID | Titel | Prio | Status | Kategorie | Ziel-Bearb. | Issue | Release |
 |----|-------|------|--------|-----------|-------------|-------|---------|
-| STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | Backlog | infrastructure | owner | – | v1.0.0 |
+| STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | In Review | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) (PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6)) | v1.0.0 |
 | STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
@@ -134,13 +134,17 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 Nicht-Ready-Einträge tragen dieselben Felder; Details werden beim Übergang nach `Ready`
 ausgeschrieben. Auszug der wichtigsten:
 
-- **STM-INT-001** – Reconcile des in `development` gemergten lokalen v0.41-Stands (lokales
-  `Application.Ai`-Provider-Modul vs. origins Chat-Hilfe 0.47; Operator-Dashboard-/Export-Doppelungen).
-  Quelle des lokalen Stands verlustfrei im Branch `backup/pre-development-bootstrap-2026-07-12`.
-  Enthält auch die Frage, ob die lokale `.env.example` (AI-Help-Config-Template, leere Keys)
-  wieder aufgenommen wird – das erfordert eine **Owner-reviewte** Anpassung von
-  `scripts/Test-GitCommitSafety.ps1` (blockt aktuell jedes `.env*`, obwohl `.gitignore`
-  `.env.example` whitelistet). *Security:* betrifft Security-Skript. *Abhängigkeiten:* keine. *Owner:* der Owner.
+- **STM-INT-001** – *In Review* (Issue [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5),
+  PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6), Branch `refactor/STM-INT-001-reconcile-v041`). Reconcile des in `development` gemergten v0.41-Stands.
+  **Entscheidung:** kanonische lokale KI-Hilfe = Frontend-Wissensbasis (`localKnowledgeBase.json`,
+  offline/providerlos); das tote, unreferenzierte Backend-Modul `Application.Ai` (+ isolierter Test)
+  wurde entfernt. Export (`TournamentExportFormatter`) und Dashboard/Health sind bereits kanonisch.
+  Details: `docs/architecture/V041_RECONCILIATION.md`. Quelle des lokalen Stands verlustfrei im
+  Branch `backup/pre-development-bootstrap-2026-07-12`.
+  **Offene Folgearbeit (STM-INT-001b, Backlog):** ob die lokale `.env.example` (AI-Config-Template,
+  leere Keys) wieder aufgenommen wird – erfordert **Owner-reviewte** Anpassung von
+  `scripts/Test-GitCommitSafety.ps1` (blockt `.env*`, obwohl `.gitignore` `.env.example` whitelistet);
+  ein echter BYOK-Provider gehört zu STM-UX-004 (frisch in Infrastructure). *Owner:* der Owner.
 - **STM-SEC-001** – Prompt-Injection-Verteidigung (Guards/Gates, untrusted-content-Handling in
   KI-Läufen, Tests). *Abhängig von* Agentenstruktur STM-AI-001.
 - **STM-SEC-004** – Public Snapshot & History-Abnahme: alte Git-Historie ist der offene
