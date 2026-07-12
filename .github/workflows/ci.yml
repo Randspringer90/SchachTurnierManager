@@ -1,0 +1,65 @@
+name: CI
+
+# Sicherheit: nur `pull_request` (kein pull_request_target). PR-Code aus Forks/Branches
+# erhält KEINE Repository-Secrets. Keine Secrets in diesem Workflow nötig.
+on:
+  pull_request:
+    branches:
+      - development
+      - main
+      - 'release/**'
+  push:
+    branches:
+      - development
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build-test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET (global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore SchachTurnierManager.sln
+      - name: Build
+        run: dotnet build SchachTurnierManager.sln -c Release --no-restore
+      - name: Test
+        run: dotnet test SchachTurnierManager.sln -c Release --no-build --verbosity minimal
+
+  frontend:
+    name: frontend
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src/SchachTurnierManager.WebApp
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/SchachTurnierManager.WebApp/package-lock.json
+      - name: Install (npm ci)
+        run: npm ci
+      - name: Typecheck & Build
+        run: npm run build
+
+  diff-check:
+    name: diff-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: git diff --check (Whitespace/Konfliktmarker)
+        run: git diff --check HEAD

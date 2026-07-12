@@ -1,0 +1,63 @@
+name: Branch-Policy
+
+# Erzwingt zulässige Quell-/Ziel-Branch-Kombinationen.
+# Sicherheit: Branch-Namen werden NUR über Environment-Variablen an das Skript übergeben,
+# niemals direkt in die Shell interpoliert (kein Script-Injection-Risiko).
+on:
+  pull_request:
+    branches:
+      - development
+      - main
+      - 'release/**'
+
+permissions:
+  contents: read
+
+jobs:
+  branch-policy:
+    name: branch-policy
+    runs-on: ubuntu-latest
+    env:
+      HEAD_REF: ${{ github.head_ref }}
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - name: Regeln prüfen
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$HEAD_REF"
+          base="$BASE_REF"
+          echo "PR: $head  ->  $base"
+
+          allowed=1
+          case "$base" in
+            development)
+              case "$head" in
+                feature/*|fix/*|security/*|docs/*|refactor/*) allowed=1 ;;
+                *) allowed=0 ;;
+              esac
+              ;;
+            main)
+              case "$head" in
+                release/*|hotfix/*) allowed=1 ;;
+                *) allowed=0 ;;
+              esac
+              ;;
+            release/*)
+              case "$head" in
+                development|release-fix/*) allowed=1 ;;
+                *) allowed=0 ;;
+              esac
+              ;;
+            *)
+              echo "Unerwarteter Zielbranch '$base' – Policy nicht definiert."
+              allowed=0
+              ;;
+          esac
+
+          if [ "$allowed" -ne 1 ]; then
+            echo "::error::Branch '$head' darf nicht per PR nach '$base' gemergt werden."
+            echo "Erlaubt: development <= feature|fix|security|docs|refactor/* ; main <= release|hotfix/* ; release/* <= development|release-fix/*"
+            exit 1
+          fi
+          echo "Branch-Policy OK."

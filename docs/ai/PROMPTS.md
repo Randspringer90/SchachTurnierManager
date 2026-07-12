@@ -4,6 +4,10 @@
 Jeder relevante KI-Lauf (Claude Code, Codex, andere) traegt sich hier ein.
 Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
+> **2026-07-12 (Claude Opus 4.8):** Kollaborations-Bootstrap – `development`-Branch als Standard,
+> Merge des lokalen v0.41-Stands, kanonischer Backlog, GitHub-Rulesets/Templates/CI.
+> Abschlussbericht: `reports/2026-07-12-claude-collaboration-development-branch.md`.
+
 | Datum | Tool/Modell | Kurzbeschreibung | Prompt | Report |
 |---|---|---|---|---|
 | 2026-07-10 | Codex / GPT-5 | Stabilisierung nach RUN-54: manuelle Aenderungen reviewen, Public-/Secret-Gates haerten, Runtime-Logging-Fixes, synthetische Fixtures, Reports, Commit/Push | [prompts/20260710_0604_codex-stabilisation-public-gate.md](prompts/20260710_0604_codex-stabilisation-public-gate.md) | [reports/20260710_0604_codex-stabilisation-public-gate_REPORT.md](reports/20260710_0604_codex-stabilisation-public-gate_REPORT.md) |

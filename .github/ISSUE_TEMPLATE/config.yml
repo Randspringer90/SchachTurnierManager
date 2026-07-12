@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Sicherheitslücke vertraulich melden
+    url: https://github.com/Randspringer90/SchachTurnierManager/security/advisories/new
+    about: Konkrete, ausnutzbare Schwachstellen bitte NICHT als öffentliches Issue, sondern hier vertraulich melden.
   - name: Diskussion oder allgemeine Frage
     url: https://github.com/Randspringer90/SchachTurnierManager/discussions
-    about: Für allgemeine Fragen, Ideen und Diskussionen, sofern Discussions später aktiviert werden.
+    about: Für allgemeine Fragen, Ideen und Diskussionen, sofern Discussions aktiviert sind.

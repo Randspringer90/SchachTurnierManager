@@ -1,0 +1,40 @@
+{
+  "$schema": "./model-routing.schema.json",
+  "description": "Repo-internes, self-contained Modellrouting fuer KI-Agenten (Claude Code, Codex u. a.). Ersetzt die fruehere externe Abhaengigkeit auf CORE-KFM-Wissensmanagement/config/model-routing.json. Werte sind Defaults und duerfen ohne Owner-Review nicht abgeschwaecht werden.",
+  "version": 1,
+  "policy": {
+    "qualityOverCost": true,
+    "autoDowngradeOnRiskyTasks": false,
+    "riskyTaskCategories": [
+      "security",
+      "pairing",
+      "release",
+      "git-history",
+      "installer",
+      "secrets"
+    ]
+  },
+  "routes": {
+    "default": {
+      "preferred": "strongest-available",
+      "anthropic": "claude-opus-4-8",
+      "openai": "strongest-available-gpt",
+      "note": "Immer das leistungsstaerkste verfuegbare Modell des jeweiligen Providers."
+    },
+    "risky": {
+      "preferred": "strongest-available",
+      "anthropic": "claude-opus-4-8",
+      "note": "Kein automatischer Downgrade bei riskanten Aufgaben (siehe riskyTaskCategories)."
+    },
+    "bulk-cheap": {
+      "preferred": "cost-optimized",
+      "anthropic": "claude-haiku-4-5-20251001",
+      "note": "Nur fuer nicht-riskante Massenaufgaben ohne Sicherheits-/Fachlogik."
+    }
+  },
+  "notes": [
+    "Diese Datei ist bewusst self-contained: keine Pfade zu Fremdprojekten oder Maschinen.",
+    "Aenderungen erfordern Owner-Review (CODEOWNERS schuetzt config/**).",
+    "Optionales externes Wissensmanagement (nur beim Owner vorhanden) darf kein Gate blockieren."
+  ]
+}

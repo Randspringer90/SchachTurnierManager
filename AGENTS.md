@@ -11,6 +11,13 @@ Diese Datei ist die zentrale, providerneutrale Regeldatei für alle KI-Agenten (
 - Lokale Commits sind erwünscht, wenn Build und Tests sauber sind.
 - `.git`, `logs`, `output`, `tmp`, Datenbanken, `.env`, `.npmrc`, `.secrets/local/` und `secrets/local/` bleiben außerhalb von Austausch-ZIPs.
 
+## Kollaboration & Branch-Modell
+- **`development`** ist der Standardbranch und die aktive Entwicklungsquelle; **`main`** enthält nur den letzten freigegebenen Release-Stand.
+- der Owner darf direkt auf `development` arbeiten. Alle anderen Mitwirkenden – und KI-Agenten in deren Auftrag – arbeiten **ausschließlich** über Feature-Branches und Pull Requests nach `development`.
+- Branch-Namensschema `feature|fix|security|docs|refactor/<backlog-id>-<kurzname>`; Release `release/<semver>`; Hotfix `hotfix/<semver>-<kurzname>`.
+- Einzige kanonische Aufgabenquelle: `docs/planning/BACKLOG.md` (`PLANS.md` ist historisch). Details: `docs/planning/BRANCHING_STRATEGY.md`, `docs/planning/COLLABORATION_WORKFLOW.md`, `CONTRIBUTING.md`.
+- Kein Force-Push/History-Rewrite auf `development`/`main`. Änderungen an Instruktionsquellen (`AGENTS.md`, `.claude/**`, `.agents/**`, `config/**`, `.github/**`, Security-Skripte) erfordern Owner-Review (`.github/CODEOWNERS`).
+
 ## Projektstruktur – wo gehört was hin?
 - `AGENTS.md` (Root): verbindliche Agentenregeln, providerneutral.
 - `.agents/skills/`: wiederverwendbares Fachwissen für alle Agenten; neues wiederverwendbares Wissen gehört hierhin.
@@ -40,7 +47,7 @@ Diese Datei ist die zentrale, providerneutrale Regeldatei für alle KI-Agenten (
 - Manuelle Overrides später erlauben, aber immer protokollieren.
 
 ## Repository-Sicherheit / Open Source
-- Dieses private GitHub-Repo bleibt privat; eine spätere öffentliche Veröffentlichung erfolgt nur über einen geprüften Clean Snapshot ohne alte Git-Historie.
+- Dieses GitHub-Repo ist **PUBLIC** (Stand 2026-07-12, verifiziert via `gh repo view`). Ältere Dokumente, die es als „privat" bezeichnen, sind überholt. Jede Änderung ist so zu behandeln, als wäre sie sofort weltweit sichtbar. Details: `docs/security/CONTRIBUTOR_SECURITY.md`.
 - Vor Commits immer staged Dateien anzeigen und prüfen; keine blinden `git add .`-, `git add --all`- oder Massen-Stage-Schritte ohne Sicherheitscheck.
 - `.codex`, `.vs`, `output`, `bin`, `obj`, `dist`, `node_modules`, lokale Audits/Backups, Dumps, Logs, ZIPs, Datenbanken, `.env` und Zugangsdaten dürfen nicht in Commits.
 - Berufliche/TFS- oder interne Arbeits-Repositories sind besonders restriktiv zu behandeln; Commit-/Push-Automation darf dort nicht automatisch laufen.
@@ -55,15 +62,17 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
 - **Lauf-Protokoll**: Prompts, Abschlussberichte und Lessons Learned gehoeren nach
   `docs/ai/` (Skill `ai-run-logging`) und werden mit committet.
 - **Modell-Policy**: immer das leistungsstaerkste verfuegbare Claude-/OpenAI-Modell
-  gemaess `CORE-KFM-Wissensmanagement\config\model-routing.json` (Qualitaet vor Kosten,
-  kein automatischer Downgrade bei riskanten Aufgaben).
+  gemaess dem **repo-internen** `config/model-routing.json` (Qualitaet vor Kosten,
+  kein automatischer Downgrade bei riskanten Aufgaben). Diese Datei ist self-contained;
+  eine fruehere Abhaengigkeit auf ein externes Projekt (`CORE-KFM-Wissensmanagement`)
+  wurde entfernt.
 - **Internet-Recherche**: fuer zeitkritische Fakten Skill `internet-research` nutzen
   (Websuche des Tools, Proxy beachten, Quellen + Datum dokumentieren).
-- **Chat-only-Tools** (ChatGPT/Langdock ohne Dateizugriff): Kontextpaket via
-  `CORE-KFM-Wissensmanagement\scripts\New-KnowledgePromptPack.ps1` erzeugen und mitgeben.
-- **Wissensmanagement**: global indexiert `CORE-KFM-Wissensmanagement` dieses Projekt
-  (AGENTS/README/PLANS/CHANGELOG, `docs/ai/**`, `docs/knowledge/**`, `.agents/**`);
-  projektspezifisches Wissen gehoert nach `docs/knowledge/` bzw. `docs/ai/`.
+- **Wissensmanagement**: projektspezifisches Wissen gehoert **in dieses Repo**
+  (`docs/knowledge/`, `docs/ai/`, `.agents/**`). Das Projekt ist eigenstaendig – **keine
+  Pflichtabhaengigkeit** auf externe lokale Projekte oder fremde Maschinenpfade. Optionale,
+  nur beim Owner vorhandene Werkzeuge (externes Wissensmanagement, Chat-only-Kontextpakete)
+  sind rein optional und duerfen kein Gate blockieren.
 
 
 ## Release-/Betriebsregeln ab 0.50.0

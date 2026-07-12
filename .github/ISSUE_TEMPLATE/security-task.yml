@@ -1,0 +1,58 @@
+name: Security-Aufgabe
+description: Sicherheitsrelevante Aufgabe (Härtung, Prompt-Injection, Supply-Chain, PII).
+title: "[STM-SEC-000] "
+labels: ["type:security", "area:security", "status:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Keine ausnutzbaren Details öffentlich posten.** Konkrete Schwachstellen mit
+        Angriffspfad privat an den Owner melden – dieses Template ist für geplante
+        Härtungs-/Sicherheitsaufgaben, nicht für die Offenlegung aktiver Lücken.
+  - type: input
+    id: backlog-id
+    attributes:
+      label: Backlog-ID
+      placeholder: "STM-SEC-000"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Sicherheitsziel
+      description: Was soll gehärtet/abgesichert werden?
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Art
+      options:
+        - Prompt-Injection / Instruktionsquellen
+        - Secrets / PII-Minimierung
+        - Dependency / Lizenz / Supply-Chain
+        - Public-Repo / Git-History
+        - CI-/Workflow-Sicherheit
+        - Sonstiges
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akzeptanzkriterien
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Nachweis / Tests
+      description: Wie wird die Wirksamkeit belegt (Tests, Gate, Review)?
+    validations:
+      required: true
+  - type: input
+    id: branch
+    attributes:
+      label: Geplanter Branchname
+      placeholder: "security/STM-SEC-000-kurz-name"
+    validations:
+      required: true

@@ -1,5 +1,10 @@
 # Projekt-Orchestrierung
 
+> **Kollaboration (2026-07-12):** Standardbranch ist `development`, `main` = letzter Release.
+> Kanonische Aufgabenquelle: [`BACKLOG.md`](BACKLOG.md). Zusammenarbeit/Branches:
+> [`COLLABORATION_WORKFLOW.md`](COLLABORATION_WORKFLOW.md),
+> [`BRANCHING_STRATEGY.md`](BRANCHING_STRATEGY.md), [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md).
+
 Stand: 0.38.7. Welche Aufgabe läuft über welches Skript, welchen Skill, welchen Agenten.
 
 ## Aufgaben → Werkzeuge

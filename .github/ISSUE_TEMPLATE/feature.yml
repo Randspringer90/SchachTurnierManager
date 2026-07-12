@@ -1,0 +1,77 @@
+name: Feature / Aufgabe
+description: Neue Funktion oder Backlog-Aufgabe für die Entwicklung.
+title: "[STM-XXXX-000] "
+labels: ["type:feature", "status:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bitte keine personenbezogenen Daten (echte Teilnehmer, Telefon, E-Mail) posten.
+        Aufgaben stammen aus `docs/planning/BACKLOG.md`. Titel beginnt mit der Backlog-ID.
+  - type: input
+    id: backlog-id
+    attributes:
+      label: Backlog-ID
+      description: Stabile ID aus BACKLOG.md, z. B. STM-IE-001.
+      placeholder: "STM-XXXX-000"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschreibung
+      description: Was soll umgesetzt werden und warum?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Bereich
+      options:
+        - pairing
+        - tiebreaks
+        - import-export
+        - player-data
+        - ui
+        - pwa
+        - ai
+        - security
+        - release
+        - infrastructure
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akzeptanzkriterien
+      description: Woran ist die Aufgabe messbar erfüllt?
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Notwendige Tests
+      description: Unit-/Golden-/Contract-Tests, die dazugehören.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security-Auswirkungen
+      description: Secrets, PII, externe Daten, Instruktionsquellen? "keine", falls zutreffend.
+    validations:
+      required: true
+  - type: input
+    id: branch
+    attributes:
+      label: Geplanter Branchname
+      placeholder: "feature/STM-XXXX-000-kurz-name"
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      description: Siehe docs/planning/DEFINITION_OF_DONE.md; hier ggf. Ergänzungen.
+    validations:
+      required: true

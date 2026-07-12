@@ -2,6 +2,8 @@
 
 Stand: 0.38.7. Dieses Dokument beschreibt, wie KI-Agenten (Codex, Claude Code, künftig Gemini oder lokale Modelle) in diesem Repository arbeiten. Es ist bewusst providerneutral: Der ausführende Agent ist austauschbar, Regeln und Wissen bleiben gleich.
 
+> **Kollaboration & Sicherheit (2026-07-12):** KI-Agenten unterliegen denselben Branch-/PR-Regeln wie Menschen (`docs/planning/BRANCHING_STRATEGY.md`). Modellrouting ist repo-intern in `config/model-routing.json` (keine externe Projektabhängigkeit mehr). Prompt-Injection- und Owner-Review-Regeln: `docs/security/CONTRIBUTOR_SECURITY.md`.
+
 ## Ebenenmodell
 
 ```text

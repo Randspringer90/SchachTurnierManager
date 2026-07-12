@@ -278,14 +278,22 @@ Manual-Pairing-Guards, Backup/Restore und Chess960/QR-URL-Form. Artefakte liegen
 pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "Commit message"
 ```
 
-`-Push` nur mit ausdrücklicher Freigabe verwenden. Das bestehende private Entwicklungsrepo soll nicht direkt öffentlich geschaltet werden, wenn historische interne Registry-URLs oder lokale Auditdateien enthalten waren. Für eine öffentliche Veröffentlichung wird ein geprüfter Clean Snapshot ohne alte Git-Historie empfohlen.
+`-Push` nur mit ausdrücklicher Freigabe verwenden. **Dieses Repository ist bereits PUBLIC** (Stand 2026-07-12). Aktuelle Dateien sind forward-redacted; die **alte Git-Historie** bleibt der dokumentierte Public-History-Blocker (mögliche historische interne Registry-URLs / lokale Auditdateien). Ein späterer *history-freier* Neustart erfolgt nur über einen geprüften Clean Snapshot – die Sichtbarkeit selbst wird nicht erneut geändert. Details: `docs/security/CONTRIBUTOR_SECURITY.md`.
+## Zusammenarbeit (development / main)
+
+Aktive Entwicklung läuft auf dem Standardbranch **`development`**; **`main`** hält nur den
+letzten freigegebenen Release-Stand. Mitwirkende arbeiten über Feature-Branches und Pull
+Requests. Einstieg: [`CONTRIBUTING.md`](CONTRIBUTING.md); Aufgaben:
+[`docs/planning/BACKLOG.md`](docs/planning/BACKLOG.md) (kanonisch). Branch-/Release-Regeln:
+[`docs/planning/BRANCHING_STRATEGY.md`](docs/planning/BRANCHING_STRATEGY.md).
+
 ## Commit-Sicherheitscheck
 
 Commits laufen ueber `scripts/Commit-If-Green.ps1`. Der Guard prueft Build, Tests, Frontend, Paketierung und blockiert lokale Audit-/Backup-Dateien, Artefakte, `.npmrc`, interne Registry-Referenzen und kritische Zugangsdaten-Muster. Er verwendet kein blindes `git add --all`, sondern zeigt die geaenderten Dateien an und staged nur explizit gepruefte Pfade. Fuer eine spaetere Open-Source-Veröffentlichung wird ein Clean Snapshot ohne private Historie verwendet.
 
 ## Open-Source-Clean-Snapshot
 
-Das bestehende private Entwicklungsrepo wird nicht direkt öffentlich geschaltet. Für eine spätere Veröffentlichung kann ein geprüfter Snapshot ohne Git-Historie erzeugt werden:
+Das Repository ist bereits öffentlich; die **alte Git-Historie** ist der offene Punkt. Für einen history-freien Public-Neustart kann ein geprüfter Snapshot ohne Git-Historie erzeugt werden (siehe Backlog-Aufgabe „Public Snapshot / History-Abnahme"):
 
 ```powershell
 Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\New-OpenSourceSnapshot.ps1"

@@ -1,0 +1,32 @@
+name: Dokumentation
+description: Ergänzung oder Korrektur der Dokumentation.
+title: "[STM-DOC-000] "
+labels: ["type:documentation", "status:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Für Doku-Verbesserungen. Keine personenbezogenen Daten posten.
+  - type: input
+    id: backlog-id
+    attributes:
+      label: Backlog-ID (falls vorhanden)
+      placeholder: "STM-DOC-000"
+  - type: textarea
+    id: what
+    attributes:
+      label: Was soll dokumentiert/korrigiert werden?
+    validations:
+      required: true
+  - type: input
+    id: files
+    attributes:
+      label: Betroffene Dateien
+      placeholder: "CONTRIBUTING.md, docs/onboarding/…"
+  - type: input
+    id: branch
+    attributes:
+      label: Geplanter Branchname
+      placeholder: "docs/STM-DOC-000-kurz-name"
+    validations:
+      required: true

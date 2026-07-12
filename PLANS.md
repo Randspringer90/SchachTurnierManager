@@ -1,3 +1,9 @@
+> **Hinweis (2026-07-12):** `PLANS.md` ist ab jetzt **historische Planung**. Die einzige
+> **kanonische Quelle der aktiven Arbeit** ist [`docs/planning/BACKLOG.md`](docs/planning/BACKLOG.md).
+> Neue Aufgaben, Status und Zuständigkeiten werden dort gepflegt, nicht mehr hier.
+
+---
+
 # Aktueller Zusatz 0.54.1
 
 - Stabilisierung nach RUN-54: Runtime-Logging-Pfade, Public-/Secret-Gates, synthetische externe Lookup-Fixtures und dauerhafte Gate-Reports wurden nachgezogen.

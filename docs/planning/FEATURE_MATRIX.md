@@ -1,0 +1,25 @@
+# Feature-Matrix – SchachTurnierManager
+
+Stand: 2026-07-12 (development). Reifegrad je Fachbereich. Details/Aufgaben in
+[`BACKLOG.md`](BACKLOG.md).
+
+| Bereich | Stand | Reife | Offene Backlog-IDs |
+|---------|-------|-------|--------------------|
+| Round Robin / Jeder gegen Jeden | vorhanden | stabil | – |
+| Schweizer System (Basis) | vorhanden, global-optimales Matching ≤ 20 | teilweise | STM-FACH-002, STM-FACH-003 |
+| FIDE-Dutch (vollständig) | Grundlage | offen | STM-FACH-002 |
+| Große Felder > 20 | Basis | offen | STM-FACH-003 |
+| Kampflose Partien / Freilos | teilweise | in Arbeit (Ready) | STM-FACH-001 |
+| Tie-Breaks (Buchholz/Cut/SB/Performance) | vorhanden | absichern | STM-TB-001 |
+| Import/Export (Excel/TRF) | Formatter-Basis | offen | STM-IE-001, STM-IE-002 |
+| Swiss-Manager / Chess-Results | – | offen | STM-IE-002 |
+| Spielerdaten (DSB/DeWIS, FIDE-Suche) | teilweise (externer Lookup) | offen | STM-IE-003, STM-IE-004 |
+| i18n | Fundament (18 Sprachen) | vervollständigen | STM-UX-001 |
+| PWA / Offline / Sync | Basis | offen | STM-UX-002 |
+| Backup/Restore | vorhanden | UX offen | STM-UX-003 |
+| Lokale KI-Hilfe / BYOK | vorhanden (lokal) | erweitern | STM-UX-004, STM-INT-001 |
+| Installation / Setup-EXE | Kollegenpaket, Klick-Install | härten | STM-REL-001, STM-REL-002, STM-REL-003 |
+| Security / Public-Reife | Gates vorhanden | härten | STM-SEC-001..004 |
+| KI-Agenten / Skills / Wissen | strukturiert | konsolidieren | STM-AI-001..004 |
+| Performance / Last | – | offen | STM-INFRA-002 |
+| Release Candidate v1.0.0 | – | blockiert | STM-REL-004 |

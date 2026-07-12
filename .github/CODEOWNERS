@@ -1,0 +1,37 @@
+# CODEOWNERS – SchachTurnierManager
+# Der Owner ist verantwortlicher Reviewer (Owner). Für die unten gelisteten,
+# sicherheitskritischen Pfade ist seine Freigabe zwingend (Branch-Ruleset:
+# "require review from Code Owners").
+#
+# Syntax: <pfad-glob>  <owner>
+
+# Standard: alles gehört dem Owner.
+*                               @Randspringer90
+
+# --- Besonders geschützte, sicherheitskritische Pfade ---
+# Instruktionsquellen für KI-Agenten und Projektregeln
+/AGENTS.md                      @Randspringer90
+/.claude/**                     @Randspringer90
+/.agents/**                     @Randspringer90
+/agents/**                      @Randspringer90
+
+# Konfiguration, Modellrouting, Build-/Paket-Steuerung
+/config/**                      @Randspringer90
+/Directory.Packages.props       @Randspringer90
+/Directory.Build.props          @Randspringer90
+/global.json                    @Randspringer90
+
+# CI/CD, Templates, Rulesets
+/.github/**                     @Randspringer90
+
+# Sicherheits- und Architektur-Dokumentation
+/docs/security/**               @Randspringer90
+/docs/architecture/**           @Randspringer90
+
+# Sicherheits-/Git-/Commit-relevante Skripte
+/scripts/*Security*             @Randspringer90
+/scripts/*Git*                  @Randspringer90
+/scripts/*Commit*               @Randspringer90
+
+# Installer / Paketierung
+/installer/**                   @Randspringer90
