@@ -19,7 +19,10 @@ param(
     [string]$ApiBaseUrl = 'http://localhost:5088',
     [switch]$DryRun,
     [switch]$CreateTournament,
-    [switch]$OverwriteExisting
+    [switch]$OverwriteExisting,
+    [switch]$AllowWarnings,
+    [switch]$SkipApiPreview,
+    [switch]$ShowCsvPreview
 )
 
 Set-StrictMode -Version Latest
@@ -36,7 +39,7 @@ function Get-RepoRoot {
 }
 
 function Resolve-Preset {
-    param([string]$PathValue, [string]$IdValue, [string]$Root)
+    param([string]$PathValue, [string]$IdValue, [string]$Root, [bool]$AutoSelect)
 
     if (-not [string]::IsNullOrWhiteSpace($PathValue)) {
         $candidate = $PathValue
@@ -50,6 +53,22 @@ function Resolve-Preset {
     }
 
     if ([string]::IsNullOrWhiteSpace($IdValue)) {
+        if ($AutoSelect) {
+            $localInput = Join-Path $Root 'local-input'
+            $matches = @()
+            if (Test-Path -LiteralPath $localInput -PathType Container) {
+                $matches = @(Get-ChildItem -LiteralPath $localInput -Filter '*.local.json' -Recurse -File | Sort-Object FullName)
+            }
+            if ($matches.Count -eq 1) {
+                return $matches[0].FullName
+            }
+            if ($matches.Count -eq 0) {
+                throw "AutoSelectSinglePreset: keine *.local.json-Datei unter $localInput gefunden."
+            }
+            $list = ($matches | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+            throw "AutoSelectSinglePreset: mehrere Preset-Dateien gefunden. Bitte -PresetPath verwenden:$([Environment]::NewLine)$list"
+        }
+
         throw 'Bitte -PresetPath oder -PresetId angeben.'
     }
 
@@ -104,6 +123,25 @@ function Get-IntOrEmpty {
     }
 }
 
+function Get-IntSelection {
+    param([object]$Value, [int]$DefaultValue, [string]$Label, [System.Collections.Generic.List[string]]$Warnings)
+    $text = Get-Text $Value
+    if ($text.Length -eq 0) { return $DefaultValue }
+    try {
+        return [int]$text
+    } catch {
+        $Warnings.Add("$Label konnte nicht als Zahl gelesen werden; Fallback $DefaultValue wird genutzt.")
+        return $DefaultValue
+    }
+}
+
+function Test-PathUnderDirectory {
+    param([string]$PathValue, [string]$DirectoryValue)
+    $pathFull = [System.IO.Path]::GetFullPath($PathValue).TrimEnd('\', '/')
+    $dirFull = [System.IO.Path]::GetFullPath($DirectoryValue).TrimEnd('\', '/')
+    return $pathFull.StartsWith($dirFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Get-TwzNumber {
     param([object]$Participant)
     foreach ($field in @('twzManual', 'dwz', 'eloStandard')) {
@@ -114,6 +152,24 @@ function Get-TwzNumber {
         }
     }
     return 0
+}
+
+function Get-TwzSelection {
+    param([object]$Participant)
+    foreach ($item in @(
+        @{ Field = 'twzManual'; Source = 'twzManual' },
+        @{ Field = 'dwz'; Source = 'dwz' },
+        @{ Field = 'eloStandard'; Source = 'eloStandard' }
+    )) {
+        $text = Get-IntOrEmpty (Get-Value $Participant $item.Field)
+        if ($text.Length -gt 0) {
+            $value = [int]$text
+            if ($value -gt 0) {
+                return [pscustomobject]@{ Value = $value; Source = $item.Source }
+            }
+        }
+    }
+    return [pscustomobject]@{ Value = 0; Source = 'missing' }
 }
 
 function Escape-CsvField {
@@ -148,17 +204,34 @@ function Convert-ToCsvContent {
 
     $seen = @{}
     $rows = @()
+    $warnings = New-Object System.Collections.Generic.List[string]
+    $skippedDuplicates = New-Object System.Collections.Generic.List[object]
+    $ratingFallback = [ordered]@{
+        twzManual = 0
+        dwz = 0
+        eloStandard = 0
+        missing = 0
+    }
     $index = 0
     foreach ($participant in $Participants) {
         $name = Get-FirstText (Get-Value $participant 'name') (Get-Value $participant 'fullName')
         if ($name.Length -eq 0) { throw 'Teilnehmer ohne name/fullName gefunden.' }
         $key = $name.Trim().ToLowerInvariant()
         if ($seen.ContainsKey($key)) {
-            Write-Warning "Doppelten Teilnehmer uebersprungen: $name"
+            $warnings.Add("Doppelter Teilnehmername uebersprungen: $name")
+            $skippedDuplicates.Add([pscustomobject]@{
+                name = $name
+                reason = 'duplicate-name'
+            })
             continue
         }
         $seen[$key] = $true
-        $twz = Get-TwzNumber $participant
+        $twzSelection = Get-TwzSelection $participant
+        $ratingFallback[$twzSelection.Source]++
+        if ($twzSelection.Source -eq 'missing') {
+            $warnings.Add("Teilnehmer ohne TWZ/DWZ/Elo importiert: $name")
+        }
+        $twz = [int]$twzSelection.Value
         $rows += [pscustomobject]@{
             Sort = ('{0:D6}-{1:D6}' -f (999999 - $twz), $index)
             Participant = $participant
@@ -189,7 +262,13 @@ function Convert-ToCsvContent {
         $lines += (($fields | ForEach-Object { Escape-CsvField $_ }) -join ';')
     }
 
-    return ($lines -join [Environment]::NewLine)
+    return [pscustomobject]@{
+        Content = ($lines -join [Environment]::NewLine)
+        RowCount = $rows.Count
+        SkippedDuplicates = $skippedDuplicates.ToArray()
+        RatingFallback = $ratingFallback
+        Warnings = $warnings.ToArray()
+    }
 }
 
 function Invoke-Json {
@@ -214,40 +293,135 @@ function Invoke-Json {
     }
 }
 
+function Get-PreviewSummary {
+    param([object]$Preview)
+    if ($null -eq $Preview) { return $null }
+    return [ordered]@{
+        totalRows = [int](Get-Value $Preview 'totalRows')
+        importableRows = [int](Get-Value $Preview 'importableRows')
+        warningRows = [int](Get-Value $Preview 'warningRows')
+        blockingRows = [int](Get-Value $Preview 'blockingRows')
+        likelyDuplicateRows = [int](Get-Value $Preview 'likelyDuplicateRows')
+        hasBlockingIssues = [bool](Get-Value $Preview 'hasBlockingIssues')
+        globalWarnings = @((Get-Value $Preview 'globalWarnings'))
+    }
+}
+
+function Write-ImportReport {
+    param([object]$Report, [string]$Path)
+    $Report | ConvertTo-Json -Depth 80 | Set-Content -LiteralPath $Path -Encoding UTF8
+}
+
+function Stop-WithReport {
+    param([string]$Message, [object]$Report, [string]$ReportPath)
+    Write-ImportReport -Report $Report -Path $ReportPath
+    throw "$Message Report: $ReportPath"
+}
+
 $repoRoot = Get-RepoRoot
-$presetFile = Resolve-Preset -PathValue $PresetPath -IdValue $PresetId -Root $repoRoot
-$preset = Get-Content -LiteralPath $presetFile -Raw -Encoding UTF8 | ConvertFrom-Json
+$presetFile = Resolve-Preset -PathValue $PresetPath -IdValue $PresetId -Root $repoRoot -AutoSelect ([bool]$AutoSelectSinglePreset)
+$localInputRoot = Join-Path $repoRoot 'local-input'
+$warnings = New-Object System.Collections.Generic.List[string]
+$blockingIssues = New-Object System.Collections.Generic.List[string]
+if (-not (Test-PathUnderDirectory -PathValue $presetFile -DirectoryValue $localInputRoot)) {
+    $warnings.Add("Preset liegt nicht unter local-input/. Echte Teilnehmerdaten sollen dort lokal/gitignored bleiben.")
+}
+
+try {
+    $preset = Get-Content -LiteralPath $presetFile -Raw -Encoding UTF8 | ConvertFrom-Json
+} catch {
+    throw "Preset ist kein gueltiges JSON: $presetFile ($($_.Exception.Message))"
+}
+
 $participants = @(Get-Value $preset 'participants')
-if ($participants.Count -eq 0) { throw "Preset enthaelt keine participants: $presetFile" }
+if ($participants.Count -eq 0) { $blockingIssues.Add("Preset enthaelt keine participants: $presetFile") }
 
 $tournament = Get-Value $preset 'tournament'
 $tournamentName = Get-FirstText (Get-Value $tournament 'name') 'Importiertes Turnier'
-$roundText = Get-IntOrEmpty (Get-Value $tournament 'rounds')
-$rounds = 5
-if ($roundText.Length -gt 0) { $rounds = [int]$roundText }
+$rounds = Get-IntSelection -Value (Get-Value $tournament 'rounds') -DefaultValue 5 -Label 'tournament.rounds' -Warnings $warnings
+if ($rounds -lt 1 -or $rounds -gt 15) {
+    $blockingIssues.Add("tournament.rounds muss zwischen 1 und 15 liegen; gefunden: $rounds")
+}
+if ($participants.Count -gt 0 -and $rounds -gt ($participants.Count - 1)) {
+    $warnings.Add("Geplante Runden ($rounds) sind hoeher als n-1 bei $($participants.Count) Teilnehmern. Das kann bei Swiss ok sein, sollte aber bewusst sein.")
+}
 
-$csvContent = Convert-ToCsvContent -Participants $participants
-$lineCount = ($csvContent -split "`r?`n").Count - 1
+try {
+    $csvResult = Convert-ToCsvContent -Participants $participants
+} catch {
+    $blockingIssues.Add($_.Exception.Message)
+    $csvResult = [pscustomobject]@{
+        Content = ''
+        RowCount = 0
+        SkippedDuplicates = @()
+        RatingFallback = [ordered]@{ twzManual = 0; dwz = 0; eloStandard = 0; missing = 0 }
+        Warnings = @()
+    }
+}
+
+foreach ($warning in @($csvResult.Warnings)) { $warnings.Add($warning) }
+$csvContent = [string]$csvResult.Content
+$lineCount = [int]$csvResult.RowCount
 
 $reportDir = Join-Path $repoRoot 'output\reports'
 New-Item -ItemType Directory -Force -Path $reportDir | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $csvPath = Join-Path $reportDir "preset-import-$stamp.csv"
 Set-Content -LiteralPath $csvPath -Value $csvContent -Encoding UTF8
+$reportPath = Join-Path $reportDir "preset-import-report-$stamp.json"
+
+$report = [ordered]@{
+    schemaVersion = 1
+    generatedAt = (Get-Date).ToString('o')
+    presetFile = $presetFile
+    presetInsideLocalInput = (Test-PathUnderDirectory -PathValue $presetFile -DirectoryValue $localInputRoot)
+    dryRun = [bool]$DryRun
+    createTournament = [bool]$CreateTournament
+    allowWarnings = [bool]$AllowWarnings
+    skipApiPreview = [bool]$SkipApiPreview
+    apiBaseUrl = $ApiBaseUrl
+    tournamentName = $tournamentName
+    plannedRounds = $rounds
+    rawParticipantCount = $participants.Count
+    csvRowCount = $lineCount
+    csvPath = $csvPath
+    skippedDuplicateCount = @($csvResult.SkippedDuplicates).Count
+    skippedDuplicates = @($csvResult.SkippedDuplicates)
+    ratingFallback = $csvResult.RatingFallback
+    warnings = @($warnings)
+    blockingIssues = @($blockingIssues)
+    apiPreview = $null
+    import = $null
+}
 
 Write-Host "Preset: $presetFile"
 Write-Host "Turnier: $tournamentName"
-Write-Host "Teilnehmer: $lineCount"
+Write-Host "Teilnehmer: $lineCount von $($participants.Count) Zeile(n) importierbar"
 Write-Host "CSV: $csvPath"
+Write-Host "Report: $reportPath"
+
+if ($blockingIssues.Count -gt 0) {
+    Stop-WithReport -Message "Preset blockiert; bitte JSON/Teilnehmerdaten korrigieren." -Report $report -ReportPath $reportPath
+}
 
 if ($DryRun) {
     Write-Host 'DryRun: Keine API-Aenderung ausgefuehrt.'
-    Get-Content -LiteralPath $csvPath -Encoding UTF8 | Select-Object -First 20 | ForEach-Object { Write-Host $_ }
+    Write-ImportReport -Report $report -Path $reportPath
+    if ($warnings.Count -gt 0) {
+        Write-Warning "DryRun mit $($warnings.Count) Warnung(en). Details im Report."
+    }
+    if ($ShowCsvPreview) {
+        Get-Content -LiteralPath $csvPath -Encoding UTF8 | Select-Object -First 20 | ForEach-Object { Write-Host $_ }
+    }
     exit 0
 }
 
 if (-not $CreateTournament) {
-    throw 'Keine Aenderung ausgefuehrt. Fuer Import bitte -CreateTournament angeben oder zuerst -DryRun verwenden.'
+    Stop-WithReport -Message 'Keine Aenderung ausgefuehrt. Fuer Import bitte -CreateTournament angeben oder zuerst -DryRun verwenden.' -Report $report -ReportPath $reportPath
+}
+
+if ($warnings.Count -gt 0 -and -not $AllowWarnings) {
+    Stop-WithReport -Message "Preset hat $($warnings.Count) Warnung(en). Erst Report pruefen und bei bewusster Freigabe -AllowWarnings setzen." -Report $report -ReportPath $reportPath
 }
 
 $base = $ApiBaseUrl.TrimEnd('/')
@@ -274,6 +448,19 @@ if ([string]::IsNullOrWhiteSpace($tournamentId)) {
 }
 Write-Host "Turnier erstellt: $tournamentId"
 
+if (-not $SkipApiPreview) {
+    $previewBody = @{ content = $csvContent; replaceExisting = [bool]$OverwriteExisting }
+    $preview = Invoke-Json -Method 'POST' -Uri ($base + "/api/tournaments/$tournamentId/players/preview-import.csv") -Body $previewBody
+    $report.apiPreview = Get-PreviewSummary -Preview $preview
+    Write-ImportReport -Report $report -Path $reportPath
+    if ($preview.hasBlockingIssues) {
+        Stop-WithReport -Message 'API-Importvorschau blockiert den Teilnehmerimport. Das angelegte leere Turnier bitte im Dashboard pruefen/loeschen.' -Report $report -ReportPath $reportPath
+    }
+    if ([int]$preview.warningRows -gt 0 -and -not $AllowWarnings) {
+        Stop-WithReport -Message "API-Importvorschau meldet $($preview.warningRows) Warnung(en). Mit -AllowWarnings nach bewusster Pruefung erneut ausfuehren." -Report $report -ReportPath $reportPath
+    }
+}
+
 $importBody = @{ content = $csvContent; replaceExisting = [bool]$OverwriteExisting }
 $imported = Invoke-Json -Method 'POST' -Uri ($base + "/api/tournaments/$tournamentId/players/import.csv") -Body $importBody
 
@@ -287,6 +474,13 @@ $result = @{
     dashboard = 'http://localhost:5173'
 }
 $result | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $resultPath -Encoding UTF8
+$report.import = [ordered]@{
+    tournamentId = $tournamentId
+    importedCount = @($imported).Count
+    resultPath = $resultPath
+    dashboard = 'http://localhost:5173'
+}
+Write-ImportReport -Report $report -Path $reportPath
 
 Write-Host "Import erfolgreich. Teilnehmer importiert: $(@($imported).Count)"
 Write-Host "Report: $resultPath"

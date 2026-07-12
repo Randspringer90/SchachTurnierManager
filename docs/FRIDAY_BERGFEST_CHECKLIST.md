@@ -13,7 +13,10 @@ Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 - [ ] Papier-Fallback bereit: leeres Paarungsblatt und Ergebnisliste.
 - [ ] Druckweg geprüft: HTML-Rundenblatt kann geöffnet/gedruckt werden.
 - [ ] Operator-Smoke grün: `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
+- [ ] Turnierpaket geprüft: Dashboard → Druck / Backup → Paket HTML drucken / Paket JSON.
 - [ ] QR-Vorabtest am Handy gemacht (Laptop-IP eingetragen, gleiches WLAN) — siehe Runbook §9.
+- [ ] Zuschauer-/Beamer-Ansicht geöffnet und geprüft: keine Operator-Buttons, Paarungen/Tabelle lesbar.
+- [ ] Reiter „Hilfe / Assistent" geöffnet; `KI-Hilfe nicht konfiguriert` ist als Default ok.
 
 ## Turnier anlegen
 
@@ -21,7 +24,8 @@ Kurzkarte: `docs/FRIDAY_BERGFEST_OPERATOR_CARD.md`.
 - [ ] Format: Swiss / Schweizer System.
 - [ ] Geplante Runden: 5.
 - [ ] Format und Rundenzahl gegen Ausschreibung geprüft; keine 6. Runde nach 5 geplanten Runden.
-- [ ] Teilnehmer erfasst oder CSV importiert.
+- [ ] Bei Preset-Import: Dry-run ausgefuehrt und Report unter `output\reports\` geprueft.
+- [ ] Teilnehmer erfasst, CSV importiert oder Preset-Import bewusst mit/ohne `-AllowWarnings` ausgefuehrt.
 - [ ] Teilnehmerzahl notiert: ______.
 - [ ] Turnier-Id notiert: ______________________________.
 
@@ -83,6 +87,12 @@ Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
   ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 ```
 
+Preset-Dry-run:
+```powershell
+Set-Location "D:\Schach\SchachTurnierManager"
+pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun
+```
+
 Backup:
 ```powershell
 $tournamentId = Read-Host "Turnier-Id"
@@ -98,6 +108,10 @@ Invoke-RestMethod "http://localhost:5088/api/tournaments/$tournamentId/export/js
 - Dashboard: http://localhost:5173
 - Tabelle CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/standings/export.csv`
 - Paarungen CSV: `http://localhost:5088/api/tournaments/<Turnier-Id>/pairings/export.csv`
+- Turnierpaket HTML: `http://localhost:5088/api/tournaments/<Turnier-Id>/package/print/html`
+- Turnierpaket JSON: `http://localhost:5088/api/tournaments/<Turnier-Id>/package/export.json`
+- Zuschaueransicht: `http://<Laptop-IP>:5173/?view=public&tournament=<Turnier-Id>&mode=spectator`
+- Beamer-Modus: `http://<Laptop-IP>:5173/?view=beamer&tournament=<Turnier-Id>&mode=beamer`
 - Turnierdruck: `http://localhost:5088/api/tournaments/<Turnier-Id>/print/html`
 - Rundenblatt: `http://localhost:5088/api/tournaments/<Turnier-Id>/rounds/<Runde>/print/html`
 - Audit JSONL: `http://localhost:5088/api/tournaments/<Turnier-Id>/audit-journal/export.jsonl`

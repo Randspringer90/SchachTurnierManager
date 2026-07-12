@@ -14,6 +14,19 @@ public sealed class BergfestDemoScriptContractTests
         Assert.Contains("[int]$PlayerCount", script);
     }
 
+    [Fact]
+    public void PresetImportScript_UsesPreviewGateAndStructuredReport()
+    {
+        var scriptPath = FindRepositoryFile("scripts", "Import-TournamentPreset.ps1");
+        var script = File.ReadAllText(scriptPath);
+
+        Assert.Contains("[switch]$AllowWarnings", script);
+        Assert.Contains("[switch]$ShowCsvPreview", script);
+        Assert.Contains("players/preview-import.csv", script);
+        Assert.Contains("preset-import-report-", script);
+        Assert.Contains("Stop-WithReport", script);
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

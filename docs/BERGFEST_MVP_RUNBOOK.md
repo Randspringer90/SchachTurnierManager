@@ -38,7 +38,9 @@ Hintergrund/Architektur: `docs/BERGFEST_MVP_PLAN.md`.
    ```
    Erwartung: 5 Runden werden ausgelost und gefüllt, am Ende erscheint eine Tabelle.
 8. Einmal Tabelle und Rundenblatt als CSV/HTML exportieren und drucken.
-9. Backup einmal testen (Schritt 6) und QR-Vorabtest am Handy durchführen (Schritt 9 unten).
+9. Im Dashboard das **Turnierpaket HTML** und **Paket JSON** öffnen: Druck / Backup →
+   Paket HTML drucken / Paket JSON.
+10. Backup einmal testen (Schritt 6), QR-Vorabtest am Handy durchführen und Beamer-/Zuschaueransicht öffnen (Schritt 9 unten).
 
 Wenn der Smoke grün ist und die Generalprobe durchläuft, ist Freitag startklar.
 
@@ -112,6 +114,18 @@ Im Dashboard ein neues Turnier anlegen:
 - **Manuell**: pro Spieler Name (+ optional Verein/TWZ) im Dashboard hinzufügen.
 - **CSV-Import**: vorbereitete CSV im Dashboard importieren
   (Vorschau über `preview-import.csv`, dann Import).
+- **Lokales Bergfest-Preset**: zuerst Dry-run, dann Report pruefen:
+  ```powershell
+  Set-Location "D:\Schach\SchachTurnierManager"
+  pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun
+  ```
+  Erwartung: Report unter `output\reports\preset-import-report-*.json`, keine API-Aenderung.
+  Echter Import nur nach Report-Pruefung und laufendem Backend:
+  ```powershell
+  pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -ApiBaseUrl "http://localhost:5088" -CreateTournament
+  ```
+  Wenn Warnungen bewusst akzeptiert werden sollen, `-AllowWarnings` ergaenzen und im
+  Operator-Notizzettel kurz vermerken.
 - Ungerade Teilnehmerzahl ist ok — die App vergibt automatisch genau **ein Bye** pro Runde.
 
 ## 5. Runden durchführen (5×)
@@ -181,6 +195,8 @@ Invoke-RestMethod "http://localhost:5088/api/tournaments/$tournamentId/export/js
 Wiederherstellen (falls nötig): den JSON-Inhalt an
 `POST http://localhost:5088/api/tournaments/import` mit Body
 `{"tournament": <json>, "overwriteExisting": true}` senden.
+Der Importpfad lehnt offensichtlich defekte Snapshots ab, z. B. doppelte Spieler-IDs,
+doppelte FIDE-/DSB-IDs, ungueltige Runden/Bretter oder Paarungen gegen unbekannte Spieler.
 
 > Tipp: Ordner `D:\Schach\Backups\` vorher anlegen.
 
@@ -205,6 +221,8 @@ Restore-Regel:
 
 Im Dashboard gibt es Export-/Druckbuttons. Direkte Endpunkte (im Browser öffnen / drucken):
 
+- **Turnierpaket HTML**: `http://localhost:5088/api/tournaments/{id}/package/print/html`
+- **Turnierpaket JSON**: `http://localhost:5088/api/tournaments/{id}/package/export.json`
 - **Tabelle CSV**: `http://localhost:5088/api/tournaments/{id}/standings/export.csv`
 - **Paarungen CSV (alle Runden)**: `http://localhost:5088/api/tournaments/{id}/pairings/export.csv`
 - **Paarungen CSV (eine Runde)**: `.../pairings/export.csv?roundNumber=3`
@@ -214,6 +232,31 @@ Im Dashboard gibt es Export-/Druckbuttons. Direkte Endpunkte (im Browser öffnen
 
 HTML-Seiten enthalten ein Druck-Layout (Strg+P → drucken oder als PDF speichern).
 CSV öffnet in Excel/LibreOffice (Trennzeichen **Semikolon**, UTF-8).
+
+Das Turnierpaket ist der empfohlene Operator-Satz vor/nach einer Runde: Teilnehmerliste,
+aktuelle Runde/Paarungen, Ergebnisbogen, Tabelle/Standings sowie Backup-/Audit-Hinweise.
+Es ersetzt **nicht** das JSON-Backup aus Schritt 6.
+
+## 7a. Zuschauer- und Beamer-Ansicht
+
+Im Dashboard unter **Übersicht → QR / Handy / Beamer**:
+
+1. Laptop-IP im WLAN/Hotspot eintragen (`ipconfig`, IPv4-Adresse; nicht `localhost`).
+2. **Zuschauer öffnen** oder **Beamer öffnen**.
+3. Anzeige prüfen: aktuelle Paarungen, offene Bretter und Tabelle sichtbar; keine
+   Operator-Buttons/Erfassung auf dem Beamer.
+4. QR nur verwenden, wenn eine private lokale Adresse angezeigt wird (`10.x`, `172.16-31.x`,
+   `192.168.x` oder `.local`). Kein Tunnel, keine Cloud, keine öffentliche URL.
+
+Direktform:
+
+```text
+http://<Laptop-IP>:5173/?view=public&tournament=<Turnier-Id>&mode=spectator
+http://<Laptop-IP>:5173/?view=beamer&tournament=<Turnier-Id>&mode=beamer
+```
+
+Die Anzeige ist read-only und aktualisiert sich regelmäßig. Für finale Veröffentlichung weiter
+Paket-HTML/CSV/JSON exportieren.
 
 ## 8. Turnierende
 
@@ -240,6 +283,20 @@ Handy prüfen — das ist die bekannte offene Verifikationslücke aus dem Postmo
 Die Datenschicht hinter dem QR-Flow (Chess960-Startstellungen je Brett) wird vom
 Operator-Smoke (Startcheck Schritt 6) automatisch verifiziert; nur die Handy-Anzeige selbst muss manuell
 geprüft werden.
+
+Zusätzlich zeigt die Dashboard-Übersicht eine lokale Operator-Preview-URL mit QR. Das ist nur
+ein lokaler Handy-/Hotspot-Vorabtest für dieselbe App. Ab 0.44.0 gibt es zusätzlich getrennte
+read-only Zuschauer-/Beamer-Links. Die Operator-Erfassung per QR nur auf vertrauenswürdigen
+lokalen Geräten öffnen.
+
+## 9a. Hilfe / Assistent
+
+Der Reiter **Hilfe / Assistent** ist lokale Turnierleiter-Hilfe:
+
+- Sucht Runbook-Themen zu Start, Backup/Restore, Audit, Import, QR/Handy, Beamer, Export,
+  Ergebnis-Korrektur und Zusammenarbeit.
+- Default: `KI-Hilfe nicht konfiguriert`; lokale Themen bleiben trotzdem nutzbar.
+- Keine echten Provider-Keys, keine Cloud-Aufrufe in Tests, keine privaten Rohdaten.
 
 ## 10. Hänger-/Timeout-Verhalten (so hängt nichts)
 

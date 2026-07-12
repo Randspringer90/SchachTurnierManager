@@ -96,17 +96,15 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public TournamentState SaveImportedTournament(TournamentState tournament, bool overwriteExisting)
     {
-        if (string.IsNullOrWhiteSpace(tournament.Name))
-        {
-            throw new ArgumentException("Importiertes Turnier hat keinen Namen.", nameof(tournament));
-        }
+        ValidateImportedTournament(tournament);
+        tournament.Name = tournament.Name.Trim();
+        tournament.Settings = NormalizeSettings(tournament.Settings ?? new TournamentSettings());
 
         if (!overwriteExisting && _store.Get(tournament.Id) is not null)
         {
             throw new InvalidOperationException($"Turnier {tournament.Id} existiert bereits.");
         }
 
-        EnsureUniquePlayerNames(tournament);
         AddAuditEntry(tournament, AuditJournalAction.TournamentImported, AuditJournalSeverity.Warning, "Turnier importiert.", $"OverwriteExisting: {overwriteExisting}");
         _store.Save(tournament);
         return tournament;
@@ -784,6 +782,24 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             _roundDiagnostics.Calculate(tournament));
     }
 
+    public ExportDocument ExportPrintableTournamentPackageHtml(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportPrintableTournamentPackageHtml(
+            tournament,
+            _standings.Calculate(tournament),
+            _roundDiagnostics.Calculate(tournament));
+    }
+
+    public ExportDocument ExportTournamentPackageJson(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportTournamentPackageJson(
+            tournament,
+            _standings.Calculate(tournament),
+            _roundDiagnostics.Calculate(tournament));
+    }
+
     public ExportDocument ExportPrintableRoundHtml(Guid tournamentId, int roundNumber)
     {
         var tournament = RequireTournament(tournamentId);
@@ -938,7 +954,7 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     private static TournamentSettings NormalizeSettings(TournamentSettings settings)
     {
-        var tiebreaks = settings.Tiebreaks
+        var tiebreaks = (settings.Tiebreaks ?? Array.Empty<TiebreakType>())
             .Where(tiebreak => Enum.IsDefined(tiebreak))
             .Distinct()
             .ToList();
@@ -960,6 +976,205 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             SeniorBirthYearOrEarlier = settings.SeniorBirthYearOrEarlier is <= 0 ? null : settings.SeniorBirthYearOrEarlier,
             Tiebreaks = tiebreaks
         };
+    }
+
+    private static void ValidateImportedTournament(TournamentState tournament)
+    {
+        if (tournament is null)
+        {
+            throw new ArgumentNullException(nameof(tournament), "Importiertes Turnier fehlt.");
+        }
+
+        if (tournament.Id == Guid.Empty)
+        {
+            throw new ArgumentException("Importiertes Turnier hat keine gültige ID.", nameof(tournament));
+        }
+
+        if (string.IsNullOrWhiteSpace(tournament.Name))
+        {
+            throw new ArgumentException("Importiertes Turnier hat keinen Namen.", nameof(tournament));
+        }
+
+        if (tournament.Settings is null)
+        {
+            throw new ArgumentException("Importiertes Turnier hat keine Einstellungen.", nameof(tournament));
+        }
+
+        if (tournament.Players is null)
+        {
+            throw new ArgumentException("Importiertes Turnier hat keine Teilnehmerliste.", nameof(tournament));
+        }
+
+        if (tournament.Rounds is null)
+        {
+            throw new ArgumentException("Importiertes Turnier hat keine Rundenliste.", nameof(tournament));
+        }
+
+        if (tournament.AuditJournal is null)
+        {
+            throw new ArgumentException("Importiertes Turnier hat kein Audit-Journal.", nameof(tournament));
+        }
+
+        ValidateImportedPlayers(tournament.Players);
+        ValidateImportedRounds(tournament);
+    }
+
+    private static void ValidateImportedPlayers(IReadOnlyList<Player> players)
+    {
+        var ids = new HashSet<Guid>();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var fideIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var nationalIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        for (var index = 0; index < players.Count; index++)
+        {
+            var player = players[index];
+            if (player is null)
+            {
+                throw new InvalidOperationException($"Importierter Teilnehmer in Zeile {index + 1} ist leer.");
+            }
+
+            if (player.Id == Guid.Empty)
+            {
+                throw new InvalidOperationException($"Importierter Teilnehmer '{player.Name}' hat keine gültige ID.");
+            }
+
+            if (!ids.Add(player.Id))
+            {
+                throw new InvalidOperationException($"Teilnehmer-ID {player.Id} kommt mehrfach vor.");
+            }
+
+            if (string.IsNullOrWhiteSpace(player.Name))
+            {
+                throw new InvalidOperationException($"Importierter Teilnehmer {player.Id} hat keinen Namen.");
+            }
+
+            var name = player.Name.Trim();
+            if (!names.Add(name))
+            {
+                throw new InvalidOperationException($"Der Spielername '{name}' kommt mehrfach vor.");
+            }
+
+            AddUniqueImportedExternalId(fideIds, "FIDE-ID", player.FideId, name);
+            AddUniqueImportedExternalId(nationalIds, "DSB-ID", player.NationalId, name);
+        }
+    }
+
+    private static void AddUniqueImportedExternalId(
+        IDictionary<string, string> seen,
+        string label,
+        string? value,
+        string playerName)
+    {
+        var normalized = NormalizeExternalId(value);
+        if (normalized is null)
+        {
+            return;
+        }
+
+        if (seen.TryGetValue(normalized, out var previousPlayer))
+        {
+            throw new InvalidOperationException($"{label} {value} kommt mehrfach vor ({previousPlayer}, {playerName}).");
+        }
+
+        seen[normalized] = playerName;
+    }
+
+    private static void ValidateImportedRounds(TournamentState tournament)
+    {
+        var playerIds = tournament.Players.Select(player => player.Id).ToHashSet();
+        var plannedRounds = Math.Max(1, tournament.Settings.PlannedRounds);
+        if (tournament.Rounds.Count > plannedRounds)
+        {
+            throw new InvalidOperationException($"Importiertes Turnier enthält {tournament.Rounds.Count} Runden, geplant sind aber nur {plannedRounds}.");
+        }
+
+        var orderedRounds = tournament.Rounds.OrderBy(round => round.RoundNumber).ToArray();
+        for (var index = 0; index < orderedRounds.Length; index++)
+        {
+            var round = orderedRounds[index];
+            if (round is null)
+            {
+                throw new InvalidOperationException($"Importierte Runde {index + 1} ist leer.");
+            }
+
+            var expectedRoundNumber = index + 1;
+            if (round.RoundNumber != expectedRoundNumber)
+            {
+                throw new InvalidOperationException($"Importierte Runden müssen fortlaufend bei 1 beginnen. Erwartet: Runde {expectedRoundNumber}, gefunden: Runde {round.RoundNumber}.");
+            }
+
+            if (round.Pairings is null)
+            {
+                throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat keine Paarungsliste.");
+            }
+
+            var boardNumbers = new HashSet<int>();
+            var roundPlayers = new HashSet<Guid>();
+            foreach (var pairing in round.Pairings)
+            {
+                if (pairing is null)
+                {
+                    throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} enthält ein leeres Brett.");
+                }
+
+                if (pairing.BoardNumber <= 0)
+                {
+                    throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} enthält eine ungültige Brettnummer.");
+                }
+
+                if (!boardNumbers.Add(pairing.BoardNumber))
+                {
+                    throw new InvalidOperationException($"Runde {round.RoundNumber} enthält Brett {pairing.BoardNumber} mehrfach.");
+                }
+
+                if (pairing.WhitePlayerId is null || pairing.WhitePlayerId.Value == Guid.Empty)
+                {
+                    throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Weißspieler fehlt.");
+                }
+
+                var whitePlayerId = pairing.WhitePlayerId!.Value;
+                EnsureImportedPairingPlayerExists(playerIds, whitePlayerId, round.RoundNumber, pairing.BoardNumber, "Weiß");
+                AddImportedRoundPlayer(roundPlayers, whitePlayerId, round.RoundNumber, pairing.BoardNumber);
+
+                if (pairing.BlackPlayerId is not null)
+                {
+                    if (pairing.BlackPlayerId.Value == Guid.Empty)
+                    {
+                        throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Schwarzspieler fehlt.");
+                    }
+
+                    if (pairing.BlackPlayerId.Value == whitePlayerId)
+                    {
+                        throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Ein Spieler ist gegen sich selbst gepaart.");
+                    }
+
+                    EnsureImportedPairingPlayerExists(playerIds, pairing.BlackPlayerId.Value, round.RoundNumber, pairing.BoardNumber, "Schwarz");
+                    AddImportedRoundPlayer(roundPlayers, pairing.BlackPlayerId.Value, round.RoundNumber, pairing.BoardNumber);
+                }
+            }
+        }
+    }
+
+    private static void EnsureImportedPairingPlayerExists(
+        ISet<Guid> playerIds,
+        Guid playerId,
+        int roundNumber,
+        int boardNumber,
+        string color)
+    {
+        if (!playerIds.Contains(playerId))
+        {
+            throw new InvalidOperationException($"Runde {roundNumber}, Brett {boardNumber}: {color}spieler {playerId} ist nicht in der Teilnehmerliste.");
+        }
+    }
+
+    private static void AddImportedRoundPlayer(ISet<Guid> roundPlayers, Guid playerId, int roundNumber, int boardNumber)
+    {
+        if (!roundPlayers.Add(playerId))
+        {
+            throw new InvalidOperationException($"Runde {roundNumber}: Spieler {playerId} ist mehrfach gepaart (zuletzt Brett {boardNumber}).");
+        }
     }
 
     private static int RequireRoundIndex(TournamentState tournament, int roundNumber)

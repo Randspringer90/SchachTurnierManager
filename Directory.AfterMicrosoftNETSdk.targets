@@ -1,3 +1,10 @@
 <Project>
   <Target Name="_GenerateRuntimeConfigurationFilesInputCache" />
+
+  <!--
+    Pack-Portable recreates the publish directory before each run. The SDK's incremental
+    publish clean target can fail in restricted local workspaces while writing
+    PublishOutputs.*.txt, so disable only that bookkeeping step after SDK targets load.
+  -->
+  <Target Name="_IncrementalCleanPublishDirectory" Condition="'$(STMDisableIncrementalPublishClean)' == 'true'" />
 </Project>

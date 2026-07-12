@@ -56,6 +56,7 @@ tmp/**
 *.sqlite3
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 *.pfx
@@ -82,6 +83,9 @@ security-audit/.local-backups/
 src/SchachTurnierManager.WebApp/package-lock.json.backup*
 .tmp-*
 # Generated build artifacts
+# Test runner outputs (.trx contain machine/user names; never commit)
+TestResults/
+**/TestResults/
 
 # Local Codex configuration
 .codex/

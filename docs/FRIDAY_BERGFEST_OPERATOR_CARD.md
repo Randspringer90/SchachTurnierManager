@@ -13,7 +13,9 @@ Ein-Seiten-Karte. Details: `docs/BERGFEST_MVP_RUNBOOK.md`.
 - Health muss `status` zeigen: http://localhost:5088/api/health
 - Dashboard: http://localhost:5173
 - Optional vorab (eigenes isoliertes Backend, hängesicher): `pwsh -File .\scripts\Smoke-OperatorWorkflow.ps1` → `0 FEHLER`.
-- QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) — Runbook §9.
+- Turnierpaket einmal öffnen: Dashboard → Druck / Backup → Paket HTML drucken / Paket JSON.
+- QR-Vorabtest am Handy (Laptop-IP, gleiches WLAN) und Beamer-/Zuschaueransicht öffnen —
+  Runbook §7a/§9.
 
 ## Start
 
@@ -45,16 +47,25 @@ Danach Startbefehle erneut ausführen.
 
 - Turnier: `Bergfest Freestyle-Würfelschach 2026`, Swiss, 5 Runden.
 - Vor Runde 1: Format und geplante Runden prüfen. Nach 5 geplanten Runden keine 6. Runde.
-- Teilnehmer manuell oder CSV; Turnier-Id notieren.
+- Teilnehmer manuell, CSV oder Preset. Bei Preset zuerst:
+  `pwsh -File .\scripts\Import-TournamentPreset.ps1 -PresetPath ".\local-input\bergfest-2026\bergfest-2026-starter.local.json" -DryRun`
+  und Report pruefen; Warnungen nur bewusst mit `-AllowWarnings`.
+- Turnier-Id notieren.
 - Pro Runde: Vorschau öffnen, jeden Spieler höchstens einmal prüfen, bei ungerader Zahl genau ein Bye.
 - Rematch/Severity `kritisch`: nicht blind übernehmen. Manuell korrigieren, Notiz setzen.
 - Runde erzeugen, HTML-Rundenblatt drucken/aushängen, Ergebnisse eingeben.
 - Tabelle prüfen, Backup ziehen.
+- Turnierpaket HTML/JSON bei Bedarf aus Dashboard → Druck / Backup erzeugen
+  (enthält Teilnehmerliste, aktuelle Runde, Ergebnisbogen, Tabelle, Backup-/Audit-Hinweise).
 - **Nach jeder Runde Audit sichern:** Audit-Journal-Karte → „Audit-Bundle (JSONL)" oder
   `pwsh -File .\scripts\Export-TournamentAudit.ps1`. Macht jede Auslosung/Korrektur nachvollziehbar.
 - Late Entry: Swiss ab nächster Runde ok; Round-Robin nach Start blockiert.
 - Grenzen: kein vollständiges FIDE-Dutch; >20 Spieler = Greedy-Fallback besonders prüfen.
 - QR/Handy: URL darf nicht `localhost` enthalten; bei Firewall/Netzproblem am Laptop würfeln.
+  Dashboard → Übersicht → QR / Handy / Beamer zeigt zusätzlich read-only Zuschauer-/Beamer-Links.
+- Operator-QR nur bei privater LAN-IP und nur auf vertrauenswürdigen lokalen Geräten öffnen.
+- Hilfe: Reiter „Hilfe / Assistent" nutzen. Default-Meldung `KI-Hilfe nicht konfiguriert`
+  ist korrekt, lokale Hilfethemen bleiben verfügbar.
 
 ## Backup/Fallback
 
