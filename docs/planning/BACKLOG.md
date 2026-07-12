@@ -31,7 +31,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 
 | ID | Titel | Prio | Status | Kategorie | Ziel-Bearb. | Issue | Release |
 |----|-------|------|--------|-----------|-------------|-------|---------|
-| STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | In Progress | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) | v1.0.0 |
+| STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | In Review | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) (PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6)) | v1.0.0 |
 | STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
@@ -134,8 +134,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 Nicht-Ready-Einträge tragen dieselben Felder; Details werden beim Übergang nach `Ready`
 ausgeschrieben. Auszug der wichtigsten:
 
-- **STM-INT-001** – *In Progress* (Issue [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5),
-  Branch `refactor/STM-INT-001-reconcile-v041`). Reconcile des in `development` gemergten v0.41-Stands.
+- **STM-INT-001** – *In Review* (Issue [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5),
+  PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6), Branch `refactor/STM-INT-001-reconcile-v041`). Reconcile des in `development` gemergten v0.41-Stands.
   **Entscheidung:** kanonische lokale KI-Hilfe = Frontend-Wissensbasis (`localKnowledgeBase.json`,
   offline/providerlos); das tote, unreferenzierte Backend-Modul `Application.Ai` (+ isolierter Test)
   wurde entfernt. Export (`TournamentExportFormatter`) und Dashboard/Health sind bereits kanonisch.
