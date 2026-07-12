@@ -1,0 +1,336 @@
+{
+  "schemaVersion": 1,
+  "canonicalPath": "agents/",
+  "generated": "STM-AI-001",
+  "agents": [
+    {
+      "name": "Orchestrator",
+      "canonicalPath": "agents/orchestrator.md",
+      "purpose": "Liest Backlog/Abhaengigkeiten, verteilt Arbeit, dokumentiert Routingentscheidungen.",
+      "skills": [
+        "contributor-workflow",
+        "model-routing"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": false,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "Bash-mutating",
+        "git-push"
+      ]
+    },
+    {
+      "name": "Architecture-Reviewer",
+      "canonicalPath": "agents/architecture-reviewer.md",
+      "purpose": "Prueft Schichtentrennung, erkennt Doppelungen, prueft Projektunabhaengigkeit.",
+      "skills": [
+        "documentation-maintenance"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "git-push"
+      ]
+    },
+    {
+      "name": "Chess-Domain-Agent",
+      "canonicalPath": "agents/chess-domain-agent.md",
+      "purpose": "Arbeitet nur mit dokumentierten Schachregeln; raet bei unklaren Regeln nicht.",
+      "skills": [
+        "documentation-maintenance"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": false,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "Pairing-Agent",
+      "canonicalPath": "agents/pairing-agent.md",
+      "purpose": "Ausschliesslich Pairing/FIDE-Dutch.",
+      "skills": [
+        "pairing-engine",
+        "fide-dutch"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": false,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "Tiebreak-Agent",
+      "canonicalPath": "agents/tiebreak-agent.md",
+      "purpose": "Ausschliesslich Wertungen und Golden-Tests.",
+      "skills": [
+        "tiebreaks"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": false,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "Import-Export-Agent",
+      "canonicalPath": "agents/import-export-agent.md",
+      "purpose": "Deterministische Formate, PII-Minimierung.",
+      "skills": [
+        "imports-exports"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": false,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "UI-Agent",
+      "canonicalPath": "agents/ui-agent.md",
+      "purpose": "WebApp-UI (Assistent/Chat/Hilfe/Dashboard) ohne Schachfachlogik im Frontend.",
+      "skills": [
+        "ui-dashboard"
+      ],
+      "permissionProfile": "low-risk",
+      "riskClass": "low",
+      "canBlock": false,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "QA-Test-Agent",
+      "canonicalPath": "agents/qa-test-agent.md",
+      "purpose": "Tests, Regressionen, Reproduzierbarkeit; schwaecht Tests nicht ab.",
+      "skills": [
+        "documentation-maintenance"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": true,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write",
+        "Bash-tests"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "Security-Agent",
+      "canonicalPath": "agents/security-agent.md",
+      "purpose": "Prueft Sicherheit; darf blockieren; kein Secretzugriff waehrend untrusted-content-Verarbeitung.",
+      "skills": [
+        "repository-security",
+        "prompt-injection-defense",
+        "secret-management",
+        "dependency-security"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "forbiddenScopes": [
+        "secret-read-during-untrusted",
+        "git-push",
+        "history-rewrite"
+      ]
+    },
+    {
+      "name": "Prompt-Injection-Reviewer",
+      "canonicalPath": "agents/prompt-injection-reviewer.md",
+      "purpose": "Prueft Instruktionsquellen, Persistenz, Toolausgaben; darf blockieren.",
+      "skills": [
+        "prompt-injection-defense",
+        "instruction-integrity",
+        "untrusted-content-review"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "git-push",
+        "network"
+      ]
+    },
+    {
+      "name": "Release-Agent",
+      "canonicalPath": "agents/release-agent.md",
+      "purpose": "Release-Vorbereitung; kein Tag/Release ohne Owner-Freigabe.",
+      "skills": [
+        "release-operations",
+        "runtime-logging"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash-tests"
+      ],
+      "forbiddenScopes": [
+        "tag",
+        "release",
+        "git-push-main"
+      ]
+    },
+    {
+      "name": "Knowledge-Curator",
+      "canonicalPath": "agents/knowledge-curator.md",
+      "purpose": "Persistiert nur gepruefte Inhalte; keine PII/untrusted Instruktionen; Quellen+Datum erforderlich.",
+      "skills": [
+        "knowledge-management"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": false,
+      "qualityClass": "standard-low-risk",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "network",
+        "persist-untrusted-as-rule"
+      ]
+    },
+    {
+      "name": "Documentation-Agent",
+      "canonicalPath": "agents/documentation-agent.md",
+      "purpose": "Pflegt Doku konsistent zur kanonischen Wahrheit.",
+      "skills": [
+        "documentation-maintenance"
+      ],
+      "permissionProfile": "low-risk",
+      "riskClass": "low",
+      "canBlock": false,
+      "qualityClass": "standard-low-risk",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push"
+      ]
+    },
+    {
+      "name": "Final-Reviewer",
+      "canonicalPath": "agents/final-reviewer.md",
+      "purpose": "Unabhaengig; prueft Diff, Tests, Scope, Security; akzeptiert keine Fehler stillschweigend.",
+      "skills": [
+        "documentation-maintenance",
+        "repository-security"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "git-push"
+      ]
+    }
+  ]
+}

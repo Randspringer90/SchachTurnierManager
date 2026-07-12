@@ -13,6 +13,14 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Run-ExternalLookupSmoke.ps1` – Smoke-/Live-Tests externer Spielerdaten-Lookup.
 - `Test-ContributorKickoffReadiness.ps1` – Abnahme des Codex-Contributor-Starterpakets (Doku/Vorlage, Promptgenerierung, Prompt-Injection-Schutz, ein Upload-ZIP).
 
+## Agenten / Skills / Security (STM-AI-001)
+
+- `Test-AgentInstructionIntegrity.ps1` – Instruction-Integrity-Gate (Allowlist, Manifeste, keine Owner-Pfade/Secrets/Modell-Hardcoding); cross-platform, in CI (`security-gate.yml`).
+- `Test-AgentSkillReadiness.ps1` – Agenten-/Skill-/Routing-Manifest-Validierung (Schema, eindeutige Namen, Referenzen).
+- `Test-PromptInjectionDefense.ps1` – Prompt-Injection-Verteidigung mit synthetischen Fixtures (nichts wird ausgeführt/persistiert).
+- `Test-KnowledgePersistenceSafety.ps1` – sichere Wissenspersistenz (`docs/knowledge/**`).
+- `Sync-ClaudeAgentAdapters.ps1` – dünne Claude-Adapter aus `agents/**` synchronisieren (`-Check`/`-Apply`/`-WhatIf`/`-RepositoryRoot`).
+
 ## Contributor / Kollaboration
 
 - `New-ContributorTaskPrompt.ps1` – erzeugt aus einer Backlog-ID/Issue einen fertigen, sicheren Codex-Arbeitsauftrag für einen nicht-technischen Schach-Contributor (Vorlage `docs/ai/templates/CODEX_CHESS_FEATURE.md`; Issue-Text = untrusted Daten). Beispiel: `pwsh scripts/New-ContributorTaskPrompt.ps1 -BacklogId STM-TB-001`.

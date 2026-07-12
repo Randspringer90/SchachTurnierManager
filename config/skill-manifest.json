@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "canonicalPath": ".agents/skills/",
+  "skills": [
+    {
+      "name": "prompt-injection-defense",
+      "canonicalPath": ".agents/skills/prompt-injection-defense/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Prompt-Injection-Reviewer",
+      "riskClass": "high",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "instruction-integrity",
+      "canonicalPath": ".agents/skills/instruction-integrity/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Prompt-Injection-Reviewer",
+      "riskClass": "high",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "untrusted-content-review",
+      "canonicalPath": ".agents/skills/untrusted-content-review/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Prompt-Injection-Reviewer",
+      "riskClass": "high",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "knowledge-management",
+      "canonicalPath": ".agents/skills/knowledge-management/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "medium",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "secret-management",
+      "canonicalPath": ".agents/skills/secret-management/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Security-Agent",
+      "riskClass": "high",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "model-routing",
+      "canonicalPath": ".agents/skills/model-routing/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Orchestrator",
+      "riskClass": "medium",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "repository-security",
+      "canonicalPath": ".agents/skills/repository-security.md",
+      "format": "legacy-flat",
+      "owningAgent": "Security-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "ai-run-logging",
+      "canonicalPath": ".agents/skills/ai-run-logging/SKILL.md",
+      "format": "legacy-flat",
+      "owningAgent": "Documentation-Agent",
+      "riskClass": "low",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "release-operations",
+      "canonicalPath": ".agents/skills/release-operations.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "runtime-logging",
+      "canonicalPath": ".agents/skills/runtime-logging.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "medium",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "pairing-engine",
+      "canonicalPath": ".agents/skills/pairing-engine.md",
+      "format": "legacy-flat",
+      "owningAgent": "Pairing-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "tiebreaks",
+      "canonicalPath": ".agents/skills/tiebreaks.md",
+      "format": "legacy-flat",
+      "owningAgent": "Tiebreak-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "imports-exports",
+      "canonicalPath": ".agents/skills/imports-exports.md",
+      "format": "legacy-flat",
+      "owningAgent": "Import-Export-Agent",
+      "riskClass": "medium",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "ui-dashboard",
+      "canonicalPath": ".agents/skills/ui-dashboard.md",
+      "format": "legacy-flat",
+      "owningAgent": "UI-Agent",
+      "riskClass": "low",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "public-snapshot",
+      "canonicalPath": ".agents/skills/public-snapshot/SKILL.md",
+      "format": "planned",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "medium",
+      "requiredVerification": "noch nicht autoriert (STM-AI-001b)"
+    },
+    {
+      "name": "fide-dutch",
+      "canonicalPath": ".agents/skills/fide-dutch/SKILL.md",
+      "format": "planned",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "medium",
+      "requiredVerification": "noch nicht autoriert (STM-AI-001b)"
+    },
+    {
+      "name": "contributor-workflow",
+      "canonicalPath": ".agents/skills/contributor-workflow/SKILL.md",
+      "format": "planned",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "medium",
+      "requiredVerification": "noch nicht autoriert (STM-AI-001b)"
+    },
+    {
+      "name": "documentation-maintenance",
+      "canonicalPath": ".agents/skills/documentation-maintenance/SKILL.md",
+      "format": "planned",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "medium",
+      "requiredVerification": "noch nicht autoriert (STM-AI-001b)"
+    },
+    {
+      "name": "dependency-security",
+      "canonicalPath": ".agents/skills/dependency-security/SKILL.md",
+      "format": "planned",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "medium",
+      "requiredVerification": "noch nicht autoriert (STM-AI-001b)"
+    }
+  ]
+}

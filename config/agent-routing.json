@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "qualityClasses": [
+    "strongest-planning",
+    "strongest-implementation",
+    "standard-low-risk",
+    "local-deterministic",
+    "human-required"
+  ],
+  "routes": [
+    {
+      "taskCategories": [
+        "security",
+        "prompt-injection"
+      ],
+      "primaryAgent": "Security-Agent",
+      "reviewerAgent": "Prompt-Injection-Reviewer",
+      "requiredSkills": [
+        "prompt-injection-defense",
+        "repository-security"
+      ],
+      "minimumQualityClass": "strongest-planning",
+      "forbiddenFallbacks": [
+        "standard-low-risk",
+        "local-deterministic"
+      ],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": true
+    },
+    {
+      "taskCategories": [
+        "architecture",
+        "refactor",
+        "infrastructure"
+      ],
+      "primaryAgent": "Architecture-Reviewer",
+      "reviewerAgent": "Final-Reviewer",
+      "requiredSkills": [
+        "documentation-maintenance"
+      ],
+      "minimumQualityClass": "strongest-planning",
+      "forbiddenFallbacks": [
+        "standard-low-risk"
+      ],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": false
+    },
+    {
+      "taskCategories": [
+        "pairing"
+      ],
+      "primaryAgent": "Pairing-Agent",
+      "reviewerAgent": "QA-Test-Agent",
+      "requiredSkills": [
+        "pairing-engine",
+        "fide-dutch"
+      ],
+      "minimumQualityClass": "strongest-implementation",
+      "forbiddenFallbacks": [
+        "standard-low-risk",
+        "local-deterministic"
+      ],
+      "securityReviewRequired": false,
+      "humanApprovalRequired": false
+    },
+    {
+      "taskCategories": [
+        "tiebreaks"
+      ],
+      "primaryAgent": "Tiebreak-Agent",
+      "reviewerAgent": "QA-Test-Agent",
+      "requiredSkills": [
+        "tiebreaks"
+      ],
+      "minimumQualityClass": "strongest-implementation",
+      "forbiddenFallbacks": [
+        "standard-low-risk",
+        "local-deterministic"
+      ],
+      "securityReviewRequired": false,
+      "humanApprovalRequired": false
+    },
+    {
+      "taskCategories": [
+        "import-export"
+      ],
+      "primaryAgent": "Import-Export-Agent",
+      "reviewerAgent": "QA-Test-Agent",
+      "requiredSkills": [
+        "imports-exports"
+      ],
+      "minimumQualityClass": "strongest-implementation",
+      "forbiddenFallbacks": [
+        "local-deterministic"
+      ],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": false
+    },
+    {
+      "taskCategories": [
+        "ui"
+      ],
+      "primaryAgent": "UI-Agent",
+      "reviewerAgent": "QA-Test-Agent",
+      "requiredSkills": [
+        "ui-dashboard"
+      ],
+      "minimumQualityClass": "strongest-implementation",
+      "forbiddenFallbacks": [],
+      "securityReviewRequired": false,
+      "humanApprovalRequired": false
+    },
+    {
+      "taskCategories": [
+        "release"
+      ],
+      "primaryAgent": "Release-Agent",
+      "reviewerAgent": "Final-Reviewer",
+      "requiredSkills": [
+        "release-operations"
+      ],
+      "minimumQualityClass": "strongest-planning",
+      "forbiddenFallbacks": [
+        "standard-low-risk",
+        "local-deterministic"
+      ],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": true
+    },
+    {
+      "taskCategories": [
+        "knowledge",
+        "documentation"
+      ],
+      "primaryAgent": "Knowledge-Curator",
+      "reviewerAgent": "Documentation-Agent",
+      "requiredSkills": [
+        "knowledge-management",
+        "documentation-maintenance"
+      ],
+      "minimumQualityClass": "standard-low-risk",
+      "forbiddenFallbacks": [],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": false
+    }
+  ]
+}

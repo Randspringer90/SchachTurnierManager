@@ -85,3 +85,12 @@ jobs:
             echo "::notice::Änderungen an Instruktions-/Sicherheitsquellen erfordern Owner-Review (CODEOWNERS)."
           fi
           echo "OK."
+
+  agent-integrity:
+    name: agent-integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Agent-Instruction-Integrity (Instruction-Allowlist, Manifeste, keine Owner-Pfade/Secrets/Modell-Hardcoding)
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/Test-AgentInstructionIntegrity.ps1
