@@ -2,6 +2,10 @@
 
 > Für den neu eingeladenen Mitwirkenden. Setzt ein abgeschlossenes
 > [`COLLABORATOR_ONBOARDING.md`](COLLABORATOR_ONBOARDING.md) voraus.
+>
+> **Arbeitest du mit Codex an Schach-Features?** Nutze die einfache Anleitung
+> [`CODEX_CHESS_CONTRIBUTOR.md`](CODEX_CHESS_CONTRIBUTOR.md) und erzeuge den fertigen
+> Arbeitsauftrag mit `pwsh scripts/New-ContributorTaskPrompt.ps1 -BacklogId STM-…`.
 
 ## 1. Aufgabe wählen
 

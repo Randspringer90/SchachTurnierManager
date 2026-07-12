@@ -11,6 +11,12 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 
 - `Test-All.ps1` – .NET-Tests gesamt.
 - `Run-ExternalLookupSmoke.ps1` – Smoke-/Live-Tests externer Spielerdaten-Lookup.
+- `Test-ContributorKickoffReadiness.ps1` – Abnahme des Codex-Contributor-Starterpakets (Doku/Vorlage, Promptgenerierung, Prompt-Injection-Schutz, ein Upload-ZIP).
+
+## Contributor / Kollaboration
+
+- `New-ContributorTaskPrompt.ps1` – erzeugt aus einer Backlog-ID/Issue einen fertigen, sicheren Codex-Arbeitsauftrag für einen nicht-technischen Schach-Contributor (Vorlage `docs/ai/templates/CODEX_CHESS_FEATURE.md`; Issue-Text = untrusted Daten). Beispiel: `pwsh scripts/New-ContributorTaskPrompt.ps1 -BacklogId STM-TB-001`.
+- `New-FeatureBranch.ps1` – Feature-Branch sicher von `development` erzeugen.
 
 ## Release (release)
 

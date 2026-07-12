@@ -42,6 +42,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-AI-004 | Nightly-/Resume-Unterbau | P3 | Backlog | ai | owner | – | post-1.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
+| STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | **Ready** | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Backlog | pairing | owner | – | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | – | v1.0.0 |

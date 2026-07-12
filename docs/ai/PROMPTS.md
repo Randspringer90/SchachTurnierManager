@@ -7,6 +7,10 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 > **2026-07-12 (Claude Opus 4.8):** Kollaborations-Bootstrap – `development`-Branch als Standard,
 > Merge des lokalen v0.41-Stands, kanonischer Backlog, GitHub-Rulesets/Templates/CI.
 > Abschlussbericht: `reports/2026-07-12-claude-collaboration-development-branch.md`.
+>
+> **2026-07-12 (Claude Opus 4.8):** Codex-Contributor-Starterpaket (Anleitung, Promptvorlage
+> `templates/CODEX_CHESS_FEATURE.md`, Generator `New-ContributorTaskPrompt.ps1`, Tests).
+> Abschlussbericht: `reports/2026-07-12-claude-contributor-kickoff-pack.md`.
 
 | Datum | Tool/Modell | Kurzbeschreibung | Prompt | Report |
 |---|---|---|---|---|

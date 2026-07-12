@@ -1,3 +1,7 @@
+## Unreleased (development)
+
+- Codex-Contributor-Starterpaket ergänzt: einfache Anleitung `docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md`, wiederverwendbare Promptvorlage `docs/ai/templates/CODEX_CHESS_FEATURE.md`, Generator `scripts/New-ContributorTaskPrompt.ps1` (Backlog-kanonisch, nur Ready/In-Progress, Offline-Fallback, Issue-Text als untrusted Daten, Owner-Pfad-/Secret-Redaktion, friend-Pfadausschlüsse) und Abnahme `scripts/Test-ContributorKickoffReadiness.ps1` + Pester-Contract-Tests.
+
 ## 0.54.1 - Stabilisierung, Public-Gate und Runtime-Logging-Hotfixes
 
 - RUN-54 stabilisiert: relative Development-Logpfade werden am Repo-Root-Anker ausgerichtet; installierte/portable Starts nutzen weiterhin explizite Logordner.

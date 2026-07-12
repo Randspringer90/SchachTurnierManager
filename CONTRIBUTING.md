@@ -24,6 +24,7 @@ verlinkten kanonischen Dokumenten.
 | Definition of Done           | [`docs/planning/DEFINITION_OF_DONE.md`](docs/planning/DEFINITION_OF_DONE.md) |
 | Onboarding                   | [`docs/onboarding/COLLABORATOR_ONBOARDING.md`](docs/onboarding/COLLABORATOR_ONBOARDING.md) |
 | Erster Beitrag               | [`docs/onboarding/FIRST_CONTRIBUTION.md`](docs/onboarding/FIRST_CONTRIBUTION.md) |
+| Codex-Schach-Contributor     | [`docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md`](docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md) (nicht-technisch, mit Codex) |
 | Security & Prompt-Injection  | [`docs/security/CONTRIBUTOR_SECURITY.md`](docs/security/CONTRIBUTOR_SECURITY.md) |
 | KI-Agenten-Regeln            | [`AGENTS.md`](AGENTS.md) |
 
