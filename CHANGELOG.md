@@ -1,5 +1,10 @@
 ## Unreleased (development)
 
+- STM-TB-001: Golden-Tests für Buchholz, Buchholz-Cut-1/-2, Median-Buchholz und
+  Sonneborn-Berger an zwei von Hand durchgerechneten Beispielturnieren ergänzt
+  (4-Spieler-Rundenturnier, 5-Spieler-Schweizer-System mit Freilosen). Rein additiv,
+  keine Verhaltensänderung an `StandingsCalculator`; sichert insbesondere den
+  Default-Umgang mit Freilosen (`IgnoreUnplayedRounds`) für STM-FACH-001 ab.
 - STM-INT-001 (v0.41-Reconcile): kanonische lokale KI-Hilfe ist die Frontend-Wissensbasis (offline, providerlos); das tote, nirgends referenzierte Backend-Modul `Application.Ai` samt isoliertem Test wurde entfernt (kein Endpunkt/keine DI betroffen). Export (`TournamentExportFormatter`) und Health-/Dashboard bleiben unverändert kanonisch. Neue Tests sichern die kanonische Wissensbasis (gültig, providerlos, ohne Secrets/Owner-Pfade). Analyse: `docs/architecture/V041_RECONCILIATION.md`.
 - Codex-Contributor-Starterpaket ergänzt: einfache Anleitung `docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md`, wiederverwendbare Promptvorlage `docs/ai/templates/CODEX_CHESS_FEATURE.md`, Generator `scripts/New-ContributorTaskPrompt.ps1` (Backlog-kanonisch, nur Ready/In-Progress, Offline-Fallback, Issue-Text als untrusted Daten, Owner-Pfad-/Secret-Redaktion, friend-Pfadausschlüsse) und Abnahme `scripts/Test-ContributorKickoffReadiness.ps1` + Pester-Contract-Tests.
 
