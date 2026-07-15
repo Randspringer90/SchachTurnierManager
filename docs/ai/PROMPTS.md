@@ -41,3 +41,4 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 ## 2026-07-09 RUN-53 Klick-Installation
 
 Kollegenpaket nach RUN-52 um einen Doppelklick-Installationspfad, Uninstall, Shortcut-Erzeugung, Frischinstallations-Smoke-Test, Doku, Skill und Guard-Test erweitern. Keine Secrets oder externen Projektabhaengigkeiten in das Paket aufnehmen.
+| 2026-07-15 | Codex | KFM-FLEET-CORRECTION-CODEX-SOL-FINALIZE-20260715 - BAT/CMD-Gate dokumentieren; bekannten Public-History-Blocker respektieren. | [Prompt](prompts/20260715_1236_kfm_fleet_correction_codex_sol_finalize.md) | [Report](reports/20260715_1236_kfm_fleet_correction_codex_sol_finalize_REPORT.md) |

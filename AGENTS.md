@@ -77,3 +77,8 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
 ## Klick-Installation / Kollegen-Rollout
 
 Bei Aenderungen an Release-, Setup-, Desktop-, Portable- oder Kollegenpaketen den Skill `.agents/skills/click-installation.md` beachten. Installation muss eigenstaendig bleiben, keine Nachbarprojekt-Abhaengigkeiten einfuehren und lokale Secrets aus dem Paket heraushalten. Vor Commit mindestens `Invoke-ClickInstallReadiness.ps1` oder den passenden Release-/Kollegen-Readiness-Lauf ausfuehren.
+
+## BAT-/CMD-Quality-Gate (2026-07-15)
+
+Vor Commit und Push muss fuer alle getrackten BAT-/CMD-Dateien dieses Repository-Gate gruen sein:
+`pwsh -NoLogo -NoProfile -File "D:\KFM\KI-Projekte\workstation\WS-KFM-Codex-Zentrale\scripts\Test-KFMBatchFleet.ps1" -RepositoryPath "D:\KFM\KI-Projekte\sonstige\schach\SchachTurnierManager" -Full`.
