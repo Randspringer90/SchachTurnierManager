@@ -12,4 +12,6 @@ Pflichtkontrollen (siehe `config/agent-trust-policy.json` -> mandatoryControls):
 - **Cross-Agent-Propagation-Schutz**, **Nightly-Persistenzschutz**, **Audit-Trail ohne Secrets/PII**.
 - **Owner-Review** fuer Instruktionsquellen (CODEOWNERS).
 
-Durchsetzung lokal + in CI (`.github/workflows/security-gate.yml`).
+Durchsetzung lokal durch alle vier Agent-/Knowledge-Gates; in CI durch den
+plattformneutralen Instruction-Integrity-Gate (`.github/workflows/security-gate.yml`). Die
+Consumer- und vollstaendige CI-Integration ist als STM-SEC-001 nachgelagert.

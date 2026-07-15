@@ -15,5 +15,6 @@ lessons-learned, glossary, source-registry).
 - Prompt-Injection-Pruefung vor Persistenz; Archivierung veralteter Inhalte statt Loeschen.
 
 ## Durchsetzung
-`scripts/Test-KnowledgePersistenceSafety.ps1` (+ Security-Gate). Details:
+Lokal durch `scripts/Test-KnowledgePersistenceSafety.ps1`; der Security-Gate prueft derzeit die
+Instruction-Integrity. Die Consumer-/CI-Integration folgt in STM-SEC-001. Details:
 `docs/architecture/SECURE_KNOWLEDGE_PERSISTENCE.md`.

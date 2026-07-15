@@ -26,6 +26,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup .NET (global.json)
         uses: actions/setup-dotnet@v4
         with:
@@ -45,6 +47,8 @@ jobs:
         working-directory: src/SchachTurnierManager.WebApp
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
@@ -61,5 +65,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: git diff --check (Whitespace/Konfliktmarker)
-        run: git diff --check HEAD
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: git diff --check (PR-Range)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --check "$BASE_SHA...$HEAD_SHA"
+      - name: git diff --check (Push-Range)
+        if: github.event_name == 'push'
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: git diff --check "$BASE_SHA...$HEAD_SHA"

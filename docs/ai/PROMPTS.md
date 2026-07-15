@@ -13,7 +13,8 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 > Abschlussbericht: `reports/2026-07-12-claude-contributor-kickoff-pack.md`.
 >
 > **2026-07-12 (Claude Opus 4.8):** STM-AI-001 Agenten-/Skill-/Security-Grundlage (`agents/**`,
-> Manifeste, Trust-Policies, Guards+Tests, Wissensmanagement `docs/knowledge/**`). Bericht:
+> Manifeste, Trust-Policies, Guards+Tests, Wissensmanagement `docs/knowledge/**`). Prompt:
+> `prompts/20260712_2007_claude-agent-skill-security-foundation.md`. Bericht:
 > `reports/2026-07-12-claude-agent-skill-security-foundation.md`.
 >
 > **2026-07-12 (Claude Opus 4.8):** STM-INT-001 v0.41-Reconcile – kanonische KI-Hilfe = Frontend,

@@ -23,6 +23,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Kein pull_request_target-Trigger in Workflows
         shell: bash
@@ -89,8 +90,13 @@ jobs:
   agent-integrity:
     name: agent-integrity
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Agent-Instruction-Integrity (Instruction-Allowlist, Manifeste, keine Owner-Pfade/Secrets/Modell-Hardcoding)
         shell: pwsh
         run: pwsh -NoProfile -File scripts/Test-AgentInstructionIntegrity.ps1

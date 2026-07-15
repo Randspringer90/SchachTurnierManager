@@ -1,18 +1,43 @@
 #requires -Version 7.0
+# SECURITY-PATTERN-FILE: Diese Datei enthaelt bewusst Detection-/Blocklist-Regexe, keine echten Daten.
 <#
 .SYNOPSIS
 Prueft Agenten-/Skill-/Routing-Manifeste und -Dateien auf Schema, Eindeutigkeit, gueltige
 Referenzen, keine Owner-Pfade/Secrets/Modell-Hardcoding. Ein Upload-ZIP.
 #>
 [CmdletBinding()]
-param()
+param([switch]$NoArchive)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/CollaborationCommon.ps1')
 $run = New-RunContext -RunName 'agent-skill-readiness'
-$repo = Get-RepoRoot; Set-Location $repo
+$repo = [IO.Path]::GetFullPath((Get-RepoRoot)); Set-Location $repo
 $fail = New-Object System.Collections.Generic.List[string]
 function Check([bool]$c, [string]$m) { if ($c) { Write-RunLog $run "OK  : $m" } else { $fail.Add($m); Write-RunLog $run "FAIL: $m" } }
+function Resolve-RepositoryFile([string]$rel, [string]$kind) {
+    $normalized = ($rel ?? '') -replace '\\','/'
+    if ([string]::IsNullOrWhiteSpace($normalized) -or [IO.Path]::IsPathRooted($normalized) -or $normalized -match '(^|/)\.\.(/|$)') {
+        $fail.Add("${kind}: unsicherer Manifestpfad '$rel'")
+        return $null
+    }
+    $full = [IO.Path]::GetFullPath((Join-Path $repo $normalized))
+    $rootPrefix = $repo.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if (-not $full.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        $fail.Add("${kind}: Manifestpfad verlaesst Repository-Root '$rel'")
+        return $null
+    }
+    $stage = (& git -C $repo ls-files --stage -- $normalized 2>$null | Select-Object -First 1)
+    if ($stage -match '^120000\s') {
+        $fail.Add("${kind}: Git-Symlink unzulaessig '$rel'")
+        return $null
+    }
+    $item = Get-Item -LiteralPath $full -Force -ErrorAction SilentlyContinue
+    if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+        $fail.Add("${kind}: Reparse-Point unzulaessig '$rel'")
+        return $null
+    }
+    return $full
+}
 
 $agentSchema = @('Name','Version','Zweck','Zustaendigkeitsbereich','Nicht-Zustaendigkeit','Erlaubte Tools','Verbotene Tools','Benoetigte Skills','Sicherheitsgrenzen','Eskalationsbedingungen','Uebergabe')
 $skillSchema = @('name','version','purpose','trigger','trusted-inputs','untrusted-inputs','required-tools','forbidden-tools','procedure','security-controls','verification','owning-agent')
@@ -21,18 +46,36 @@ $skillSchema = @('name','version','purpose','trigger','trusted-inputs','untruste
 $man = Get-Content -Raw (Join-Path $repo 'config/agent-manifest.json') | ConvertFrom-Json
 $sman = Get-Content -Raw (Join-Path $repo 'config/skill-manifest.json') | ConvertFrom-Json
 $rman = Get-Content -Raw (Join-Path $repo 'config/agent-routing.json') | ConvertFrom-Json
+$permissions = Get-Content -Raw (Join-Path $repo 'config/tool-permission-profiles.json') | ConvertFrom-Json
 
 # Agenten: eindeutige Namen, Datei existiert, Schema, keine Owner-Pfade/Secrets
 $names = @()
 foreach ($a in $man.agents) {
     $names += $a.name
-    $p = Join-Path $repo $a.canonicalPath
-    Check (Test-Path $p) "Agent-Datei vorhanden: $($a.canonicalPath)"
-    if (Test-Path $p) {
+    $p = Resolve-RepositoryFile $a.canonicalPath "Agent $($a.name)"
+    Check ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) "Agent-Datei vorhanden/sicher: $($a.canonicalPath)"
+    if ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) {
         $c = Get-Content -Raw $p
         foreach ($fld in $agentSchema) { if ($c -notmatch [regex]::Escape($fld)) { $fail.Add("Agent $($a.name): Schemafeld '$fld' fehlt"); } }
-        Check ($c -notmatch '[A-Za-z]:\\Schach|CORE-KFM') "Agent $($a.name): keine Owner-/Fremdpfade"
+        Check ($c -notmatch '(?i)[A-Za-z]:\\(?:KFM|Schach|Users)(?:\\|$)') "Agent $($a.name): keine Owner-/Fremdpfade"
         Check ($c -notmatch 'gh[pousr]_[0-9A-Za-z]{20,}') "Agent $($a.name): keine Secrets"
+        Check ($c -notmatch '[\x00-\x08\x0B\x0C\x0E-\x1F]') "Agent $($a.name): keine Steuerzeichen"
+
+        $profileProperty = $permissions.profiles.PSObject.Properties[$a.permissionProfile]
+        Check ($null -ne $profileProperty) "Agent $($a.name): Permission-Profil '$($a.permissionProfile)' existiert"
+        if ($profileProperty) {
+            $profile = $profileProperty.Value
+            $allowedMatch = [regex]::Match($c, '(?m)^- \*\*Erlaubte Tools:\*\*\s*(.+)$')
+            Check $allowedMatch.Success "Agent $($a.name): Erlaubte Tools sind auswertbar"
+            if ($allowedMatch.Success) {
+                $agentAllowed = @($allowedMatch.Groups[1].Value -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                foreach ($tool in $agentAllowed) {
+                    Check (@($profile.allowed) -contains $tool) "Agent $($a.name): Tool '$tool' im Profil erlaubt"
+                    Check (@($profile.forbidden) -notcontains $tool) "Agent $($a.name): Tool '$tool' nicht im Profil verboten"
+                    Check (@($permissions.globalForbidden) -notcontains $tool) "Agent $($a.name): Tool '$tool' nicht global verboten"
+                }
+            }
+        }
     }
     # Skill-Referenzen existieren im Skill-Manifest
     foreach ($sk in $a.skills) { Check (($sman.skills.name) -contains $sk) "Agent $($a.name): Skill '$sk' im Skill-Manifest" }
@@ -44,13 +87,25 @@ $snames = @($sman.skills.name)
 Check (($snames | Sort-Object -Unique).Count -eq $snames.Count) 'Skillnamen eindeutig'
 foreach ($s in $sman.skills) {
     if ($s.format -eq 'planned') { continue }
-    $p = Join-Path $repo $s.canonicalPath
-    Check (Test-Path $p) "Skill-Datei vorhanden: $($s.canonicalPath)"
-    if ((Test-Path $p) -and $s.format -eq 'canonical') {
+    $p = Resolve-RepositoryFile $s.canonicalPath "Skill $($s.name)"
+    Check ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) "Skill-Datei vorhanden/sicher: $($s.canonicalPath)"
+    if ($p -and (Test-Path -LiteralPath $p -PathType Leaf) -and $s.format -eq 'canonical') {
         $c = Get-Content -Raw $p
+        Check ($c -match '(?s)\A---\r?\nname:\s*[^\r\n]+\r?\ndescription:\s*[^\r\n]+\r?\n---') "Skill $($s.name): discoverbares YAML-Frontmatter"
         foreach ($fld in $skillSchema) { if ($c -notmatch [regex]::Escape($fld)) { $fail.Add("Skill $($s.name): Feld '$fld' fehlt") } }
     }
-    if (Test-Path $p) { Check ((Get-Content -Raw $p) -notmatch '[A-Za-z]:\\Schach|CORE-KFM') "Skill $($s.name): keine Owner-/Fremdpfade" }
+    if ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) { Check ((Get-Content -Raw $p) -notmatch '(?i)[A-Za-z]:\\(?:KFM|Schach|Users)(?:\\|$)') "Skill $($s.name): keine Owner-/Fremdpfade" }
+}
+
+# Jede vorhandene Skillquelle muss manifestiert sein; Migration des Formats bleibt STM-AI-001b.
+$manifestPaths = @($sman.skills.canonicalPath | ForEach-Object { $_ -replace '\\','/' })
+$skillFiles = @(
+    Get-ChildItem (Join-Path $repo '.agents/skills') -File -Filter '*.md' | Where-Object Name -ne 'README.md'
+    Get-ChildItem (Join-Path $repo '.agents/skills') -Recurse -File -Filter 'SKILL.md'
+)
+foreach ($file in ($skillFiles | Sort-Object FullName -Unique)) {
+    $rel = $file.FullName.Substring($repo.Length + 1) -replace '\\','/'
+    Check ($manifestPaths -contains $rel) "Skillquelle manifestiert: $rel"
 }
 
 # Routing: gueltige Agenten/Skills, keine Modellnamen, Qualitaetsklassen bekannt
@@ -70,9 +125,13 @@ if (Test-Path $claudeAgents) {
         if ($f.Name -eq 'README.md') { continue }
         $base = [IO.Path]::GetFileNameWithoutExtension($f.Name)
         Check (Test-Path (Join-Path $repo "agents/$base.md")) "Claude-Adapter '$($f.Name)' hat kanonischen Agenten"
+        $content = Get-Content -Raw $f.FullName
+        Check ($content -match [regex]::Escape("../../agents/$base.md")) "Claude-Adapter '$($f.Name)' verweist auf kanonischen Pfad"
+        Check ($content -notmatch '\$canonical') "Claude-Adapter '$($f.Name)' enthaelt keinen Platzhalter"
+        Check ($content -notmatch '[\x00-\x08\x0B\x0C\x0E-\x1F]') "Claude-Adapter '$($f.Name)' enthaelt keine Steuerzeichen"
     }
 }
 
-$zip = Complete-RunZip $run
-if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "FAIL: $_" }; Write-Host "AgentSkillReadiness: $($fail.Count) FEHLER"; Write-Host "UPLOAD_ZIP=$zip"; exit 1 }
-Write-Host 'AgentSkillReadiness: OK'; Write-Host "UPLOAD_ZIP=$zip"; exit 0
+$zip = if ($NoArchive) { $null } else { Complete-RunZip $run }
+if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "FAIL: $_" }; Write-Host "AgentSkillReadiness: $($fail.Count) FEHLER"; if ($zip) { Write-Host "UPLOAD_ZIP=$zip" }; exit 1 }
+Write-Host 'AgentSkillReadiness: OK'; if ($zip) { Write-Host "UPLOAD_ZIP=$zip" }; exit 0

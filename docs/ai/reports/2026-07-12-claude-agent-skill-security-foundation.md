@@ -64,10 +64,25 @@ glossary, source-registry trusted/untrusted). Pflichtmetadaten `source/date/trus
 - STM-AI-001 → In Review (PR), STM-SEC-001 → In Progress, STM-AI-002 → In Progress,
   STM-AI-003 → In Progress, neu STM-AI-001b (Legacy-Skill-Migration).
 
+## Unabhaengige PR-Review und Remediation (2026-07-15)
+- Zwei unabhaengige Read-only-Reviews fanden blockierende Fehler in Adaptergenerierung,
+  Allowlist-/Pfadpruefung, PII-Detektionsregeln, Skill-Discovery, Manifestvollstaendigkeit,
+  Permission-Profilen, Knowledge-Gate, Workflow-Credentials und PR-Diff-Check.
+- Generator und 30 betroffene Agent-/Adapterdateien wurden bereinigt; Regressionstests erkennen
+  Steuerzeichen, Platzhalter, Drift, unmanifestierte Skills und widerspruechliche Toolrechte.
+- Manifestpfade werden vor jedem Lesen auf Root-Containment, Traversal, Git-Symlinks und
+  Reparse-Points geprueft. Die Instruction-Allowlist wird nun tatsaechlich durchgesetzt.
+- Checkout-Credentials werden fuer PR-Code nicht persistiert; der CI-Diff-Check prueft den echten
+  PR- beziehungsweise Push-Range.
+- Verifiziert: PowerShell-Parser, vier Agent-/Knowledge-/Injection-Gates, Git-/Open-Source-Safety,
+  CollaborationReadiness, `git diff --check`, .NET-Build, 191 Tests, Frontend-Typecheck/-Build,
+  Portable-Paketierung und vollstaendiges ReleaseGate gruen.
+
 ## Risiken / offene Folgearbeiten
 - Legacy-Skills noch nicht ins SKILL.md-Format migriert (STM-AI-001b); 5 geplante Skills offen.
-- run-zip-Guards (Readiness/PromptInjection/Knowledge) sind Windows-lokale Gates (`D:\Temp`);
-  in CI läuft der cross-platform Instruction-Integrity-Gate.
+- Run-Archive der Readiness-/PromptInjection-/Knowledge-Gates sind derzeit Windows-lokal;
+  in CI laeuft der plattformneutrale Instruction-Integrity-Gate. Die vollstaendige
+  Consumer-/CI-Integration bleibt STM-SEC-001.
 - Änderungen an Instruktionsquellen (`AGENTS.md`, `.claude/**`, `agents/**`, `config/**`)
   erfordern Owner-Review (CODEOWNERS) – über den PR.
 

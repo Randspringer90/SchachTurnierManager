@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "description": "Least-Privilege-Toolprofile je Risikoklasse. Agenten referenzieren ein Profil (permissionProfile in agent-manifest.json).",
+  "description": "Least-Privilege-Toolprofile je Risikoklasse. Effektive Rechte sind die Schnittmenge aus Profil-allowed und der Erlaubte-Tools-Liste des Agenten; jede agenten-, profil- oder globalForbidden-Regel hat Vorrang.",
   "profiles": {
     "high-risk": {
-      "allowed": ["Read", "Grep", "Glob"],
-      "forbidden": ["Edit", "Write", "git-push", "git-history-rewrite", "network", "secret-read-during-untrusted", "tag", "release"],
+      "allowed": ["Read", "Grep", "Glob", "Edit", "Write", "Bash-tests"],
+      "forbidden": ["git-push", "git-history-rewrite", "network", "secret-read-during-untrusted", "tag", "release"],
       "humanApprovalForMutations": true
     },
     "medium-risk": {
-      "allowed": ["Read", "Grep", "Glob", "Edit", "Write"],
+      "allowed": ["Read", "Grep", "Glob", "Edit", "Write", "Bash-tests"],
       "forbidden": ["git-push", "git-history-rewrite", "network-during-untrusted", "secret-read-during-untrusted", "tag", "release"],
       "humanApprovalForMutations": false
     },

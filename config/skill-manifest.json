@@ -115,6 +115,70 @@
       "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
     },
     {
+      "name": "click-installation",
+      "canonicalPath": ".agents/skills/click-installation.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "colleague-fresh-run",
+      "canonicalPath": ".agents/skills/colleague-fresh-run.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "medium",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "colleague-installation",
+      "canonicalPath": ".agents/skills/colleague-installation.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "external-player-lookup",
+      "canonicalPath": ".agents/skills/external-player-lookup.md",
+      "format": "legacy-flat",
+      "owningAgent": "Import-Export-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "installer-packaging",
+      "canonicalPath": ".agents/skills/installer-packaging.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "logging-observability",
+      "canonicalPath": ".agents/skills/logging-observability.md",
+      "format": "legacy-flat",
+      "owningAgent": "Release-Agent",
+      "riskClass": "medium",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "rating-performance",
+      "canonicalPath": ".agents/skills/rating-performance.md",
+      "format": "legacy-flat",
+      "owningAgent": "Tiebreak-Agent",
+      "riskClass": "medium",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
+      "name": "internet-research",
+      "canonicalPath": ".agents/skills/internet-research/SKILL.md",
+      "format": "legacy-flat",
+      "owningAgent": "Knowledge-Curator",
+      "riskClass": "high",
+      "requiredVerification": "exists+no-secrets (Migration zu SKILL.md offen: STM-AI-001b)"
+    },
+    {
       "name": "public-snapshot",
       "canonicalPath": ".agents/skills/public-snapshot/SKILL.md",
       "format": "planned",
