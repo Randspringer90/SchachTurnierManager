@@ -27,11 +27,14 @@ public sealed class StandingsCalculator
         var opponentPoints = rows.ToDictionary(kv => kv.Key, kv => kv.Value.Points);
         foreach (var row in rows.Values)
         {
-            var opponentScores = row.OpponentIds
+            var realOpponentScores = row.OpponentIds
                 .Where(opponentPoints.ContainsKey)
-                .Select(id => opponentPoints[id])
-                .OrderBy(x => x)
-                .ToList();
+                .Select(id => opponentPoints[id]);
+            var opponentScores = UnplayedRoundTiebreak.BuildBuchholzScoreList(
+                tournament.Settings.UnplayedRoundBuchholzMode,
+                realOpponentScores,
+                row.Points,
+                row.UnplayedRoundCount);
             row.Buchholz = opponentScores.Sum();
             row.BuchholzCutOne = SumAfterDropping(opponentScores, lowest: 1, highest: 0);
             row.BuchholzCutTwo = SumAfterDropping(opponentScores, lowest: 2, highest: 0);
@@ -118,6 +121,10 @@ public sealed class StandingsCalculator
             {
                 white.Wins++;
             }
+            if (UnplayedRoundTiebreak.IsUnplayedRound(pairing.Result.Kind))
+            {
+                white.UnplayedRoundCount++;
+            }
             return;
         }
 
@@ -136,6 +143,12 @@ public sealed class StandingsCalculator
         {
             black.Wins++;
             black.BlackWins++;
+        }
+
+        if (UnplayedRoundTiebreak.IsUnplayedRound(pairing.Result.Kind))
+        {
+            white.UnplayedRoundCount++;
+            black.UnplayedRoundCount++;
         }
 
         var whiteNormalized = ScoringRules.NormalizedClassicalScore(pairing.Result.Kind, isWhite: true);
@@ -273,6 +286,7 @@ public sealed class StandingsCalculator
         public decimal AverageOpponentRating { get; set; }
         public int? TournamentPerformance { get; set; }
         public decimal HeroScore { get; set; }
+        public int UnplayedRoundCount { get; set; }
         public List<Guid> OpponentIds { get; } = new();
         public List<decimal> OpponentRatings { get; } = new();
         public List<decimal> PerformanceOpponentRatings { get; } = new();

@@ -5,8 +5,11 @@ using Xunit;
 namespace SchachTurnierManager.Domain.Tests;
 
 /// <summary>
-/// Prepared FIDE virtual-opponent model for unplayed rounds (C.07/2024 Art. 16.2/16.4).
-/// Pure domain service; not yet wired into <see cref="StandingsCalculator"/>.
+/// FIDE virtual-opponent model for unplayed rounds (C.07/2024 Art. 16.2/16.4).
+/// Pure domain service; seit STM-FACH-001 opt-in ueber
+/// <see cref="TournamentSettings.UnplayedRoundBuchholzMode"/> in
+/// <see cref="StandingsCalculator"/> verdrahtet (siehe
+/// UnplayedRoundStandingsIntegrationTests fuer den End-to-End-Nachweis).
 /// Cases follow the requested matrix: gespielte Partie, kampfloser Sieg, Bye,
 /// konfigurierbare ungespielte Runde, vorbereitete Cut-Buchholz-Liste.
 /// </summary>

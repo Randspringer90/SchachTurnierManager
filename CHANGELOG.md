@@ -1,5 +1,15 @@
 ## Unreleased (development)
 
+- STM-FACH-001: `UnplayedRoundBuchholzMode` (FIDE Art. 16.4, virtueller Gegner für
+  eigene Freilose/kampflose Ergebnisse) ist jetzt opt-in in `TournamentSettings`
+  und in `StandingsCalculator` für Buchholz/Cut-1/Cut-2/Median-Buchholz verdrahtet.
+  Default (`IgnoreUnplayedRounds`) bleibt exaktes bisheriges Verhalten; keine
+  Änderung an Sonneborn-Berger/Direktvergleich/Performance. Siehe
+  `docs/TIEBREAK_UNPLAYED_ROUNDS.md`.
+  Zusätzlich dokumentiert (nicht gefixt): zurückgezogene Spieler lassen ihre
+  Gegner rückwirkend Punkte aus bereits gespielten Partien verlieren
+  (`PlayerWithdrawalStandingsTests`) – eigenständiger Scoring-Bug, zur Klärung
+  an den Owner weitergegeben.
 - STM-INT-001 (v0.41-Reconcile): kanonische lokale KI-Hilfe ist die Frontend-Wissensbasis (offline, providerlos); das tote, nirgends referenzierte Backend-Modul `Application.Ai` samt isoliertem Test wurde entfernt (kein Endpunkt/keine DI betroffen). Export (`TournamentExportFormatter`) und Health-/Dashboard bleiben unverändert kanonisch. Neue Tests sichern die kanonische Wissensbasis (gültig, providerlos, ohne Secrets/Owner-Pfade). Analyse: `docs/architecture/V041_RECONCILIATION.md`.
 - Codex-Contributor-Starterpaket ergänzt: einfache Anleitung `docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md`, wiederverwendbare Promptvorlage `docs/ai/templates/CODEX_CHESS_FEATURE.md`, Generator `scripts/New-ContributorTaskPrompt.ps1` (Backlog-kanonisch, nur Ready/In-Progress, Offline-Fallback, Issue-Text als untrusted Daten, Owner-Pfad-/Secret-Redaktion, friend-Pfadausschlüsse) und Abnahme `scripts/Test-ContributorKickoffReadiness.ps1` + Pester-Contract-Tests.
 

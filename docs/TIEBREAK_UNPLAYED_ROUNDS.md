@@ -43,23 +43,39 @@ Konfiguration: `UnplayedRoundBuchholzMode`
   feinere Auswertung der *gegner-eigenen* ungespielten Runden nach Art. 16.2
   (Kategorien 16.2.1–16.2.5, teils als Remis zu werten) ist als Folgeschritt
   vorgesehen und noch nicht umgesetzt.
-- Das Modell ist **noch nicht** in `StandingsCalculator` verdrahtet. Default-Modus
-  hält bestehende Wertungs-Baselines unverändert; die Integration ändert bewusst
-  die Buchholz-Werte von Bye-/Forfeit-Spielern und braucht angepasste Tests.
+- Seit STM-FACH-001 ist das Modell in `StandingsCalculator.Calculate` verdrahtet
+  (Buchholz/Cut-1/Cut-2/Median-Buchholz). Default-Modus (`IgnoreUnplayedRounds`)
+  hält bestehende Wertungs-Baselines unverändert; `FideVirtualOpponent` ist
+  opt-in über `TournamentSettings.UnplayedRoundBuchholzMode`. Sonneborn-Berger,
+  Direktvergleich und Performance sind von dieser Änderung nicht betroffen.
+- **Offener Punkt (nicht Teil dieses Laufs):** Zurückgezogene Spieler
+  (`PlayerStatus.Withdrawn`) verlieren aktuell nicht nur ihren eigenen
+  Tabellenplatz, sondern ihre bisherigen Gegner verlieren rückwirkend auch die
+  in bereits gespielten Partien erzielten Punkte, weil `StandingsCalculator`
+  nur aktive Spieler in die Berechnung aufnimmt. Das ist ein eigenständiger
+  Scoring-Bug (nicht nur Tie-Break) und dokumentiert in
+  `tests/SchachTurnierManager.Domain.Tests/PlayerWithdrawalStandingsTests.cs`.
+  Klärung/Fix mit dem Owner separat vorschlagen (z. B. eigener Backlog-Eintrag).
 
-## Integrationspfad (Folgelauf)
-1. `UnplayedRoundBuchholzMode` in `TournamentSettings` aufnehmen (Default = Ignore).
-2. In `StandingsCalculator.Calculate` nach der Punkteberechnung je Spieler die
-   Zahl eigener ungespielter Runden zählen und `OwnUnplayedBuchholzContribution`
-   bzw. `BuildBuchholzScoreList` für Buchholz/Cut/Median verwenden.
-3. Regressionstests für Bye-/Forfeit-Fälle mit neuem Modus ergänzen
-   (bestehende Tests im Default-Modus bleiben gültig).
-4. Modus im UI sichtbar und auditierbar machen.
+## Integrationspfad
+1. ✅ `UnplayedRoundBuchholzMode` in `TournamentSettings` aufgenommen (Default = Ignore).
+2. ✅ `StandingsCalculator.Calculate` zählt je Spieler die eigenen ungespielten
+   Runden (`MutableStanding.UnplayedRoundCount`) und nutzt
+   `UnplayedRoundTiebreak.BuildBuchholzScoreList` für Buchholz/Cut/Median.
+3. ✅ Regressionstests für Bye-Fälle in beiden Modi ergänzt
+   (`UnplayedRoundStandingsIntegrationTests`); bestehende Tests im
+   Default-Modus bleiben unverändert gültig.
+4. Offen: Modus im UI sichtbar und auditierbar machen (Folgeschritt).
 
 ## Tests
-`tests/SchachTurnierManager.Domain.Tests/UnplayedRoundTiebreakTests.cs` deckt ab:
+`tests/SchachTurnierManager.Domain.Tests/UnplayedRoundTiebreakTests.cs` deckt das
+reine Domain-Modell ab:
 - normal gespielte Partie (kein virtueller Gegner),
 - kampfloser Sieg (eigene ungespielte Runde, virtueller Gegner),
 - spielfrei/Bye (virtueller Gegner = eigene Punktzahl),
 - konfigurierbarer Beitrag je Modus,
 - vorbereitete sortierte Liste für Buchholz-Cut/Streichergebnis.
+
+`tests/SchachTurnierManager.Domain.Tests/UnplayedRoundStandingsIntegrationTests.cs`
+deckt die Verdrahtung End-to-End über `StandingsCalculator` ab (Default- vs.
+FIDE-Modus am selben 5-Spieler-Beispielturnier mit drei Freilosen).
