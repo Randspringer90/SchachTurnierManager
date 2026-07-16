@@ -89,7 +89,12 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         }
 
         tournament.Settings = normalized;
-        AddAuditEntry(tournament, AuditJournalAction.SettingsUpdated, AuditJournalSeverity.Info, "Turniereinstellungen aktualisiert.", $"Format: {normalized.Format}, Runden: {normalized.PlannedRounds}");
+        AddAuditEntry(
+            tournament,
+            AuditJournalAction.SettingsUpdated,
+            AuditJournalSeverity.Info,
+            "Turniereinstellungen aktualisiert.",
+            $"Format: {normalized.Format}, Runden: {normalized.PlannedRounds}, Forfeit-Policy: {normalized.ForfeitTiebreakPolicy}, ungespielte Runden/Buchholz: {normalized.UnplayedRoundBuchholzMode}");
         _store.Save(tournament);
         return tournament;
     }
@@ -974,6 +979,9 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             PlannedRounds = Math.Max(1, settings.PlannedRounds),
             HeroCupMinimumRatedGames = Math.Max(1, settings.HeroCupMinimumRatedGames),
             SeniorBirthYearOrEarlier = settings.SeniorBirthYearOrEarlier is <= 0 ? null : settings.SeniorBirthYearOrEarlier,
+            UnplayedRoundBuchholzMode = Enum.IsDefined(settings.UnplayedRoundBuchholzMode)
+                ? settings.UnplayedRoundBuchholzMode
+                : UnplayedRoundBuchholzMode.IgnoreUnplayedRounds,
             Tiebreaks = tiebreaks
         };
     }

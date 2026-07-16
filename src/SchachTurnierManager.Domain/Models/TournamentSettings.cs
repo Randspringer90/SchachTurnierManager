@@ -17,6 +17,7 @@ public sealed record TournamentSettings
     };
     public bool AllowManualPairingOverrides { get; init; } = true;
     public ForfeitTiebreakPolicy ForfeitTiebreakPolicy { get; init; } = ForfeitTiebreakPolicy.ExcludeForfeitsFromTiebreaks;
+    public UnplayedRoundBuchholzMode UnplayedRoundBuchholzMode { get; init; } = UnplayedRoundBuchholzMode.IgnoreUnplayedRounds;
     public bool CountByeAsWin { get; init; }
     public int? SeniorBirthYearOrEarlier { get; init; }
     public int HeroCupMinimumRatedGames { get; init; } = 1;
