@@ -32,6 +32,10 @@
 /scripts/*Security*             @Randspringer90
 /scripts/*Git*                  @Randspringer90
 /scripts/*Commit*               @Randspringer90
+/scripts/Invoke-SafePullRequestReview.ps1 @Randspringer90
+/scripts/Test-PullRequest*      @Randspringer90
+/scripts/New-PullRequest*       @Randspringer90
+/scripts/lib/PullRequestReviewCommon.ps1 @Randspringer90
 
 # Installer / Paketierung
 /installer/**                   @Randspringer90

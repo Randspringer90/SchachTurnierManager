@@ -26,6 +26,8 @@ Keine Secrets, Logs, PII, Datenbanken oder Artefakte im PR.
 - [ ] **ReleaseGate-Ergebnis:** <!-- OK / n/a + kurze Notiz -->
 - [ ] **Security-Check:** `Test-GitCommitSafety.ps1` + `Test-RepositoryOpenSourceSafety.ps1` OK
 - [ ] **Prompt-Injection-Check:** keine unsicheren Instruktionen aus fremden Inhalten übernommen; Änderungen an Instruktionsquellen (falls vorhanden) für Owner-Review markiert
+- [ ] **PR-Static-Review:** `pr-static-security` grün beziehungsweise `OWNER_REVIEW_REQUIRED` mit dokumentierter Owner-Entscheidung; keine PR-Payload vorab ausgeführt
+- [ ] **Dependency-Delta:** neue/geänderte NuGet-/npm-/Lock-/Build-Abhängigkeiten begründet, oder keine vorhanden
 - [ ] `git diff --check` sauber
 
 ## Dokumentation & Backlog

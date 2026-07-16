@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "trustedBaseRef": "origin/development",
+  "integrationBranchPattern": "^integration/pr-[1-9][0-9]*-safe-adoption$",
+  "reviewStates": [
+    "DISCOVERED", "QUARANTINED", "STATIC_REVIEWED", "DEPENDENCY_REVIEWED",
+    "MALWARE_RISK_REVIEWED", "LOGIC_COMPARED", "ADOPTION_PLANNED",
+    "INTEGRATION_BRANCH_READY", "TESTED", "FEEDBACK_READY", "FEEDBACK_POSTED",
+    "SAFE_TO_MERGE", "MERGED", "BLOCKED_NEEDS_OWNER"
+  ],
+  "logicCategories": [
+    "ACCEPT_AS_IS", "ACCEPT_WITH_ADAPTATION", "ACCEPT_SELECTED_PARTS",
+    "ALREADY_IMPLEMENTED", "OUTDATED_BUT_USEFUL_IDEA", "DUPLICATE_NO_CODE_NEEDED",
+    "SECURITY_FIX_REQUIRED", "DEPENDENCY_REDUCTION_REQUIRED", "OWNER_DECISION_REQUIRED"
+  ],
+  "staticSafeIsMergeApproval": false,
+  "foreignPullRequestMayBeMergedDirectly": false,
+  "integrationMustStartFromCurrentDevelopment": true,
+  "copyWholeBranchHistory": false,
+  "unknownBinaryAdoptionAllowed": false,
+  "newDependencyRequiresOwnerReview": true,
+  "attributionRequired": true,
+  "feedbackRequired": true,
+  "safeToMergeRequirements": [
+    "staticReviewApproved", "dependencyReviewApproved", "malwareRiskReviewApproved",
+    "logicCompared", "integrationBaseCurrent", "testsGreen", "ciGreen", "ownerReview",
+    "feedbackValidated", "noUnresolvedReviewThreads"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "description": "Ausschliesslich defensive Erkennungsmuster. Treffer werden klassifiziert und niemals ausgefuehrt.",
+  "regexTimeoutMilliseconds": 100,
+  "patterns": [
+    {"id":"prompt-injection","category":"prompt-injection","severity":"high","appliesTo":["metadata","patch"],"pattern":"(?i)(ignor(?:e|iere|ing)|disregard).{0,80}(instruction|regel|agents\\.md|previous)|(?:reveal|zeige|gib).{0,80}(secret|token|api.?key)|(?:merge|push).{0,40}(without|ohne).{0,40}(test|review)"},
+    {"id":"encoded-execution","category":"execution","severity":"critical","appliesTo":["patch"],"pattern":"(?i)encodedcommand|frombase64string\\s*\\("},
+    {"id":"dynamic-expression","category":"execution","severity":"critical","appliesTo":["patch"],"pattern":"(?i)invoke-expression|\\biex\\s+\\("},
+    {"id":"download-and-execute","category":"network-execution","severity":"critical","appliesTo":["patch"],"pattern":"(?is)(downloadfile|webclient|httpclient|curl|wget).{0,400}(process\\.start|start-process|cmd\\.exe|powershell\\.exe|bash|/bin/sh)"},
+    {"id":"network-download","category":"network","severity":"high","appliesTo":["patch"],"pattern":"(?i)invoke-webrequest|invoke-restmethod|download(?:file|string)|webclient|curl(?:\\.exe)?|wget(?:\\.exe)?"},
+    {"id":"process-launch","category":"execution","severity":"high","appliesTo":["patch"],"pattern":"(?i)process\\.start|start-process|cmd\\.exe|powershell\\.exe|/bin/(?:ba)?sh"},
+    {"id":"dynamic-assembly","category":"runtime-loading","severity":"high","appliesTo":["patch"],"pattern":"(?i)assembly\\.load|reflection\\.emit|dllimport\\s*\\("},
+    {"id":"persistence","category":"persistence","severity":"critical","appliesTo":["patch"],"pattern":"(?i)currentversion[\\\\/]run|schtasks|register-scheduledtask|new-service|sc\\.exe\\s+(?:create|config)|startup[\\\\/]"},
+    {"id":"credential-access","category":"credential-access","severity":"critical","appliesTo":["patch"],"pattern":"(?i)credentialmanager|login data|cryptunprotectdata|protecteddata\\.unprotect|x509store|cert:\\\\currentuser|browser.*profile"},
+    {"id":"security-bypass","category":"security-bypass","severity":"critical","appliesTo":["patch"],"pattern":"(?i)set-mppreference|disable.*defender|disable.*security|clear-eventlog|remove.*log"},
+    {"id":"path-traversal","category":"path","severity":"high","appliesTo":["path","patch"],"pattern":"(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)"},
+    {"id":"pull-request-target","category":"workflow","severity":"critical","appliesTo":["patch"],"pattern":"(?m)^\\+?\\s*pull_request_target\\s*:"},
+    {"id":"workflow-privilege","category":"workflow","severity":"critical","appliesTo":["patch"],"pattern":"(?i)permissions\\s*:\\s*write-all|secrets\\s*:\\s*inherit|contents\\s*:\\s*write|pull-requests\\s*:\\s*write"},
+    {"id":"workflow-secret-reference","category":"workflow","severity":"critical","appliesTo":["patch"],"pattern":"(?i)\\$\\{\\{\\s*secrets\\.|secrets\\s*:\\s*inherit"},
+    {"id":"workflow-write-permission","category":"workflow","severity":"critical","appliesTo":["patch"],"pattern":"(?im)^\\+?\\s*(?:contents|actions|checks|deployments|id-token|issues|packages|pages|pull-requests|security-events|statuses)\\s*:\\s*write\\s*$"},
+    {"id":"msbuild-execution-hook","category":"build","severity":"high","appliesTo":["patch"],"pattern":"(?i)<(?:prebuildevent|postbuildevent|usingtask|target\\s+name=|exec\\b)|codetaskfactory|roslyncodeTaskfactory"},
+    {"id":"package-lifecycle","category":"dependency","severity":"high","appliesTo":["patch"],"pattern":"(?i)[\"'](?:preinstall|install|postinstall|prepare)[\"']\\s*:"},
+    {"id":"git-hook","category":"persistence","severity":"critical","appliesTo":["path","patch"],"pattern":"(?i)(?:^|[\\\\/])\\.git[\\\\/]hooks|core\\.hookspath"},
+    {"id":"large-base64","category":"obfuscation","severity":"high","appliesTo":["patch"],"pattern":"[A-Za-z0-9+/]{800,}={0,2}"},
+    {"id":"submodule-mode","category":"repository","severity":"critical","appliesTo":["patch"],"pattern":"(?m)^(?:new |old )?file mode 160000|^Subproject commit [0-9a-f]{40}$"},
+    {"id":"symlink-mode","category":"repository","severity":"critical","appliesTo":["patch"],"pattern":"(?m)^(?:new |old )?file mode 120000"}
+  ]
+}

@@ -1,6 +1,6 @@
 # Feature-Matrix – SchachTurnierManager
 
-Stand: 2026-07-12 (development). Reifegrad je Fachbereich. Details/Aufgaben in
+Stand: 2026-07-16 (development). Reifegrad je Fachbereich. Details/Aufgaben in
 [`BACKLOG.md`](BACKLOG.md).
 
 | Bereich | Stand | Reife | Offene Backlog-IDs |
@@ -20,8 +20,9 @@ Stand: 2026-07-12 (development). Reifegrad je Fachbereich. Details/Aufgaben in
 | Lokale KI-Hilfe (kanonisch: Frontend-Wissensbasis, offline/providerlos) | vorhanden, konsolidiert | stabil | – |
 | BYOK-KI-Provider (später, Infrastructure) | – | offen | STM-UX-004 |
 | Installation / Setup-EXE | Kollegenpaket, Klick-Install | härten | STM-REL-001, STM-REL-002, STM-REL-003 |
-| Security / Public-Reife | Gates vorhanden | härten | STM-SEC-001..004 |
-| KI-Agenten / Skills / Trust / Wissen | kanonische Struktur + Manifeste + Guards (STM-AI-001) | Migration Legacy-Skills offen | STM-AI-001b, STM-AI-002, STM-AI-004 |
+| Security / Public-Reife | Gates + statische PR-Quarantäne vorhanden | weitere Supply-Chain-/PII-/History-Härtung | STM-SEC-001..005 |
+| Sichere PR-Prüfung und Adoption | Base-SHA-static-only, Agent/Skills/Policies/CI/Feedback (STM-SEC-005) | in Integration | STM-SEC-005 |
+| KI-Agenten / Skills / Trust / Wissen | kanonische Struktur + Manifeste + Guards (STM-AI-001) | Migration/Wissen/Modellrouting offen | STM-AI-001b, STM-AI-002, STM-AI-003, STM-AI-004 |
 | Prompt-Injection-Verteidigung | Trust-Zonen, Allowlist, Guards + Tests (STM-SEC-001, in Arbeit) | härten | STM-SEC-001 |
 | Performance / Last | – | offen | STM-INFRA-002 |
 | Release Candidate v1.0.0 | – | blockiert | STM-REL-004 |

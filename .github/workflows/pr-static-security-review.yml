@@ -1,0 +1,104 @@
+name: PR Static Security Review
+
+# PR-Payload bleibt T4: nur Base-SHA-Code liest Metadaten, Dateiliste und Patch.
+# Kein pull_request_target, keine Secrets, keine Write-Rechte und kein PR-Checkout.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    branches:
+      - development
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-static-security-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-static-security:
+    name: pr-static-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Vertrauenswürdigen Base-SHA auschecken
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: trusted-base
+
+      - name: PR-Patch statisch mit Base-Code prüfen
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REVIEW_OUTPUT: ${{ runner.temp }}/pr-static-security
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Location trusted-base
+          function Test-ShaBoundOwnerReview {
+            $raw = & gh api "repos/$($env:REPOSITORY)/pulls/$($env:PR_NUMBER)/reviews" --paginate --slurp 2>$null
+            if ($LASTEXITCODE -ne 0) { return $false }
+            try { $pages = $raw | ConvertFrom-Json } catch { return $false }
+            $marker = "STATIC-EXECUTION-APPROVED:$($env:EXPECTED_HEAD_SHA)"
+            foreach ($page in @($pages)) {
+              foreach ($review in @($page)) {
+                if ([string]$review.user.login -ceq $env:REPOSITORY_OWNER -and
+                    [string]$review.commit_id -ceq $env:EXPECTED_HEAD_SHA -and
+                    ([string]$review.body).Trim() -ceq $marker -and
+                    ([string]$review.state) -in @('COMMENTED','APPROVED')) { return $true }
+              }
+            }
+            return $false
+          }
+          function Initialize-BootstrapLegacyTempDrive {
+            if ($IsWindows -or (Get-PSDrive -Name D -ErrorAction SilentlyContinue)) { return }
+            if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP) -or -not (Test-Path -LiteralPath $env:RUNNER_TEMP -PathType Container)) {
+              throw 'Runner-Temp-Verzeichnis ist für den einmaligen Bootstrap nicht sicher verfügbar.'
+            }
+            New-PSDrive -Name D -PSProvider FileSystem -Root $env:RUNNER_TEMP -Scope Script | Out-Null
+          }
+          function Assert-OwnerExecutionApproval([bool]$AllowBootstrap) {
+            if ($env:AUTHOR_ASSOCIATION -ne 'OWNER' -or $env:HEAD_REPOSITORY -cne $env:REPOSITORY) {
+              throw 'Ausführungsfreigabe ist ausschließlich für einen Owner-Branch im kanonischen Repository zulässig.'
+            }
+            $isIntegration = $env:HEAD_REF -cmatch '^integration/pr-[1-9][0-9]*-safe-adoption$'
+            $isBootstrap = $AllowBootstrap -and $env:HEAD_REF -ceq 'security/STM-SEC-005-safe-pr-adoption'
+            if (-not $isIntegration -and -not $isBootstrap) {
+              throw 'Ausführungsfreigabe erfordert einen exakt nach dem Original-PR benannten Owner-Integrationsbranch.'
+            }
+            if (-not (Test-ShaBoundOwnerReview)) {
+              throw 'Ausführungsfreigabe fehlt oder ist nicht exakt an Owner und aktuellen PR-Head-SHA gebunden.'
+            }
+          }
+          $reviewScript = Join-Path (Get-Location) 'scripts/Invoke-SafePullRequestReview.ps1'
+          if (-not (Test-Path -LiteralPath $reviewScript -PathType Leaf)) {
+            Assert-OwnerExecutionApproval $true
+            Initialize-BootstrapLegacyTempDrive
+            & ./scripts/Test-PromptInjectionDefense.ps1 -NoArchive
+            if ($LASTEXITCODE -ne 0) { throw 'Bootstrap-Prompt-Injection-Gate fehlgeschlagen.' }
+            & ./scripts/Test-AgentInstructionIntegrity.ps1
+            if ($LASTEXITCODE -ne 0) { throw 'Bootstrap-Instruction-Integrity-Gate fehlgeschlagen.' }
+            '### Bootstrap-Status' >> $env:GITHUB_STEP_SUMMARY
+            'Base enthält das neue statische PR-Skript noch nicht. Dieser Owner-PR bleibt bis zum unabhängigen Final-Review `OWNER_REVIEW_REQUIRED`; dies ist keine allgemeine Freigabe.' >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+
+          & pwsh -NoLogo -NoProfile -File $reviewScript -Repository $env:REPOSITORY -PullRequestNumber ([int]$env:PR_NUMBER) -BaseBranch $env:BASE_BRANCH -OutputDirectory $env:REVIEW_OUTPUT -StaticOnly -ExpectedHeadSha $env:EXPECTED_HEAD_SHA -ExpectedBaseSha $env:EXPECTED_BASE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Statische PR-Prüfung konnte nicht vollständig ausgeführt werden.' }
+          $report = Get-Content -Raw -LiteralPath (Join-Path $env:REVIEW_OUTPUT 'static-review.json') | ConvertFrom-Json
+          "### Statische PR-Entscheidung: ``$($report.decision)``" >> $env:GITHUB_STEP_SUMMARY
+          "Risikoklasse: ``$($report.riskClass)``; Findings: $($report.findingCount). Keine PR-Payload wurde ausgeführt." >> $env:GITHUB_STEP_SUMMARY
+          if ($report.decision -eq 'BLOCKED_UNVERIFIED') { throw 'PR ist statisch nicht verifizierbar; keine Ausführung oder Integration.' }
+          if ($report.decision -ne 'SAFE_FOR_ISOLATED_BUILD') { Assert-OwnerExecutionApproval $false }

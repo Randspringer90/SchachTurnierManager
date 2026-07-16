@@ -42,6 +42,26 @@ Repository-Sicherheit ist organisatorisch verankert (technischer Deep-Dive folgt
 - `scripts/Test-GitCommitSafety.ps1` läuft als Pflicht-Gate in `scripts/Commit-If-Green.ps1` vor und nach dem Staging; kein blindes `git add .`/`git add --all`.
 - `scripts/Test-RepositoryOpenSourceSafety.ps1` prüft alle getrackten Dateien als Public-Snapshot-Kandidaten und schreibt Reports nach `output/repo-open-source-safety/`.
 
-## Keine öffentlichen Releases ohne Clean Snapshot
+## Pull-Request-Reviewer
 
-Das private Entwicklungsrepo wird nie direkt öffentlich geschaltet. Public Release nur über `scripts/New-OpenSourceSnapshot.ps1`: Snapshot aus getrackten Dateien eines cleanen Arbeitsbaums, ohne `.git`-Historie, ohne `docs/handoffs/`, ohne `scripts/archive/`, mit Sicherheits-Report. Vor einem echten Release wird der Snapshot auf einem frischen Klon geprüft und manuell abgenommen.
+Der manifestierte `Pull-Request-Reviewer` arbeitet in seiner Initialphase ausschließlich
+read-only/static-only. Seine fünf Skills trennen allgemeine PR-Security, Dependency-Delta,
+Malware-Risiko, sichere Adoption und Contributor-Feedback. Effektive Toolrechte sind auf
+Read/Grep/Glob und kontrolliertes GitHub-Metadatenlesen begrenzt; Restore, Build, Test,
+Installation, Secretzugriff, Merge und Push sind verboten.
+
+Er erzeugt höchstens `SAFE_FOR_ISOLATED_BUILD`. Erst der separat manifestierte
+`Pull-Request-Integrator` darf nach Owner-Freigabe vom aktuellen `origin/development` beginnen,
+nur genehmigte Teile übernehmen und die freigegebenen Tests ausführen. Auch der geprüfte
+Integrationsstand erhält niemals Zugriff auf T5. Trust- und Komponentenmodell:
+[`PULL_REQUEST_TRUST_BOUNDARIES.md`](PULL_REQUEST_TRUST_BOUNDARIES.md) und
+[`PULL_REQUEST_INTEGRATION_ARCHITECTURE.md`](PULL_REQUEST_INTEGRATION_ARCHITECTURE.md).
+
+## Keine Release-Freigabe ohne History-/Snapshot-Entscheidung
+
+Das Repository ist bereits öffentlich; der aktuelle Arbeitsstand ist vorwärts bereinigt, die
+alte Historie bleibt jedoch der dokumentierte Owner-Blocker STM-SEC-004. Ein optionaler Clean
+Snapshot entsteht nur über `scripts/New-OpenSourceSnapshot.ps1` aus getrackten Dateien eines
+sauberen Arbeitsbaums, ohne `.git`-Historie und mit Sicherheitsreport. History-Rewrite,
+Repository-Neuanlage oder Release erfolgen nicht automatisch und brauchen eine separate
+Owner-Entscheidung sowie Prüfung auf einem frischen Klon.

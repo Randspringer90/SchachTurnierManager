@@ -19,9 +19,19 @@ Stand: 0.38.7. Welche Aufgabe läuft über welches Skript, welchen Skill, welche
 | Commit-Sicherheitsprüfung | `scripts/Test-GitCommitSafety.ps1` | wird vom CommitGuard automatisch aufgerufen |
 | Open-Source-Sicherheitsprüfung | `scripts/Test-RepositoryOpenSourceSafety.ps1` | Reports unter `output/repo-open-source-safety/` |
 | Open-Source-Clean-Snapshot | `scripts/New-OpenSourceSnapshot.ps1` | Snapshot + Report unter `output/open-source-snapshot/` |
+| PR initial statisch prüfen | `scripts/Invoke-SafePullRequestReview.ps1` | nur Metadaten/Dateiliste/Patch; kein Checkout, Restore, Build oder Test |
+| Dependency-Delta prüfen | `scripts/Test-PullRequestDependencyDelta.ps1` | Offline-Contract ohne Paketmanager/Lifecycle-Skripte |
+| PR-Adoption planen | `scripts/New-PullRequestAdoptionPrompt.ps1` | SHA-/Policy-gebundener Trust-Handoff; Integration vom aktuellen development |
+| Contributor-Feedback | `scripts/New-PullRequestFeedback.ps1` | standardmäßig Draft; explizites Posting nach SHA-Recheck |
+| PR-Review-System abnehmen | `scripts/Test-PullRequestReviewReadiness.ps1` | synthetische Security-/Tamper-/WhatIf-Fälle |
 | Aufräumen | `scripts/Clean-Generated.ps1` | generierte Artefakte |
 
-Zugehörige Skills: `.agents/skills/repository-security.md` (vor Commit/Push/Snapshot verbindlich), fachliche Skills (`pairing-engine`, `tiebreaks`, `rating-performance`, `imports-exports`, `installer-packaging`, `ui-dashboard`, `external-player-lookup`) vor Arbeit am jeweiligen Thema.
+Zugehörige Skills: `.agents/skills/repository-security.md` (vor Commit/Push/Snapshot verbindlich),
+die fünf manifestierten PR-Review-Skills (`pull-request-security-review`,
+`dependency-delta-review`, `malware-risk-review`, `safe-pr-adoption`,
+`contributor-feedback`) sowie fachliche Skills (`pairing-engine`, `tiebreaks`,
+`rating-performance`, `imports-exports`, `installer-packaging`, `ui-dashboard`,
+`external-player-lookup`) vor Arbeit am jeweiligen Thema.
 
 ## Release-Gate
 
@@ -41,7 +51,8 @@ Der Guard blockiert Artefakte (`output/`, `bin/`, `obj/`, `dist/`, `node_modules
 
 ## Clean Snapshot (Public Release)
 
-Das private Repo wird nie direkt öffentlich geschaltet. Ablauf für Open Source:
+Das Repository ist bereits öffentlich; der Clean-Snapshot-Ablauf ist eine optionale,
+manuell freizugebende Remediation für die dokumentierte alte Historie:
 
 1. Arbeitsbaum clean committen.
 2. Optional `scripts/Test-RepositoryOpenSourceSafety.ps1` (mit `-AllHistory` für Historien-Scan) und Report prüfen.
@@ -50,7 +61,7 @@ Das private Repo wird nie direkt öffentlich geschaltet. Ablauf für Open Source
 
 ## Handoff-Erzeugung
 
-Die frühere Praxis (pro Version `docs/HANDOFF_x_y_z.md` + `scripts/After-Apply-V*.ps1`) ist beendet; Bestände liegen archiviert unter `docs/handoffs/` und `scripts/archive/after-apply/`. Übergaben laufen heute über `PLANS.md` (offene Punkte), `CHANGELOG.md` (was wurde getan) und bei Bedarf ein kurzes Dokument unter `docs/handoffs/` – ohne begleitende Patch-Skripte.
+Die frühere Praxis (pro Version `docs/HANDOFF_x_y_z.md` + `scripts/After-Apply-V*.ps1`) ist beendet; Bestände liegen archiviert unter `docs/handoffs/` und `scripts/archive/after-apply/`. Übergaben laufen heute über `BACKLOG.md` (kanonische offene Punkte), `CHANGELOG.md` (was wurde getan) und die Laufberichte unter `docs/ai/reports/` – ohne begleitende Patch-Skripte.
 
 ## Zielstruktur scripts/ (dokumentiert, noch nicht migriert)
 

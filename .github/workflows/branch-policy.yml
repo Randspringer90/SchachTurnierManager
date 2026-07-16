@@ -34,6 +34,8 @@ jobs:
             development)
               case "$head" in
                 feature/*|fix/*|security/*|docs/*|refactor/*) allowed=1 ;;
+                integration/pr-*-safe-adoption)
+                  if [[ "$head" =~ ^integration/pr-[1-9][0-9]*-safe-adoption$ ]]; then allowed=1; else allowed=0; fi ;;
                 *) allowed=0 ;;
               esac
               ;;
@@ -57,7 +59,7 @@ jobs:
 
           if [ "$allowed" -ne 1 ]; then
             echo "::error::Branch '$head' darf nicht per PR nach '$base' gemergt werden."
-            echo "Erlaubt: development <= feature|fix|security|docs|refactor/* ; main <= release|hotfix/* ; release/* <= development|release-fix/*"
+            echo "Erlaubt: development <= feature|fix|security|docs|refactor/* oder integration/pr-<nr>-safe-adoption ; main <= release|hotfix/* ; release/* <= development|release-fix/*"
             exit 1
           fi
           echo "Branch-Policy OK."

@@ -11,11 +11,20 @@
     "config/tool-permission-profiles.json",
     "config/trusted-instruction-paths.json",
     "config/model-routing.json",
+    "config/pull-request-review-policy.json",
+    "config/dependency-review-policy.json",
+    "config/suspicious-change-patterns.json",
+    "config/pr-adoption-policy.json",
     "docs/security/CONTRIBUTOR_SECURITY.md",
     "docs/security/AGENT_SECURITY_CONTROLS.md",
+    "docs/security/SAFE_PULL_REQUEST_REVIEW.md",
     "docs/architecture/AGENT_TRUST_BOUNDARIES.md",
     "docs/architecture/UNTRUSTED_CONTENT_PIPELINE.md",
-    "docs/architecture/SECURE_KNOWLEDGE_PERSISTENCE.md"
+    "docs/architecture/SECURE_KNOWLEDGE_PERSISTENCE.md",
+    "docs/architecture/PULL_REQUEST_TRUST_BOUNDARIES.md",
+    "docs/architecture/PULL_REQUEST_INTEGRATION_ARCHITECTURE.md",
+    "docs/planning/PULL_REQUEST_ADOPTION_WORKFLOW.md",
+    "docs/ai/templates/SAFE_PULL_REQUEST_ADOPTION.md"
   ],
   "manifestControlledRoots": [
     "agents/",

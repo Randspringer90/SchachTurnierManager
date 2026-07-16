@@ -65,13 +65,13 @@ function Assert-CleanWorktree {
     if ($status) { throw "Arbeitsbaum ist nicht sauber. Bitte zuerst committen/stashen:`n$status" }
 }
 
-# --- Run-Kontext: Details nach D:\Temp\<RunName>_<Timestamp>, genau EIN Upload-ZIP ---
+# --- Run-Kontext: Details unter dem plattformneutralen System-Temp-Pfad, genau EIN Upload-ZIP ---
 
 function New-RunContext {
     param([Parameter(Mandatory)][string]$RunName)
     Assert-SafeNameSegment ($RunName.ToLowerInvariant()) 'RunName'
     $stamp = (Get-Date).ToString('yyyyMMdd_HHmmss')
-    $base = 'D:\Temp'
+    $base = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
     if (-not (Test-Path -LiteralPath $base)) { New-Item -ItemType Directory -Force -Path $base | Out-Null }
     $dir = Join-Path $base ("{0}_{1}" -f $RunName, $stamp)
     New-Item -ItemType Directory -Force -Path $dir | Out-Null

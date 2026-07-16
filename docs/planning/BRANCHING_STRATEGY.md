@@ -10,7 +10,7 @@
 | Branch          | Zweck                                         | Direkter Push | Merge-Quelle                     |
 |-----------------|-----------------------------------------------|---------------|----------------------------------|
 | `main`          | Nur der jeweils neueste **freigegebene Release-Stand** | Gesperrt (nur Admin-Notfall) | `release/*`, `hotfix/*` (per PR) |
-| `development`   | **Standardbranch**, aktueller Entwicklungsstand | Nur Owner (der Owner, Admin-Bypass) | `feature/* fix/* security/* docs/* refactor/*` (per PR) |
+| `development`   | **Standardbranch**, aktueller Entwicklungsstand | Nur Owner (der Owner, Admin-Bypass) | `feature/* fix/* security/* docs/* refactor/*` sowie `integration/pr-<nr>-safe-adoption` (per PR) |
 | `feature/*` u.a.| Einzelne Backlog-Aufgabe                       | Ersteller     | –                                |
 | `release/*`     | Release-Stabilisierung                        | Gesperrt (PR) | `development`, `release-fix/*`   |
 | `hotfix/*`      | Dringende Korrektur am Release                | Gesperrt (PR) | von `main` abgezweigt            |
@@ -58,6 +58,15 @@ Regeln:
   oder Rebase, kein Force-Push auf geschützte Branches).
 - Nach dem Merge wird der Feature-Branch automatisch gelöscht (Repo-Einstellung).
 - Keine Secrets, Logs, Datenbanken, ZIPs, Dumps oder lokale Konfiguration committen.
+
+## Sichere PR-Integrationsbranches
+
+`integration/pr-<nummer>-safe-adoption` ist ausschließlich für eine kontrollierte Übernahme
+eines bereits statisch geprüften Beitrags erlaubt. Der Branch startet vom erneut abgerufenen
+aktuellen `origin/development`, nie vom fremden PR-Branch. Nur im SHA-/Policy-gebundenen
+Owner-Plan freigegebene Teile dürfen übernommen werden; Original-PR und Contributor werden
+attributiert. Der Ablauf steht in
+[`PULL_REQUEST_ADOPTION_WORKFLOW.md`](PULL_REQUEST_ADOPTION_WORKFLOW.md).
 
 ## Release-Branches
 

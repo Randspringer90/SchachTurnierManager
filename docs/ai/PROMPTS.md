@@ -20,6 +20,13 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 > **2026-07-12 (Claude Opus 4.8):** STM-INT-001 v0.41-Reconcile – kanonische KI-Hilfe = Frontend,
 > totes `Application.Ai`-Backend-Modul entfernt. Bericht:
 > `reports/2026-07-12-claude-stm-int-001-reconciliation.md`.
+>
+> **2026-07-15/16 (Codex / GPT-5.6 Sol):** Owner-PR #8 unabhängig gehärtet und integriert;
+> STM-SEC-005 für Base-SHA-gebundene statische PR-Prüfung, kontrollierte Adoption,
+> Dependency-/Malware-Risiko, redigiertes Feedback und CI-Gate. Prompts:
+> `prompts/20260715_1756_codex-sol-v1-completion-run.md` und
+> `prompts/20260716_0638_codex-safe-pr-adoption-resume.md`. Bericht:
+> `reports/2026-07-16-codex-safe-pr-adoption-and-v1-progress.md`.
 
 | Datum | Tool/Modell | Kurzbeschreibung | Prompt | Report |
 |---|---|---|---|---|

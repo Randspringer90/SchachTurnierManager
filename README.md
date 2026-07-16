@@ -15,6 +15,7 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - Lokaler Turnierassistent für Format-, Runden-, Zeit-, Brett- und Turniertagsempfehlungen ohne externe KI-API.
 - Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
 - Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
+- Base-SHA-gebundene, statische Pull-Request-Prüfung vor Restore, Build oder Test fremder Beiträge; kontrollierte Übernahme mit Attribution statt Blindmerge.
 
 ## Projektstruktur
 
@@ -24,6 +25,18 @@ Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Konte
 - `docs/handoffs/`: historisches Handoff-Archiv (nicht mehr gepflegt, nicht im Public Snapshot).
 - `scripts/`: aktive Skripte mit Übersicht in `scripts/README.md`; historische After-Apply-Skripte unter `scripts/archive/after-apply/`.
 - `AGENTS.md`: verbindliche, providerneutrale Regeln für KI-Agenten; `.agents/skills/` enthält wiederverwendbare Skills, `.claude/` nur einen Adapter.
+
+### Sichere Pull-Request-Prüfung
+
+Pull-Request-Inhalte gelten zunächst vollständig als nicht vertrauenswürdige Daten. Der Check
+`pr-static-security` verwendet die geprüften Skripte aus dem aktuellen Base-SHA und liest nur
+Metadaten, Dateiliste und Patch. Er checkt keinen fremden Head aus, führt keinen PR-Code aus
+und erhält keine Secrets. Lokal erzeugt `scripts/Invoke-SafePullRequestReview.ps1` neun
+redigierte, SHA-/Policy-gebundene Reviewartefakte. Notwendige Anpassungen erfolgen auf einem
+Owner-Integrationsbranch vom aktuellen `origin/development`; Originalbeitrag und Contributor
+bleiben nachvollziehbar. Details:
+[`SAFE_PULL_REQUEST_REVIEW.md`](docs/security/SAFE_PULL_REQUEST_REVIEW.md) und
+[`PULL_REQUEST_ADOPTION_WORKFLOW.md`](docs/planning/PULL_REQUEST_ADOPTION_WORKFLOW.md).
 
 
 ### Release/Ops, Logging und lokale Secrets
@@ -35,7 +48,7 @@ Seit 0.50.x enthaelt das Projekt einen eigenen Release-/Betriebsunterbau:
 - HTTP-Request-Logging ohne Querystrings, damit keine Tokens oder API-Keys in Logs landen.
 - `.secrets/local/` und `secrets/local/` bleiben lokale, gitignored Ablagen fuer DPAPI-verschluesselte Werte.
 - `scripts/Set-LocalSecret.ps1` und `scripts/Get-LocalSecret.ps1` bilden den lokalen DPAPI-Roundtrip ab.
-- `scripts/Invoke-ReleaseCandidateReadiness.ps1` sammelt ReleaseGate, SecretSafety, Desktop, Portable und optional Installer in einem Run-ZIP unter `D:\Temp`.
+- `scripts/Invoke-ReleaseCandidateReadiness.ps1` sammelt ReleaseGate, SecretSafety, Desktop, Portable und optional Installer in einem lokalen temporären Run-ZIP.
 - Agentenregeln und Skills liegen im Projekt selbst unter `AGENTS.md` und `.agents/skills/`, damit Codex, Claude Code und lokale KI-Workflows ohne externe Projektabhaengigkeiten arbeiten koennen.
 
 
@@ -60,7 +73,7 @@ Seit 0.52.0 kann das erzeugte Kollegenpaket in einem frischen Testordner automat
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ColleagueFreshRunTest.ps1" -BuildPackage -BuildInstaller -AllowMissingInnoSetup
 ```
 
-Am Ende wird ein Run-ZIP unter `D:\Temp` ausgegeben. Ein echter Test auf einem Kollegenrechner bleibt fuer die finale Freigabe sinnvoll, aber der Frischlauf schliesst die haeufigsten Paketierungsfehler bereits lokal aus.
+Am Ende wird ein lokales temporäres Run-ZIP ausgegeben. Ein echter Test auf einem Kollegenrechner bleibt fuer die finale Freigabe sinnvoll, aber der Frischlauf schliesst die haeufigsten Paketierungsfehler bereits lokal aus.
 
 
 ### Laufzeitlogs pruefen
@@ -115,7 +128,7 @@ lokal installiertes Inno Setup 6). Der empfohlene Prüflauf ist:
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-InstallerReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
 ```
 
-Der Prüflauf erzeugt ein ZIP unter `D:\Temp` mit Logs, Manifesten und manueller Testcheckliste.
+Der Prüflauf erzeugt ein lokales temporäres ZIP mit Logs, Manifesten und manueller Testcheckliste.
 
 
 ## Portable-ZIP-Frischordner-Test
@@ -127,7 +140,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-Portable
 ```
 
 Der Lauf baut standardmäßig ein self-contained Portable-ZIP, entpackt es in einen frischen
-Ordner unter `D:\Temp`, startet die App auf einem Testport, prüft Healthcheck, eingebettetes
+temporären Ordner, startet die App auf einem Testport, prüft Healthcheck, eingebettetes
 Dashboard, Turnierlisten-API und den isolierten SQLite-Datenpfad. Am Ende wird ein
 `UPLOAD_ZIP=...` ausgegeben.
 
@@ -148,7 +161,7 @@ Prüflauf:
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-TournamentAssistantReadiness.ps1"
 ```
 
-Der Lauf erzeugt ein `UPLOAD_ZIP=...` unter `D:\Temp`.
+Der Lauf gibt den lokalen temporären Pfad als `UPLOAD_ZIP=...` aus.
 
 ## Mehrsprachigkeit
 
@@ -296,7 +309,7 @@ Commits laufen ueber `scripts/Commit-If-Green.ps1`. Der Guard prueft Build, Test
 Das Repository ist bereits öffentlich; die **alte Git-Historie** ist der offene Punkt. Für einen history-freien Public-Neustart kann ein geprüfter Snapshot ohne Git-Historie erzeugt werden (siehe Backlog-Aufgabe „Public Snapshot / History-Abnahme"):
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"; pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\New-OpenSourceSnapshot.ps1"
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\New-OpenSourceSnapshot.ps1"
 ```
 
 Der Snapshot liegt unter `output\open-source-snapshot`, enthält einen Report und schließt lokale Artefakte, historische Handoffs/After-Apply-Skripte, `.codex`, `.vs`, Build-Ausgaben, Logs, Dumps, Datenbanken und Zugangsdaten-Muster aus.
@@ -304,7 +317,7 @@ Der Snapshot liegt unter `output\open-source-snapshot`, enthält einen Report un
 ### RUN-03 Frischordner-Smoke
 
 Der Portable-Frischordner-Test liegt unter `scripts\Invoke-PortableFreshFolderTest.ps1`.
-Er baut das Portable-ZIP, entpackt es in einen isolierten Ordner unter `D:\Temp`, startet
+Er baut das Portable-ZIP, entpackt es in einen isolierten temporären Ordner, startet
 die WebApi auf einem Testport und prueft Health, eingebettetes Dashboard, Turnierlisten-API
 und SQLite-Datenpfad. Leere Paketordner wie `data` werden im Manifest als optional
 behandelt, weil ZIP-Werkzeuge leere Ordner nicht immer erhalten.
@@ -320,11 +333,10 @@ Browser-Cache landen.
 Readiness-Test:
 
 ```powershell
-Set-Location "D:\Schach\SchachTurnierManager"
 pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-PwaReadiness.ps1"
 ```
 
-Am Ende wird ein `UPLOAD_ZIP=...` unter `D:\Temp` erzeugt.
+Am Ende wird der lokale temporäre Pfad als `UPLOAD_ZIP=...` ausgegeben.
 
 ## Release- und Kollegeninstallation
 
@@ -346,7 +358,7 @@ Lokale Secrets für spätere KI-/Provider-Anbindungen werden innerhalb des Proje
 
 ## Release-/Betriebspruefung
 
-Der Release-Candidate-Lauf sammelt alle Detailausgaben in einem eigenen Ordner unter `D:\Temp` und erzeugt am Ende genau ein `UPLOAD_ZIP=...` fuer die Uebergabe an den naechsten KI-/Review-Lauf:
+Der Release-Candidate-Lauf sammelt alle Detailausgaben in einem eigenen lokalen temporären Ordner und erzeugt am Ende genau ein `UPLOAD_ZIP=...` fuer die Uebergabe an den naechsten KI-/Review-Lauf:
 
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseCandidateReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup

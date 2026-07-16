@@ -9,7 +9,7 @@ required-tools, forbidden-tools, procedure, security-controls, verification, out
 typical-failures, lessons-learned, owning-agent`
 
 ## Status
-- **canonical** (neues SKILL.md, volles Schema): prompt-injection-defense, instruction-integrity, untrusted-content-review, knowledge-management, secret-management, model-routing.
+- **canonical** (neues SKILL.md, volles Schema): prompt-injection-defense, instruction-integrity, untrusted-content-review, knowledge-management, secret-management, model-routing, pull-request-security-review, dependency-delta-review, malware-risk-review, safe-pr-adoption, contributor-feedback.
 - **legacy-flat** (bestehende `.agents/skills/*.md`, Migration zu SKILL.md offen unter STM-AI-001b):
   repository-security, ai-run-logging, release-operations, runtime-logging, pairing-engine, tiebreaks, imports-exports, ui-dashboard, plus click-installation, colleague-*, external-player-lookup,
   installer-packaging, logging-observability, rating-performance, internet-research.

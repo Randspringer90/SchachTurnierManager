@@ -11,7 +11,8 @@ Version. Aufgaben-Detail in [`BACKLOG.md`](BACKLOG.md); Reihenfolge in
 - Import/Export: TRF/Excel (STM-IE-001).
 - Release: Setup-EXE (STM-REL-001), Signierung/Update (STM-REL-002), Kollegen-PC-Test (STM-REL-003).
 - Security: Prompt-Injection (STM-SEC-001), Supply-Chain/Lizenz (STM-SEC-002),
-  PII-Minimierung (STM-SEC-003), **Public Snapshot & History-Abnahme (STM-SEC-004, P0-Blocker)**.
+  PII-Minimierung (STM-SEC-003), **Public Snapshot & History-Abnahme (STM-SEC-004, P0-Blocker)**
+  und sichere Pull-Request-Prüfung/-Übernahme (STM-SEC-005).
 - Abschluss: Release Candidate (STM-REL-004).
 
 ### Soll (P2)

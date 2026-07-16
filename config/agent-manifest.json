@@ -240,6 +240,72 @@
       ]
     },
     {
+      "name": "Pull-Request-Reviewer",
+      "canonicalPath": "agents/pull-request-reviewer.md",
+      "purpose": "Prueft Pull-Request-Metadaten, Dateiliste und Patch vor jeder Ausfuehrung statisch und plant nur eine kontrollierte, attributierte Uebernahme.",
+      "skills": [
+        "pull-request-security-review",
+        "dependency-delta-review",
+        "malware-risk-review"
+      ],
+      "permissionProfile": "pr-review-static",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "GitHubMetadataRead",
+        "WriteReviewArtifacts"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "restore",
+        "build",
+        "test",
+        "install",
+        "merge",
+        "git-push",
+        "arbitrary-network",
+        "secret-read"
+      ]
+    },
+    {
+      "name": "Pull-Request-Integrator",
+      "canonicalPath": "agents/pull-request-integrator.md",
+      "purpose": "Uebernimmt nach Owner-Freigabe nur genehmigte Beitragsteile auf einem Integrationsbranch vom aktuellen development und fuehrt die freigegebenen Tests aus.",
+      "skills": [
+        "safe-pr-adoption",
+        "contributor-feedback"
+      ],
+      "permissionProfile": "pr-integration-controlled",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-implementation",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write",
+        "restore",
+        "build",
+        "test"
+      ],
+      "forbiddenScopes": [
+        "execute-foreign-script",
+        "unapproved-install",
+        "network-during-untrusted",
+        "secret-read",
+        "merge-foreign-pr",
+        "git-push",
+        "tag",
+        "release"
+      ]
+    },
+    {
       "name": "Release-Agent",
       "canonicalPath": "agents/release-agent.md",
       "purpose": "Release-Vorbereitung; kein Tag/Release ohne Owner-Freigabe.",

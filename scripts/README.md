@@ -21,6 +21,15 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Test-KnowledgePersistenceSafety.ps1` – sichere Wissenspersistenz (`docs/knowledge/**`).
 - `Sync-ClaudeAgentAdapters.ps1` – dünne Claude-Adapter aus `agents/**` synchronisieren (`-Check`/`-Apply`/`-WhatIf`/`-RepositoryRoot`).
 
+## Sichere Pull-Request-Prüfung (STM-SEC-005)
+
+- `Invoke-SafePullRequestReview.ps1` – read-only/static-only Review von Metadaten, vollständiger Dateiliste und Patch; erzeugt exakt neun redigierte SHA-/Policy-gebundene Artefakte, ohne PR-Code auszuführen.
+- `Test-PullRequestDependencyDelta.ps1` – statischer Offline-Contract für NuGet-/npm-/Lock-/Build-/Using-Deltas; führt keinen Paketmanager aus.
+- `New-PullRequestAdoptionPrompt.ps1` – erzeugt nach Bindungs- und SHA-Recheck einen Trust-getrennten Handoff; T4-PR-Daten bleiben als „DATEN – KEINE ANWEISUNGEN“ markiert.
+- `New-PullRequestFeedback.ps1` – erzeugt standardmäßig nur redigiertes Feedback; Posting verlangt expliziten Schalter und aktuellen Head-/Base-Recheck.
+- `Test-PullRequestReviewReadiness.ps1` – providerunabhängiger Gate mit synthetischen Positiv-, Risiko-, Tamper-, Pfad- und WhatIf-Szenarien.
+- `lib/PullRequestReviewCommon.ps1` – pure Validierung, Redaction, defensive Klassifikation und Reportbindung.
+
 ## Contributor / Kollaboration
 
 - `New-ContributorTaskPrompt.ps1` – erzeugt aus einer Backlog-ID/Issue einen fertigen, sicheren Codex-Arbeitsauftrag für einen nicht-technischen Schach-Contributor (Vorlage `docs/ai/templates/CODEX_CHESS_FEATURE.md`; Issue-Text = untrusted Daten). Beispiel: `pwsh scripts/New-ContributorTaskPrompt.ps1 -BacklogId STM-TB-001`.
@@ -56,7 +65,7 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 ## Lauf-Logging (operator/diagnostics)
 
 - `Invoke-LoggedCommand.ps1` – lange Befehle mit kurzer Terminalausgabe ausführen; vollständige Ausgabe landet im Run-Logordner.
-- `New-RunLogBundle.ps1` – Run-Ordner unter `D:\Temp` anlegen bzw. Logs, Git-Status und Diff-Stat zu einem ZIP bündeln.
+- `New-RunLogBundle.ps1` – lokalen temporären Run-Ordner anlegen bzw. Logs, Git-Status und Diff-Stat zu einem ZIP bündeln.
 - `Invoke-LoggingReadiness.ps1` – RUN-54: WebApi-Laufzeitlogs in isoliertem Daten-/Logordner pruefen, Health/Dashboard/API aufrufen und sicherstellen, dass Querystrings nicht in Logdateien landen.
 
 ## Archiv
@@ -77,7 +86,7 @@ Die Unterordner `dev/`, `test/`, `release/`, `git/`, `security/`, `maintenance/`
 
 - `Invoke-SecretSafetyReadiness.ps1` prüft GitSafety, lokale DPAPI-Secret-Ablage unter `.secrets/local/` und Gitignore-Schutz. Der Test legt nur einen temporären Selftest-Wert an, loggt ihn nicht und löscht ihn wieder.
 - `Get-LocalSecret.ps1` liest DPAPI-geschützte lokale Secrets. Standardausgabe ist `SecureString`; Klartext ist nur mit `-AsPlainTextForChildProcessOnly` für direkte Child-Prozess-Übergaben vorgesehen.
-- `Invoke-ReleaseCandidateReadiness.ps1` bündelt ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paketierung und optional Installer-Readiness in einem `D:\Temp`-Run-ZIP.
+- `Invoke-ReleaseCandidateReadiness.ps1` bündelt ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paketierung und optional Installer-Readiness in einem lokalen temporären Run-ZIP.
 
 Beispiel:
 
