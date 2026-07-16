@@ -51,6 +51,46 @@
       "requiredVerification": "schema+no-secrets+no-owner-paths"
     },
     {
+      "name": "pull-request-security-review",
+      "canonicalPath": ".agents/skills/pull-request-security-review/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Pull-Request-Reviewer",
+      "riskClass": "high",
+      "requiredVerification": "schema+static-only+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "dependency-delta-review",
+      "canonicalPath": ".agents/skills/dependency-delta-review/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Pull-Request-Reviewer",
+      "riskClass": "high",
+      "requiredVerification": "schema+static-only+no-package-install+no-owner-paths"
+    },
+    {
+      "name": "malware-risk-review",
+      "canonicalPath": ".agents/skills/malware-risk-review/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Pull-Request-Reviewer",
+      "riskClass": "high",
+      "requiredVerification": "schema+static-only+no-payload-execution+no-owner-paths"
+    },
+    {
+      "name": "safe-pr-adoption",
+      "canonicalPath": ".agents/skills/safe-pr-adoption/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Pull-Request-Integrator",
+      "riskClass": "high",
+      "requiredVerification": "schema+current-base+owner-review+attribution"
+    },
+    {
+      "name": "contributor-feedback",
+      "canonicalPath": ".agents/skills/contributor-feedback/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Pull-Request-Integrator",
+      "riskClass": "medium",
+      "requiredVerification": "schema+redaction+sha-binding+explicit-post"
+    },
+    {
       "name": "repository-security",
       "canonicalPath": ".agents/skills/repository-security.md",
       "format": "legacy-flat",

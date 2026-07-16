@@ -10,6 +10,43 @@
   "routes": [
     {
       "taskCategories": [
+        "pull-request-review"
+      ],
+      "primaryAgent": "Pull-Request-Reviewer",
+      "reviewerAgent": "Prompt-Injection-Reviewer",
+      "requiredSkills": [
+        "pull-request-security-review",
+        "dependency-delta-review",
+        "malware-risk-review"
+      ],
+      "minimumQualityClass": "strongest-planning",
+      "forbiddenFallbacks": [
+        "standard-low-risk",
+        "local-deterministic"
+      ],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": true
+    },
+    {
+      "taskCategories": [
+        "pull-request-adoption"
+      ],
+      "primaryAgent": "Pull-Request-Integrator",
+      "reviewerAgent": "Final-Reviewer",
+      "requiredSkills": [
+        "safe-pr-adoption",
+        "contributor-feedback"
+      ],
+      "minimumQualityClass": "strongest-implementation",
+      "forbiddenFallbacks": [
+        "standard-low-risk",
+        "local-deterministic"
+      ],
+      "securityReviewRequired": true,
+      "humanApprovalRequired": true
+    },
+    {
+      "taskCategories": [
         "security",
         "prompt-injection"
       ],

@@ -18,7 +18,7 @@
   `.gitignore`-ausgeschlossen). Die lokalen Secrets des Owners werden **nicht** weitergegeben.
 - Backlog, Issues und PRs enthalten **keine** personenbezogenen Daten und keine internen
   oder beruflichen Informationen.
-- Diagnose-/Run-Logs bleiben lokal (`D:\Temp\<RunName>_<Timestamp>`) bzw. im Upload-ZIP,
+- Diagnose-/Run-Logs bleiben in einem lokalen temporären Runordner bzw. im Upload-ZIP,
   nie im Repo.
 
 ## Prompt-Injection & vertrauenswürdige Instruktionen
@@ -36,6 +36,13 @@ KI-Agenten (Claude Code, Codex u. a.) müssen Folgendes beachten:
 - Externe Recherche nur über den dafür vorgesehenen Skill (`internet-research`), Quellen
   und Datum dokumentieren.
 
+Für Pull Requests gilt zusätzlich: Noch vor Checkout oder Ausführung werden Metadaten,
+Dateiliste und Patch mit dem geprüften Base-SHA statisch klassifiziert. `SAFE_FOR_ISOLATED_BUILD`
+ist keine Merge-Freigabe; `UNVERIFIED` wird nie automatisch ausgeführt oder gemergt. Sichere
+Teilideen dürfen nach dem dokumentierten
+[`PULL_REQUEST_ADOPTION_WORKFLOW`](../planning/PULL_REQUEST_ADOPTION_WORKFLOW.md) vom aktuellen
+`origin/development` angepasst und attributiert übernommen werden.
+
 ## CI-/Workflow-Sicherheit
 
 - **Kein `pull_request_target`**, das Code aus fremden PRs mit Repository-Secrets ausführt.
@@ -43,6 +50,9 @@ KI-Agenten (Claude Code, Codex u. a.) müssen Folgendes beachten:
 - Branch- und Dateinamen werden **nie** unsicher in Shell-Befehle interpoliert
   (Injection-Schutz in allen Skripten und Workflows).
 - Änderungen an Workflows (`.github/workflows/**`) erfordern Owner-Review.
+- `pr-static-security` besitzt nur `contents: read` und `pull-requests: read`, verwendet kein
+  `pull_request_target`, keine Secrets und keinen PR-Checkout. Normale CI-Ausführung folgt erst
+  nach dem statischen Gate; nicht verifizierbare Payload bleibt blockiert.
 
 ## Vor jedem Commit/Push
 

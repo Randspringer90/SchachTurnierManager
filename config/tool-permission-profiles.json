@@ -21,6 +21,18 @@
       "allowed": ["Read", "Grep", "Glob"],
       "forbidden": ["Edit", "Write", "git-push", "network", "secret-read"],
       "canBlock": true
+    },
+    "pr-review-static": {
+      "allowed": ["Read", "Grep", "Glob", "GitHubMetadataRead", "WriteReviewArtifacts"],
+      "forbidden": ["Edit", "Write", "restore", "build", "test", "install", "merge", "git-push", "arbitrary-network", "secret-read"],
+      "humanApprovalForMutations": true,
+      "canBlock": true
+    },
+    "pr-integration-controlled": {
+      "allowed": ["Read", "Grep", "Glob", "Edit", "Write", "restore", "build", "test"],
+      "forbidden": ["execute-foreign-script", "unapproved-install", "network-during-untrusted", "secret-read", "merge-foreign-pr", "git-push", "tag", "release"],
+      "humanApprovalForMutations": true,
+      "canBlock": true
     }
   },
   "globalForbidden": ["force-push", "reset-hard", "clean-fd", "history-rewrite", "auto-merge-foreign-pr", "commit-secrets-or-pii"]

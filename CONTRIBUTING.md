@@ -26,6 +26,8 @@ verlinkten kanonischen Dokumenten.
 | Erster Beitrag               | [`docs/onboarding/FIRST_CONTRIBUTION.md`](docs/onboarding/FIRST_CONTRIBUTION.md) |
 | Codex-Schach-Contributor     | [`docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md`](docs/onboarding/CODEX_CHESS_CONTRIBUTOR.md) (nicht-technisch, mit Codex) |
 | Security & Prompt-Injection  | [`docs/security/CONTRIBUTOR_SECURITY.md`](docs/security/CONTRIBUTOR_SECURITY.md) |
+| Sichere PR-Prüfung           | [`docs/security/SAFE_PULL_REQUEST_REVIEW.md`](docs/security/SAFE_PULL_REQUEST_REVIEW.md) |
+| Kontrollierte PR-Übernahme   | [`docs/planning/PULL_REQUEST_ADOPTION_WORKFLOW.md`](docs/planning/PULL_REQUEST_ADOPTION_WORKFLOW.md) |
 | KI-Agenten-Regeln            | [`AGENTS.md`](AGENTS.md) |
 
 ## Ablauf in Kürze
@@ -34,8 +36,10 @@ verlinkten kanonischen Dokumenten.
 2. `pwsh scripts/New-FeatureBranch.ps1 -BacklogId STM-… -Name kurz-name`.
 3. Umsetzen: Code + Tests + Doku, lokal grün (`scripts/Test-All.ps1`, `scripts/Invoke-ReleaseGate.ps1`).
 4. Vor dem PR `development` einmergen.
-5. PR nach `development`, PR-Template vollständig ausfüllen.
-6. Review durch den Owner, CI grün, Konversationen gelöst → Squash-Merge.
+5. PR nach `development`, PR-Template vollständig ausfüllen; der statische Security-Check
+   untersucht Base-gebunden Metadaten, Dateiliste und Patch vor der normalen CI-Ausführung.
+6. Review durch den Owner, CI grün, Konversationen gelöst → Squash-Merge beziehungsweise bei
+   notwendiger Anpassung kontrollierte Owner-Übernahme mit Attribution.
 7. Backlog- und Changelog-Status pflegen.
 
 ## Nicht-Verhandelbares

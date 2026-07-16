@@ -1,10 +1,10 @@
 name: Security-Gate
 
-# Öffentliches Repo: kein pull_request_target, PR-Code erhält keine Secrets.
-# Prüft: keine gefährlichen Workflow-Trigger, keine committeten Secrets/Artefakte/PII-Muster,
-# Hinweis auf Änderungen an Instruktionsquellen (Owner-Review). Nur Lese-Rechte.
+# Der Security-Gate führt ausschließlich vertrauenswürdigen Code aus dem Base-SHA aus.
+# PR-Code wird hier weder ausgecheckt noch restauriert, gebaut, getestet oder installiert.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     branches:
       - development
       - main
@@ -12,91 +12,93 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+
+concurrency:
+  group: security-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   security-gate:
     name: security-gate
     runs-on: ubuntu-latest
-    env:
-      BASE_REF: ${{ github.base_ref }}
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Vertrauenswürdigen Base-SHA auschecken
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
           persist-credentials: false
+          path: trusted-base
 
-      - name: Kein pull_request_target-Trigger in Workflows
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Nur die echte Trigger-Verwendung (Key mit Doppelpunkt, keine Kommentarzeile) ist verboten.
-          # Der reine String in Prüf-/Kommentarzeilen (wie hier) ist erlaubt.
-          if grep -rInE --include='*.yml' --include='*.yaml' '^[[:space:]]*[^#]*pull_request_target[[:space:]]*:' .github/workflows; then
-            echo "::error::pull_request_target-Trigger ist nicht erlaubt (Secret-Exposition gegenüber fremdem PR-Code)."
-            exit 1
-          fi
-          echo "OK: kein pull_request_target-Trigger."
-
-      - name: Verbotene Dateien / Artefakte
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin "$BASE_REF"
-          mapfile -t added < <(git diff --diff-filter=AM --name-only "origin/${BASE_REF}...HEAD")
-          bad=0
-          for f in "${added[@]:-}"; do
-            [ -z "$f" ] && continue
-            case "$f" in
-              *.zip|*.7z|*.rar|*.nupkg|*.dmp|*.dump|*.db|*.sqlite|*.sqlite3|*.pfx|*.p12|*.pem|*.key|.env|*.env|*/.npmrc|.npmrc)
-                echo "::error::Verbotene Datei im PR: $f"; bad=1 ;;
-            esac
-            case "$f" in
-              bin/*|obj/*|*/bin/*|*/obj/*|dist/*|*/dist/*|node_modules/*|output/*|logs/*|tmp/*|*.trx|*/TestResults/*)
-                echo "::error::Generiertes Artefakt im PR: $f"; bad=1 ;;
-            esac
-          done
-          [ "$bad" -eq 0 ] && echo "OK: keine verbotenen Dateien/Artefakte."
-          exit "$bad"
-
-      - name: Secret-/PII-Muster in neuen Zeilen
-        shell: bash
-        run: |
-          set -euo pipefail
-          added="$(git diff --diff-filter=AM --unified=0 "origin/${BASE_REF}...HEAD" \
-            -- . ':(exclude)docs/security/**' ':(exclude)scripts/*Security*' ':(exclude)scripts/*Git*' \
-                 ':(exclude).github/workflows/security-gate.yml' \
-            | grep -E '^\+' | grep -vE '^\+\+\+' || true)"
-          fail=0
-          # Detektionsmuster bewusst als Zeichenklassen, damit dieser Workflow nicht sich selbst triggert.
-          if printf '%s\n' "$added" | grep -Eiq '(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|xox[baprs]-[0-9A-Za-z-]+|gh[pousr]_[0-9A-Za-z]{30,})'; then
-            echo "::error::Mögliches Secret in neuen Zeilen gefunden."; fail=1
-          fi
-          if printf '%s\n' "$added" | grep -Eiq '(password|passwort|api[_-]?key|secret)\s*[:=]\s*[^ \t"'"'"'<>]{6,}'; then
-            echo "::warning::Mögliches Klartext-Credential – bitte prüfen."
-          fi
-          [ "$fail" -eq 0 ] && echo "OK: keine offensichtlichen Secrets."
-          exit "$fail"
-
-      - name: Hinweis auf Instruktionsquellen (Owner-Review)
-        shell: bash
-        run: |
-          set -euo pipefail
-          changed="$(git diff --name-only "origin/${BASE_REF}...HEAD")"
-          if printf '%s\n' "$changed" | grep -Eq '^(AGENTS\.md|\.claude/|\.agents/|agents/|config/|\.github/|docs/security/|docs/architecture/|scripts/.*(Security|Git|Commit))'; then
-            echo "::notice::Änderungen an Instruktions-/Sicherheitsquellen erfordern Owner-Review (CODEOWNERS)."
-          fi
-          echo "OK."
-
-  agent-integrity:
-    name: agent-integrity
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Agent-Instruction-Integrity (Instruction-Allowlist, Manifeste, keine Owner-Pfade/Secrets/Modell-Hardcoding)
+      - name: Base-gebundene statische Security-Prüfung
         shell: pwsh
-        run: pwsh -NoProfile -File scripts/Test-AgentInstructionIntegrity.ps1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REVIEW_OUTPUT: ${{ runner.temp }}/security-gate-static-review
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Location trusted-base
+          function Test-ShaBoundOwnerReview {
+            $raw = & gh api "repos/$($env:REPOSITORY)/pulls/$($env:PR_NUMBER)/reviews" --paginate --slurp 2>$null
+            if ($LASTEXITCODE -ne 0) { return $false }
+            try { $pages = $raw | ConvertFrom-Json } catch { return $false }
+            $marker = "STATIC-EXECUTION-APPROVED:$($env:EXPECTED_HEAD_SHA)"
+            foreach ($page in @($pages)) {
+              foreach ($review in @($page)) {
+                if ([string]$review.user.login -ceq $env:REPOSITORY_OWNER -and
+                    [string]$review.commit_id -ceq $env:EXPECTED_HEAD_SHA -and
+                    ([string]$review.body).Trim() -ceq $marker -and
+                    ([string]$review.state) -in @('COMMENTED','APPROVED')) { return $true }
+              }
+            }
+            return $false
+          }
+          function Assert-OwnerExecutionApproval([bool]$RequireIntegrationBranch, [bool]$AllowBootstrap) {
+            if ($env:AUTHOR_ASSOCIATION -ne 'OWNER' -or $env:HEAD_REPOSITORY -cne $env:REPOSITORY) {
+              throw 'Ausführungsfreigabe ist ausschließlich für einen Owner-Branch im kanonischen Repository zulässig.'
+            }
+            if ($RequireIntegrationBranch) {
+              $isIntegration = $env:HEAD_REF -cmatch '^integration/pr-[1-9][0-9]*-safe-adoption$'
+              $isBootstrap = $AllowBootstrap -and $env:HEAD_REF -ceq 'security/STM-SEC-005-safe-pr-adoption'
+              if (-not $isIntegration -and -not $isBootstrap) {
+                throw 'Ausführungsfreigabe erfordert einen exakt nach dem Original-PR benannten Owner-Integrationsbranch.'
+              }
+            }
+            if (-not (Test-ShaBoundOwnerReview)) {
+              throw 'Ausführungsfreigabe fehlt oder ist nicht exakt an Owner und aktuellen PR-Head-SHA gebunden.'
+            }
+          }
+          if ($env:BASE_BRANCH -ne 'development') {
+            Assert-OwnerExecutionApproval $false $false
+            & pwsh -NoLogo -NoProfile -File scripts/Test-PromptInjectionDefense.ps1 -NoArchive
+            if ($LASTEXITCODE -ne 0) { throw 'Geschützter Release-/Main-Baseline-Gate fehlgeschlagen.' }
+            'Release-/Main-PR: statische Adoption-Policy ist development-spezifisch; Owner- und Release-Gates bleiben zwingend.' >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          $reviewScript = Join-Path (Get-Location) 'scripts/Invoke-SafePullRequestReview.ps1'
+          if (-not (Test-Path -LiteralPath $reviewScript -PathType Leaf)) {
+            Assert-OwnerExecutionApproval $true $true
+            & pwsh -NoLogo -NoProfile -File scripts/Test-PromptInjectionDefense.ps1 -NoArchive
+            if ($LASTEXITCODE -ne 0) { throw 'Bootstrap-Prompt-Injection-Gate fehlgeschlagen.' }
+            & pwsh -NoLogo -NoProfile -File scripts/Test-RepositoryOpenSourceSafety.ps1 -ReportDir (Join-Path $env:RUNNER_TEMP 'bootstrap-repository-safety')
+            if ($LASTEXITCODE -ne 0) { throw 'Bootstrap-Repository-Safety-Gate fehlgeschlagen.' }
+            'Owner-Bootstrap: Das Base-Skript entsteht in diesem PR; unabhängiger Security-/Final-Review bleibt zwingend.' >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          & pwsh -NoLogo -NoProfile -File $reviewScript -Repository $env:REPOSITORY -PullRequestNumber ([int]$env:PR_NUMBER) -BaseBranch $env:BASE_BRANCH -OutputDirectory $env:REVIEW_OUTPUT -StaticOnly -ExpectedHeadSha $env:EXPECTED_HEAD_SHA -ExpectedBaseSha $env:EXPECTED_BASE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Statischer Security-Review fehlgeschlagen.' }
+          $report = Get-Content -Raw -LiteralPath (Join-Path $env:REVIEW_OUTPUT 'static-review.json') | ConvertFrom-Json
+          "Security-Gate: ``$($report.decision)`` / ``$($report.riskClass)``; $($report.findingCount) Findings." >> $env:GITHUB_STEP_SUMMARY
+          if ($report.decision -eq 'BLOCKED_UNVERIFIED') { throw 'Security-Gate blockiert nicht verifizierbare PR-Payload.' }
+          if ($report.decision -ne 'SAFE_FOR_ISOLATED_BUILD') { Assert-OwnerExecutionApproval $true $false }

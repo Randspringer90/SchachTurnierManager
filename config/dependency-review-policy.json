@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "allowedPackageSources": [
+    "https://api.nuget.org/v3/index.json",
+    "https://registry.npmjs.org/"
+  ],
+  "forbidFloatingVersions": true,
+  "requireLockfileConsistency": true,
+  "requireDirectDependencyJustification": true,
+  "inspectTransitiveDelta": true,
+  "inspectLicenses": true,
+  "inspectVulnerabilities": true,
+  "inspectDeprecatedPackages": true,
+  "prohibitLocalPackagePaths": true,
+  "prohibitGitDependenciesWithoutOwnerReview": true,
+  "prohibitPackageManagerLifecycleScriptsWithoutOwnerReview": true,
+  "preferExistingDependency": true,
+  "preferFrameworkOrStandardLibrary": true,
+  "removeUnusedUsings": true,
+  "projectLicenseStatus": "UNVERIFIED",
+  "dependencyManifests": [
+    "*.csproj", "Directory.Packages.props", "Directory.Build.props", "Directory.Build.targets",
+    "packages.lock.json", "NuGet.Config", "global.json", "package.json", "package-lock.json",
+    "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "vite.config.*", "tsconfig*.json",
+    ".github/workflows/*.yml", ".github/workflows/*.yaml", "*.psd1", "*.iss"
+  ],
+  "npmLifecycleScripts": ["preinstall", "install", "postinstall", "prepare"],
+  "onlineAuditAfterStaticApprovalOnly": true,
+  "onlineAuditCommands": [
+    "dotnet list package --vulnerable --include-transitive",
+    "dotnet list package --deprecated",
+    "dotnet list package --outdated",
+    "npm audit --ignore-scripts"
+  ]
+}

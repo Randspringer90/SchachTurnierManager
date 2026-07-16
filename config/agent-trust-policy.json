@@ -15,6 +15,8 @@
     "network-isolation-for-untrusted", "command-policy", "persistence-gate",
     "skill-integrity", "agent-integrity", "cross-agent-propagation-guard",
     "git-branchname-injection-guard", "nightly-persistence-guard",
-    "audit-trail-without-secrets-or-pii", "owner-review-for-instruction-sources"
+    "audit-trail-without-secrets-or-pii", "owner-review-for-instruction-sources",
+    "pull-request-static-quarantine", "base-head-sha-binding",
+    "no-foreign-code-execution-before-static-approval", "controlled-pr-adoption-with-attribution"
   ]
 }

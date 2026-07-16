@@ -4,6 +4,7 @@ name: CI
 # erhält KEINE Repository-Secrets. Keine Secrets in diesem Workflow nötig.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     branches:
       - development
       - main
@@ -17,19 +18,124 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  static-prerequisite:
+    name: ci-static-prerequisite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Push-Lauf ohne PR-Payload
+        if: github.event_name == 'push'
+        run: echo "Push-Lauf; kein PR-Static-Gate erforderlich."
+      - name: Vertrauenswürdigen Base-SHA auschecken
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: trusted-base
+      - name: Statische Ausführungsfreigabe
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REVIEW_OUTPUT: ${{ runner.temp }}/ci-static-prerequisite
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Location trusted-base
+          function Test-ShaBoundOwnerReview {
+            $raw = & gh api "repos/$($env:REPOSITORY)/pulls/$($env:PR_NUMBER)/reviews" --paginate --slurp 2>$null
+            if ($LASTEXITCODE -ne 0) { return $false }
+            try { $pages = $raw | ConvertFrom-Json } catch { return $false }
+            $marker = "STATIC-EXECUTION-APPROVED:$($env:EXPECTED_HEAD_SHA)"
+            foreach ($page in @($pages)) {
+              foreach ($review in @($page)) {
+                if ([string]$review.user.login -ceq $env:REPOSITORY_OWNER -and
+                    [string]$review.commit_id -ceq $env:EXPECTED_HEAD_SHA -and
+                    ([string]$review.body).Trim() -ceq $marker -and
+                    ([string]$review.state) -in @('COMMENTED','APPROVED')) { return $true }
+              }
+            }
+            return $false
+          }
+          function Assert-OwnerExecutionApproval([bool]$RequireIntegrationBranch, [bool]$AllowBootstrap) {
+            if ($env:AUTHOR_ASSOCIATION -ne 'OWNER' -or $env:HEAD_REPOSITORY -cne $env:REPOSITORY) {
+              throw 'Ausführungsfreigabe ist ausschließlich für einen Owner-Branch im kanonischen Repository zulässig.'
+            }
+            if ($RequireIntegrationBranch) {
+              $isIntegration = $env:HEAD_REF -cmatch '^integration/pr-[1-9][0-9]*-safe-adoption$'
+              $isBootstrap = $AllowBootstrap -and $env:HEAD_REF -ceq 'security/STM-SEC-005-safe-pr-adoption'
+              if (-not $isIntegration -and -not $isBootstrap) {
+                throw 'Ausführungsfreigabe erfordert einen exakt nach dem Original-PR benannten Owner-Integrationsbranch.'
+              }
+            }
+            if (-not (Test-ShaBoundOwnerReview)) {
+              throw 'Ausführungsfreigabe fehlt oder ist nicht exakt an Owner und aktuellen PR-Head-SHA gebunden.'
+            }
+          }
+          if ($env:BASE_BRANCH -ne 'development') {
+            Assert-OwnerExecutionApproval $false $false
+            & pwsh -NoLogo -NoProfile -File scripts/Test-PromptInjectionDefense.ps1 -NoArchive
+            if ($LASTEXITCODE -ne 0) { throw 'Geschützter Release-/Main-Baseline-Gate fehlgeschlagen.' }
+            'Release-/Main-PR: Owner-Review und Release-Workflow sind zusätzlich erforderlich.' >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          $reviewScript = Join-Path (Get-Location) 'scripts/Invoke-SafePullRequestReview.ps1'
+          if (-not (Test-Path -LiteralPath $reviewScript -PathType Leaf)) {
+            Assert-OwnerExecutionApproval $true $true
+            & pwsh -NoLogo -NoProfile -File scripts/Test-PromptInjectionDefense.ps1 -NoArchive
+            if ($LASTEXITCODE -ne 0) { throw 'Owner-Bootstrap-Gate fehlgeschlagen.' }
+            'Owner-Bootstrap: unabhängiger Final-Review bleibt zwingend.' >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          & pwsh -NoLogo -NoProfile -File $reviewScript -Repository $env:REPOSITORY -PullRequestNumber ([int]$env:PR_NUMBER) -BaseBranch $env:BASE_BRANCH -OutputDirectory $env:REVIEW_OUTPUT -StaticOnly -ExpectedHeadSha $env:EXPECTED_HEAD_SHA -ExpectedBaseSha $env:EXPECTED_BASE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Statischer PR-Review fehlgeschlagen.' }
+          $report = Get-Content -Raw -LiteralPath (Join-Path $env:REVIEW_OUTPUT 'static-review.json') | ConvertFrom-Json
+          "CI-Prerequisite: ``$($report.decision)`` / ``$($report.riskClass)``." >> $env:GITHUB_STEP_SUMMARY
+          if ($report.decision -eq 'BLOCKED_UNVERIFIED') { throw 'Nicht verifizierbare PR-Payload darf nicht ausgeführt werden.' }
+          if ($report.decision -ne 'SAFE_FOR_ISOLATED_BUILD') { Assert-OwnerExecutionApproval $true $false }
+
+  agent-integrity:
+    name: agent-integrity
+    needs: static-prerequisite
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Agent-Instruction-Integrity nach statischer Freigabe
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File scripts/Test-AgentInstructionIntegrity.ps1
+
   build-test:
     name: build-test
+    needs: [static-prerequisite, agent-integrity]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Setup .NET (global.json)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           global-json-file: global.json
       - name: Restore
@@ -41,16 +147,18 @@ jobs:
 
   frontend:
     name: frontend
+    needs: [static-prerequisite, agent-integrity]
     runs-on: windows-latest
     defaults:
       run:
         working-directory: src/SchachTurnierManager.WebApp
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
           cache: npm
@@ -62,10 +170,12 @@ jobs:
 
   diff-check:
     name: diff-check
+    needs: static-prerequisite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: git diff --check (PR-Range)

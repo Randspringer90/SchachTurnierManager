@@ -8,7 +8,8 @@ Ohne -Apply werden KEINE Aenderungen vorgenommen (Plan-/WhatIf-Ausgabe). Actor-/
 werden nicht geraten: bestehende Rulesets werden per REST-API gelesen und bei gleichem Namen
 aktualisiert statt dupliziert. der Owner (Repository-Admin) ist bewusster Bypass-Akteur
 (RepositoryRole Admin), damit er direkt auf development arbeiten kann; andere Collaborators
-muessen ueber Pull Requests gehen. Details nach D:\Temp\<RunName>_<Timestamp>, ein Upload-ZIP.
+muessen ueber Pull Requests gehen. Details in einem lokalen temporären Runordner; -NoArchive
+unterdrueckt das sonst erzeugte Upload-ZIP.
 .PARAMETER Repository
 owner/name, z. B. Randspringer90/SchachTurnierManager.
 .PARAMETER Apply
@@ -24,7 +25,8 @@ pwsh scripts/Configure-GitHubCollaboration.ps1 -Repository Randspringer90/Schach
 param(
     [Parameter(Mandatory)][string]$Repository,
     [switch]$Apply,
-    [switch]$WhatIf
+    [switch]$WhatIf,
+    [switch]$NoArchive
 )
 
 Set-StrictMode -Version Latest
@@ -41,9 +43,9 @@ $run = New-RunContext -RunName 'configure-github-collab'
 Write-RunLog $run "Repository: $Repository  Modus: $mode"
 
 # Erforderliche Statuschecks (Namen = Job-'name' der Workflows).
-$requiredDev  = @('build-test','frontend','diff-check','branch-policy')
-$requiredMain = @('build-test','frontend','diff-check','branch-policy','security-gate')
-$requiredRel  = @('build-test','frontend','diff-check','security-gate')
+$requiredDev  = @('pr-static-security','security-gate','agent-integrity','build-test','frontend','diff-check','branch-policy')
+$requiredMain = @('security-gate','agent-integrity','build-test','frontend','diff-check','branch-policy')
+$requiredRel  = @('security-gate','agent-integrity','build-test','frontend','diff-check','branch-policy')
 
 function New-PrRule {
     param([int]$Approvals = 1)
@@ -58,7 +60,7 @@ function New-PrRule {
 function New-ChecksRule {
     param([string[]]$Contexts)
     @{ type = 'required_status_checks'; parameters = @{
-        strict_required_status_checks_policy = $false
+        strict_required_status_checks_policy = $true
         do_not_enforce_on_create             = $false
         required_status_checks               = @($Contexts | ForEach-Object { @{ context = $_ } })
     } }
@@ -138,6 +140,19 @@ foreach ($rs in $rulesets) {
     else { $blockers += "Ruleset '$name': $($res.Output)"; Write-RunLog $run "[APPLY] Ruleset '$name' FEHLER: $($res.Output)" }
 }
 
+# Das feste Label ist der explizite, Owner-seitig gesetzte Nachweis einer unabhängigen
+# statischen Ausführungsfreigabe. Seine Existenz erteilt noch keine Freigabe an einen PR.
+$approvalLabelPath = "repos/$Repository/labels/security%3Astatic-review-trigger"
+$approvalLabel = @{ name='security:static-review-trigger'; color='fbca04'; description='Loest Static-Review erneut aus; ist selbst keine Freigabe und nicht sicherheitsentscheidend' }
+$labelStatus = Invoke-GhApi -Method GET -Path $approvalLabelPath
+if ($doApply -and -not $labelStatus.Ok) {
+    $labelResult = Invoke-GhApi -Method POST -Path "repos/$Repository/labels" -BodyJson ($approvalLabel | ConvertTo-Json -Depth 4)
+    if ($labelResult.Ok) { Write-RunLog $run '[APPLY] Trigger-Label security:static-review-trigger angelegt.' }
+    else { $blockers += "Trigger-Label: $($labelResult.Output)"; Write-RunLog $run "[APPLY] Trigger-Label FEHLER: $($labelResult.Output)" }
+}
+elseif ($doApply) { Write-RunLog $run '[APPLY] Trigger-Label security:static-review-trigger bereits vorhanden.' }
+else { Write-RunLog $run '[PLAN] Trigger-Label security:static-review-trigger vorhanden oder idempotent anzulegen.' }
+
 # Repo-Einstellungen: Default-Branch development, Merge-Strategien, Auto-Delete.
 $repoSettings = @{
     default_branch          = 'development'
@@ -160,9 +175,9 @@ if ($doApply) {
 if ($blockers.Count -gt 0) {
     Write-RunLog $run ("BLOCKER (" + $blockers.Count + "):`n" + ($blockers -join "`n"))
 }
-$zip = Complete-RunZip $run
+$zip = if ($NoArchive) { $null } else { Complete-RunZip $run }
 Write-Host "Modus: $mode"
 if ($doApply) { Write-Host ("Angewendet: " + ($applied -join ', ')) }
-if ($blockers.Count -gt 0) { Write-Host ("Blocker: " + $blockers.Count + " (siehe $($run.Log))"); Write-Host "Upload-ZIP: $zip"; exit 2 }
-Write-Host "Upload-ZIP: $zip"
+if ($blockers.Count -gt 0) { Write-Host ("Blocker: " + $blockers.Count + " (siehe $($run.Log))"); if ($zip) { Write-Host "Upload-ZIP: $zip" }; exit 2 }
+if ($zip) { Write-Host "Upload-ZIP: $zip" }
 exit 0

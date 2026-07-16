@@ -36,7 +36,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-004 | Public Snapshot & Git-History-Abnahme | P0 | Blocked | security | owner | – | v1.0.0 |
-| STM-AI-001 | Agenten- & Skill-Zielstandard + Migration | P2 | In Review | ai | owner | [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) (PR [#8](https://github.com/Randspringer90/SchachTurnierManager/pull/8)) | v1.0.0 |
+| STM-SEC-005 | Sichere Pull-Request-Prüfung und kontrollierte Übernahme | P1 | In Progress | security | owner | [#11](https://github.com/Randspringer90/SchachTurnierManager/issues/11) | v1.0.0 |
+| STM-AI-001 | Agenten- & Skill-Zielstandard + Migration | P2 | Done | ai | owner | [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) (PR [#8](https://github.com/Randspringer90/SchachTurnierManager/pull/8)) | v1.0.0 |
 | STM-AI-001b | Restliche Legacy-Skills nach SKILL.md migrieren + geplante Skills autorieren | P3 | Backlog | ai | owner | – | v1.0.0 |
 | STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | In Progress | ai | owner | via [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) | v1.0.0 |
 | STM-AI-003 | Modellrouting finalisieren (Qualitätsklassen + MODEL_ROUTING.md) | P2 | In Progress | ai | owner | – | v1.0.0 |
@@ -148,6 +149,24 @@ ausgeschrieben. Auszug der wichtigsten:
   ein echter BYOK-Provider gehört zu STM-UX-004 (frisch in Infrastructure). *Owner:* der Owner.
 - **STM-SEC-001** – Prompt-Injection-Verteidigung (Guards/Gates, untrusted-content-Handling in
   KI-Läufen, Tests). *Abhängig von* Agentenstruktur STM-AI-001.
+- **STM-SEC-005** – *In Progress* (Issue [#11](https://github.com/Randspringer90/SchachTurnierManager/issues/11),
+  Branch `security/STM-SEC-005-safe-pr-adoption`). Statische, read-only Prüfung fremder
+  Pull Requests vor jeder Ausführung und kontrollierte Übernahme auf einem vom aktuellen
+  `origin/development` gestarteten Owner-Integrationsbranch. *Priorität:* P1 · *Kategorie:*
+  security · *Ziel-Bearbeiter/Owner:* owner · *Abhängigkeiten:* STM-AI-001 · *Ziel-Release:*
+  v1.0.0.
+  **Akzeptanzkriterien:** PR-Payload bleibt T4 und wird vor Ausführung auf Prompt Injection,
+  Dependency-Deltas, Binär-/Archiv-/Symlink-/Submodule-, Workflow-, Build-, Installer- und
+  Schadcode-Risiken geprüft; neue Dependencies benötigen nachvollziehbare Begründung;
+  vorhandene `development`-Logik wird vor Übernahme verglichen; sichere Teile dürfen selektiv
+  und attributiert angepasst werden; Feedback ist redigiert; kein Fremd-PR wird direkt nach
+  `development` gemergt; `UNVERIFIED` und unvollständige Evidenz verlangen Owner-Review.
+  **Tests:** `Test-PullRequestReviewReadiness.ps1`, Pester-Contract, Dependency-Delta-Contract,
+  Agent-/Instruction-/Prompt-/Repository-Gates und vollständiges ReleaseGate.
+  **Security:** initial static-only, kein Restore/Build/Test/Install, keine Secrets, kein Netzwerk
+  durch PR-Code, keine rohe Payloadpersistenz, SHA-/Policy-Bindung.
+  **Doku/DoD:** Trust Boundaries, Review-/Adoption-Workflow, Templates, Agent/Skills und CI-Gate;
+  alle Gates und Owner-Integrations-PR grün. *PR:* –.
 - **STM-SEC-004** – Public Snapshot & History-Abnahme: alte Git-Historie ist der offene
   Public-Blocker (`scripts/New-OpenSourceSnapshot.ps1`). **Konkreter Befund (2026-07-12):** der
   gepushte Merge-Commit `5d64d12` (auf `origin/development`, public) enthielt in

@@ -32,7 +32,8 @@ nicht automatisiert.
    (Backlog-ID, Issue, Tests, ReleaseGate, Security-/Prompt-Injection-Check).
    Backlog-Status → `In Review`.
 7. **Review** – der Owner (CODEOWNER) reviewt. Alle Konversationen müssen gelöst sein,
-   CI grün, veraltete Freigaben nach neuen Commits neu einholen.
+   CI grün, veraltete Freigaben nach neuen Commits neu einholen. Vor jeder Ausführung
+   klassifiziert `pr-static-security` den Beitrag mit dem vertrauenswürdigen Base-Skript.
 8. **Merge** – Squash-Merge nach `development`; Feature-Branch wird automatisch gelöscht.
 9. **Abschluss** – Backlog-Status → `Done`, `CHANGELOG.md` und Doku aktualisiert
    (spätestens im PR). Abgeschlossene Aufgaben bleiben nachvollziehbar.
@@ -52,6 +53,15 @@ Jeder PR aktualisiert bei Bedarf:
 - Inhaltliche Konflikte (konkurrierende Umsetzungen) entscheidet **der Owner** als Owner.
 - Bei divergierten lokalen Klonen gilt: **`development` (Remote) ist die Wahrheit**.
   Lokale Sonderstände zuerst als Backup-Branch sichern, dann gegen `development` neu aufsetzen.
+
+## Kontrollierte Übernahme fremder Pull Requests
+
+Fremde PRs werden nicht ungeprüft direkt nach `development` gemergt. Metadaten, Dateiliste und
+Patch bleiben zunächst T4 und werden static-only geprüft. Sind Anpassungen nötig, startet ein
+Owner-Integrationsbranch `integration/pr-<nummer>-safe-adoption` vom aktuellen
+`origin/development`; nur sichere Teile werden selektiv übernommen, getestet und attributiert.
+`BLOCKED_NEEDS_OWNER` ist keine automatische Ablehnung. Vollständiger Ablauf:
+[`PULL_REQUEST_ADOPTION_WORKFLOW.md`](PULL_REQUEST_ADOPTION_WORKFLOW.md).
 
 ## Umgang mit Änderungen durch KI-Agenten
 

@@ -19,6 +19,8 @@
 | [QA-Test-Agent](qa-test-agent.md) | medium | ja | strongest-implementation | documentation-maintenance |
 | [Security-Agent](security-agent.md) | high | ja | strongest-planning | repository-security, prompt-injection-defense, secret-management, dependency-security |
 | [Prompt-Injection-Reviewer](prompt-injection-reviewer.md) | high | ja | strongest-planning | prompt-injection-defense, instruction-integrity, untrusted-content-review |
+| [Pull-Request-Reviewer](pull-request-reviewer.md) | high | ja | strongest-planning | pull-request-security-review, dependency-delta-review, malware-risk-review |
+| [Pull-Request-Integrator](pull-request-integrator.md) | high | ja | strongest-implementation | safe-pr-adoption, contributor-feedback |
 | [Release-Agent](release-agent.md) | high | ja | strongest-planning | release-operations, runtime-logging |
 | [Knowledge-Curator](knowledge-curator.md) | medium | nein | standard-low-risk | knowledge-management |
 | [Documentation-Agent](documentation-agent.md) | low | nein | standard-low-risk | documentation-maintenance |

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "trustedBaseBranch": "development",
+  "initialReviewExecutionAllowed": false,
+  "initialReviewNetworkAllowed": false,
+  "initialReviewSecretAccessAllowed": false,
+  "maxChangedFiles": 3000,
+  "maxPatchBytes": 5242880,
+  "maxMetadataTextLength": 20000,
+  "blockedFileTypes": [
+    ".exe", ".dll", ".msi", ".zip", ".7z", ".rar", ".cab", ".jar",
+    ".com", ".scr", ".pif", ".sys", ".so", ".dylib", ".nupkg"
+  ],
+  "archiveFileTypes": [".zip", ".7z", ".rar", ".cab", ".jar", ".nupkg"],
+  "highRiskPaths": [
+    ".github/", "AGENTS.md", "agents/", ".agents/", ".claude/", "CODEOWNERS",
+    "config/", "scripts/", "installer/", "setup/", "Directory.Build.props",
+    "Directory.Build.targets", "NuGet.Config", ".gitmodules", ".gitattributes"
+  ],
+  "binaryPolicy": "block-unverified",
+  "archivePolicy": "block-unverified",
+  "symlinkPolicy": "block-unverified",
+  "submodulePolicy": "block-unverified",
+  "workflowPolicy": {
+    "trigger": "pull_request",
+    "forbidPullRequestTarget": true,
+    "maximumPermissions": ["contents:read", "pull-requests:read"],
+    "secretAccess": false,
+    "writeAccess": false
+  },
+  "buildScriptPolicy": "owner-review-required",
+  "installerPolicy": "owner-review-required",
+  "dependencyPolicy": "config/dependency-review-policy.json",
+  "integrationBranchPattern": "^integration/pr-[1-9][0-9]*-safe-adoption$",
+  "contributorAttributionRequired": true,
+  "feedbackRequired": true,
+  "ownerReviewRequired": true,
+  "isolatedExecutionApproval": {
+    "shaBoundReviewMarkerPrefix": "STATIC-EXECUTION-APPROVED:",
+    "reviewTriggerLabel": "security:static-review-trigger",
+    "approvalMustMatchHeadSha": true,
+    "approvalReviewerMustBeRepositoryOwner": true,
+    "ownerAuthoredIntegrationRequired": true,
+    "allowedAfterApproval": ["ADAPTATION_REQUIRED", "OWNER_REVIEW_REQUIRED"],
+    "neverAllowed": ["BLOCKED_UNVERIFIED"]
+  },
+  "riskClasses": ["LOW", "MEDIUM", "HIGH", "CRITICAL", "UNVERIFIED"],
+  "decisions": [
+    "SAFE_FOR_ISOLATED_BUILD",
+    "ADAPTATION_REQUIRED",
+    "OWNER_REVIEW_REQUIRED",
+    "BLOCKED_UNVERIFIED"
+  ]
+}

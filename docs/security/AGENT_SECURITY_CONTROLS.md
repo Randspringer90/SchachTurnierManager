@@ -11,7 +11,12 @@ Pflichtkontrollen (siehe `config/agent-trust-policy.json` -> mandatoryControls):
   (`Test-AgentInstructionIntegrity`, `Test-AgentSkillReadiness`).
 - **Cross-Agent-Propagation-Schutz**, **Nightly-Persistenzschutz**, **Audit-Trail ohne Secrets/PII**.
 - **Owner-Review** fuer Instruktionsquellen (CODEOWNERS).
+- **Pull-Request-Quarantäne**: Base-SHA-Code prüft Metadaten, vollständige Dateiliste und Patch
+  vor jeder Ausführung; Report-/Policy-/SHA-Bindung und fail-closed Driftkontrolle.
+- **Dependency-/Malware-Risikotrennung**: kein Restore oder Paketmanager in der statischen
+  Phase, keine Binär-/Archivausführung, keine automatische Dependency-Aktualisierung.
 
 Durchsetzung lokal durch alle vier Agent-/Knowledge-Gates; in CI durch den
-plattformneutralen Instruction-Integrity-Gate (`.github/workflows/security-gate.yml`). Die
-Consumer- und vollstaendige CI-Integration ist als STM-SEC-001 nachgelagert.
+plattformneutralen Instruction-Integrity-Gate und den Base-gebundenen Workflows
+`security-gate.yml` sowie `pr-static-security-review.yml`. Die breitere Consumer-Integration
+außerhalb des PR-Pfads bleibt als STM-SEC-001 nachgelagert.
