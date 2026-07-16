@@ -61,4 +61,14 @@ sichtbar und vor der erfolgreichen Wiederholung korrigiert.
 Die Runtime-Zuordnung eines logischen Profils zu einem konkreten Provider-Modell
 liegt bewusst außerhalb des Repositories. Deshalb kann der Resolver eine Auswahl
 nur dann freigeben, wenn die Runtime das erforderliche logische Profil explizit als
-verfügbar meldet. Owner-Review und Remote-CI bleiben vor der Integration verbindlich.
+verfügbar meldet.
+
+## Remote-Integration
+
+Der zunächst erstellte Feature-PR #16 wurde ohne Codeänderung geschlossen, nachdem
+der Base-SHA-gebundene Security-Gate für instruktionskritische Owner-Änderungen den
+Branchtyp `integration/pr-<n>-safe-adoption` verlangte. Derselbe Commit wurde über
+den policy-konformen Owner-PR #17 geprüft. Acht aktuelle Checks, SHA-Bindung,
+unabhängiger Final-Review und Kollisionscheck waren grün. Der Admin-Squash-Merge
+nach `development` ist `dfa75204fe63ab30f1fc3dff34ee5d2e7640c513`; Issue #15 ist
+als abgeschlossen geschlossen.
