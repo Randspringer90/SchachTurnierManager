@@ -48,7 +48,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
-| STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
+| STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | In Progress | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22), Branch `feature/STM-FACH-002-fide-dutch` | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
 | STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | In Review | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), Static-Review: OWNER_REVIEW_REQUIRED) | v1.0.0 |
@@ -135,8 +135,18 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
   (Score Groups, Floater, Farbpräferenzen, Wiederholungsschutz, Bye-Regeln, deterministische
   Entscheidungsreihenfolge, Audit-Trail). Vollständige Spezifikation im Issue.
-- **Priorität:** P1 · **Status:** Ready · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P1 · **Status:** In Progress · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) · **Branch:** `feature/STM-FACH-002-fide-dutch`
+- **Regelgrundlage:** `docs/FIDE_DUTCH_REFERENCE.md` (Fassung gültig ab 01.02.2026, abgerufen 2026-07-16).
+  **Achtung:** C.04.3 wurde zum 01.02.2026 neu gefasst (Artikel 1–5, Kriterien [C1]–[C21]); die
+  2017er Struktur (A–E, C.5–C.19, PSD) gilt nicht mehr. Die Artikelnummern im Issue
+  („C.04.1.b", „C.04.1.c-d") stammen aus der alten Fassung – Inhalt korrekt, Fundstellen veraltet.
+- **Architekturentscheidung:** FIDE-Dutch als eigene Strategie hinter `ISwissPairingStrategy`;
+  die bestehende Optimal-V2-Engine bleibt unverändert und **Default** (vgl.
+  `docs/ai/prompts/codex-roadmap/RUN-12-fide-dutch.md`, `docs/SWISS_PAIRING_ENGINE.md`).
+- **Abgegrenzt:** Setzlisten-Vergabe nach C.04.2 Art. 2.2 (Startrang = derzeit Eingabereihenfolge)
+  ist **nicht** Teil dieses Tickets; die Strategie warnt nur im Audit. Siehe Folge-Ticket
+  STM-FACH-004.
 - **Abhängigkeiten:** STM-FACH-001 (Done; Forfeit-/Bye-Verhalten darf nicht regressieren). Blockiert STM-FACH-003.
 - **Akzeptanzkriterien:** siehe Issue #22 (Golden-Turniere zuerst, Property-Tests für absolute
   Kriterien, Determinismus, Audit-Trail, FIDE-C.04-Abgleich mit Artikelnummern).

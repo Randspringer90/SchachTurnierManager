@@ -39,6 +39,27 @@ public enum ScoringSystem
     NorwayArmageddon = 2
 }
 
+/// <summary>
+/// Auswaehlbare Auslosungsverfahren fuer das Schweizer System (STM-FACH-002).
+/// Die Verfahren stehen nebeneinander und bleiben vergleichbar; ein Wechsel ist eine bewusste
+/// Entscheidung des Turnierleiters und wird im Audit protokolliert.
+/// </summary>
+public enum SwissPairingStrategyKind
+{
+    /// <summary>
+    /// Bisheriges Verfahren und weiterhin Standard: global optimiertes Minimum-Penalty-Matching
+    /// (siehe docs/SWISS_PAIRING_ENGINE.md). Sehr gute Rematch-Vermeidung, aber bewusst kein
+    /// vollstaendiges FIDE-Dutch.
+    /// </summary>
+    OptimalMatchingV2 = 0,
+
+    /// <summary>
+    /// FIDE (Dutch) System nach C.04.3 in der ab 01.02.2026 gueltigen Fassung
+    /// (siehe docs/FIDE_DUTCH_REFERENCE.md).
+    /// </summary>
+    FideDutch = 1
+}
+
 public enum TwzSource
 {
     ManualThenDwzThenElo = 0,
