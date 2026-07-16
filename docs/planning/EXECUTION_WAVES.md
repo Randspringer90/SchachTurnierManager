@@ -10,8 +10,8 @@ Abhängigkeiten in [`DEPENDENCY_MAP.md`](DEPENDENCY_MAP.md).
 ## Welle 1 – Sichere Zusammenarbeit einspielen (parallel möglich)
 - **friend-geeignet, low-risk:** STM-TB-001, STM-DOC-001, STM-IE-001.
 - **owner:** STM-INT-001 (v0.41-Reconcile), STM-SEC-001 (Prompt-Injection-Basis).
-- **owner/security:** STM-SEC-005 (Base-SHA-gebundene PR-Quarantäne und kontrollierte
-  Adoption) nach STM-AI-001; verhindert ungeprüfte Ausführung weiterer Beiträge.
+- **owner/security, abgeschlossen:** STM-SEC-005 (Base-SHA-gebundene PR-Quarantäne und
+  kontrollierte Adoption) nach STM-AI-001; verhindert ungeprüfte Ausführung weiterer Beiträge.
 
 ## Welle 2 – Fachliche Kernreife
 - STM-FACH-001 → STM-FACH-002 → STM-FACH-003 (Pairing-Kette).
@@ -22,7 +22,8 @@ Abhängigkeiten in [`DEPENDENCY_MAP.md`](DEPENDENCY_MAP.md).
 - STM-UX-002, STM-UX-003, STM-INFRA-002.
 
 ## Welle 4 – Public- & Release-Abnahme
-- STM-SEC-002, STM-SEC-003, STM-SEC-005-Abnahme, **STM-SEC-004 (History-Abnahme, P0-Blocker)**.
+- STM-SEC-002, STM-SEC-003, **STM-SEC-004 (History-Abnahme, P0-Blocker)**;
+  STM-SEC-005-Abnahme ist abgeschlossen.
 - STM-REL-004 (Release Candidate) → Release v1.0.0.
 
 ## post-1.0

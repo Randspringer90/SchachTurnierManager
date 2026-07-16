@@ -45,7 +45,11 @@ werden ausschließlich über einen Owner-Integrationsbranch vom aktuellen `origi
 
 - Issue: #11
 - Implementierungscommit: `e1f9868`
-- Owner-PR: #12 nach `development`
+- Owner-PR: #12, grün per Squash nach `development` integriert
+- Mergecommit: `ba55061526311931541a21cd0ed22107066a5036`; Issue #11 geschlossen
+- GitHub-CI: acht Checks grün, einschließlich `pr-static-security`, Security-Gate,
+  Agent-Integrity, .NET-Build/-Tests, Frontend und Diff-Check
+- GitHub-Rulesets für `development`, `main` und Releasebranches angewendet und online verifiziert
 - keine Änderung an Schach-, Pairing- oder Wertungslogik
 - keine neue Produktdependency
 - keine Secrets, PII, lokalen Pfade oder Fremdprojektabhängigkeiten
@@ -59,6 +63,6 @@ Roadmap, Security-, Architektur- und AI-Dokumentation belegt.
 
 Die Workflowdefinition eines nativen GitHub-`pull_request`-Laufs ist ohne externe
 vertrauenswürdige App nicht kryptografisch an den Basebranch gebunden. CODEOWNERS, Rulesets,
-Owner-SHA-Review und unabhängiger Finalreview bleiben daher zwingend. Nach Merge wird der
-Ruleset-Plan kontrolliert angewendet und online verifiziert. Ein fehlender statischer Fund ist
+Owner-SHA-Review und unabhängiger Finalreview bleiben daher zwingend. Der Ruleset-Plan wurde
+nach Merge kontrolliert angewendet und online verifiziert. Ein fehlender statischer Fund ist
 keine Garantie für Schadcodefreiheit.

@@ -29,10 +29,12 @@ statische Quarantäne, Dependency- und Schadcode-Risikoprüfung, semantischen Lo
 Owner-Adoption, Feedback und Merge-Gates. Fremde PRs werden weder vorschnell abgelehnt noch
 ungeprüft ausgeführt oder direkt gemergt.
 
-Alle drei unabhängigen Finalreviews – Security, Workflow/Trust und QA – haben den finalen
-Implementierungsdiff freigegeben. Der erste Commit ist `e1f9868`; PR #12 zielt ausschließlich
-auf `development`. Die GitHub-native Grenze veränderbarer PR-Workflowdefinitionen ist offen
-dokumentiert und wird nicht als gelöst dargestellt.
+Alle unabhängigen Finalreviews – Security, Workflow/Trust, QA und der abschließende
+Linux-Bootstrap-Review – haben den finalen Implementierungsdiff freigegeben. Der erste Commit
+ist `e1f9868`; PR #12 wurde mit acht grünen GitHub-Checks per Squash ausschließlich nach
+`development` integriert. Mergecommit: `ba55061526311931541a21cd0ed22107066a5036`.
+Issue #11 ist geschlossen. Die GitHub-native Grenze veränderbarer PR-Workflowdefinitionen ist
+offen dokumentiert und wird nicht als gelöst dargestellt.
 
 ## Tests und Sicherheitsstand
 
@@ -45,6 +47,25 @@ dokumentiert und wird nicht als gelöst dargestellt.
   PR-Dependency und führte keine PR-Payload aus
 - keine Secrets, PII, Datenbanken, Dumps, Binärdateien oder Fremdprojektpfade im Commit
 - keine Kollision mit den parallelen Contributor-PRs #9 und #10
+- Rulesets für `development`, `main` und Releasebranches angewendet und online grün verifiziert
+
+## Offene Pull Requests nach Integration
+
+Das produktive statische System prüfte die weiterhin offenen Marcel-PRs #9 und #10 ohne
+Checkout oder Ausführung. Beide sind wegen ihres alten Base-SHA zunächst korrekt
+`BLOCKED_UNVERIFIED`; die Schadcode-Risikoprüfung lieferte jeweils keine statischen Befunde,
+installierte aber bewusst keine Dependency. Zwei unabhängige semantische Read-only-Reviews
+klassifizierten beide Beiträge als `ACCEPT_WITH_ADAPTATION`:
+
+- PR #9 enthält fachlich schlüssige, noch nicht vorhandene Golden-Tests. Er benötigt einen
+  Rebase, additive Changelog-Auflösung und sollte die behauptete Rangfolge explizit prüfen.
+- PR #10 enthält eine verwertbare opt-in Grundlage, bleibt aber `OWNER_DECISION_REQUIRED`:
+  Rückzugswertung, mögliche Forfeit-Doppelzählung, offene `NotPlayed`-Runden und UI-/API-
+  Persistenz müssen vor einer Integration korrigiert und getestet werden.
+
+Beide Contributor-Branches blieben unangetastet. Es wurde kein Marcel-PR gemergt, geschlossen
+oder kommentiert; redigierte Feedbackentwürfe und konkrete Empfehlungen liegen nur im
+Runpaket für die Owner-Entscheidung.
 
 ## v1.0-Fortschritt
 
@@ -58,10 +79,12 @@ STM-SEC-002 bis -004, STM-REL-001 bis -003 und mehrere fachliche P1-Pakete offen
 
 - STM-SEC-004: Owner-Entscheidung zwischen History-Bereinigung und Clean Snapshot; in diesem
   Lauf kein History-Rewrite und kein Force-Push.
-- GitHub-Rulesets: nach Merge des neuen Checks kontrolliert anwenden und online verifizieren.
 - Signierung: kein echtes Zertifikat vorhanden; keine Signatur wird vorgetäuscht.
-- PRs #9 und #10: Contributor-Arbeit bleibt unangetastet und wird nicht automatisch gemergt.
+- PR #9: Marcel-Rebase und kleine Testhärtung; PR #10: fachliche Korrekturen und Owner-
+  Entscheidung vor jeder dynamischen Ausführung oder Integration.
 - Nächster unabhängiger Owner-Block: STM-AI-001b, danach STM-AI-002/003 und STM-SEC-001/002.
 
-Der Abschlussstatus dieses Berichts wird durch den Run-State und den finalen Uploadbericht
-ergänzt; kein Releasebranch, Tag, GitHub Release oder Merge nach `main` wurde durchgeführt.
+Finaler `development`-Stand dieses Laufs ist
+`ba55061526311931541a21cd0ed22107066a5036`. Der Abschlussstatus wird durch den Run-State und
+den finalen Uploadbericht ergänzt; kein Releasebranch, Tag, GitHub Release oder Merge nach
+`main` wurde durchgeführt.

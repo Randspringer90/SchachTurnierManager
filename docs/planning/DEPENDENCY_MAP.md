@@ -19,14 +19,14 @@ STM-IE-004 (FIDE-Namenssuche) ──► STM-IE-003 (DSB/DeWIS)
 ```
 STM-AI-001 (Agenten-/Skill-Standard) ──► STM-AI-002 (Wissensmanagement)
 STM-AI-001 ──► STM-SEC-001 (Prompt-Injection-Verteidigung)
-STM-AI-001 ──► STM-SEC-005 (sichere PR-Prüfung/Adoption) ──► kontrollierte Fremd-PR-Integration
+STM-AI-001 ──► STM-SEC-005 (Done: sichere PR-Prüfung/Adoption) ──► kontrollierte Fremd-PR-Integration
 STM-AI-003 (Modellrouting) ── unabhängig, config/model-routing.json vorhanden
 STM-AI-004 (Nightly/Resume) ──► braucht STM-AI-001
 ```
 
 ## Security / Release (kritischer Pfad zu v1.0.0)
 ```
-STM-SEC-001, STM-SEC-002, STM-SEC-003, STM-SEC-005 ──► STM-SEC-004 (Public Snapshot/History, P0)
+STM-SEC-001, STM-SEC-002, STM-SEC-003 ──► STM-SEC-004 (Public Snapshot/History, P0); STM-SEC-005 ist Done
 STM-REL-001 (Setup-EXE) ──► STM-REL-002 (Signierung/Update) ──► STM-REL-003 (Kollegen-PC-Test)
 alle P0/P1 ──► STM-REL-004 (Release Candidate) ──► Release v1.0.0
 ```
