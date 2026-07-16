@@ -12,6 +12,8 @@ Instruktionen zu werden oder Agenten, Skills und Policies automatisch zu ändern
 - GitHub-Issue: #18
 - Integrationsbasis: `78ed91a8dbc9b325bad0049c695133fedf03336d`
 - Arbeitsbranch: `integration/pr-18-safe-adoption`
+- Owner-PR: #19, nach 8/8 grünen Checks squash-gemergt
+- Merge-Commit: `98648e793fe2385ff4dedbce2cf33c58f0bc8f8b`
 - keine Schach-, Pairing-, Persistenz-, API- oder UI-Änderung
 - keine neuen Dependencies, Binärdateien, Archive oder Fremdprojektpfade
 
@@ -63,4 +65,5 @@ PR-Review-Fälle und der vollständige ReleaseGate wurden danach erneut ausgefü
 
 Vorschlagsartefakte sind lokale Daten und werden nicht committed. Der Generator
 besitzt keinen Pfad zur automatischen Aktivierung, keine Netzwerkfunktion und keine
-Git-Schreibfunktion. Owner-Review und Remote-CI bleiben vor Integration zwingend.
+Git-Schreibfunktion. Owner-Review und Remote-CI bleiben vor jeder künftigen
+Integration zwingend. Issue #18 ist nach dem grünen Owner-PR geschlossen.
