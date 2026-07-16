@@ -257,6 +257,38 @@
       "owningAgent": "Knowledge-Curator",
       "riskClass": "medium",
       "requiredVerification": "noch nicht autoriert (STM-AI-001b)"
+    },
+    {
+      "name": "task-decomposition",
+      "canonicalPath": ".agents/skills/task-decomposition/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Task-Decomposer",
+      "riskClass": "medium",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "routed-execution",
+      "canonicalPath": ".agents/skills/routed-execution/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Routing-Supervisor",
+      "riskClass": "high",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "cross-model-review",
+      "canonicalPath": ".agents/skills/cross-model-review/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Result-Integrator",
+      "riskClass": "high",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
+    },
+    {
+      "name": "token-budget-management",
+      "canonicalPath": ".agents/skills/token-budget-management/SKILL.md",
+      "format": "canonical",
+      "owningAgent": "Routing-Supervisor",
+      "riskClass": "medium",
+      "requiredVerification": "schema+no-secrets+no-owner-paths"
     }
   ]
 }

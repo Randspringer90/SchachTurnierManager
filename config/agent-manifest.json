@@ -397,6 +397,81 @@
         "Write",
         "git-push"
       ]
+    },
+    {
+      "name": "Task-Decomposer",
+      "canonicalPath": "agents/task-decomposer.md",
+      "purpose": "Zerlegt Masterprompts in validierbare Taskgraphen mit klaren Scopes, Risiken, Budgets und Reviewern.",
+      "skills": [
+        "task-decomposition",
+        "model-routing",
+        "token-budget-management"
+      ],
+      "permissionProfile": "medium-risk",
+      "riskClass": "medium",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "Bash-mutating",
+        "git-push"
+      ]
+    },
+    {
+      "name": "Routing-Supervisor",
+      "canonicalPath": "agents/routing-supervisor.md",
+      "purpose": "Ueberwacht die tatsaechliche Ausfuehrung gerouteter Taskgraphen: Verfuegbarkeit, Delegation, Limits, Eskalation, Checkpoints.",
+      "skills": [
+        "routed-execution",
+        "model-routing",
+        "token-budget-management"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash-tests"
+      ],
+      "forbiddenScopes": [
+        "Edit",
+        "Write",
+        "git-push",
+        "secret-read"
+      ]
+    },
+    {
+      "name": "Result-Integrator",
+      "canonicalPath": "agents/result-integrator.md",
+      "purpose": "Prueft delegierte T3-Ergebnisse unabhaengig und uebernimmt ausschliesslich freigegebene Patches/Berichte.",
+      "skills": [
+        "cross-model-review",
+        "routed-execution"
+      ],
+      "permissionProfile": "high-risk",
+      "riskClass": "high",
+      "canBlock": true,
+      "qualityClass": "strongest-planning",
+      "allowedScopes": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "forbiddenScopes": [
+        "git-push",
+        "secret-read"
+      ]
     }
   ]
 }

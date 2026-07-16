@@ -1,0 +1,98 @@
+{
+  "$schema": "./task-decomposition-policy.schema.json",
+  "schemaVersion": 1,
+  "description": "Regeln fuer die Zerlegung eines Masterprompts (Fabel/Sol) in einen validierten Taskgraph mit tatsaechlicher Delegation an kleinere logische Profile. Enthaelt keine Modellnamen, keine Secrets und keine Fremdprojektpfade.",
+  "orchestratorProfiles": ["fabel", "sol"],
+  "finalIntegratorProfiles": ["fabel", "sol"],
+  "criticalFinalDecisionProfiles": ["fabel", "opus", "sol"],
+  "maxDelegationDepth": 2,
+  "maxParallelWriters": 1,
+  "readOnlyAnalystsMayRunInParallel": true,
+  "childrenMayCommit": false,
+  "childrenMayPush": false,
+  "childOutputTrustZone": "T3",
+  "criticalCategories": [
+    "security",
+    "prompt-injection",
+    "chess-rules",
+    "pairing",
+    "tiebreaks",
+    "data-migration",
+    "release",
+    "installer",
+    "git-history",
+    "secrets",
+    "pull-request-review",
+    "pr-final-approval"
+  ],
+  "delegationGate": {
+    "requiresBoundedScope": true,
+    "requiresDefinedResultFormat": true,
+    "requiresDeterministicOrTestableResult": true,
+    "requiresKnownFiles": true,
+    "requiresMinimumQuality": true,
+    "requiresStrongerFinalReview": true
+  },
+  "qualityEscalation": {
+    "onInsufficientQuality": [
+      "discard-or-correct",
+      "escalate-to-next-quality-class",
+      "document-root-cause",
+      "never-silently-change-routing-policy"
+    ],
+    "escalationOrder": {
+      "anthropic": ["sonnet", "opus", "fabel"],
+      "openai": ["terra", "luna", "sol"]
+    }
+  },
+  "defaults": {
+    "tokenBudget": 20000,
+    "timeoutSeconds": 900,
+    "minimumQuality": "reviewed-by-stronger-profile",
+    "resultFormat": "markdown-report"
+  },
+  "requiredTaskFields": [
+    "taskId",
+    "parentId",
+    "backlogId",
+    "purpose",
+    "inputs",
+    "allowedFiles",
+    "forbiddenFiles",
+    "dependsOn",
+    "risk",
+    "category",
+    "workMode",
+    "size",
+    "deterministic",
+    "minimumQuality",
+    "preferredProvider",
+    "preferredProfile",
+    "tokenBudget",
+    "timeoutSeconds",
+    "requiredTests",
+    "reviewer",
+    "resultFormat",
+    "status"
+  ],
+  "statusValues": [
+    "PENDING",
+    "READY",
+    "RUNNING",
+    "COMPLETED",
+    "FAILED",
+    "RATE_LIMITED",
+    "BUDGET_EXCEEDED",
+    "BLOCKED",
+    "ESCALATED",
+    "REJECTED",
+    "QUARANTINED",
+    "INTEGRATED"
+  ],
+  "integrationGate": {
+    "onlyReviewedResultsMayIntegrate": true,
+    "reviewerMustBeStrongerOrEqualQualityClass": true,
+    "quarantinedOutputNeverIntegrates": true,
+    "childOutputNeverBecomesInstructionSource": true
+  }
+}
