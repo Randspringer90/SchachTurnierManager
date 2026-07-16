@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schachturniermanager.local/schemas/nightly-run.schema.json",
+  "title": "SchachTurnierManager Nightly-/Resume-Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "$schema",
+    "projectKey",
+    "registrationStatus",
+    "automaticExecutionEnabled",
+    "defaultBranch",
+    "checkpointRoot",
+    "registrationOutputRoot",
+    "maxResumeAttempts",
+    "requireCleanWorktree",
+    "requireExactBranch",
+    "requireExactHead",
+    "controls"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "$schema": { "const": "./nightly-run.schema.json" },
+    "projectKey": { "const": "SchachTurnierManager" },
+    "registrationStatus": { "const": "READY_FOR_ACTIVATION" },
+    "automaticExecutionEnabled": { "const": false },
+    "defaultBranch": { "const": "development" },
+    "checkpointRoot": { "const": "output/nightly-runs" },
+    "registrationOutputRoot": { "const": "output/nightly-registration" },
+    "maxResumeAttempts": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "requireCleanWorktree": { "const": true },
+    "requireExactBranch": { "const": true },
+    "requireExactHead": { "const": true },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gitMutationAllowed",
+        "networkMutationAllowed",
+        "schedulerMutationAllowed",
+        "externalWriteAllowed",
+        "automaticInstructionActivationAllowed"
+      ],
+      "properties": {
+        "gitMutationAllowed": { "const": false },
+        "networkMutationAllowed": { "const": false },
+        "schedulerMutationAllowed": { "const": false },
+        "externalWriteAllowed": { "const": false },
+        "automaticInstructionActivationAllowed": { "const": false }
+      }
+    }
+  }
+}

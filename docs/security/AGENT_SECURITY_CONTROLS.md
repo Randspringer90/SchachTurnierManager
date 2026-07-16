@@ -20,3 +20,9 @@ Durchsetzung lokal durch alle vier Agent-/Knowledge-Gates; in CI durch den
 plattformneutralen Instruction-Integrity-Gate und den Base-gebundenen Workflows
 `security-gate.yml` sowie `pr-static-security-review.yml`. Die breitere Consumer-Integration
 außerhalb des PR-Pfads bleibt als STM-SEC-001 nachgelagert.
+
+Der Nightly-Persistenzschutz wird durch `config/nightly-run.json` und
+`scripts/Test-NightlyReadiness.ps1` konkretisiert: nur atomare lokale T3-Checkpoints,
+exakte Branch-/SHA-Bindung, sauberer Arbeitsbaum, begrenzte Resume-Versuche und eine
+nicht aktivierende Registrierung. Checkpoints enthalten kein Kommando; Git-, Netzwerk-,
+Scheduler-, Instruktions- und externe Mutationen bleiben in Policy und Ausgabe `false`.

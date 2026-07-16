@@ -11,6 +11,7 @@
     "config/tool-permission-profiles.json",
     "config/trusted-instruction-paths.json",
     "config/model-routing.json",
+    "config/nightly-run.json",
     "config/pull-request-review-policy.json",
     "config/dependency-review-policy.json",
     "config/suspicious-change-patterns.json",
