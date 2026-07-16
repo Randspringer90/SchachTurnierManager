@@ -24,10 +24,10 @@ Benötigte Werkzeuge (Windows):
 | Werkzeug     | Version / Hinweis                                  |
 |--------------|----------------------------------------------------|
 | Git          | aktuell                                             |
-| GitHub CLI   | `gh` (für `gh auth login`, Issues, PRs)             |
+| GitHub CLI   | `gh` – **optional.** Praktisch für `gh pr create`, aber PRs gehen genauso über die normale GitHub-Weboberfläche (Link erscheint direkt nach `git push` in der Konsole). Ohne `gh` einfach Teil C ohne `gh auth login` starten. |
 | PowerShell   | 7+ (`pwsh`) – die Projektskripte sind PowerShell-7  |
 | .NET SDK     | **10.0.300+** (siehe `global.json`, `rollForward: latestFeature`) |
-| Node.js      | **22 LTS** (Vite 8 verlangt Node ≥ 20.19 / 22.12)   |
+| Node.js      | **22 LTS empfohlen** (Vite 8 verlangt Node ≥ 20.19 / 22.12); auch mit aktuellerem Node 24 verifiziert lauffähig |
 
 Installation z. B. über `winget`:
 
@@ -42,11 +42,15 @@ winget install OpenJS.NodeJS.LTS
 ## Teil C – Repository einrichten (Freund)
 
 ```bash
-gh auth login                       # einmalig, GitHub-Konto verbinden
+gh auth login                       # einmalig, GitHub-Konto verbinden (nur mit installiertem gh)
 git clone https://github.com/Randspringer90/SchachTurnierManager.git
 cd SchachTurnierManager
 git switch development               # development ist der Arbeits-Ausgangsbranch
 ```
+
+Ohne `gh`: die erste Zeile einfach weglassen. Für den späteren Pull Request reicht dann
+`git push` (Schritt 6 in [`FIRST_CONTRIBUTION.md`](FIRST_CONTRIBUTION.md)) – GitHub zeigt danach
+in der Konsole direkt einen Link zum Öffnen des PRs in der Weboberfläche an.
 
 ## Teil D – Projekt starten & testen
 

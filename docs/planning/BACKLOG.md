@@ -63,7 +63,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | **Ready** | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) | v1.0.0 |
+| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | In Progress | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (Branch `docs/STM-DOC-001-contributor-review`) | v1.0.0 |
 
 ---
 
@@ -120,7 +120,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 ### STM-DOC-001 · Contributor-Doku verifizieren & abrunden
 - **Beschreibung:** Onboarding-/Contributing-Doku praktisch nachvollziehen und Lücken/Fehler
   korrigieren (Befehle, Versionsangaben, Links).
-- **Priorität:** P3 · **Status:** Ready · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P3 · **Status:** In Progress · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) · **Branch:** `docs/STM-DOC-001-contributor-review`
 - **Abhängigkeiten:** keine.
 - **Akzeptanzkriterien:** Alle in `CONTRIBUTING.md`/Onboarding genannten Befehle funktionieren

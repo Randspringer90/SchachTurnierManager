@@ -1,5 +1,16 @@
 ## Unreleased (development)
 
+- STM-DOC-001: Contributor-Doku auf frischem Klon (2026-07-16, dotnet 10.0.301,
+  node v24.18.0, npm 11.16.0, pwsh 7.6.3, git 2.55.0) praktisch nachvollzogen.
+  `dotnet build`/`test`, `npm install`, `tsc --noEmit`, `vite build`,
+  `Test-All.ps1`, `Invoke-ReleaseGate.ps1 -SkipPack` und `RUN_TURNIERMANAGER.bat`
+  liefen alle fehlerfrei; Markdown-Linkcheck (14 zentrale Dateien) und
+  Skript-Referenzen-Check (252 Doku-Dateien) fanden keine toten Links/Skripte.
+  Zwei reale Lücken korrigiert: GitHub CLI (`gh`) war als erforderlich
+  dargestellt, obwohl Push + GitHub-Weboberfläche genauso funktioniert (bereits
+  zweimal erfolgreich so genutzt); Node-Versionstabelle als "22 LTS" ohne
+  Hinweis, dass neuere Node-Versionen (getestet: 24) ebenfalls funktionieren.
+  Siehe `docs/onboarding/COLLABORATOR_ONBOARDING.md` und `FIRST_CONTRIBUTION.md`.
 - Der fortgesetzte Owner-Lauf hat Marcels PRs #9/#10 über die sicheren
   Integrations-PRs #13/#14 übernommen und anschließend STM-AI-003, STM-AI-002 und
   STM-AI-004 über PRs #17/#19/#21 abgeschlossen. Alle Originalbeiträge wurden

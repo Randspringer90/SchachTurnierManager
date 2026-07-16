@@ -51,6 +51,12 @@ git push -u origin feature/STM-XXXX-000-kurz-name
 gh pr create --base development --fill
 ```
 
+**Ohne `gh` installiert:** funktioniert genauso über die Weboberfläche. Nach `git push`
+zeigt die Konsole einen direkten Link zum PR-Formular an (auch abrufbar über
+`https://github.com/Randspringer90/SchachTurnierManager/pull/new/<dein-branch>`). Dort
+**base auf `development`** prüfen (GitHub schlägt oft automatisch `main` vor), Titel/Text
+ausfüllen, „Create pull request" klicken.
+
 - PR-Template **vollständig** ausfüllen: Backlog-ID, Issue, Ausgangs-/Zielbranch, Tests,
   ReleaseGate-Ergebnis, Security-Check, Prompt-Injection-Check, Doku-/Backlog-Änderungen,
   Breaking-Change, Screenshots bei UI, Bestätigung „keine Secrets/Logs/PII/Artefakte".
