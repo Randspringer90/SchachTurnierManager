@@ -110,6 +110,33 @@ sondern eine paraphrasierte Arbeitsreferenz mit Fundstellen.
     Differenz > +1 bzw. zweimal Weiß zuletzt.
   - **1.7.2 stark:** Farbdifferenz +1 (Präferenz Schwarz) bzw. −1 (Präferenz Weiß).
   - **1.7.3 mild:** Farbdifferenz 0; Präferenz ist das Alternieren zur zuletzt gespielten Farbe.
+
+> ### ⚠ Art. 1.7.1 hat ZWEI Ausloeser, verknuepft mit ODER — hier wurde bereits ein Fehler gemacht
+>
+> Die Einstufung absolut/stark/mild ist **nicht** allein eine Funktion der Farbdifferenz.
+> Ein Spieler mit Differenz **±1** ist nach 1.7.2 „nur" stark — **es sei denn**, er hatte in den
+> **beiden letzten gespielten Runden dieselbe Farbe**. Dann ist die Praeferenz **absolut**,
+> obwohl die Differenz nur ±1 betraegt. Beide Bedingungen pruefen, absolut gewinnt.
+>
+> Ebenso in die andere Richtung: Ein Spieler mit Differenz **0** ist normalerweise mild (1.7.3) —
+> hatte er aber zuletzt zweimal dieselbe Farbe, ist er **absolut** (Beispiel: WWBB → Differenz 0,
+> aber absolut Weiss).
+>
+> **Warum das teuer ist:** Die Einstufung entscheidet ueber [C3] (Art. 2.1.3). Zwei Nicht-Topscorer
+> mit derselben **absoluten** Praeferenz duerfen nicht gegeneinander — mit derselben **starken**
+> Praeferenz schon. Eine falsche Einstufung erlaubt also Paarungen, die verboten sind, und kann
+> ganze Brackets unpaarbar machen.
+>
+> **Konkreter Fall (Golden-Turnier B, Runde 4):** Spieler 3 hatte W, B, B → Differenz −1. Nach der
+> Differenz „nur" stark, tatsaechlich aber **absolut Weiss** (zweimal Schwarz zuletzt). Damit sind
+> 3 und 4 beide absolut Weiss, [C3] verbietet 3–4, und die gesamte 1.0-Gruppe {2,3,4} wird
+> unpaarbar (2–4 Rematch, 3–4 verboten, 2–3 liesse 4 mit dem von [C2] gesperrten Freilos zurueck).
+> Die 2.0-Gruppe muss deshalb zwei Spieler abfloaten lassen, obwohl sie sich selbst vollstaendig
+> paaren koennte.
+>
+> **Ungespielte Runden zaehlen nicht mit** (C.04.2 Art. 3.4): „die beiden letzten Runden" meint die
+> beiden letzten **gespielten** Runden. Ein Freilos dazwischen wird uebersprungen, nicht als
+> Unterbrechung gewertet.
 - **1.8 Topscorers:** Spieler mit **über 50 % der maximal möglichen Punktzahl – bei der Auslosung
   der SCHLUSSRUNDE**. Vor der Schlussrunde gibt es also **keine** Topscorer.
   → Konsequenz: [C3] (Art. 2.1.3) gilt in allen Runden außer der Schlussrunde **ausnahmslos**.
@@ -152,6 +179,15 @@ sondern eine paraphrasierte Arbeitsreferenz mit Fundstellen.
 | [C11] | 2.4.6 | Topscorer/Topscorer-Gegner mit dreimal gleicher Farbe minimieren |
 | [C12] | 2.4.7 | Spieler ohne erfüllte Farbpräferenz minimieren |
 | [C13] | 2.4.8 | Spieler ohne erfüllte **starke** Farbpräferenz minimieren |
+
+> **[C13] ist nicht redundant zu [C12].** [C12] zählt jede unerfüllte Präferenz gleich, egal ob
+> mild, stark oder absolut. [C13] zählt nur die **starken**. Zwei Kandidaten mit demselben [C12]
+> können sich bei [C13] unterscheiden — und dann entscheidet es.
+> **Konkreter Fall (Golden-Turnier B, Runde 4):** Der MDP 7 (absolut Schwarz) kann gegen 1 (stark
+> Schwarz) oder 6 (mild Schwarz). Beide Male bekommt genau einer seine Präferenz nicht, [C12] ist
+> also gleich (= 1). Bei 7–1 wäre der Benachteiligte aber 1 mit **starker** Präferenz ([C13] = 1),
+> bei 7–6 nur 6 mit **milder** ([C13] = 0). Deshalb paart die Regel **7–6**, obwohl 7–1 in der
+> Transpositionsreihenfolge (Art. 4.2) früher käme.
 | [C14] | 2.4.9 | Resident-Downfloater, die schon in der Vorrunde downgefloatet sind, minimieren |
 | [C15] | 2.4.10 | MDP-Gegner, die schon in der Vorrunde upgefloatet sind, minimieren |
 | [C16] | 2.4.11 | Resident-Downfloater mit Downfloat vor zwei Runden minimieren |
