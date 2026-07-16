@@ -85,6 +85,11 @@ Check ($staticWorkflow -match '(?m)^\s*contents:\s*read\s*$' -and $staticWorkflo
 Check ($staticWorkflow -notmatch '(?m)^\s*(?:contents|pull-requests|actions|id-token|packages):\s*write\s*$') 'PR-Static-Workflow hat keine Write-Rechte'
 Check ($staticWorkflow -match 'github\.event\.pull_request\.base\.sha' -and $staticWorkflow -notmatch 'github\.event\.pull_request\.head\.sha\s*\}\}\s*\n\s*fetch') 'PR-Static-Workflow fuehrt Base-SHA-Code aus'
 Check ($staticWorkflow -match 'STATIC-EXECUTION-APPROVED:' -and $staticWorkflow -match 'review\.commit_id' -and $staticWorkflow -match 'ExpectedHeadSha' -and $staticWorkflow -match 'ExpectedBaseSha') 'PR-Static-Workflow bindet Owner-Freigabe und Event-SHAs'
+$bootstrapWorkflows = @('ci.yml','pr-static-security-review.yml','security-gate.yml')
+foreach ($bootstrapWorkflow in $bootstrapWorkflows) {
+    $bootstrapSource = Get-Content -Raw (Join-Path $wfDir $bootstrapWorkflow)
+    Check ($bootstrapSource -match 'function Initialize-BootstrapLegacyTempDrive' -and $bootstrapSource -match '(?m)^\s*Initialize-BootstrapLegacyTempDrive\s*$' -and $bootstrapSource -match 'New-PSDrive\s+-Name\s+D\s+-PSProvider\s+FileSystem\s+-Root\s+\$env:RUNNER_TEMP' -and $bootstrapSource -match 'Initialize-BootstrapLegacyTempDrive\s+& \./scripts/Test-PromptInjectionDefense\.ps1') "$bootstrapWorkflow kapselt den einmaligen Linux-Bootstrap im Prozess fuer den alten Base-Temp-Pfad"
+}
 $branchWorkflow = Get-Content -Raw (Join-Path $wfDir 'branch-policy.yml')
 Check ($branchWorkflow -match '\^integration/pr-\[1-9\]\[0-9\]\*-safe-adoption\$') 'Branch-Policy erlaubt nur enges PR-Integrationsbranch-Muster'
 $configureSource = Get-Content -Raw (Join-Path $repo 'scripts/Configure-GitHubCollaboration.ps1')

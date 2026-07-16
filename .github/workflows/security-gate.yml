@@ -64,6 +64,13 @@ jobs:
             }
             return $false
           }
+          function Initialize-BootstrapLegacyTempDrive {
+            if ($IsWindows -or (Get-PSDrive -Name D -ErrorAction SilentlyContinue)) { return }
+            if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP) -or -not (Test-Path -LiteralPath $env:RUNNER_TEMP -PathType Container)) {
+              throw 'Runner-Temp-Verzeichnis ist für den einmaligen Bootstrap nicht sicher verfügbar.'
+            }
+            New-PSDrive -Name D -PSProvider FileSystem -Root $env:RUNNER_TEMP -Scope Script | Out-Null
+          }
           function Assert-OwnerExecutionApproval([bool]$RequireIntegrationBranch, [bool]$AllowBootstrap) {
             if ($env:AUTHOR_ASSOCIATION -ne 'OWNER' -or $env:HEAD_REPOSITORY -cne $env:REPOSITORY) {
               throw 'Ausführungsfreigabe ist ausschließlich für einen Owner-Branch im kanonischen Repository zulässig.'
@@ -89,9 +96,10 @@ jobs:
           $reviewScript = Join-Path (Get-Location) 'scripts/Invoke-SafePullRequestReview.ps1'
           if (-not (Test-Path -LiteralPath $reviewScript -PathType Leaf)) {
             Assert-OwnerExecutionApproval $true $true
-            & pwsh -NoLogo -NoProfile -File scripts/Test-PromptInjectionDefense.ps1 -NoArchive
+            Initialize-BootstrapLegacyTempDrive
+            & ./scripts/Test-PromptInjectionDefense.ps1 -NoArchive
             if ($LASTEXITCODE -ne 0) { throw 'Bootstrap-Prompt-Injection-Gate fehlgeschlagen.' }
-            & pwsh -NoLogo -NoProfile -File scripts/Test-RepositoryOpenSourceSafety.ps1 -ReportDir (Join-Path $env:RUNNER_TEMP 'bootstrap-repository-safety')
+            & ./scripts/Test-RepositoryOpenSourceSafety.ps1 -ReportDir (Join-Path $env:RUNNER_TEMP 'bootstrap-repository-safety')
             if ($LASTEXITCODE -ne 0) { throw 'Bootstrap-Repository-Safety-Gate fehlgeschlagen.' }
             'Owner-Bootstrap: Das Base-Skript entsteht in diesem PR; unabhängiger Security-/Final-Review bleibt zwingend.' >> $env:GITHUB_STEP_SUMMARY
             exit 0
