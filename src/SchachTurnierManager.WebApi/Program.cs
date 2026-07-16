@@ -16,7 +16,16 @@ using SchachTurnierManager.Infrastructure.External;
 using SchachTurnierManager.WebApi;
 using SchachTurnierManager.WebApi.Logging;
 
-var builder = WebApplication.CreateBuilder(args);
+// ContentRootPath bewusst an AppContext.BaseDirectory (Ordner der EXE) gebunden statt am
+// Default (aktuelles Arbeitsverzeichnis des startenden Prozesses): Desktop-/Portable-Starts
+// ueber "start"/Verknuepfungen setzen das Arbeitsverzeichnis nicht zuverlaessig auf den
+// App-Ordner, wodurch wwwroot sonst nicht gefunden wird und das eingebettete Dashboard durch
+// die API-Fallback-Seite ersetzt wird (siehe embeddedDashboardAvailable unten).
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory
+});
 
 var repositoryRoot = FindRepositoryRoot(builder.Environment.ContentRootPath) ?? builder.Environment.ContentRootPath;
 var defaultDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchachTurnierManager");

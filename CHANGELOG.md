@@ -1,5 +1,31 @@
 ## Unreleased (development)
 
+- STM-REL-001: Windows-Installer real gebaut (Inno Setup 6) und die komplette
+  Testmatrix auf einer frischen Maschine durchlaufen (Installation, Start,
+  Testturnier mit 4 Spielern, Neustart-Persistenz, Deinstallation mit
+  Datenerhalt). Dabei einen echten, reproduzierbaren Bug gefunden und
+  behoben: Die self-contained Desktop-EXE fand `wwwroot` nur, wenn sie aus
+  dem `app`-Unterordner heraus gestartet wurde. `SchachTurnierManager.bat`
+  startet die EXE aber über `start`, ohne das Arbeitsverzeichnis zu setzen –
+  bei jedem normalen Start per Verknüpfung/Doppelklick landete man auf der
+  API-Fallback-Seite statt im Dashboard. Fix: `ContentRootPath` in
+  `Program.cs` jetzt explizit an `AppContext.BaseDirectory` gebunden statt am
+  (unzuverlässigen) aktuellen Arbeitsverzeichnis. Verifiziert: Fehler
+  reproduziert, Fix angewendet, unter denselben Startbedingungen erneut
+  getestet – jetzt `embeddedDashboard: true`.
+  Zusätzlich: `New-RunLogBundle.ps1` ging standardmäßig von einem
+  `D:`-Laufwerk aus (`D:\Temp`), das auf dieser Maschine nicht existiert und
+  das Skript hart abbrechen ließ; Default fällt jetzt auf `%TEMP%` zurück,
+  wenn kein `D:` vorhanden ist. Derselbe Musterfehler steckt noch in 9
+  weiteren Skripten (`Invoke-ClickInstallReadiness.ps1`,
+  `Invoke-ColleagueInstallReadiness.ps1`, `Invoke-ColleagueFreshRunTest.ps1`,
+  `Invoke-LoggingReadiness.ps1`, `Invoke-SecretSafetyReadiness.ps1`,
+  `Invoke-ReleaseCandidateReadiness.ps1`, `New-ContributorTaskPrompt.ps1`,
+  `Test-ContributorKickoffReadiness.ps1`) – bewusst nicht mitgefixt, um den
+  Lauf nicht zu sprengen; als Folgeaufgabe dokumentiert.
+  SHA256 der Setup-EXE liegt im PR. Nicht getestet (bewusst außerhalb des
+  heutigen Scopes): Portable-ZIP, Upgrade über Vorversion, Windows-Sandbox-
+  Frischmaschinentest, echte Code-Signierung.
 - Der fortgesetzte Owner-Lauf hat Marcels PRs #9/#10 über die sicheren
   Integrations-PRs #13/#14 übernommen und anschließend STM-AI-003, STM-AI-002 und
   STM-AI-004 über PRs #17/#19/#21 abgeschlossen. Alle Originalbeiträge wurden

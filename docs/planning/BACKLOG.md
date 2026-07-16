@@ -59,7 +59,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-UX-002 | PWA / Offline / Sync-Konflikte | P2 | Backlog | pwa | owner | – | v1.0.0 |
 | STM-UX-003 | Backup/Restore-UX | P2 | Backlog | ui | either | – | v1.0.0 |
 | STM-UX-004 | BYOK-KI-Provider | P3 | Backlog | ai | owner | – | post-1.0 |
-| STM-REL-001 | Setup-EXE (Klick-Installation) | P1 | Backlog | release | owner | – | v1.0.0 |
+| STM-REL-001 | Setup-EXE (Klick-Installation) | P1 | In Progress | release | owner | Branch `feature/STM-REL-001-windows-installer` (friend, auf direkte Bitte des Owners außerhalb der normalen Ready-Queue) | v1.0.0 |
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
