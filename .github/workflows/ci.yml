@@ -144,6 +144,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pwsh -NoLogo -NoProfile -File scripts/Test-ModelRoutingReadiness.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoLogo -NoProfile -File scripts/Test-NightlyReadiness.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   build-test:
     name: build-test

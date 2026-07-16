@@ -23,6 +23,10 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Test-AgentSkillProposalSafety.ps1` – Positiv-/Negativmatrix für Secret-/PII-/Injection-/Traversal-Schutz und unveränderte Instruktionsquellen.
 - `Resolve-ModelRoute.ps1` – fail-closed Auswahl eines logischen Ausfuehrungsprofils; startet kein Modell und fuehrt keinen stillen Fallback aus.
 - `Test-ModelRoutingReadiness.ps1` – Policy-, Profil- und Entscheidungsmatrix fuer das dynamische Modellrouting.
+- `New-NightlyCheckpoint.ps1` – erzeugt einen atomaren, SHA-gebundenen T3-Checkpoint ausschließlich im ignorierten Output-Bereich.
+- `Get-NightlyResumePlan.ps1` – prüft Checkpoint, Branch, Head und Worktree fail-closed; liefert nur einen Plan und führt keine Aktion aus.
+- `New-NightlyRegistrationPlan.ps1` – exportiert die nicht aktivierende zentrale Registrierung mit Status `READY_FOR_ACTIVATION`.
+- `Test-NightlyReadiness.ps1` – 56-Fälle-Gate für Policy, Binding, Tamper-, Drift-, Secret-/PII-, Resume- und Registrierungsgrenzen.
 - `Sync-ClaudeAgentAdapters.ps1` – dünne Claude-Adapter aus `agents/**` synchronisieren (`-Check`/`-Apply`/`-WhatIf`/`-RepositoryRoot`).
 
 ## Sichere Pull-Request-Prüfung (STM-SEC-005)

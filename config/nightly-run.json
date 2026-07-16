@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "$schema": "./nightly-run.schema.json",
+  "projectKey": "SchachTurnierManager",
+  "registrationStatus": "READY_FOR_ACTIVATION",
+  "automaticExecutionEnabled": false,
+  "defaultBranch": "development",
+  "checkpointRoot": "output/nightly-runs",
+  "registrationOutputRoot": "output/nightly-registration",
+  "maxResumeAttempts": 3,
+  "requireCleanWorktree": true,
+  "requireExactBranch": true,
+  "requireExactHead": true,
+  "controls": {
+    "gitMutationAllowed": false,
+    "networkMutationAllowed": false,
+    "schedulerMutationAllowed": false,
+    "externalWriteAllowed": false,
+    "automaticInstructionActivationAllowed": false
+  }
+}

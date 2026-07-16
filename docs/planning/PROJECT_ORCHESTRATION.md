@@ -24,6 +24,10 @@ Stand: 0.38.7. Welche Aufgabe läuft über welches Skript, welchen Skill, welche
 | PR-Adoption planen | `scripts/New-PullRequestAdoptionPrompt.ps1` | SHA-/Policy-gebundener Trust-Handoff; Integration vom aktuellen development |
 | Contributor-Feedback | `scripts/New-PullRequestFeedback.ps1` | standardmäßig Draft; explizites Posting nach SHA-Recheck |
 | PR-Review-System abnehmen | `scripts/Test-PullRequestReviewReadiness.ps1` | synthetische Security-/Tamper-/WhatIf-Fälle |
+| Nightly-Checkpoint erzeugen | `scripts/New-NightlyCheckpoint.ps1` | nur auf sauberem `development`, lokale T3-Daten unter `output/` |
+| Resume sicher planen | `scripts/Get-NightlyResumePlan.ps1` | read-only Plan; Branch-/SHA-/Worktree-Drift blockiert |
+| Nightly-Registrierung vorbereiten | `scripts/New-NightlyRegistrationPlan.ps1` | nur `READY_FOR_ACTIVATION`, keine externe Aktivierung |
+| Nightly-/Resume-Unterbau abnehmen | `scripts/Test-NightlyReadiness.ps1` | synthetisches isoliertes Git-Repository unter `output/` |
 | Aufräumen | `scripts/Clean-Generated.ps1` | generierte Artefakte |
 
 Zugehörige Skills: `.agents/skills/repository-security.md` (vor Commit/Push/Snapshot verbindlich),

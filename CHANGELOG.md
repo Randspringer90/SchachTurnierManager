@@ -1,5 +1,13 @@
 ## Unreleased (development)
 
+- STM-AI-004: projektlokalen Nightly-/Resume-Unterbau ergänzt. Atomare Checkpoints
+  bleiben unter dem ignorierten `output/`, sind an Projekt, Branch und Head gebunden
+  und enthalten weder Kommandos noch Secrets/PII. Der Resume-Plan blockiert bei
+  Manipulation, Branch-/Head-Drift, dirty Worktree oder erreichtem Attempt-Limit.
+  Die zentrale Registrierung wird nur als `READY_FOR_ACTIVATION`-Plan exportiert;
+  automatische Ausführung sowie Git-, Netzwerk-, Scheduler- und externe Mutationen
+  bleiben deaktiviert. Ein 56-Fälle-Gate läuft zusätzlich in CI.
+
 - STM-AI-002: repo-internes Wissensmanagement mit strikteren Metadaten-, Trust- und
   Data-only-Prüfungen abgeschlossen. Wiederholte Lernsignale können nun ausschließlich
   als lokale, redigierte `DRAFT_OWNER_REVIEW`-Vorschläge vorbereitet werden; der
