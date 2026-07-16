@@ -32,6 +32,10 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `New-NightlyCheckpoint.ps1` – erzeugt einen atomaren, SHA-gebundenen T3-Checkpoint ausschließlich im ignorierten Output-Bereich.
 - `Get-NightlyResumePlan.ps1` – prüft Checkpoint, Branch, Head und Worktree fail-closed; liefert nur einen Plan und führt keine Aktion aus.
 - `New-NightlyRegistrationPlan.ps1` – exportiert die nicht aktivierende zentrale Registrierung mit Status `READY_FOR_ACTIVATION`.
+- `Invoke-NightlyProjectRun.ps1` – projektlokale Nightly-Ausfuehrungsebene (STM-AI-006): Lock, Vorbedingungen, Owner-Queue-Auswahl (Contributor-Aufgaben ausgeschlossen), Plan + Masterprompt + Gates; nie main/Release/History/Secrets.
+- `Resume-NightlyProjectRun.ps1` – setzt Nightly-/Routed-Checkpoints dieses Projekts fail-closed fort.
+- `Register-NightlyProject.ps1` – einmalige Aktivierung in der vorhandenen zentralen Registry (Pfad als Parameter, WhatIf-Default, nur Override-Flip; erzeugt nie eine Scheduled Task).
+- `Test-NightlyExecutionReadiness.ps1` – Offline-Pruefmatrix der Nightly-Ausfuehrungsebene (Policy, Scheduler-Mutationsverbot, Registrierung, Queue-Ausschluesse, Resume).
 - `Test-NightlyReadiness.ps1` – 56-Fälle-Gate für Policy, Binding, Tamper-, Drift-, Secret-/PII-, Resume- und Registrierungsgrenzen.
 - `Sync-ClaudeAgentAdapters.ps1` – dünne Claude-Adapter aus `agents/**` synchronisieren (`-Check`/`-Apply`/`-WhatIf`/`-RepositoryRoot`).
 

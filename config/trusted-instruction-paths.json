@@ -14,6 +14,7 @@
     "config/task-decomposition-policy.json",
     "config/provider-runtime-policy.json",
     "config/nightly-run.json",
+    "config/nightly-execution.json",
     "config/pull-request-review-policy.json",
     "config/dependency-review-policy.json",
     "config/suspicious-change-patterns.json",

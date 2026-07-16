@@ -1,5 +1,17 @@
 ## Unreleased (development)
 
+- STM-AI-006: projektlokale Nightly-Ausführungsebene ergänzt und zentrale
+  Nightly-Aufnahme vorbereitet. `Invoke-NightlyProjectRun.ps1` (Lock,
+  Vorbedingungen, kanonische Owner-Queue aus BACKLOG mit striktem Ausschluss von
+  Contributor-/Marcel-Aufgaben, Plan + Masterprompt + Gates),
+  `Resume-NightlyProjectRun.ps1` (fail-closed Fortsetzung),
+  `Register-NightlyProject.ps1` (einmalige Aktivierung in der **vorhandenen**
+  zentralen Registry per Override-Flip; WhatIf-Default; erzeugt nie eine
+  Scheduled Task) sowie `Test-NightlyExecutionReadiness.ps1` (19 Offline-Checks,
+  zusätzlich in CI). Die plan-only Checkpoint-Ebene aus STM-AI-004
+  (`config/nightly-run.json`) bleibt unverändert nicht selbstaktivierend; die
+  Aktivierung erfolgt ausschließlich zentral durch den Owner.
+
 - STM-AI-005: providerübergreifende Promptzerlegung und Routed Execution ergänzt.
   Masterprompts (Fabel/Sol) werden in validierte Taskgraphen zerlegt
   (`New-RoutedTaskGraph.ps1`), Teilaufgaben tatsächlich an kleinere logische Profile
