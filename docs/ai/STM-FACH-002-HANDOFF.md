@@ -3,7 +3,8 @@
 **Stand:** 2026-07-16 · **Branch:** `feature/STM-FACH-002-fide-dutch` (6 Commits, **nur lokal**,
 bewusst noch nicht gepusht) · **Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
 
-**Fortschritt: ~40 %.** Tests und Regelgrundlage stehen, die Implementierung fehlt komplett.
+**Fortschritt: ~50 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung ist die
+Profil-Schicht fertig (grün); das Paarungsverfahren selbst (Art. 3/4, Kriterien [C5]–[C21]) fehlt.
 
 ---
 
@@ -28,18 +29,32 @@ bewusst noch nicht gepusht) · **Issue:** [#22](https://github.com/Randspringer9
 | Golden-Turnier A (8 Spieler) | 5/5 Runden hergeleitet **und** gegengeprüft |
 | Golden-Turnier B (7 Spieler, Freilose) | 5/5 Runden hergeleitet **und** gegengeprüft |
 | Golden-Turnier C (8 Spieler, kampflos) | 5/5 Runden hergeleitet **und** gegengeprüft |
+| Property-Tests der absoluten Kriterien | 9 Feldgrößen × 5 Verläufe × 6 Zusagen |
+| **Profil-Schicht (grün)** | `FideDutchPlayerProfile`, `FideDutchProfileBuilder` + 10 Tests |
 
-**Testlage:** 220 bestehende Tests grün, 16 neue Golden-Tests **absichtlich rot**
-(`FideDutchPairingStrategy` ist ein Stub, der `NotImplementedException` wirft).
+**Testlage:** 220 bestehende Tests grün, 10 Profil-Tests grün, 286 Golden-/Property-Tests
+**absichtlich rot** (`FideDutchPairingStrategy` ist noch ein Stub, der `NotImplementedException` wirft).
+
+### Die Profil-Schicht ist fertig und verifiziert
+
+`FideDutchProfileBuilder` liefert je Spieler: Punkte, TPN, Farbfolge (ohne ungespielte Runden),
+tatsächlich gespielte Gegner, Freilos-Sperre und Float-Historie (Vorrunde + zwei Runden zurück).
+Die Präferenz-Einstufung nach Art. 1.7 sitzt in `FideDutchPlayerProfile.Preference` — **mit beiden
+Auslösern von Art. 1.7.1**.
+
+Die Erwartungswerte der Tests stammen aus den Checklisten von bbpPairings, nicht aus eigener
+Anschauung. `FideDutchProfileBuilderTests` konstruiert die Rundenverläufe direkt und braucht die
+Paarungsstrategie **nicht** — die Schicht ist unabhängig prüfbar. Wer weiterbaut, kann sich auf diese
+Zahlen verlassen.
 
 ## Was fehlt
 
-1. **Property-Tests** für die absoluten Kriterien (kein Rematch, Farbdifferenz ±2, kein zweites
-   Freilos) und ein Determinismus-Test über alle drei Turniere.
-2. **Die Implementierung** – das große Stück, ca. 45–50 % der Gesamtaufgabe.
-3. Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung (siehe unten).
-4. `CHANGELOG.md`, `docs/AUDIT_JOURNAL.md`, Push, PR nach **`development`** (nicht `main`!).
-5. Issue-Kommentar zu den veralteten Artikelnummern; Folge-Ticket Setzliste.
+1. **Das Paarungsverfahren** — Art. 3 (Brackets, S1/S2, Limbo, Kandidat, Remainder), Art. 4
+   (BSN, Transpositionen, Exchanges, MDP-Mengen), Art. 5 (Farbzuteilung), Kriterien [C5]–[C21].
+   Das ist der große Rest, ca. 40 % der Gesamtaufgabe. Die Profile stehen als Eingabe bereit.
+2. Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung (siehe unten).
+3. `CHANGELOG.md`, `docs/AUDIT_JOURNAL.md`, Push, PR nach **`development`** (nicht `main`!).
+4. Issue-Kommentar zu den veralteten Artikelnummern; Folge-Ticket Setzliste.
 
 ---
 
