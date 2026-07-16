@@ -50,7 +50,7 @@ public sealed class FideDutchProfileBuilder
 
             foreach (var pairing in round.Pairings)
             {
-                ApplyPairing(pairing, states, pointsBeforeRound, isLastRound, isTwoRoundsBack);
+                ApplyPairing(pairing, states, pointsBeforeRound, round.RoundNumber, isLastRound, isTwoRoundsBack);
             }
 
             AddRoundPoints(round, pointsBeforeRound, tournament.Settings.ScoringSystem);
@@ -62,6 +62,7 @@ public sealed class FideDutchProfileBuilder
                 Points: standings.TryGetValue(entry.Key, out var row) ? row.Points : 0m,
                 Tpn: TpnOf(tournament, entry.Key),
                 PlayedColours: entry.Value.Colours,
+                ColourByRound: entry.Value.ColourByRound,
                 PlayedOpponentIds: entry.Value.PlayedOpponentIds,
                 IsByeIneligible: entry.Value.IsByeIneligible,
                 FloatLastRound: entry.Value.FloatLastRound,
@@ -95,6 +96,7 @@ public sealed class FideDutchProfileBuilder
         Pairing pairing,
         Dictionary<Guid, MutableState> states,
         Dictionary<Guid, decimal> pointsBeforeRound,
+        int roundNumber,
         bool isLastRound,
         bool isTwoRoundsBack)
     {
@@ -124,12 +126,14 @@ public sealed class FideDutchProfileBuilder
             if (states.TryGetValue(white, out var whiteState))
             {
                 whiteState.Colours.Add(ChessColor.White);
+                whiteState.ColourByRound[roundNumber] = ChessColor.White;
                 whiteState.PlayedOpponentIds.Add(black);
             }
 
             if (states.TryGetValue(black, out var blackState))
             {
                 blackState.Colours.Add(ChessColor.Black);
+                blackState.ColourByRound[roundNumber] = ChessColor.Black;
                 blackState.PlayedOpponentIds.Add(white);
             }
 
@@ -209,6 +213,7 @@ public sealed class FideDutchProfileBuilder
     private sealed class MutableState
     {
         public List<ChessColor> Colours { get; } = new();
+        public Dictionary<int, ChessColor> ColourByRound { get; } = new();
         public HashSet<Guid> PlayedOpponentIds { get; } = new();
         public bool IsByeIneligible { get; set; }
         public FideFloat FloatLastRound { get; private set; } = FideFloat.None;

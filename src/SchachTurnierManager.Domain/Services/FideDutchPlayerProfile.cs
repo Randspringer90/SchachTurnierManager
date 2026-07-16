@@ -70,6 +70,12 @@ public sealed record FideColourPreference(ChessColor Colour, FideColourPreferenc
 /// kampflose Ergebnisse fehlen hier bewusst: nach C.04.2 Art. 3.4 wird die Historie behandelt,
 /// als hätte die Runde nicht stattgefunden.
 /// </param>
+/// <param name="ColourByRound">
+/// Dieselbe Information, aber der Rundennummer zugeordnet. Nötig für Art. 5.2.3, das zwei Spieler
+/// rundenweise vergleicht: Über den Index in <paramref name="PlayedColours"/> ginge das schief,
+/// sobald einer der beiden ein Freilos oder ein kampfloses Ergebnis hatte — dann stehen an gleicher
+/// Position verschiedene Runden.
+/// </param>
 /// <param name="PlayedOpponentIds">
 /// Nur tatsächlich am Brett ausgetragene Begegnungen. Wer kampflos gegeneinander „angesetzt" war,
 /// hat nicht gegeneinander gespielt und darf nach C.04.2 Art. 3.5 später noch gepaart werden —
@@ -86,6 +92,7 @@ public sealed record FideDutchPlayerProfile(
     decimal Points,
     int Tpn,
     IReadOnlyList<ChessColor> PlayedColours,
+    IReadOnlyDictionary<int, ChessColor> ColourByRound,
     IReadOnlySet<Guid> PlayedOpponentIds,
     bool IsByeIneligible,
     FideFloat FloatLastRound,
