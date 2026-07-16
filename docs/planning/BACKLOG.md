@@ -42,7 +42,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | Done | ai | owner | [#18](https://github.com/Randspringer90/SchachTurnierManager/issues/18), [PR #19](https://github.com/Randspringer90/SchachTurnierManager/pull/19), Merge `98648e7` | v1.0.0 |
 | STM-AI-003 | Modellrouting finalisieren (Qualitätsklassen + MODEL_ROUTING.md) | P2 | Done | ai | owner | [#15](https://github.com/Randspringer90/SchachTurnierManager/issues/15) (PR [#17](https://github.com/Randspringer90/SchachTurnierManager/pull/17), Merge `dfa7520`) | v1.0.0 |
 | STM-AI-004 | Nightly-/Resume-Unterbau | P1 | Done | ai | owner | [#20](https://github.com/Randspringer90/SchachTurnierManager/issues/20), [PR #21](https://github.com/Randspringer90/SchachTurnierManager/pull/21), Merge `a6df385` | v1.0.0 |
-| STM-AI-005 | Providerübergreifende Promptzerlegung und Routed Execution | P1 | In Progress | ai | owner | – | v1.0.0 |
+| STM-AI-005 | Providerübergreifende Promptzerlegung und Routed Execution | P1 | In Review | ai | owner | [#26](https://github.com/Randspringer90/SchachTurnierManager/issues/26) | v1.0.0 |
 | STM-AI-006 | Aktive zentrale Nightly-Orchestrierung | P1 | In Progress | ai | owner | – | v1.0.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |

@@ -1,5 +1,19 @@
 ## Unreleased (development)
 
+- STM-AI-005: providerübergreifende Promptzerlegung und Routed Execution ergänzt.
+  Masterprompts (Fabel/Sol) werden in validierte Taskgraphen zerlegt
+  (`New-RoutedTaskGraph.ps1`), Teilaufgaben tatsächlich an kleinere logische Profile
+  delegiert (`Invoke-RoutedTaskGraph.ps1` + Anthropic-/OpenAI-Adapter) und
+  bindungsgeprüft fortgesetzt (`Resume-RoutedTaskGraph.ps1`). Kritische Kategorien
+  werden nie automatisch herabgestuft, Children sind read-only ohne Commit-/Push-Rechte,
+  Child-Ausgaben bleiben T3 mit Injection-Quarantäne, Rate-/Usage-Limits und
+  Tokenbudgets checkpointen zustandserhaltend. Neue Policies
+  (`task-decomposition-policy`, `provider-runtime-policy` + Schemas), Agentenrollen
+  (Task-Decomposer, Routing-Supervisor, Result-Integrator), vier Skills sowie ein
+  34-Fälle-Offline-Gate (`Test-RoutedExecutionReadiness.ps1`). Live-Smoke-Test:
+  Anthropic-Delegation real grün; OpenAI-Adapter funktional, Modellantwort durch
+  externes Nutzungskontingent (bis 2026-07-23) blockiert und korrekt klassifiziert.
+
 - Der fortgesetzte Owner-Lauf hat Marcels PRs #9/#10 über die sicheren
   Integrations-PRs #13/#14 übernommen und anschließend STM-AI-003, STM-AI-002 und
   STM-AI-004 über PRs #17/#19/#21 abgeschlossen. Alle Originalbeiträge wurden

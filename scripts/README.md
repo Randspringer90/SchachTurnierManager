@@ -23,6 +23,12 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Test-AgentSkillProposalSafety.ps1` – Positiv-/Negativmatrix für Secret-/PII-/Injection-/Traversal-Schutz und unveränderte Instruktionsquellen.
 - `Resolve-ModelRoute.ps1` – fail-closed Auswahl eines logischen Ausfuehrungsprofils; startet kein Modell und fuehrt keinen stillen Fallback aus.
 - `Test-ModelRoutingReadiness.ps1` – Policy-, Profil- und Entscheidungsmatrix fuer das dynamische Modellrouting.
+- `New-RoutedTaskGraph.ps1` – validiert eine Masterprompt-Zerlegung fail-closed und routet jede Teilaufgabe ueber `Resolve-ModelRoute.ps1` (STM-AI-005).
+- `Invoke-RoutedTaskGraph.ps1` – fuehrt einen gerouteten Taskgraph tatsaechlich aus: sequenziell, checkpointed, mit Injection-Quarantaene und Eskalation.
+- `Resume-RoutedTaskGraph.ps1` – setzt einen unterbrochenen Routed-Execution-Lauf bindungsgeprueft am Checkpoint fort.
+- `Invoke-AnthropicProfile.ps1` / `Invoke-OpenAIProfile.ps1` – nichtinteraktive Provider-Adapter (vorhandene Logins, keine Tokens, redigierte Logs, read-only Children).
+- `Test-RoutedExecutionReadiness.ps1` – synthetische Offline-Pruefmatrix der Routed Execution (Routing, Limits, Quarantaene, Resume, Integration-Gate).
+- `lib/RoutedExecutionCommon.ps1` – gemeinsame Routed-Execution-Funktionen (Validierung, Checkpoints, Klassifikation, Redaktion).
 - `New-NightlyCheckpoint.ps1` – erzeugt einen atomaren, SHA-gebundenen T3-Checkpoint ausschließlich im ignorierten Output-Bereich.
 - `Get-NightlyResumePlan.ps1` – prüft Checkpoint, Branch, Head und Worktree fail-closed; liefert nur einen Plan und führt keine Aktion aus.
 - `New-NightlyRegistrationPlan.ps1` – exportiert die nicht aktivierende zentrale Registrierung mit Status `READY_FOR_ACTIVATION`.

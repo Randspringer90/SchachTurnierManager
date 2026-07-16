@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "provider-runtime-policy.schema.json",
+  "title": "STM Provider-Runtime-Policy",
+  "type": "object",
+  "required": ["schemaVersion", "providerPreference", "providers", "safety", "retry", "classification"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "description": { "type": "string" },
+    "providerPreference": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+    },
+    "providers": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["executable", "versionArgs", "invocation", "profiles"],
+        "properties": {
+          "executable": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "versionArgs": { "type": "array", "items": { "type": "string" } },
+          "authProbeArgs": { "type": "array", "items": { "type": "string" } },
+          "invocation": {
+            "type": "object",
+            "required": ["argumentTemplate", "promptViaStdin"],
+            "properties": {
+              "argumentTemplate": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "promptViaStdin": { "type": "boolean" },
+              "readOnlyByDefault": { "type": "boolean" },
+              "comment": { "type": "string" }
+            }
+          },
+          "profiles": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "object",
+              "required": ["model"],
+              "properties": { "model": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "childrenMayCommit",
+        "childrenMayPush",
+        "childOutputTrustZone",
+        "noSilentModelSwitch",
+        "unavailableProfileAction",
+        "proxyEnvironmentVariables",
+        "proxyValueSource",
+        "redactionPatternSource",
+        "maxLoggedOutputChars"
+      ],
+      "properties": {
+        "childrenMayCommit": { "type": "boolean", "const": false },
+        "childrenMayPush": { "type": "boolean", "const": false },
+        "childOutputTrustZone": { "type": "string", "const": "T3" },
+        "noSilentModelSwitch": { "type": "boolean", "const": true },
+        "unavailableProfileAction": { "type": "string" },
+        "proxyEnvironmentVariables": { "type": "array", "items": { "type": "string" } },
+        "proxyValueSource": { "type": "string", "const": "process-environment-only" },
+        "redactionPatternSource": { "type": "string", "minLength": 1 },
+        "maxLoggedOutputChars": { "type": "integer", "minimum": 1000 }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "required": ["maxAttempts", "baseDelaySeconds", "backoffFactor", "jitterSeconds", "respectRetryAfter", "noParallelRetryStorms"],
+      "properties": {
+        "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "baseDelaySeconds": { "type": "integer", "minimum": 1 },
+        "backoffFactor": { "type": "number", "minimum": 1 },
+        "jitterSeconds": { "type": "integer", "minimum": 0 },
+        "respectRetryAfter": { "type": "boolean" },
+        "noParallelRetryStorms": { "type": "boolean", "const": true }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "required": ["usageLimit", "rateLimit", "authError"],
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}

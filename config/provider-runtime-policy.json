@@ -1,0 +1,97 @@
+{
+  "$schema": "./provider-runtime-policy.schema.json",
+  "schemaVersion": 1,
+  "description": "Laufzeitzuordnung logischer Profile zu lokalen, nichtinteraktiven CLI-Runtimes. Verwendet ausschliesslich vorhandene lokale Logins; persistiert keine Tokens/Secrets. Modell-Slugs sind Laufzeitdaten: die Runtime muss die Verfuegbarkeit vor Nutzung bestaetigen (kein stiller Wechsel). Proxy-Werte kommen ausschliesslich aus der Prozessumgebung und stehen nie in diesem Repo.",
+  "providerPreference": {
+    "anthropic": ["fabel", "opus", "sonnet"],
+    "openai": ["sol", "terra", "luna"]
+  },
+  "providers": {
+    "anthropic": {
+      "executable": "claude",
+      "versionArgs": ["--version"],
+      "invocation": {
+        "argumentTemplate": ["-p", "--model", "{model}", "--output-format", "text", "--add-dir", "{projectPath}"],
+        "promptViaStdin": true,
+        "readOnlyByDefault": true,
+        "comment": "Ohne Permission-Bypass kann der Child-Prozess keine mutierenden Tools freischalten; Ergebnisse sind reine Textausgaben (T3)."
+      },
+      "profiles": {
+        "fabel": { "model": "fable" },
+        "opus": { "model": "opus" },
+        "sonnet": { "model": "sonnet" }
+      }
+    },
+    "openai": {
+      "executable": "codex",
+      "versionArgs": ["--version"],
+      "authProbeArgs": ["login", "status"],
+      "invocation": {
+        "argumentTemplate": ["exec", "--model", "{model}", "--sandbox", "read-only", "--skip-git-repo-check", "--cd", "{projectPath}", "--output-last-message", "{lastMessageFile}", "-"],
+        "promptViaStdin": true,
+        "readOnlyByDefault": true,
+        "comment": "Sandbox read-only: Child darf Repo lesen, aber nicht schreiben, nicht committen, nicht pushen."
+      },
+      "profiles": {
+        "sol": { "model": "gpt-5.6-sol" },
+        "terra": { "model": "gpt-5.6-terra" },
+        "luna": { "model": "gpt-5.6-luna" }
+      }
+    }
+  },
+  "safety": {
+    "childrenMayCommit": false,
+    "childrenMayPush": false,
+    "childOutputTrustZone": "T3",
+    "noSilentModelSwitch": true,
+    "unavailableProfileAction": "block-and-request-explicit-reroute",
+    "proxyEnvironmentVariables": ["HTTPS_PROXY", "HTTP_PROXY"],
+    "proxyValueSource": "process-environment-only",
+    "redactionPatternSource": "scripts/lib/RoutedExecutionCommon.ps1",
+    "maxLoggedOutputChars": 20000
+  },
+  "retry": {
+    "maxAttempts": 3,
+    "baseDelaySeconds": 20,
+    "backoffFactor": 2.0,
+    "jitterSeconds": 10,
+    "respectRetryAfter": true,
+    "noParallelRetryStorms": true
+  },
+  "classification": {
+    "usageLimit": [
+      "usage limit",
+      "usage_limit",
+      "usage cap",
+      "Nutzungslimit",
+      "monthly limit",
+      "weekly limit",
+      "5-hour limit",
+      "quota exceeded",
+      "insufficient_quota",
+      "out of credits"
+    ],
+    "rateLimit": [
+      "rate limit",
+      "rate_limit",
+      "429",
+      "retry-after",
+      "overloaded",
+      "capacity",
+      "service unavailable",
+      "temporarily unavailable",
+      "503",
+      "504"
+    ],
+    "authError": [
+      "not logged in",
+      "login required",
+      "please run",
+      "invalid api key",
+      "unauthorized",
+      "401",
+      "403 forbidden",
+      "token in keyring is invalid"
+    ]
+  }
+}
