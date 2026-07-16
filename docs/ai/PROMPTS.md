@@ -4,6 +4,14 @@
 Jeder relevante KI-Lauf (Claude Code, Codex, andere) traegt sich hier ein.
 Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
+> **2026-07-16 (Claude Fabel 5):** Owner-Masterlauf – Marcels Work-Queue
+> (Issues #3/#4 präzisiert+zugewiesen, #22–#25 neu, `MARCEL_WORK_QUEUE.md`),
+> STM-AI-005 Routed Execution (PR #29, Merge `8305814`, Live-Smoke Anthropic),
+> STM-AI-006 Nightly-Ausführungsebene (PR #32, Merge `c1a2d4c`) und zentrale
+> Nightly-Aktivierung (Registrierung ACTIVE, nächster Lauf 2026-07-17 00:00);
+> Marcels neue PRs #30/#31 ausschließlich statisch geprüft. Bericht:
+> `reports/2026-07-16-fabel5-routed-execution-nightly-v1-progress.md`.
+
 > **2026-07-12 (Claude Opus 4.8):** Kollaborations-Bootstrap – `development`-Branch als Standard,
 > Merge des lokalen v0.41-Stands, kanonischer Backlog, GitHub-Rulesets/Templates/CI.
 > Abschlussbericht: `reports/2026-07-12-claude-collaboration-development-branch.md`.

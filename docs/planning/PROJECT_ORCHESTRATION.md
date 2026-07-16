@@ -28,6 +28,9 @@ Stand: 0.38.7. Welche Aufgabe läuft über welches Skript, welchen Skill, welche
 | Resume sicher planen | `scripts/Get-NightlyResumePlan.ps1` | read-only Plan; Branch-/SHA-/Worktree-Drift blockiert |
 | Nightly-Registrierung vorbereiten | `scripts/New-NightlyRegistrationPlan.ps1` | nur `READY_FOR_ACTIVATION`, keine externe Aktivierung |
 | Nightly-/Resume-Unterbau abnehmen | `scripts/Test-NightlyReadiness.ps1` | synthetisches isoliertes Git-Repository unter `output/` |
+| Routed Execution (Taskgraph validieren/ausführen/fortsetzen) | `scripts/New-RoutedTaskGraph.ps1`, `scripts/Invoke-RoutedTaskGraph.ps1`, `scripts/Resume-RoutedTaskGraph.ps1` | Children read-only, T3-Quarantäne, SHA-Checkpoints; Abnahme `scripts/Test-RoutedExecutionReadiness.ps1` |
+| Nightly-Projektlauf (lokal) | `scripts/Invoke-NightlyProjectRun.ps1`, `scripts/Resume-NightlyProjectRun.ps1` | friend-/Blocked-Aufgaben ausgeschlossen; kein main/Release/History/Secrets; Abnahme `scripts/Test-NightlyExecutionReadiness.ps1` |
+| Zentrale Nightly-Registrierung | `scripts/Register-NightlyProject.ps1` | nur Override-Flip in vorhandener zentraler Registry (Pfad als Parameter); seit 2026-07-16 ACTIVE; nie eigene Scheduled Task |
 | Aufräumen | `scripts/Clean-Generated.ps1` | generierte Artefakte |
 
 Zugehörige Skills: `.agents/skills/repository-security.md` (vor Commit/Push/Snapshot verbindlich),

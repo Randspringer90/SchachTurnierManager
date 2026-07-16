@@ -23,6 +23,8 @@ Stand: 2026-07-16 (development). Reifegrad je Fachbereich. Details/Aufgaben in
 | Security / Public-Reife | Gates + statische PR-Quarantäne vorhanden | weitere Injection-/Supply-Chain-/PII-/History-Härtung | STM-SEC-001..004 |
 | Sichere PR-Prüfung und Adoption | Base-SHA-static-only, Agent/Skills/Policies/CI/Feedback (STM-SEC-005) | stabil | – |
 | KI-Agenten / Skills / Trust / Wissen | kanonische Struktur, Manifeste, sichere Improvement-DRAFTs, Modellrouting und Nightly/Resume (STM-AI-001..004) | stabil; optionale Legacy-Skill-Migration offen | STM-AI-001b |
+| Routed Execution (providerübergreifende Delegation) | Taskgraph-Pipeline, Adapter, Quarantäne/Checkpoints, 34-Fälle-Gate (STM-AI-005) | stabil; OpenAI-Live-Nachweis nach Kontingent-Reset 2026-07-23 | – |
+| Aktive zentrale Nightly-Orchestrierung | projektlokale Ausführungsebene + zentrale Registrierung ACTIVE seit 2026-07-16 (STM-AI-006) | stabil | – |
 | Prompt-Injection-Verteidigung | Trust-Zonen, Allowlist, Guards + Tests (STM-SEC-001, in Arbeit) | härten | STM-SEC-001 |
 | Performance / Last | – | offen | STM-INFRA-002 |
 | Release Candidate v1.0.0 | – | blockiert | STM-REL-004 |

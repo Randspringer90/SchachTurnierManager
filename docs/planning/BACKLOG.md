@@ -42,8 +42,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | Done | ai | owner | [#18](https://github.com/Randspringer90/SchachTurnierManager/issues/18), [PR #19](https://github.com/Randspringer90/SchachTurnierManager/pull/19), Merge `98648e7` | v1.0.0 |
 | STM-AI-003 | Modellrouting finalisieren (Qualitätsklassen + MODEL_ROUTING.md) | P2 | Done | ai | owner | [#15](https://github.com/Randspringer90/SchachTurnierManager/issues/15) (PR [#17](https://github.com/Randspringer90/SchachTurnierManager/pull/17), Merge `dfa7520`) | v1.0.0 |
 | STM-AI-004 | Nightly-/Resume-Unterbau | P1 | Done | ai | owner | [#20](https://github.com/Randspringer90/SchachTurnierManager/issues/20), [PR #21](https://github.com/Randspringer90/SchachTurnierManager/pull/21), Merge `a6df385` | v1.0.0 |
-| STM-AI-005 | Providerübergreifende Promptzerlegung und Routed Execution | P1 | In Review | ai | owner | [#26](https://github.com/Randspringer90/SchachTurnierManager/issues/26) | v1.0.0 |
-| STM-AI-006 | Aktive zentrale Nightly-Orchestrierung | P1 | In Review | ai | owner | [#27](https://github.com/Randspringer90/SchachTurnierManager/issues/27) | v1.0.0 |
+| STM-AI-005 | Providerübergreifende Promptzerlegung und Routed Execution | P1 | Done | ai | owner | [#26](https://github.com/Randspringer90/SchachTurnierManager/issues/26) (PR [#29](https://github.com/Randspringer90/SchachTurnierManager/pull/29), Merge `8305814`) | v1.0.0 |
+| STM-AI-006 | Aktive zentrale Nightly-Orchestrierung | P1 | Done | ai | owner | [#27](https://github.com/Randspringer90/SchachTurnierManager/issues/27) (PR [#32](https://github.com/Randspringer90/SchachTurnierManager/pull/32), Merge `c1a2d4c`; zentrale Registrierung ACTIVE 2026-07-16) | v1.0.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
@@ -51,7 +51,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
-| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | **Ready** | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | v1.0.0 |
+| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | In Review | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), Static-Review: OWNER_REVIEW_REQUIRED) | v1.0.0 |
 | STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Blocked | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
 | STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | v1.0.0 |
@@ -63,7 +63,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | **Ready** | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) | v1.0.0 |
+| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | In Review | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), Static-Review: ADAPTATION_REQUIRED) | v1.0.0 |
 
 ---
 

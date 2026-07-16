@@ -21,7 +21,8 @@ Version. Aufgaben-Detail in [`BACKLOG.md`](BACKLOG.md); Reihenfolge in
   FIDE-Namenssuche (STM-IE-004), i18n (STM-UX-001), PWA/Sync (STM-UX-002),
   Backup/Restore-UX (STM-UX-003), Performance/Last (STM-INFRA-002),
   Skript-Konsolidierung (STM-INFRA-001). Agentenstandard, Wissensmanagement,
-  Modellrouting und Nightly/Resume (STM-AI-001..004) sind abgeschlossen;
+  Modellrouting, Nightly/Resume, Routed Execution und aktive zentrale
+  Nightly-Orchestrierung (STM-AI-001..006) sind abgeschlossen;
   STM-AI-001b bleibt optionale Legacy-Skill-Migration.
 
 ### Kann / post-1.0 (P3)
