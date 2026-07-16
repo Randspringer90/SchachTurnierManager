@@ -20,6 +20,12 @@ sondern eine paraphrasierte Arbeitsreferenz mit Fundstellen.
 > Ältere Literatur, ältere Referenzimplementierungen und Vergleichspaarungen aus Tools, die noch
 > auf der 2017er Fassung stehen, sind für Golden-Tests **nicht** ohne Prüfung verwendbar.
 
+> **Achtung – die FIDE-Kommissionsseite fuehrt die ALTE Fassung.** `spp.fide.com/c-04-3-fide-dutch-system/`
+> zeigt (Stand 2026-07-16) weiterhin die 2017er Fassung mit der Gliederung A–E und den Kriterien
+> C.5–C.19. Wer dort nachschlaegt, prueft gegen abgelaufenes Regelwerk. **Einzige verlaessliche
+> Quelle ist `handbook.fide.com/chapter/C0403202602`.** Die alte Fassung ist als Erlaeuterung
+> trotzdem nuetzlich – sie formuliert manches klarer –, aber niemals als Entscheidungsgrundlage.
+
 > **Achtung – veraltete Artikelnummern im Ticket.** Issue [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
 > verweist auf „C.04.1.b" (Wiederholungsschutz) und „C.04.1.c-d" (Bye-Regeln). Dieses
 > Buchstabenschema stammt aus der alten Fassung. Die inhaltlichen Anforderungen des Tickets sind
@@ -150,12 +156,33 @@ sondern eine paraphrasierte Arbeitsreferenz mit Fundstellen.
 | [C15] | 2.4.10 | MDP-Gegner, die schon in der Vorrunde upgefloatet sind, minimieren |
 | [C16] | 2.4.11 | Resident-Downfloater mit Downfloat vor zwei Runden minimieren |
 | [C17] | 2.4.12 | MDP-Gegner mit Upfloat vor zwei Runden minimieren |
-| [C18] | 2.4.13 | Punktdifferenzen (absteigend) der downgefloateten MDPs minimieren |
-| [C19] | 2.4.14 | Punktdifferenzen (absteigend) der upgefloateten MDP-Gegner minimieren |
+| [C18] | 2.4.13 | Punktdifferenzen (absteigend) der MDPs mit Downfloat in der Vorrunde minimieren |
+| [C19] | 2.4.14 | Punktdifferenzen (absteigend) der MDP-Gegner mit Upfloat in der Vorrunde minimieren |
 | [C20] | 2.4.15 | wie [C18], bezogen auf zwei Runden vorher |
 | [C21] | 2.4.16 | wie [C19], bezogen auf zwei Runden vorher |
 
-→ **[C14]–[C17]** sind die Float-Historie („kein doppelter Absteiger") aus dem Ticket.
+→ **[C14]–[C21]** zusammen sind die Float-Historie („kein doppelter Absteiger") aus dem Ticket.
+
+> ### ⚠ [C18]–[C21] richtig lesen — hier wurde bereits ein Fehler gemacht
+>
+> Diese vier Kriterien sehen wie vage Feinjustierung aus. Sie sind es nicht: Sie entscheiden
+> real über Paarungen, und zwar dann, wenn **alle** Kriterien bis [C17] gleichstehen.
+>
+> Gemeint ist der **wiederholte Float**. Die ältere Fassung formulierte denselben Gedanken
+> deutlicher: *„minimize the score differences of players who receive the **same downfloat as two
+> rounds before**"*. Es geht also nicht um irgendwelche MDPs, sondern darum, denselben Spieler
+> nicht **zweimal** absteigen zu lassen — und wenn es sich nicht vermeiden laesst, wenigstens
+> seine Punktdifferenz klein zu halten.
+>
+> **Konkreter Fall (Golden-Turnier A, Runde 5):** Die Spieler 3 und 8 (beide 3.0) koennen nicht
+> gegeneinander (Rematch aus R2). Beide koennen nur gegen 2 oder 5. Genau einer wird gepaart, der
+> andere floatet ab. Bis [C17] sind beide Varianten **exakt gleichauf**. Die Entscheidung faellt
+> allein hier: **8 ist in R3 bereits abgestiegen, 3 ist aufgestiegen.** Wuerde 8 erneut abfloaten,
+> waere das der zweite Abstieg in drei Runden. Also wird 8 gepaart (8–2) und 3 floatet ab (3–4).
+>
+> Bestaetigt durch bbpPairings 6.0.0; dessen Quellcode kommentiert dieselbe Logik mit
+> *„Minimize the scores of downfloaters repeated from the previous round"* (und identisch zwei
+> Runden zurueck). Eine Implementierung, die [C18]-[C21] auslaesst, paart diese Runde falsch.
 
 ### Artikel 3 – Paarungsprozess je Bracket
 

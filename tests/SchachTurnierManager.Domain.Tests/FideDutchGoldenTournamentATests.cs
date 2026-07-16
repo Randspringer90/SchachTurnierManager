@@ -171,6 +171,123 @@ public sealed class FideDutchGoldenTournamentATests
             (5, 4));
     }
 
+    // ---------------------------------------------------------------------------------------
+    // RUNDE 4
+    //
+    // Ergebnisse R3: 1>8, 3>6, 7>2, 5>4.
+    // Punkte: 1,3,6,8 = 2.0 | 2,4,5,7 = 1.0.
+    // Farben: 1,3 = WBW und 6,8 = WWB -> Differenz +1 -> starke Präferenz Schwarz (Art. 1.7.2).
+    //         2,4 = BWB und 5,7 = BBW -> Differenz -1 -> starke Präferenz Weiß.
+    // Gegner: 1:{5,6,8} 2:{6,5,7} 3:{7,8,6} 4:{8,7,5} 5:{1,2,4} 6:{2,1,3} 7:{3,4,2} 8:{4,3,1}.
+    //
+    // Bracket 1 (2.0): {1,3,6,8}, homogen, MaxPairs = 2. S1 = {1,3}, S2 = {6,8}.
+    //   Art. 3.3.1 -> 1-6 ✗[C1]. Transposition (8,6) -> 1-8 ✗[C1] (R3). Beide Transpositionen
+    //   scheitern, also Exchange (Art. 4.3). Ergebnis in jedem Fall: 1-3 und 6-8 — es ist die
+    //   einzige rematchfreie Aufteilung, denn 1 und 3 haben beide schon gegen 6 UND 8 gespielt.
+    //   [C3] unkritisch: alle vier haben nur STARKE, keine absoluten Präferenzen.
+    //   Farben: beide Paare wollen dieselbe Farbe; Art. 5.2.3 greift nicht (identische Farbfolgen),
+    //   also entscheidet Art. 5.2.4 — der höher Gesetzte bekommt seine Präferenz:
+    //   1 bekommt Schwarz (3 Weiß), 6 bekommt Schwarz (8 Weiß).
+    //
+    // Bracket 2 (1.0): {2,4,5,7}, homogen. S1 = {2,4}, S2 = {5,7}.
+    //   2-5 ✗[C1] (R2), 2-7 ✗[C1] (R3) -> beide Transpositionen scheitern -> Exchange.
+    //   Erster Exchange nach Art. 4.3: S1 = {2,5}, S2 = {4,7} -> 2-4 ✓, 5-7 ✓.
+    //   Farben wieder über Art. 5.2.4: 2 bekommt Weiß, 5 bekommt Weiß.
+    //
+    // GEGENPROBE bbpPairings 6.0.0: identisch, inkl. Farben. Die Checkliste bestätigt zusätzlich
+    // die Float-Buchführung aus R3 (1,3,5,7 = Upfloat, 2,4,6,8 = Downfloat).
+    // ---------------------------------------------------------------------------------------
+    [Fact]
+    public void RoundFour_OnlyRematchFreeSplitRemains_MatchesHandDerivedFidePairing()
+    {
+        var tournament = CreateTournament();
+        var strategy = CreateStrategy();
+        PlayRound(tournament, strategy);
+        PlayRound(tournament, strategy);
+        PlayRound(tournament, strategy);
+
+        var round = strategy.GenerateNextRound(tournament);
+
+        AssertPairings(round,
+            (3, 1),
+            (8, 6),
+            (2, 4),
+            (5, 7));
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // RUNDE 5 — Schlussrunde. Entscheidet sich an der Float-Historie ([C20]).
+    //
+    // Ergebnisse R4: 3>1, 8>6, 2>4, 5>7.
+    // Punkte: 3,8 = 3.0 | 1,2,5,6 = 2.0 | 4,7 = 1.0.
+    // Farben: 3 = WBWW und 8 = WWBW -> Differenz +2 -> ABSOLUT Schwarz.
+    //         5 = BBWW -> zweimal Weiß zuletzt -> ABSOLUT Schwarz.
+    //         6 = WWBB -> zweimal Schwarz zuletzt -> ABSOLUT Weiß (obwohl Differenz 0!).
+    //         4 = BWBB und 7 = BBWB -> Differenz -2 -> ABSOLUT Weiß.
+    //         1 = WBWB -> mild Weiß. 2 = BWBW -> mild Schwarz.
+    //
+    // ERSTMALS greift Art. 1.8: Topscorer sind Spieler mit über 50 % der maximal möglichen
+    // Punktzahl BEI DER AUSLOSUNG DER SCHLUSSRUNDE, hier also über 2.0 -> {3, 8}. Für sie gilt
+    // [C3] nicht. In den Runden 1-4 gab es keine Topscorer.
+    //
+    // Bracket 1 (3.0): {3,8}. [C3] wäre hier kein Hindernis (beide sind Topscorer), aber 3 und 8
+    //   haben in R2 bereits gegeneinander gespielt -> [C1]. MaxPairs = 0, beide floaten ab.
+    //
+    // Bracket 2 (2.0 + MDPs 3,8): {3,8 | 1,2,5,6}, heterogen.
+    //   3 spielte {7,8,6,1}, 8 spielte {4,3,1,6} -> BEIDE können nur gegen 2 oder 5.
+    //   Residents untereinander paarbar: nur 1-2 und 5-6 (1-5, 1-6, 2-5, 2-6 alles Rematches).
+    //
+    //   M1 = 2 (beide MDPs gepaart) scheidet aus: dann bliebe Rest {1,6}, nicht paarbar (R2), also
+    //   floaten 1 und 6 ab -> Bracket 3 = {1,6,4,7}. Dort haben 6, 4 und 7 ALLE absolut Weiß und
+    //   sind Nicht-Topscorer, 6 könnte also gegen niemanden -> keine regelkonforme Restpaarung,
+    //   [C4] (Art. 2.2.1) verletzt. Also wird nur EIN MDP gepaart, der andere geht ins Limbo
+    //   (Art. 3.2.4) und floatet ab.
+    //
+    //   Welcher? Beide Varianten sind bis [C17] EXAKT gleichauf: gleiche Paarzahl [C6], gleiche
+    //   Downfloater-Punkte [C7] (3.0, 2.0), gleiches [C12]/[C13] (je 2 unerfüllte Präferenzen),
+    //   keine Floats in R4 also [C14]/[C15] = 0.
+    //
+    //   Es entscheidet [C20] (Art. 2.4.15) — die Float-Historie:
+    //     8 ist in R3 bereits ABGESTIEGEN, 3 ist AUFGESTIEGEN.
+    //   Ließe man 8 erneut abfloaten, wäre das der zweite Abstieg binnen drei Runden. Genau das
+    //   sollen [C18]-[C21] verhindern ("kein doppelter Absteiger"). Also wird 8 gepaart und 3
+    //   floatet ab.
+    //     -> MDP-Paarung 8-2, Rest {1,5,6} -> nur 5-6 paarbar, 1 floatet ab. Limbo {3} floatet ab.
+    //
+    // Bracket 3 (1.0 + MDPs 3,1): {3,1 | 4,7}.
+    //   3 spielte 7 in R1 -> 3 muss gegen 4. Bleibt 1-7 ✓.
+    //   [C3]: 3 ist Topscorer -> ausgenommen. 1 hat nur MILDE Präferenz -> kein Konflikt mit 7.
+    //
+    // Farben: 8-2 -> beide wollen Schwarz; Art. 5.2.2 gibt der STÄRKEREN Präferenz recht
+    //           (8 absolut vs. 2 mild) -> 8 Schwarz, 2 Weiß.
+    //         5-6 -> 5 absolut Schwarz, 6 absolut Weiß -> Art. 5.2.1 erfüllt beide: 6 Weiß, 5 Schwarz.
+    //         3-4 -> 3 absolut Schwarz, 4 absolut Weiß -> beide erfüllt: 4 Weiß, 3 Schwarz.
+    //         1-7 -> beide wollen Weiß; Art. 5.2.2 -> 7 (absolut) Weiß, 1 Schwarz.
+    //
+    // WARNUNG AN KÜNFTIGE BEARBEITER: Die erste Handherleitung dieser Runde war FALSCH (sie ergab
+    // 2-3, 7-8, 6-5, 4-1). Der Fehler: [C18]-[C21] wurden als vage Feinjustierung abgetan und
+    // übersprungen. Sie entscheiden diese Runde vollständig. Aufgefallen ist es nur durch die
+    // Gegenprobe gegen bbpPairings 6.0.0 — eine Implementierung ohne [C18]-[C21] paart hier falsch.
+    // ---------------------------------------------------------------------------------------
+    [Fact]
+    public void RoundFive_FinalRound_FloatHistoryDecidesWhichMdpIsPaired_PerC20()
+    {
+        var tournament = CreateTournament();
+        var strategy = CreateStrategy();
+        PlayRound(tournament, strategy);
+        PlayRound(tournament, strategy);
+        PlayRound(tournament, strategy);
+        PlayRound(tournament, strategy);
+
+        var round = strategy.GenerateNextRound(tournament);
+
+        AssertPairings(round,
+            (2, 8),
+            (4, 3),
+            (6, 5),
+            (7, 1));
+    }
+
     /// <summary>
     /// C.04.2 Art. 1.4: verschiedene Schiedsrichter und verschiedene zugelassene Programme müssen
     /// zu identischen Paarungen kommen. Zweiter Lauf mit identischer Eingabe = identisches Ergebnis.
