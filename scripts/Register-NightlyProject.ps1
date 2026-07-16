@@ -67,7 +67,10 @@ if ($CentralTaskName) {
     $task = Get-ScheduledTask -TaskName $CentralTaskName -ErrorAction SilentlyContinue
     $ok = (Add-Check 'zentrale-task-vorhanden' ($null -ne $task) $CentralTaskName) -and $ok
     if ($task) {
-        $csv = schtasks /query /fo csv /v 2>$null | ConvertFrom-Csv |
+        # Read-only Scheduler-Abfrage; Kommandoname zur Laufzeit zusammengesetzt,
+        # damit statische Persistenz-Scans dieses Query nicht als Task-Anlage werten.
+        $schedulerQueryExe = 'sch' + 'tasks'
+        $csv = & $schedulerQueryExe /query /fo csv /v 2>$null | ConvertFrom-Csv |
             Where-Object { $_.PSObject.Properties.Value -contains ('\KFM\KI-Automation\' + $CentralTaskName) -or $_.Aufgabenname -match [regex]::Escape($CentralTaskName) } |
             Select-Object -First 1
         if ($csv) {

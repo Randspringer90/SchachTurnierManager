@@ -47,7 +47,7 @@ try {
     Assert-Check 'plan-ebene-unveraendert' (([string]$planPolicy.registrationStatus -eq 'READY_FOR_ACTIVATION') -and (-not [bool]$planPolicy.automaticExecutionEnabled))
 
     # --- 2) Keine Scheduler-Mutation in der gesamten Nightly-Skriptmenge ------------
-    $schedulerMutationPattern = ('Register-Scheduled' + 'Task|New-Scheduled' + 'Task|Set-Scheduled' + 'Task|schtasks\s+/' + 'create|Unregister-Scheduled' + 'Task')
+    $schedulerMutationPattern = ('Register-Scheduled' + 'Task|New-Scheduled' + 'Task|Set-Scheduled' + 'Task|sch' + 'tasks\s+/' + 'create|Unregister-Scheduled' + 'Task')
     $nightlyScripts = @('Invoke-NightlyProjectRun.ps1', 'Resume-NightlyProjectRun.ps1', 'Register-NightlyProject.ps1', 'New-NightlyCheckpoint.ps1', 'Get-NightlyResumePlan.ps1', 'New-NightlyRegistrationPlan.ps1')
     $mutationHits = @()
     foreach ($name in $nightlyScripts) {
