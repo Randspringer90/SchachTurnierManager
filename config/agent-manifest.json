@@ -332,7 +332,7 @@
     {
       "name": "Knowledge-Curator",
       "canonicalPath": "agents/knowledge-curator.md",
-      "purpose": "Persistiert nur gepruefte Inhalte; keine PII/untrusted Instruktionen; Quellen+Datum erforderlich.",
+      "purpose": "Persistiert nur gepruefte Inhalte und erzeugt lokale, nicht aktivierende Improvement-DRAFTs; keine PII/untrusted Instruktionen.",
       "skills": [
         "knowledge-management"
       ],

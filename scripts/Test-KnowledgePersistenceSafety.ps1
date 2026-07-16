@@ -36,6 +36,7 @@ if (Test-Path $root) {
     # Keine Binaries/DB/Logs
     foreach ($f in Get-ChildItem $root -Recurse -File) {
         $rel = $f.FullName.Substring($repo.Length+1) -replace '\\','/'
+        if (($f.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { $fail.Add("Symlink/Reparse-Point in Wissensbasis: $rel") }
         if ($f.Name -notmatch $allowedExt) { $fail.Add("Nicht erlaubtes Dateiformat in Wissensbasis: $rel") }
         $c = Get-Content -Raw $f.FullName
         if ($c -match $secretRx) { $fail.Add("Secret in $rel") }
@@ -45,11 +46,19 @@ if (Test-Path $root) {
         if ($c -match $disguiseRx) { $fail.Add("Als Anweisung/Systemregel getarnter Inhalt in $rel") }
         # Wissenseintraege (nicht README/INDEX) brauchen Pflichtmetadaten + duerfen sich nicht als Regel tarnen
         if ($f.Name -notin @('README.md','INDEX.md','GLOSSARY.md','TRUSTED_SOURCES.md','UNTRUSTED_SOURCES.md')) {
-            foreach ($meta in @('source','date','trust','review')) {
-                if ($c -notmatch "(?i)$meta") { $fail.Add("Pflichtmetadatum '$meta' fehlt in $rel") }
-            }
+            if ($c -notmatch '(?im)^\s*[-*]\s*source\s*:\s*\S.+$') { $fail.Add("Pflichtmetadatum 'source' fehlt oder ist leer in $rel") }
+            if ($c -notmatch '(?im)^\s*[-*]\s*date\s*:\s*[0-9]{4}-[0-9]{2}-[0-9]{2}\s*$') { $fail.Add("Pflichtmetadatum 'date' fehlt oder ist nicht ISO-8601 in $rel") }
+            if ($c -notmatch '(?im)^\s*[-*]\s*trust\s*:\s*T[0-4](?:\s|$)') { $fail.Add("Pflichtmetadatum 'trust' fehlt oder ist nicht T0-T4 in $rel") }
+            if ($c -notmatch '(?im)^\s*[-*]\s*review\s*:\s*\S.+$') { $fail.Add("Pflichtmetadatum 'review' fehlt oder ist leer in $rel") }
         }
     }
+}
+
+$allowPath = Join-Path $repo 'config/trusted-instruction-paths.json'
+if (Test-Path -LiteralPath $allowPath -PathType Leaf) {
+    $allow = Get-Content -LiteralPath $allowPath -Raw | ConvertFrom-Json
+    Check (@($allow.allowedInstructionPaths | Where-Object { $_ -like 'docs/knowledge*' }).Count -eq 0) 'docs/knowledge/** ist keine Instruktionsquelle'
+    Check (@($allow.dataOnlyPaths) -contains 'docs/knowledge/**') 'docs/knowledge/** ist explizit data-only'
 }
 
 # Synthetische Negativ-Fixture (nur In-Memory-Pruefung, wird NICHT geschrieben)

@@ -1,5 +1,13 @@
 ## Unreleased (development)
 
+- STM-AI-002: repo-internes Wissensmanagement mit strikteren Metadaten-, Trust- und
+  Data-only-Prüfungen abgeschlossen. Wiederholte Lernsignale können nun ausschließlich
+  als lokale, redigierte `DRAFT_OWNER_REVIEW`-Vorschläge vorbereitet werden; der
+  Generator aktiviert oder ändert keine Agenten, Skills oder Policies und führt weder
+  Netzwerk- noch Git-Schreibaktionen aus. Ein eigener Sicherheits-Gate prüft Secret-/
+  PII-/Injection-/Traversal-Fälle und unveränderte Instruktionsquellen; die KI-CI führt
+  die Agent-, Skill-, Routing-, Knowledge- und Prompt-Injection-Gates gemeinsam aus.
+
 - STM-AI-003: providerneutrales Modellrouting ueber die logischen Profile Fabel, Sol,
   Luna, Terra, Opus und Sonnet operationalisiert. Eine schema-validierte Policy und ein
   reproduzierbarer Resolver erzwingen Risiko-, Determinismus- und Qualitaetsgrenzen sowie
