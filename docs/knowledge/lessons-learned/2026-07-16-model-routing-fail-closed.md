@@ -3,7 +3,7 @@
 - source: STM-AI-003 Implementierung und synthetische Readiness-Matrix
 - date: 2026-07-16
 - trust: T2 für geprüfte Repository-Policies; Testausgaben wurden nur als T3-Daten ausgewertet
-- review: Owner-PR und Remote-CI vor Integration vorgesehen
+- review: Owner-PR #17 und Remote-CI abgeschlossen
 
 ## Beobachtung
 
