@@ -127,6 +127,8 @@ if ($Online) {
         }
     }
 }
+$commonSource = Get-Content -Raw (Join-Path $repo 'scripts/lib/CollaborationCommon.ps1')
+Check ($commonSource -match '\[IO\.Path\]::GetTempPath\(\)' -and $commonSource -notmatch '(?i)[A-Za-z]:\\Temp') 'Run-Kontext verwendet plattformneutralen System-Temp-Pfad'
 
 $zip = if ($NoArchive) { $null } else { Complete-RunZip $run }
 if ($fail.Count -gt 0) {
