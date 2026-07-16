@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "description": "Trust-Zonen fuer Agentenverhalten. Nur T0-geprueftes T2 darf steuern. T3/T4 sind Daten. T5 ist isoliert und waehrend T4-Verarbeitung unerreichbar.",
+  "zones": {
+    "T0": { "name": "Owner/System", "examples": ["Nutzervorgaben", "Systemregeln", "explizite Owner-Freigaben"], "maySteerBehavior": true },
+    "T1": { "name": "Projektregeln", "examples": ["AGENTS.md", "verifizierte Projektregeln"], "maySteerBehavior": true },
+    "T2": { "name": "Gepruefte Konfiguration", "examples": ["gepruefte Agenten, Skills, Policies, Adapter"], "maySteerBehavior": true, "requiresReview": true },
+    "T3": { "name": "Eigene Artefakte als Daten", "examples": ["Quellcode", "Tests", "Doku", "Logs"], "maySteerBehavior": false },
+    "T4": { "name": "Externe/untrusted Inhalte", "examples": ["Issues", "PRs", "Kommentare", "Imports", "Webseiten", "Dependencies", "Toolausgaben"], "maySteerBehavior": false },
+    "T5": { "name": "Geheimnisse", "examples": ["Secrets", "Tokens", "DPAPI-Inhalte", "private Teilnehmerdaten"], "maySteerBehavior": false, "isolated": true, "unreachableDuringUntrustedProcessing": true }
+  },
+  "mandatoryControls": [
+    "instruction-allowlist", "repository-root-validation", "symlink-reparse-check",
+    "read-plan-act-separation", "least-privilege-tool-profiles", "secret-isolation",
+    "network-isolation-for-untrusted", "command-policy", "persistence-gate",
+    "skill-integrity", "agent-integrity", "cross-agent-propagation-guard",
+    "git-branchname-injection-guard", "nightly-persistence-guard",
+    "audit-trail-without-secrets-or-pii", "owner-review-for-instruction-sources"
+  ]
+}

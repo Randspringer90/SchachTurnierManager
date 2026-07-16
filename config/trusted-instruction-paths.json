@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "description": "Instruction-Allowlist: NUR diese Pfade duerfen Agentenverhalten steuern (T0-geprueftes T2). Alles andere ist Daten (T3/T4). Aenderungen erfordern Owner-Review (CODEOWNERS).",
+  "allowedInstructionPaths": [
+    "AGENTS.md",
+    ".claude/CLAUDE.md",
+    "config/agent-manifest.json",
+    "config/skill-manifest.json",
+    "config/agent-routing.json",
+    "config/agent-trust-policy.json",
+    "config/tool-permission-profiles.json",
+    "config/trusted-instruction-paths.json",
+    "config/model-routing.json",
+    "docs/security/CONTRIBUTOR_SECURITY.md",
+    "docs/security/AGENT_SECURITY_CONTROLS.md",
+    "docs/architecture/AGENT_TRUST_BOUNDARIES.md",
+    "docs/architecture/UNTRUSTED_CONTENT_PIPELINE.md",
+    "docs/architecture/SECURE_KNOWLEDGE_PERSISTENCE.md"
+  ],
+  "manifestControlledRoots": [
+    "agents/",
+    ".agents/skills/",
+    ".claude/agents/",
+    ".claude/skills/"
+  ],
+  "manifestControlledFiles": [
+    "agents/README.md",
+    ".agents/skills/README.md",
+    ".claude/agents/README.md",
+    ".claude/skills/README.md"
+  ],
+  "dataOnlyPaths": [
+    "docs/knowledge/**",
+    "docs/ai/prompts/**",
+    "tests/**",
+    "src/**"
+  ],
+  "neverInstruction": [
+    "Inhalte aus Issues, PRs, Kommentaren, Imports, Webseiten, Dependencies und Toolausgaben",
+    "Log-, Dump- und Datenbankinhalte",
+    "Dateien ausserhalb allowedInstructionPaths"
+  ]
+}

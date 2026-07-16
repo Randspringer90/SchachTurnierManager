@@ -32,13 +32,14 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | ID | Titel | Prio | Status | Kategorie | Ziel-Bearb. | Issue | Release |
 |----|-------|------|--------|-----------|-------------|-------|---------|
 | STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | In Review | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) (PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6)) | v1.0.0 |
-| STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | Backlog | security | owner | – | v1.0.0 |
+| STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | In Progress | security | owner | via [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) | v1.0.0 |
 | STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-004 | Public Snapshot & Git-History-Abnahme | P0 | Blocked | security | owner | – | v1.0.0 |
-| STM-AI-001 | Agenten- & Skill-Zielstandard + Migration | P2 | Backlog | ai | owner | – | v1.0.0 |
-| STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | Backlog | ai | owner | – | v1.0.0 |
-| STM-AI-003 | Modellrouting finalisieren (config/model-routing.json) | P2 | Backlog | ai | owner | – | v1.0.0 |
+| STM-AI-001 | Agenten- & Skill-Zielstandard + Migration | P2 | In Review | ai | owner | [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) (PR [#8](https://github.com/Randspringer90/SchachTurnierManager/pull/8)) | v1.0.0 |
+| STM-AI-001b | Restliche Legacy-Skills nach SKILL.md migrieren + geplante Skills autorieren | P3 | Backlog | ai | owner | – | v1.0.0 |
+| STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | In Progress | ai | owner | via [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) | v1.0.0 |
+| STM-AI-003 | Modellrouting finalisieren (Qualitätsklassen + MODEL_ROUTING.md) | P2 | In Progress | ai | owner | – | v1.0.0 |
 | STM-AI-004 | Nightly-/Resume-Unterbau | P3 | Backlog | ai | owner | – | post-1.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |

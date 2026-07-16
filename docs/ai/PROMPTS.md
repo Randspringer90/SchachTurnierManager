@@ -12,6 +12,11 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 > `templates/CODEX_CHESS_FEATURE.md`, Generator `New-ContributorTaskPrompt.ps1`, Tests).
 > Abschlussbericht: `reports/2026-07-12-claude-contributor-kickoff-pack.md`.
 >
+> **2026-07-12 (Claude Opus 4.8):** STM-AI-001 Agenten-/Skill-/Security-Grundlage (`agents/**`,
+> Manifeste, Trust-Policies, Guards+Tests, Wissensmanagement `docs/knowledge/**`). Prompt:
+> `prompts/20260712_2007_claude-agent-skill-security-foundation.md`. Bericht:
+> `reports/2026-07-12-claude-agent-skill-security-foundation.md`.
+>
 > **2026-07-12 (Claude Opus 4.8):** STM-INT-001 v0.41-Reconcile – kanonische KI-Hilfe = Frontend,
 > totes `Application.Ai`-Backend-Modul entfernt. Bericht:
 > `reports/2026-07-12-claude-stm-int-001-reconciliation.md`.

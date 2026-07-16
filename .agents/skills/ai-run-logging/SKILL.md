@@ -13,7 +13,8 @@ description: Jeder KI-Lauf protokolliert Prompt, Abschlussbericht und Lessons Le
    (TL;DR, Aenderungen, Checks, offene Punkte).
 3. Beides in `docs/ai/PROMPTS.md` (Tabelle) eintragen.
 4. Neue Erkenntnisse nach `docs/ai/LESSONS_LEARNED.md` (neueste zuerst);
-   projektuebergreifende Lessons zusaetzlich in die Zentrale melden.
+   projektuebergreifende Lessons optional zusaetzlich melden (nur beim Owner, kein Gate).
 5. Alles zusammen mit der fachlichen Aenderung lokal committen
    (Safety-Gates des Projekts beachten). Keine Secrets/PII in Prompts oder Reports.
-6. Handoff-Kopien nach `D:\KFM\_handoff\<Lauf>` bleiben zusaetzlich erlaubt/erwuenscht.
+6. Optionale Handoff-/Run-Kopien bleiben lokal ausserhalb des Repos (kein fester Fremdpfad,
+   keine Projektabhaengigkeit); Details siehe `docs/knowledge/INDEX.md`.

@@ -21,6 +21,7 @@ Stand: 2026-07-12 (development). Reifegrad je Fachbereich. Details/Aufgaben in
 | BYOK-KI-Provider (später, Infrastructure) | – | offen | STM-UX-004 |
 | Installation / Setup-EXE | Kollegenpaket, Klick-Install | härten | STM-REL-001, STM-REL-002, STM-REL-003 |
 | Security / Public-Reife | Gates vorhanden | härten | STM-SEC-001..004 |
-| KI-Agenten / Skills / Wissen | strukturiert | konsolidieren | STM-AI-001..004 |
+| KI-Agenten / Skills / Trust / Wissen | kanonische Struktur + Manifeste + Guards (STM-AI-001) | Migration Legacy-Skills offen | STM-AI-001b, STM-AI-002, STM-AI-004 |
+| Prompt-Injection-Verteidigung | Trust-Zonen, Allowlist, Guards + Tests (STM-SEC-001, in Arbeit) | härten | STM-SEC-001 |
 | Performance / Last | – | offen | STM-INFRA-002 |
 | Release Candidate v1.0.0 | – | blockiert | STM-REL-004 |
