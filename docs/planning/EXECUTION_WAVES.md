@@ -8,13 +8,17 @@ Abhängigkeiten in [`DEPENDENCY_MAP.md`](DEPENDENCY_MAP.md).
   GitHub-Templates/Labels/Milestone/Rulesets, CI/Branch-Policy/Security-Gate.
 
 ## Welle 1 – Sichere Zusammenarbeit einspielen (parallel möglich)
-- **friend-geeignet, low-risk:** STM-TB-001, STM-DOC-001, STM-IE-001.
+- **friend-geeignet, low-risk:** STM-TB-001 ist abgeschlossen; STM-DOC-001 und
+  STM-IE-001 bleiben für den Contributor bereit.
 - **owner:** STM-INT-001 (v0.41-Reconcile), STM-SEC-001 (Prompt-Injection-Basis).
 - **owner/security, abgeschlossen:** STM-SEC-005 (Base-SHA-gebundene PR-Quarantäne und
   kontrollierte Adoption) nach STM-AI-001; verhindert ungeprüfte Ausführung weiterer Beiträge.
+- **owner/ai, abgeschlossen:** STM-AI-002 (Wissen/Improvement), STM-AI-003
+  (Modellrouting) und STM-AI-004 (Nightly/Resume, Registrierung
+  `READY_FOR_ACTIVATION`).
 
 ## Welle 2 – Fachliche Kernreife
-- STM-FACH-001 → STM-FACH-002 → STM-FACH-003 (Pairing-Kette).
+- STM-FACH-001 ist abgeschlossen; weiter mit STM-FACH-002 → STM-FACH-003.
 - STM-IE-002, STM-IE-004, STM-UX-001.
 
 ## Welle 3 – Betrieb & Distribution
@@ -27,4 +31,4 @@ Abhängigkeiten in [`DEPENDENCY_MAP.md`](DEPENDENCY_MAP.md).
 - STM-REL-004 (Release Candidate) → Release v1.0.0.
 
 ## post-1.0
-- STM-AI-004, STM-UX-004, STM-IE-003.
+- STM-UX-004, STM-IE-003.

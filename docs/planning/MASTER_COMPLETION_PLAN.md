@@ -23,9 +23,10 @@ gemeinsam (Feature-Branch → PR → Review → `development`) weiterentwickelt 
 
 ## Offene Fabel-/Codex-Arbeiten (überführt, nicht verworfen)
 - Skill-Zielstandard & Migration → STM-AI-001.
-- Wissensmanagement-Struktur (repo-intern) → STM-AI-002.
-- Modellrouting → STM-AI-003 (Basis `config/model-routing.json` gelegt).
-- Nightly-/Resume-Unterbau & Configs → STM-AI-004.
+- Wissensmanagement-Struktur (repo-intern) → STM-AI-002, abgeschlossen über PR #19.
+- Modellrouting → STM-AI-003, abgeschlossen über PR #17.
+- Nightly-/Resume-Unterbau & Configs → STM-AI-004, abgeschlossen über PR #21;
+  zentrale Registrierung ist sicher vorbereitet, aber nicht aktiviert.
 - Prompt-/Report-Governance & Templates, Codex-Prompts, Guards/Gates → STM-SEC-001 + STM-AI-001.
 - Unfertige, nicht zugängliche Arbeit lag in einer **gesperrten Session-Worktree**
   (`planning/2026-07-12-fabel-run1`) und wurde bewusst nicht angetastet.

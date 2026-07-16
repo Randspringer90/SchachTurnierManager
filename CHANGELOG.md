@@ -1,5 +1,11 @@
 ## Unreleased (development)
 
+- Der fortgesetzte Owner-Lauf hat Marcels PRs #9/#10 über die sicheren
+  Integrations-PRs #13/#14 übernommen und anschließend STM-AI-003, STM-AI-002 und
+  STM-AI-004 über PRs #17/#19/#21 abgeschlossen. Alle Originalbeiträge wurden
+  attributiert und wertschätzend als integriert geschlossen; Routing, Knowledge-
+  Improvement und Nightly/Resume sind nun durch eigene fail-closed Gates abgesichert.
+
 - STM-AI-004: projektlokalen Nightly-/Resume-Unterbau ergänzt. Atomare Checkpoints
   bleiben unter dem ignorierten `output/`, sind an Projekt, Branch und Head gebunden
   und enthalten weder Kommandos noch Secrets/PII. Der Resume-Plan blockiert bei

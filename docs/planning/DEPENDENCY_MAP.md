@@ -17,11 +17,11 @@ STM-IE-004 (FIDE-Namenssuche) ──► STM-IE-003 (DSB/DeWIS)
 
 ## KI / Agenten / Wissen
 ```
-STM-AI-001 (Agenten-/Skill-Standard) ──► STM-AI-002 (Wissensmanagement)
+STM-AI-001 (Agenten-/Skill-Standard) ──► STM-AI-002 (Wissensmanagement, Done)
 STM-AI-001 ──► STM-SEC-001 (Prompt-Injection-Verteidigung)
 STM-AI-001 ──► STM-SEC-005 (Done: sichere PR-Prüfung/Adoption) ──► kontrollierte Fremd-PR-Integration
-STM-AI-003 (Modellrouting) ── unabhängig, config/model-routing.json vorhanden
-STM-AI-004 (Nightly/Resume) ──► braucht STM-AI-001
+STM-AI-003 (Modellrouting, Done) ── unabhängig, config/model-routing.json operationalisiert
+STM-AI-001 ──► STM-AI-004 (Nightly/Resume, Done)
 ```
 
 ## Security / Release (kritischer Pfad zu v1.0.0)
