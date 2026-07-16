@@ -1,40 +1,163 @@
 {
   "$schema": "./model-routing.schema.json",
-  "description": "Repo-internes, self-contained Modellrouting fuer KI-Agenten (Claude Code, Codex u. a.). Ersetzt die fruehere externe Abhaengigkeit auf CORE-KFM-Wissensmanagement/config/model-routing.json. Werte sind Defaults und duerfen ohne Owner-Review nicht abgeschwaecht werden.",
-  "version": 1,
+  "schemaVersion": 2,
+  "description": "Repo-internes, provideruebergreifend nutzbares Routing ueber logische Ausfuehrungsprofile. Es enthaelt keine Versionspins und keine Fremdprojektpfade.",
   "policy": {
     "qualityOverCost": true,
-    "autoDowngradeOnRiskyTasks": false,
-    "riskyTaskCategories": [
+    "noSilentModelSwitch": true,
+    "noAutomaticDowngradeForCriticalWork": true,
+    "profileAvailabilityMustBeConfirmedByRuntime": true,
+    "unavailableProfileAction": "block-and-request-explicit-reroute",
+    "criticalTaskCategories": [
       "security",
+      "prompt-injection",
+      "chess-rules",
       "pairing",
+      "tiebreaks",
       "release",
-      "git-history",
       "installer",
-      "secrets"
+      "pull-request-review",
+      "pr-final-approval"
     ]
   },
-  "routes": {
-    "default": {
-      "preferred": "strongest-available",
-      "anthropic": "claude-opus-4-8",
-      "openai": "strongest-available-gpt",
-      "note": "Immer das leistungsstaerkste verfuegbare Modell des jeweiligen Providers."
-    },
-    "risky": {
-      "preferred": "strongest-available",
-      "anthropic": "claude-opus-4-8",
-      "note": "Kein automatischer Downgrade bei riskanten Aufgaben (siehe riskyTaskCategories)."
-    },
-    "bulk-cheap": {
-      "preferred": "cost-optimized",
-      "anthropic": "claude-haiku-4-5-20251001",
-      "note": "Nur fuer nicht-riskante Massenaufgaben ohne Sicherheits-/Fachlogik."
-    }
+  "qualityClassRank": {
+    "local-deterministic": 10,
+    "standard-low-risk": 20,
+    "strongest-implementation": 30,
+    "strongest-planning": 40,
+    "human-required": 100
   },
-  "notes": [
-    "Diese Datei ist bewusst self-contained: keine Pfade zu Fremdprojekten oder Maschinen.",
-    "Aenderungen erfordern Owner-Review (CODEOWNERS schuetzt config/**).",
-    "Optionales externes Wissensmanagement (nur beim Owner vorhanden) darf kein Gate blockieren."
+  "profiles": [
+    {
+      "id": "fabel",
+      "displayName": "Fabel",
+      "purpose": "Orchestrierung, Paketzerlegung, Resume- und Handoff-Koordination",
+      "qualityClass": "strongest-planning",
+      "allowedRisk": ["low", "medium", "high", "critical"],
+      "deterministicOnly": false
+    },
+    {
+      "id": "sol",
+      "displayName": "Sol",
+      "purpose": "Grosse Planung, Architektur und Finalintegration",
+      "qualityClass": "strongest-planning",
+      "allowedRisk": ["low", "medium", "high", "critical"],
+      "deterministicOnly": false
+    },
+    {
+      "id": "luna",
+      "displayName": "Luna",
+      "purpose": "Klar definierte grosse Implementierung ausserhalb kritischer Fachkategorien",
+      "qualityClass": "strongest-implementation",
+      "allowedRisk": ["low", "medium", "high"],
+      "deterministicOnly": false
+    },
+    {
+      "id": "terra",
+      "displayName": "Terra",
+      "purpose": "Risikoarme deterministische Massenarbeit",
+      "qualityClass": "local-deterministic",
+      "allowedRisk": ["low"],
+      "deterministicOnly": true
+    },
+    {
+      "id": "opus",
+      "displayName": "Opus",
+      "purpose": "Security, Schachregeln, Pairing/Tie-Breaks und schwierige Reviews",
+      "qualityClass": "strongest-planning",
+      "allowedRisk": ["low", "medium", "high", "critical"],
+      "deterministicOnly": false
+    },
+    {
+      "id": "sonnet",
+      "displayName": "Sonnet",
+      "purpose": "Klar abgegrenzte Implementierung mittleren Risikos",
+      "qualityClass": "strongest-implementation",
+      "allowedRisk": ["low", "medium"],
+      "deterministicOnly": false
+    }
+  ],
+  "selectionRules": [
+    {
+      "id": "critical-expert-review",
+      "priority": 10,
+      "taskCategories": ["security", "prompt-injection", "chess-rules", "pairing", "tiebreaks", "release", "installer", "pull-request-review", "pr-final-approval"],
+      "profile": "opus",
+      "minimumQualityClass": "strongest-planning",
+      "reason": "Kritische Security-, Schach-, Release- oder Reviewarbeit verlangt das staerkste Expertenprofil."
+    },
+    {
+      "id": "orchestration",
+      "priority": 20,
+      "workModes": ["orchestration"],
+      "profile": "fabel",
+      "minimumQualityClass": "strongest-planning",
+      "reason": "Orchestrierung und Resume-Koordination werden ueber Fabel gefuehrt."
+    },
+    {
+      "id": "architecture-and-final-integration",
+      "priority": 30,
+      "taskCategories": ["architecture", "pull-request-adoption", "final-integration"],
+      "workModes": ["planning", "architecture", "final-integration", "review"],
+      "profile": "sol",
+      "minimumQualityClass": "strongest-planning",
+      "reason": "Grosse Planung, Architektur und Finalintegration benoetigen Sol."
+    },
+    {
+      "id": "large-planning",
+      "priority": 40,
+      "workModes": ["planning"],
+      "sizes": ["large"],
+      "profile": "sol",
+      "minimumQualityClass": "strongest-planning",
+      "reason": "Grosse Planungsarbeit benoetigt Sol."
+    },
+    {
+      "id": "large-defined-implementation",
+      "priority": 50,
+      "workModes": ["implementation"],
+      "sizes": ["large"],
+      "risks": ["low", "medium", "high"],
+      "profile": "luna",
+      "minimumQualityClass": "strongest-implementation",
+      "reason": "Klar definierte grosse Implementierung wird Luna zugeordnet."
+    },
+    {
+      "id": "deterministic-low-risk-bulk",
+      "priority": 60,
+      "workModes": ["bulk"],
+      "risks": ["low"],
+      "requiresDeterministic": true,
+      "profile": "terra",
+      "minimumQualityClass": "local-deterministic",
+      "reason": "Terra ist ausschliesslich fuer risikoarme deterministische Massenarbeit zugelassen."
+    },
+    {
+      "id": "bounded-medium-implementation",
+      "priority": 70,
+      "workModes": ["implementation"],
+      "sizes": ["small", "medium"],
+      "risks": ["low", "medium"],
+      "profile": "sonnet",
+      "minimumQualityClass": "strongest-implementation",
+      "reason": "Klar abgegrenzte Implementierung kleinen oder mittleren Umfangs wird Sonnet zugeordnet."
+    }
+  ],
+  "unmatchedRoute": {
+    "status": "human-required",
+    "reason": "Keine sichere Regel passt; Scope oder Profil muss explizit durch den Owner festgelegt werden."
+  },
+  "auditFields": [
+    "schemaVersion",
+    "taskCategory",
+    "workMode",
+    "size",
+    "risk",
+    "deterministic",
+    "matchedRule",
+    "recommendedProfile",
+    "availabilityVerified",
+    "status",
+    "reason"
   ]
 }

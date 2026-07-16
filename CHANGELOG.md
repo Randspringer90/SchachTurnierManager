@@ -1,5 +1,12 @@
 ## Unreleased (development)
 
+- STM-AI-003: providerneutrales Modellrouting ueber die logischen Profile Fabel, Sol,
+  Luna, Terra, Opus und Sonnet operationalisiert. Eine schema-validierte Policy und ein
+  reproduzierbarer Resolver erzwingen Risiko-, Determinismus- und Qualitaetsgrenzen sowie
+  die explizite Verfuegbarkeitsbestaetigung. Fehlende Profile oder unklare Regeln blockieren
+  fail-closed; es gibt weder konkrete Modellversionspins noch stille Fallbacks. Ein eigener
+  Readiness-Gate prueft Policy und Entscheidungsmatrix.
+
 - STM-FACH-001: Marcels Freilos-/Forfeit-Idee aus PR #10 auf aktuellem
   `development` sicher adaptiert. Ein opt-in FIDE-C.07/03-2026-Modus behandelt
   ungespielte Runden in Schweizer Buchholz/Cut/Median mit Art.-16.3-Caps,
