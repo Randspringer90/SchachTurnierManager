@@ -1,5 +1,16 @@
 ## Unreleased (development)
 
+- STM-FACH-001: Marcels Freilos-/Forfeit-Idee aus PR #10 auf aktuellem
+  `development` sicher adaptiert. Ein opt-in FIDE-C.07/03-2026-Modus behandelt
+  ungespielte Runden in Schweizer Buchholz/Cut/Median mit Art.-16.3-Caps,
+  Art.-16.4-Dummys und Art.-16.5-VUR-Streichern; Default und andere Wertungen
+  bleiben unverändert. Die bestehende Forfeit-Policy hat Vorrang und verhindert
+  reale/virtuelle Doppelzählung. Der von Marcel entdeckte Withdrawal-Bug ist
+  behoben: aktive Gegner behalten historische Punkte, zurückgezogene Spieler
+  bleiben aus Rangliste und Folgepaarungen entfernt. Domain, API, UI, Persistenz,
+  Backup/Restore, Legacy-Daten, Export/Audit und die vollständige Matrix sind
+  durch neue Regressionstests abgesichert.
+
 - STM-TB-001: Marcels zwei handgerechnete Tie-Break-Szenarien aus PR #9 auf dem
   aktuellen `development` im bestehenden Golden-Testprojekt sicher adaptiert. Die Tests
   decken Buchholz, Cut-1, Cut-2, Median-Buchholz, Sonneborn-Berger, die konfigurierte

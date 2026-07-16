@@ -37,6 +37,11 @@ public sealed class TournamentExportFormatterTests
     public void ExportDownloadManifestJson_ContainsDownloadsAndChecks()
     {
         var tournament = CreateTournament();
+        tournament.Settings = tournament.Settings with
+        {
+            ForfeitTiebreakPolicy = ForfeitTiebreakPolicy.CountForfeitOpponentForBuchholzOnly,
+            UnplayedRoundBuchholzMode = UnplayedRoundBuchholzMode.FideVirtualOpponent
+        };
         var standings = new StandingsCalculator().Calculate(tournament);
         var document = new TournamentExportFormatter().ExportDownloadManifestJson(tournament, standings);
 
@@ -47,6 +52,8 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("/players/export.csv", document.Content);
         Assert.Contains("publishReady", document.Content);
         Assert.Contains("local-only", document.Content);
+        Assert.Contains("CountForfeitOpponentForBuchholzOnly", document.Content);
+        Assert.Contains("FideVirtualOpponent", document.Content);
     }
 
     [Fact]
@@ -54,6 +61,10 @@ public sealed class TournamentExportFormatterTests
     {
         var tournament = CreateTournament();
         tournament.Name = "Verein <Finale>";
+        tournament.Settings = tournament.Settings with
+        {
+            UnplayedRoundBuchholzMode = UnplayedRoundBuchholzMode.FideVirtualOpponent
+        };
         var standings = new StandingsCalculator().Calculate(tournament);
         var diagnostics = new RoundDiagnosticsCalculator().Calculate(tournament);
         var document = new TournamentExportFormatter().ExportPrintableTournamentHtml(tournament, standings, diagnostics);
@@ -62,6 +73,8 @@ public sealed class TournamentExportFormatterTests
         Assert.Contains("Verein &lt;Finale&gt;", document.Content);
         Assert.Contains("Teilnehmerliste", document.Content);
         Assert.Contains("Rundenprüfung", document.Content);
+        Assert.Contains("Ungespielte Runden / Buchholz", document.Content);
+        Assert.Contains("FideVirtualOpponent", document.Content);
     }
 
     [Fact]

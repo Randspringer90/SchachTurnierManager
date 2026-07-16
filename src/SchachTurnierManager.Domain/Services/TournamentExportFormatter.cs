@@ -121,6 +121,8 @@ public sealed class TournamentExportFormatter
                 tournament.Name,
                 format = tournament.Settings.Format.ToString(),
                 scoringSystem = tournament.Settings.ScoringSystem.ToString(),
+                forfeitTiebreakPolicy = tournament.Settings.ForfeitTiebreakPolicy.ToString(),
+                unplayedRoundBuchholzMode = tournament.Settings.UnplayedRoundBuchholzMode.ToString(),
                 players = tournament.Players.Count,
                 activePlayers = tournament.Players.Count(player => player.Status == PlayerStatus.Active),
                 rounds = tournament.Rounds.Count,
@@ -435,6 +437,8 @@ public sealed class TournamentExportFormatter
         builder.AppendLine("<section><h2>Turnierdaten</h2><dl>");
         builder.AppendLine($"<dt>Format</dt><dd>{Html(tournament.Settings.Format.ToString())}</dd>");
         builder.AppendLine($"<dt>Wertung</dt><dd>{Html(tournament.Settings.ScoringSystem.ToString())}</dd>");
+        builder.AppendLine($"<dt>Kampflose Partien</dt><dd>{Html(tournament.Settings.ForfeitTiebreakPolicy.ToString())}</dd>");
+        builder.AppendLine($"<dt>Ungespielte Runden / Buchholz</dt><dd>{Html(tournament.Settings.UnplayedRoundBuchholzMode.ToString())}</dd>");
         builder.AppendLine($"<dt>Teilnehmer</dt><dd>{tournament.Players.Count}</dd>");
         builder.AppendLine($"<dt>Runden</dt><dd>{tournament.Rounds.Count}</dd>");
         builder.AppendLine("</dl></section>");

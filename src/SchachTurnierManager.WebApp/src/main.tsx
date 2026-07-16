@@ -131,6 +131,7 @@ type Tournament = {
     seniorBirthYearOrEarlier?: number | null;
     heroCupMinimumRatedGames: number;
     forfeitTiebreakPolicy: number;
+    unplayedRoundBuchholzMode: number;
     countByeAsWin: boolean;
     allowManualPairingOverrides: boolean;
     tiebreaks: number[];
@@ -390,6 +391,7 @@ type SettingsForm = {
   twzSource: number;
   plannedRounds: string;
   forfeitTiebreakPolicy: number;
+  unplayedRoundBuchholzMode: number;
   countByeAsWin: boolean;
   allowManualPairingOverrides: boolean;
   seniorBirthYearOrEarlier: string;
@@ -725,6 +727,11 @@ const forfeitPolicyOptions = [
   { value: 2, label: 'Kampflose Partien wie normale Partien behandeln' }
 ];
 
+const unplayedRoundBuchholzOptions = [
+  { value: 0, label: 'Eigene ungespielte Runden ignorieren (bisheriges Verhalten)' },
+  { value: 1, label: 'FIDE-Modus (Schweizer): Dummy-/VUR-Wertung nach Art. 16' }
+];
+
 const tiebreakOptions = [
   { value: 0, label: 'Direkter Vergleich' },
   { value: 1, label: 'Anzahl Siege' },
@@ -795,6 +802,7 @@ const emptySettingsForm: SettingsForm = {
   twzSource: 0,
   plannedRounds: '5',
   forfeitTiebreakPolicy: 0,
+  unplayedRoundBuchholzMode: 0,
   countByeAsWin: false,
   allowManualPairingOverrides: true,
   seniorBirthYearOrEarlier: '',
@@ -1157,6 +1165,7 @@ function settingsToForm(tournament?: Tournament): SettingsForm {
     twzSource: settings.twzSource,
     plannedRounds: settings.plannedRounds.toString(),
     forfeitTiebreakPolicy: settings.forfeitTiebreakPolicy,
+    unplayedRoundBuchholzMode: settings.unplayedRoundBuchholzMode ?? 0,
     countByeAsWin: settings.countByeAsWin,
     allowManualPairingOverrides: settings.allowManualPairingOverrides,
     seniorBirthYearOrEarlier: settings.seniorBirthYearOrEarlier?.toString() ?? '',
@@ -1173,6 +1182,7 @@ function formToSettings(form: SettingsForm) {
     twzSource: form.twzSource,
     plannedRounds: Math.max(1, numberOrNull(form.plannedRounds) ?? 1),
     forfeitTiebreakPolicy: form.forfeitTiebreakPolicy,
+    unplayedRoundBuchholzMode: form.unplayedRoundBuchholzMode,
     countByeAsWin: form.countByeAsWin,
     allowManualPairingOverrides: form.allowManualPairingOverrides,
     seniorBirthYearOrEarlier: numberOrNull(form.seniorBirthYearOrEarlier),
@@ -3637,6 +3647,11 @@ function openRoundPrint(roundNumber: number) {
                     {forfeitPolicyOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
+                <label>Ungespielte Runden (Buchholz)
+                  <select value={settingsForm.unplayedRoundBuchholzMode} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, unplayedRoundBuchholzMode: Number(event.target.value) })}>
+                    {unplayedRoundBuchholzOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
                 <label>Senioren: Geburtsjahr oder älter
                   <input type="number" min="1900" max="2100" value={settingsForm.seniorBirthYearOrEarlier} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, seniorBirthYearOrEarlier: event.target.value })} placeholder="z. B. 1966" />
                 </label>
@@ -3644,6 +3659,7 @@ function openRoundPrint(roundNumber: number) {
                   <input type="number" min="1" max="99" value={settingsForm.heroCupMinimumRatedGames} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, heroCupMinimumRatedGames: event.target.value })} />
                 </label>
               </div>
+              <p className="muted">Im FIDE-Modus gilt die Einstellung „Kampflose Partien“ zuerst: Zählt sie den realen Gegner für Buchholz, wird kein zusätzlicher Dummy erzeugt. Offene Ergebnisse werden nicht vorzeitig gewertet.</p>
               <div className="checkbox-row">
                 <label className="checkbox"><input type="checkbox" checked={settingsForm.countByeAsWin} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, countByeAsWin: event.target.checked })} /> Bye als Sieg zählen</label>
                 <label className="checkbox"><input type="checkbox" checked={settingsForm.allowManualPairingOverrides} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, allowManualPairingOverrides: event.target.checked })} /> manuelle Paarungen erlauben</label>

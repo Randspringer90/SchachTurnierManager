@@ -24,7 +24,11 @@ public sealed class SqliteTournamentStoreTests
             {
                 db.Database.EnsureCreated();
                 var service = new TournamentService(new SqliteTournamentStore(db));
-                var tournament = service.CreateTournament("Persistenztest", new TournamentSettings { Format = TournamentFormat.RoundRobin });
+                var tournament = service.CreateTournament("Persistenztest", new TournamentSettings
+                {
+                    Format = TournamentFormat.RoundRobin,
+                    UnplayedRoundBuchholzMode = UnplayedRoundBuchholzMode.FideVirtualOpponent
+                });
                 var a = service.AddPlayer(tournament.Id, new Player { Name = "Alice", Rating = new RatingProfile { ManualTwz = 1900 } });
                 service.AddPlayer(tournament.Id, new Player { Name = "Bob", Rating = new RatingProfile { ManualTwz = 1800 } });
                 var round = service.GenerateNextRound(tournament.Id);
@@ -43,6 +47,46 @@ public sealed class SqliteTournamentStoreTests
                 Assert.True(reloaded.Rounds[0].Pairings[0].Result.IsPlayed);
                 Assert.NotNull(reloaded.Rounds[0].Pairings[0].Chess960StartPosition);
                 Assert.InRange(reloaded.Rounds[0].Pairings[0].Chess960StartPosition!.PositionNumber, 0, 959);
+                Assert.Equal(UnplayedRoundBuchholzMode.FideVirtualOpponent, reloaded.Settings.UnplayedRoundBuchholzMode);
+            }
+        }
+        finally
+        {
+            DeleteTestDirectory(testDirectory);
+        }
+    }
+
+    [Fact]
+    public void Reload_LegacySnapshotWithoutUnplayedRoundMode_UsesDefault()
+    {
+        var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testDirectory);
+        var databasePath = Path.Combine(testDirectory, "legacy.sqlite");
+        var tournamentId = Guid.Parse("00000000-0000-0000-0000-000000000077");
+
+        try
+        {
+            var options = CreateOptions(databasePath);
+            using (var db = new TournamentDbContext(options))
+            {
+                db.Database.EnsureCreated();
+                db.TournamentSnapshots.Add(new TournamentSnapshot
+                {
+                    Id = tournamentId,
+                    Name = "Legacy",
+                    CreatedOn = "2026-01-01",
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                    Json = $"{{\"id\":\"{tournamentId}\",\"name\":\"Legacy\",\"settings\":{{\"plannedRounds\":5}},\"players\":[],\"rounds\":[],\"auditJournal\":[]}}"
+                });
+                db.SaveChanges();
+            }
+
+            using (var db = new TournamentDbContext(options))
+            {
+                var reloaded = new SqliteTournamentStore(db).Get(tournamentId);
+
+                Assert.NotNull(reloaded);
+                Assert.Equal(UnplayedRoundBuchholzMode.IgnoreUnplayedRounds, reloaded!.Settings.UnplayedRoundBuchholzMode);
             }
         }
         finally

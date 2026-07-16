@@ -5,10 +5,8 @@ using Xunit;
 namespace SchachTurnierManager.Domain.Tests;
 
 /// <summary>
-/// Prepared FIDE virtual-opponent model for unplayed rounds (C.07/2024 Art. 16.2/16.4).
-/// Pure domain service; not yet wired into <see cref="StandingsCalculator"/>.
-/// Cases follow the requested matrix: gespielte Partie, kampfloser Sieg, Bye,
-/// konfigurierbare ungespielte Runde, vorbereitete Cut-Buchholz-Liste.
+/// FIDE-C.07/03-2026-Modell für eigene ungespielte Runden in Buchholz und
+/// seinen Cut-/Median-Varianten.
 /// </summary>
 public sealed class UnplayedRoundTiebreakTests
 {
@@ -122,5 +120,55 @@ public sealed class UnplayedRoundTiebreakTests
             unplayedRoundCount: 2);
 
         Assert.Equal(new[] { 2m, 4m, 5m }, list);
+    }
+
+    [Theory]
+    [InlineData(5.0, 3.0, 3.0)]
+    [InlineData(2.0, 3.0, 2.0)]
+    public void DummyOpponentScore_UsesOwnScoreWithFideCap(double own, double cap, double expected)
+    {
+        Assert.Equal((decimal)expected, UnplayedRoundTiebreak.DummyOpponentScore((decimal)own, (decimal)cap));
+    }
+
+    [Fact]
+    public void CanonicalScoreList_DefaultMode_DropsVirtualEntriesAndKeepsLegacyCuts()
+    {
+        var scores = UnplayedRoundTiebreak.BuildCanonicalScoreList(
+            UnplayedRoundBuchholzMode.IgnoreUnplayedRounds,
+            new[]
+            {
+                new BuchholzScoreEntry(1m),
+                new BuchholzScoreEntry(4m),
+                new BuchholzScoreEntry(3m)
+            },
+            new[] { new BuchholzScoreEntry(2m, IsVoluntaryUnplayedRound: true) });
+
+        Assert.Equal(new[] { 1m, 3m, 4m }, scores.Select(entry => entry.Score));
+        Assert.Equal(7m, UnplayedRoundTiebreak.SumAfterDropping(UnplayedRoundBuchholzMode.IgnoreUnplayedRounds, scores, 1, 0));
+        Assert.Equal(4m, UnplayedRoundTiebreak.SumAfterDropping(UnplayedRoundBuchholzMode.IgnoreUnplayedRounds, scores, 2, 0));
+        Assert.Equal(3m, UnplayedRoundTiebreak.SumAfterDropping(UnplayedRoundBuchholzMode.IgnoreUnplayedRounds, scores, 1, 1));
+    }
+
+    [Fact]
+    public void CanonicalScoreList_FideMode_AppliesVurExceptionToCutOneCutTwoAndMedian()
+    {
+        var scores = UnplayedRoundTiebreak.BuildCanonicalScoreList(
+            UnplayedRoundBuchholzMode.FideVirtualOpponent,
+            new[]
+            {
+                new BuchholzScoreEntry(1m),
+                new BuchholzScoreEntry(4m),
+                new BuchholzScoreEntry(5m)
+            },
+            new[]
+            {
+                new BuchholzScoreEntry(2m, IsVoluntaryUnplayedRound: true),
+                new BuchholzScoreEntry(3m, IsVoluntaryUnplayedRound: true)
+            });
+
+        Assert.Equal(15m, scores.Sum(entry => entry.Score));
+        Assert.Equal(13m, UnplayedRoundTiebreak.SumAfterDropping(UnplayedRoundBuchholzMode.FideVirtualOpponent, scores, 1, 0));
+        Assert.Equal(10m, UnplayedRoundTiebreak.SumAfterDropping(UnplayedRoundBuchholzMode.FideVirtualOpponent, scores, 2, 0));
+        Assert.Equal(8m, UnplayedRoundTiebreak.SumAfterDropping(UnplayedRoundBuchholzMode.FideVirtualOpponent, scores, 1, 1));
     }
 }

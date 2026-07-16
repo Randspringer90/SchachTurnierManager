@@ -7,15 +7,49 @@ public sealed class StandingsCalculator
     public IReadOnlyList<StandingRow> Calculate(TournamentState tournament)
     {
         var referenceYear = DateTime.Today.Year;
+        // Historische Resultate werden fuer ALLE Turnierteilnehmer berechnet (auch
+        // pausierte/zurueckgezogene): bereits gespielte Partien bleiben vollstaendig
+        // erhalten, die sichtbare Rangliste wird erst am Ende nach Status gefiltert.
         var rows = tournament.Players
-            .Where(p => p.IsActive)
             .ToDictionary(p => p.Id, p => new MutableStanding(p, p.Twz(tournament.Settings.TwzSource)));
 
         foreach (var round in tournament.Rounds.OrderBy(round => round.RoundNumber))
         {
+            // Offene Runden duerfen ungespielte Partien nicht vorzeitig als
+            // ungespielte Runden (virtuelle Gegner) werten.
+            var roundFinalized = round.ResultStatus != RoundResultStatus.Open;
+
             foreach (var pairing in round.Pairings)
             {
-                ApplyPairing(tournament, pairing, rows);
+                ApplyPairing(tournament, round.RoundNumber, pairing, rows, roundFinalized);
+            }
+
+            if (roundFinalized)
+            {
+                var pairedPlayerIds = round.Pairings
+                    .SelectMany(p => new[] { p.WhitePlayerId, p.BlackPlayerId })
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .ToHashSet();
+
+                foreach (var row in rows.Values)
+                {
+                    if (!pairedPlayerIds.Contains(row.Player.Id))
+                    {
+                        // Ohne Pairing in einer abgeschlossenen Runde ist im heutigen
+                        // Modell nur eine angeforderte/sonstige ungespielte Runde sicher
+                        // ableitbar. Ob sie nach Art. 16.2.3 oder 16.2.5 behandelt wird,
+                        // entscheidet sich anhand einer späteren Nicht-VUR-Runde.
+                        row.UnplayedRounds.Add(new UnplayedRoundEntry(
+                            round.RoundNumber,
+                            OpponentId: null,
+                            AwardedScore: 0m,
+                            UsesScheduledOpponentCap: false,
+                            IsVoluntaryUnplayedRound: true,
+                            AdjustAsDrawWithoutLaterNonVur: true,
+                            IncludeVirtualBuchholz: true));
+                    }
+                }
             }
 
             foreach (var row in rows.Values)
@@ -25,17 +59,49 @@ public sealed class StandingsCalculator
         }
 
         var opponentPoints = rows.ToDictionary(kv => kv.Key, kv => kv.Value.Points);
+        var buchholzMode = tournament.Settings.Format == TournamentFormat.Swiss
+            ? tournament.Settings.UnplayedRoundBuchholzMode
+            : UnplayedRoundBuchholzMode.IgnoreUnplayedRounds;
+        // FIDE C.07 (03/2026) Art. 16.4.2: Obergrenze fuer Bye-artige ungespielte
+        // Runden = Remispunkte × Rundenzahl des Turniers.
+        var drawScore = ScoringRules.ScoreFor(GameResult.Draw, isWhite: true, tournament.Settings.ScoringSystem);
+        var totalRounds = Math.Max(tournament.Rounds.Count, tournament.Settings.PlannedRounds);
+        var byeDummyCap = drawScore * totalRounds;
+        var adjustedOpponentPoints = buchholzMode == UnplayedRoundBuchholzMode.FideVirtualOpponent
+            ? rows.ToDictionary(kv => kv.Key, kv => AdjustedScoreForOpponents(kv.Value, drawScore))
+            : opponentPoints;
+
         foreach (var row in rows.Values)
         {
-            var opponentScores = row.OpponentIds
-                .Where(opponentPoints.ContainsKey)
-                .Select(id => opponentPoints[id])
-                .OrderBy(x => x)
-                .ToList();
-            row.Buchholz = opponentScores.Sum();
-            row.BuchholzCutOne = SumAfterDropping(opponentScores, lowest: 1, highest: 0);
-            row.BuchholzCutTwo = SumAfterDropping(opponentScores, lowest: 2, highest: 0);
-            row.MedianBuchholz = SumAfterDropping(opponentScores, lowest: 1, highest: 1);
+            var realOpponentScores = row.BuchholzOpponents
+                .Where(entry => adjustedOpponentPoints.ContainsKey(entry.OpponentId))
+                .Select(entry => new BuchholzScoreEntry(
+                    adjustedOpponentPoints[entry.OpponentId],
+                    entry.IsVoluntaryUnplayedRound));
+            var virtualOpponentScores = buchholzMode == UnplayedRoundBuchholzMode.FideVirtualOpponent
+                ? row.UnplayedRounds.Where(entry => entry.IncludeVirtualBuchholz).Select(entry =>
+                {
+                    // Art. 16.4.1: bei kampflosen Ergebnissen deckelt die Punktzahl
+                    // der nach Art. 16.3 angepasste Stand des vorgesehenen Gegners;
+                    // sonst gilt die Remispunkte-mal-Rundenzahl-Grenze (16.4.2).
+                    var cap = entry.UsesScheduledOpponentCap
+                        && entry.OpponentId is { } opponentId
+                        && adjustedOpponentPoints.TryGetValue(opponentId, out var opponentScore)
+                        ? opponentScore
+                        : byeDummyCap;
+                    return new BuchholzScoreEntry(
+                        UnplayedRoundTiebreak.DummyOpponentScore(row.Points, cap),
+                        entry.IsVoluntaryUnplayedRound);
+                })
+                : Enumerable.Empty<BuchholzScoreEntry>();
+            var opponentScores = UnplayedRoundTiebreak.BuildCanonicalScoreList(
+                buchholzMode,
+                realOpponentScores,
+                virtualOpponentScores);
+            row.Buchholz = opponentScores.Sum(entry => entry.Score);
+            row.BuchholzCutOne = UnplayedRoundTiebreak.SumAfterDropping(buchholzMode, opponentScores, lowest: 1, highest: 0);
+            row.BuchholzCutTwo = UnplayedRoundTiebreak.SumAfterDropping(buchholzMode, opponentScores, lowest: 2, highest: 0);
+            row.MedianBuchholz = UnplayedRoundTiebreak.SumAfterDropping(buchholzMode, opponentScores, lowest: 1, highest: 1);
             row.AverageOpponentRating = row.OpponentRatings.Count == 0 ? 0m : Math.Round(row.OpponentRatings.Average(), 2);
             row.TournamentPerformance = row.PerformanceGames == 0 || row.PerformanceOpponentRatings.Count == 0
                 ? null
@@ -59,7 +125,12 @@ public sealed class StandingsCalculator
             row.HeroScore = row.TournamentPerformance is null ? 0m : row.TournamentPerformance.Value - row.Twz;
         }
 
-        foreach (var group in rows.Values.GroupBy(r => r.Points))
+        // Sichtbar bleibt wie bisher nur der aktive Teilnehmerkreis; zurueckgezogene
+        // oder pausierte Spieler erscheinen nicht (erneut) in der Rangliste, ihre
+        // gespielten Partien sind aber oben vollstaendig eingerechnet.
+        var visibleRows = rows.Values.Where(r => r.Player.IsActive).ToList();
+
+        foreach (var group in visibleRows.GroupBy(r => r.Points))
         {
             var playerIds = group.Select(g => g.Player.Id).ToHashSet();
             foreach (var row in group)
@@ -68,7 +139,7 @@ public sealed class StandingsCalculator
             }
         }
 
-        var ordered = rows.Values
+        var ordered = visibleRows
             .OrderByDescending(r => r.Points)
             .ThenBy(r => r, new TiebreakComparer(tournament.Settings.Tiebreaks))
             .ThenBy(r => r.Player.Name, StringComparer.OrdinalIgnoreCase)
@@ -99,7 +170,12 @@ public sealed class StandingsCalculator
         }).ToList();
     }
 
-    private static void ApplyPairing(TournamentState tournament, Pairing pairing, Dictionary<Guid, MutableStanding> rows)
+    private static void ApplyPairing(
+        TournamentState tournament,
+        int roundNumber,
+        Pairing pairing,
+        Dictionary<Guid, MutableStanding> rows,
+        bool roundFinalized)
     {
         if (pairing.WhitePlayerId is null)
         {
@@ -113,10 +189,25 @@ public sealed class StandingsCalculator
 
         if (pairing.IsBye || pairing.BlackPlayerId is null)
         {
-            white.Points += ScoringRules.ScoreFor(pairing.Result, isWhite: true, tournament.Settings.ScoringSystem);
+            var byeScore = ScoringRules.ScoreFor(pairing.Result, isWhite: true, tournament.Settings.ScoringSystem);
+            white.Points += byeScore;
             if (ScoringRules.IsWinFor(pairing.Result, isWhite: true, countForfeitWins: true, countByeAsWin: tournament.Settings.CountByeAsWin))
             {
                 white.Wins++;
+            }
+            if (IsOwnUnplayedRound(pairing.Result.Kind, roundFinalized))
+            {
+                // Bye/kampfloses Einzelergebnis ohne realen Gegner: eigene
+                // ungespielte Runde mit Bye-Obergrenze (Art. 16.4.2).
+                white.UnplayedRounds.Add(new UnplayedRoundEntry(
+                    roundNumber,
+                    OpponentId: null,
+                    AwardedScore: byeScore,
+                    UsesScheduledOpponentCap: false,
+                    IsVoluntaryUnplayedRound: false,
+                    AdjustAsDrawWithoutLaterNonVur: false,
+                    IncludeVirtualBuchholz: true));
+                white.NonVoluntaryRoundNumbers.Add(roundNumber);
             }
             return;
         }
@@ -141,10 +232,60 @@ public sealed class StandingsCalculator
         var whiteNormalized = ScoringRules.NormalizedClassicalScore(pairing.Result.Kind, isWhite: true);
         var blackNormalized = ScoringRules.NormalizedClassicalScore(pairing.Result.Kind, isWhite: false);
 
-        if (ResultPolicy.CountsAsOpponentForBuchholz(pairing.Result.Kind, tournament.Settings))
+        var countsAsRealBuchholzOpponent = ResultPolicy.CountsAsOpponentForBuchholz(pairing.Result.Kind, tournament.Settings);
+        var whiteUnplayed = CreateUnplayedRoundEntry(
+            roundNumber,
+            pairing.Result.Kind,
+            isWhite: true,
+            black.Player.Id,
+            whiteScore,
+            roundFinalized,
+            includeVirtualBuchholz: !countsAsRealBuchholzOpponent);
+        var blackUnplayed = CreateUnplayedRoundEntry(
+            roundNumber,
+            pairing.Result.Kind,
+            isWhite: false,
+            white.Player.Id,
+            blackScore,
+            roundFinalized,
+            includeVirtualBuchholz: !countsAsRealBuchholzOpponent);
+
+        if (whiteUnplayed is not null)
         {
-            white.OpponentIds.Add(black.Player.Id);
-            black.OpponentIds.Add(white.Player.Id);
+            white.UnplayedRounds.Add(whiteUnplayed);
+        }
+        else if (ScoringRules.IsOverTheBoard(pairing.Result.Kind))
+        {
+            white.NonVoluntaryRoundNumbers.Add(roundNumber);
+        }
+
+        if (blackUnplayed is not null)
+        {
+            black.UnplayedRounds.Add(blackUnplayed);
+        }
+        else if (ScoringRules.IsOverTheBoard(pairing.Result.Kind))
+        {
+            black.NonVoluntaryRoundNumbers.Add(roundNumber);
+        }
+
+        if (whiteUnplayed is { IsVoluntaryUnplayedRound: false })
+        {
+            white.NonVoluntaryRoundNumbers.Add(roundNumber);
+        }
+
+        if (blackUnplayed is { IsVoluntaryUnplayedRound: false })
+        {
+            black.NonVoluntaryRoundNumbers.Add(roundNumber);
+        }
+
+        if (countsAsRealBuchholzOpponent)
+        {
+            white.BuchholzOpponents.Add(new BuchholzOpponentEntry(
+                black.Player.Id,
+                whiteUnplayed?.IsVoluntaryUnplayedRound ?? false));
+            black.BuchholzOpponents.Add(new BuchholzOpponentEntry(
+                white.Player.Id,
+                blackUnplayed?.IsVoluntaryUnplayedRound ?? false));
             if (black.Twz > 0) white.OpponentRatings.Add(black.Twz);
             if (white.Twz > 0) black.OpponentRatings.Add(white.Twz);
         }
@@ -168,17 +309,71 @@ public sealed class StandingsCalculator
         }
     }
 
-    private static decimal SumAfterDropping(IReadOnlyList<decimal> orderedScores, int lowest, int highest)
+    /// <summary>
+    /// Eigene ungespielte Runde aus Sicht eines Spielers: eingetragene Byes und
+    /// kampflose Ergebnisse sofort; ein offenes <see cref="GameResultKind.NotPlayed"/>
+    /// erst, wenn die Runde abgeschlossen ist (offene/zukuenftige Partien werden nie
+    /// vorzeitig als virtuelle Gegner gewertet).
+    /// </summary>
+    private static bool IsOwnUnplayedRound(GameResultKind kind, bool roundFinalized)
     {
-        if (orderedScores.Count <= lowest + highest)
+        if (kind == GameResultKind.NotPlayed)
         {
-            return orderedScores.Sum();
+            return roundFinalized;
         }
 
-        return orderedScores
-            .Skip(lowest)
-            .Take(orderedScores.Count - lowest - highest)
-            .Sum();
+        return UnplayedRoundTiebreak.IsUnplayedRound(kind);
+    }
+
+    private static UnplayedRoundEntry? CreateUnplayedRoundEntry(
+        int roundNumber,
+        GameResultKind kind,
+        bool isWhite,
+        Guid opponentId,
+        decimal awardedScore,
+        bool roundFinalized,
+        bool includeVirtualBuchholz)
+    {
+        if (!IsOwnUnplayedRound(kind, roundFinalized))
+        {
+            return null;
+        }
+
+        var isForfeitWin = kind switch
+        {
+            GameResultKind.WhiteForfeitWin => isWhite,
+            GameResultKind.BlackForfeitWin => !isWhite,
+            _ => false
+        };
+        var isForfeitLoss = kind == GameResultKind.DoubleForfeit
+            || kind == GameResultKind.WhiteForfeitWin && !isWhite
+            || kind == GameResultKind.BlackForfeitWin && isWhite;
+
+        return new UnplayedRoundEntry(
+            roundNumber,
+            OpponentId: kind == GameResultKind.NotPlayed ? null : opponentId,
+            AwardedScore: awardedScore,
+            UsesScheduledOpponentCap: isForfeitWin || isForfeitLoss,
+            IsVoluntaryUnplayedRound: isForfeitLoss || kind == GameResultKind.NotPlayed,
+            AdjustAsDrawWithoutLaterNonVur: kind == GameResultKind.NotPlayed,
+            IncludeVirtualBuchholz: includeVirtualBuchholz);
+    }
+
+    private static decimal AdjustedScoreForOpponents(MutableStanding row, decimal drawScore)
+    {
+        var adjustedScore = row.Points;
+        foreach (var entry in row.UnplayedRounds.Where(entry => entry.AdjustAsDrawWithoutLaterNonVur))
+        {
+            var hasLaterNonVur = row.NonVoluntaryRoundNumbers.Any(roundNumber => roundNumber > entry.RoundNumber);
+            if (!hasLaterNonVur)
+            {
+                // Art. 16.2.5/16.3.2: am Ende liegende angeforderte/sonstige
+                // ungespielte Runden werden für die Gegnerwertung als Remis bewertet.
+                adjustedScore += drawScore - entry.AwardedScore;
+            }
+        }
+
+        return adjustedScore;
     }
 
     private static decimal KoyaThreshold(TournamentState tournament)
@@ -273,7 +468,9 @@ public sealed class StandingsCalculator
         public decimal AverageOpponentRating { get; set; }
         public int? TournamentPerformance { get; set; }
         public decimal HeroScore { get; set; }
-        public List<Guid> OpponentIds { get; } = new();
+        public List<BuchholzOpponentEntry> BuchholzOpponents { get; } = new();
+        public List<UnplayedRoundEntry> UnplayedRounds { get; } = new();
+        public HashSet<int> NonVoluntaryRoundNumbers { get; } = new();
         public List<decimal> OpponentRatings { get; } = new();
         public List<decimal> PerformanceOpponentRatings { get; } = new();
         public List<DirectResult> DirectResults { get; } = new();
@@ -283,4 +480,19 @@ public sealed class StandingsCalculator
     }
 
     private sealed record DirectResult(Guid OpponentId, decimal ScoreAgainstOpponent);
+
+    private sealed record BuchholzOpponentEntry(Guid OpponentId, bool IsVoluntaryUnplayedRound);
+
+    /// <summary>
+    /// Eigene ungespielte Runde eines Spielers. Die Felder erhalten sowohl die
+    /// Information für Art. 16.3/16.4 als auch die VUR-Markierung für Art. 16.5.
+    /// </summary>
+    private sealed record UnplayedRoundEntry(
+        int RoundNumber,
+        Guid? OpponentId,
+        decimal AwardedScore,
+        bool UsesScheduledOpponentCap,
+        bool IsVoluntaryUnplayedRound,
+        bool AdjustAsDrawWithoutLaterNonVur,
+        bool IncludeVirtualBuchholz);
 }

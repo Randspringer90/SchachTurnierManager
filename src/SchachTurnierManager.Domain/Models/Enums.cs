@@ -57,8 +57,8 @@ public enum UnplayedRoundBuchholzMode
 {
     // Bisheriges Verhalten: eigene ungespielte Runden tragen nichts zum eigenen Buchholz bei.
     IgnoreUnplayedRounds = 0,
-    // FIDE C.07 (2024) Art. 16.4: jede eigene ungespielte Runde wird als Partie gegen einen
-    // virtuellen Gegner gewertet, der das Turnier mit der eigenen Punktzahl des Spielers beendet.
+    // FIDE C.07 (03/2026) Art. 16: In Schweizer Turnieren werden ungespielte Runden
+    // fuer Buchholz und seine Cut-/Median-Varianten nach dem Dummy-/VUR-Modell behandelt.
     FideVirtualOpponent = 1
 }
 
