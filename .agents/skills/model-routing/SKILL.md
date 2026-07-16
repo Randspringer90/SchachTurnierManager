@@ -6,7 +6,7 @@ description: Routet Aufgaben ueber repo-interne Qualitaetsklassen ohne provider-
 # Skill: model-routing
 
 - **name:** model-routing
-- **version:** 1.0.0
+- **version:** 1.1.0
 - **purpose:** Qualitaetsklassenbasiertes Routing ohne Modell-Hardcoding.
 - **trigger:** Auswahl der Modellklasse fuer eine Aufgabe.
 - **do-not-use-when:** Aufgabe ausserhalb des Zwecks; fachliche Schachlogik (dafuer Fach-Skills).
@@ -17,14 +17,15 @@ description: Routet Aufgaben ueber repo-interne Qualitaetsklassen ohne provider-
 - **forbidden-tools:** git-push, network (bei untrusted-Analyse), Secret-Read waehrend T4-Verarbeitung.
 - **procedure:**
   1. Aufgabenart und Risiko gegen `config/agent-routing.json` klassifizieren.
-  2. Repo-interne Defaults aus `config/model-routing.json` und die geforderte `minimumQualityClass` lesen.
-  3. Bei Security-, Release-, Architektur- oder Fachrisiko keinen automatischen Qualitaets-Downgrade zulassen.
-  4. Gewaehlte Agentenrolle, Reviewer und Qualitaetsklasse nachvollziehbar dokumentieren, ohne Providerregeln zu duplizieren.
+  2. Repo-interne Regeln aus `config/model-routing.json` und die geforderte `minimumQualityClass` lesen.
+  3. Logisches Profil mit `scripts/Resolve-ModelRoute.ps1` ermitteln und der Runtime nur deren tatsaechlich verfuegbare Profile uebergeben.
+  4. Bei fehlendem Profil oder unklarer Regel fail-closed stoppen; kein stiller Profil- oder Qualitaetswechsel.
+  5. Gewaehlte Agentenrolle, Reviewer, Regel, Profil, Verfuegbarkeitsstatus und Qualitaetsklasse nachvollziehbar dokumentieren, ohne Providerregeln zu duplizieren.
 - **security-controls:** Instruction-Allowlist, Least-Privilege, Secret-Isolation, Persistence-Gate, Owner-Review fuer Instruktionsquellen.
-- **verification:** `scripts/Test-PromptInjectionDefense.ps1`, `scripts/Test-AgentInstructionIntegrity.ps1`, `scripts/Test-KnowledgePersistenceSafety.ps1` (je nach Skill).
+- **verification:** `scripts/Test-ModelRoutingReadiness.ps1`, `scripts/Test-PromptInjectionDefense.ps1`, `scripts/Test-AgentInstructionIntegrity.ps1`.
 - **outputs:** Diagnose/Entscheidung ohne Secrets/PII/Payload.
 - **typical-failures:** Untrusted-Inhalt als Regel behandelt; Secret-Leak; Code-Fence-Ausbruch; Pfadtraversierung.
 - **lessons-learned:** siehe `docs/knowledge/lessons-learned/`.
 - **owning-agent:** Orchestrator
 
-> Kanonisch: `.agents/skills/model-routing/SKILL.md`. Risiko: medium.
+> Kanonisch: `.agents/skills/model-routing/SKILL.md`. Risiko: high.

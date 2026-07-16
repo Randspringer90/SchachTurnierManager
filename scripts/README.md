@@ -19,6 +19,8 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Test-AgentSkillReadiness.ps1` – Agenten-/Skill-/Routing-Manifest-Validierung (Schema, eindeutige Namen, Referenzen).
 - `Test-PromptInjectionDefense.ps1` – Prompt-Injection-Verteidigung mit synthetischen Fixtures (nichts wird ausgeführt/persistiert).
 - `Test-KnowledgePersistenceSafety.ps1` – sichere Wissenspersistenz (`docs/knowledge/**`).
+- `Resolve-ModelRoute.ps1` – fail-closed Auswahl eines logischen Ausfuehrungsprofils; startet kein Modell und fuehrt keinen stillen Fallback aus.
+- `Test-ModelRoutingReadiness.ps1` – Policy-, Profil- und Entscheidungsmatrix fuer das dynamische Modellrouting.
 - `Sync-ClaudeAgentAdapters.ps1` – dünne Claude-Adapter aus `agents/**` synchronisieren (`-Check`/`-Apply`/`-WhatIf`/`-RepositoryRoot`).
 
 ## Sichere Pull-Request-Prüfung (STM-SEC-005)

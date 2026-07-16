@@ -74,7 +74,7 @@ if ($allow) {
 else { $script:allowGlobs = @() }
 
 # 2) JSON-Policies/Manifeste gueltig
-foreach ($j in 'config/agent-manifest.json','config/skill-manifest.json','config/agent-routing.json','config/agent-trust-policy.json','config/tool-permission-profiles.json','config/model-routing.json','config/pull-request-review-policy.json','config/dependency-review-policy.json','config/suspicious-change-patterns.json','config/pr-adoption-policy.json') {
+foreach ($j in 'config/agent-manifest.json','config/skill-manifest.json','config/agent-routing.json','config/agent-trust-policy.json','config/tool-permission-profiles.json','config/model-routing.json','config/model-routing.schema.json','config/pull-request-review-policy.json','config/dependency-review-policy.json','config/suspicious-change-patterns.json','config/pr-adoption-policy.json') {
     $p = Join-Path $repo $j
     if (-not (Test-Path $p)) { Bad $j 'fehlt'; continue }
     try { Get-Content -Raw $p | ConvertFrom-Json | Out-Null } catch { Bad $j 'ungueltiges JSON' }
