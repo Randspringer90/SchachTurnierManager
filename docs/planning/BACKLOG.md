@@ -45,7 +45,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
-| STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | In Review | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption geplant) | v1.0.0 |
+| STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Backlog | pairing | owner | – | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | – | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
@@ -71,7 +71,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Nicht gespielte Partien (kampfloser Sieg/Niederlage, Freilos/Bye, Rückzug)
   müssen in Paarung und Wertung regelkonform behandelt werden (Punkte, aber i. d. R. keine
   Tie-Break-Beiträge aus ungespielten Runden).
-- **Priorität:** P1 · **Status:** In Review · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P1 · **Status:** Done · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) · **Branch:** `feature/STM-FACH-001-kampflose-partien`
 - **Abhängigkeiten:** keine (baut auf bestehender Wertungslogik/`TournamentService`).
 - **Akzeptanzkriterien:**
@@ -83,7 +83,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Security:** keine (keine externen Daten, keine Secrets).
 - **Doku-Bedarf:** `CHANGELOG.md`, ggf. `docs/TIEBREAK_UNPLAYED_ROUNDS.md` ergänzen.
 - **Definition of Done:** siehe [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md) + alle Gates grün.
-- **PR:** [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10) · **Sichere Adoption:** `integration/pr-10-safe-adoption` nach Abschluss von STM-TB-001 · **Ziel-Release:** v1.0.0
+- **PR:** Original [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10) · **Sichere Adoption:** [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06` · **Ziel-Release:** v1.0.0
 
 ### STM-TB-001 · Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests _(empfohlene Erstaufgabe)_
 - **Beschreibung:** Golden-Test-Abdeckung der bestehenden Tie-Break-Berechnungen erweitern und

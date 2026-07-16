@@ -1,7 +1,7 @@
 # FEATURE_ROADMAP.md
 
 Priorisierter, fachlicher Implementierungsplan für SchachTurnierManager.
-Stand: 2026-06-16 (Basis 0.38.5, Build/Tests/Frontend grün, Open-Source-Safety grün).
+Stand: 2026-07-16 (`development`, STM-FACH-001 über Owner-PR #14 abgeschlossen).
 
 Diese Roadmap ergänzt `PLANS.md`/`docs/NEXT_PROMPTS.md` und priorisiert die offenen
 fachlichen Themen. Reihenfolge ist eine Empfehlung, keine harte Abhängigkeit. Vor
@@ -20,13 +20,15 @@ nachvollziehbar und FIDE-nah abbilden.
 
 - [x] Forfeit-/Bye-Grundlagen vorhanden: `ForfeitTiebreakPolicy`, `ResultPolicy`,
       Buchholz-Cut-1/Cut-2/Median im `StandingsCalculator`.
-- [x] **FIDE-Virtual-Opponent-Modell für eigene ungespielte Runden** als reines,
-      getestetes Domain-Modell vorbereitet (`UnplayedRoundTiebreak`,
-      `UnplayedRoundBuchholzMode`). Siehe `docs/TIEBREAK_UNPLAYED_ROUNDS.md`.
-- [ ] Modell opt-in in `StandingsCalculator` verdrahten (eigene Baselines bewusst neu).
-- [ ] Gegner-eigene ungespielte Runden gemäß FIDE Art. 16.2 (Kategorien) auswerten.
-- [ ] Konfigurierbare Wertungslogik (Modus) in `TournamentSettings` und UI sichtbar machen.
-Quellen: FIDE Handbook C.07 (Tie-Break), Art. 16.2/16.4.
+- [x] **FIDE-C.07/03-2026-Modell für Schweizer Buchholz/Cut/Median** opt-in in
+      `StandingsCalculator` verdrahtet (`UnplayedRoundTiebreak`,
+      `UnplayedRoundBuchholzMode`), Legacy-Default unverändert.
+- [x] Gegnerstände nach den im heutigen Datenmodell unterscheidbaren Kategorien
+      gemäß Art. 16.2/16.3 angepasst; Halb-/Nullpunkt-Bye bleibt explizite Modellgrenze.
+- [x] Konfigurierbare Wertungslogik durch Domain, API, UI, Persistenz,
+      Backup/Restore und Export/Audit transportiert.
+Quelle: FIDE Handbook C.07 (Tie-Break), Fassung gültig seit 1. März 2026,
+Art. 15/16; Details in `docs/TIEBREAK_UNPLAYED_ROUNDS.md`.
 
 ## P2 — Import/Export (Swiss-Chess / Swiss-Manager / Chess-Results)
 Ziel: Austauschformate für Teilnehmer, Paarungen und Ergebnisse.
