@@ -42,17 +42,19 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | Done | ai | owner | [#18](https://github.com/Randspringer90/SchachTurnierManager/issues/18), [PR #19](https://github.com/Randspringer90/SchachTurnierManager/pull/19), Merge `98648e7` | v1.0.0 |
 | STM-AI-003 | Modellrouting finalisieren (Qualitätsklassen + MODEL_ROUTING.md) | P2 | Done | ai | owner | [#15](https://github.com/Randspringer90/SchachTurnierManager/issues/15) (PR [#17](https://github.com/Randspringer90/SchachTurnierManager/pull/17), Merge `dfa7520`) | v1.0.0 |
 | STM-AI-004 | Nightly-/Resume-Unterbau | P1 | Done | ai | owner | [#20](https://github.com/Randspringer90/SchachTurnierManager/issues/20), [PR #21](https://github.com/Randspringer90/SchachTurnierManager/pull/21), Merge `a6df385` | v1.0.0 |
+| STM-AI-005 | Providerübergreifende Promptzerlegung und Routed Execution | P1 | In Progress | ai | owner | – | v1.0.0 |
+| STM-AI-006 | Aktive zentrale Nightly-Orchestrierung | P1 | In Progress | ai | owner | – | v1.0.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
-| STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Backlog | pairing | owner | – | v1.0.0 |
-| STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | – | v1.0.0 |
+| STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
+| STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
 | STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | **Ready** | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | v1.0.0 |
-| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Backlog | import-export | either | – | v1.0.0 |
+| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Blocked | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
-| STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | – | v1.0.0 |
+| STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | v1.0.0 |
 | STM-UX-001 | i18n vervollständigen | P2 | Backlog | ui | either | – | v1.0.0 |
 | STM-UX-002 | PWA / Offline / Sync-Konflikte | P2 | Backlog | pwa | owner | – | v1.0.0 |
 | STM-UX-003 | Backup/Restore-UX | P2 | Backlog | ui | either | – | v1.0.0 |
@@ -129,6 +131,22 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Definition of Done:** DoD + Gates grün.
 - **PR:** – · **Ziel-Release:** v1.0.0
 
+### STM-FACH-002 · Vollständigeres FIDE-Dutch-Schweizer-System
+- **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
+  (Score Groups, Floater, Farbpräferenzen, Wiederholungsschutz, Bye-Regeln, deterministische
+  Entscheidungsreihenfolge, Audit-Trail). Vollständige Spezifikation im Issue.
+- **Priorität:** P1 · **Status:** Ready · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **GitHub-Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) · **Branch:** `feature/STM-FACH-002-fide-dutch`
+- **Abhängigkeiten:** STM-FACH-001 (Done; Forfeit-/Bye-Verhalten darf nicht regressieren). Blockiert STM-FACH-003.
+- **Akzeptanzkriterien:** siehe Issue #22 (Golden-Turniere zuerst, Property-Tests für absolute
+  Kriterien, Determinismus, Audit-Trail, FIDE-C.04-Abgleich mit Artikelnummern).
+- **Tests:** Golden-/Property-/Regressionstests; Tests zuerst (fachliche Algorithmusänderung).
+- **Security:** keine externen Daten; nur synthetische Fixtures.
+- **Doku-Bedarf:** `docs/AUDIT_JOURNAL.md`, `CHANGELOG.md`.
+- **Definition of Done:** DoD + Gates grün; **Final-Review durch unabhängigen Owner-Prozess mit
+  stärkstem Review-Profil (fachlich kritisch, kein Auto-Merge).**
+- **PR:** – · **Ziel-Release:** v1.0.0
+
 ---
 
 ## Weitere aktive/geplante Einträge (Kurzform)
@@ -176,6 +194,19 @@ ausgeschrieben. Auszug der wichtigsten:
   **Historie** dieses public Repos. Bereinigung erfordert eine Owner-Entscheidung (History-Purge /
   Clean-Snapshot-Neustart) – **kein Force-Push in diesem Lauf**. *Blocked* bis Owner-Entscheidung.
 - **STM-REL-004** – Release Candidate v1.0.0: *Blocked* bis P0/P1-Aufgaben erledigt.
+- **STM-AI-005** – Providerübergreifende Promptzerlegung und Routed Execution: Masterprompts
+  an Fabel/Sol werden in einen validierten Taskgraph zerlegt; geeignete Teilaufgaben werden
+  tatsächlich an kleinere Profile delegiert (Adapter je Provider), Fabel/Sol bleiben
+  Orchestrator und Final-Integrator. Kritische Kategorien werden nie automatisch
+  herabgestuft; kein stiller Modellwechsel; Checkpoint/Resume bei Limits; Child-Output
+  bleibt T3-Daten. *Priorität:* P1 · *Kategorie:* ai · *Owner:* owner · *Ziel-Release:* v1.0.0.
+- **STM-AI-006** – Aktive zentrale Nightly-Orchestrierung: der plan-only Unterbau aus
+  STM-AI-004 (`READY_FOR_ACTIVATION`) wird um eine reale projektlokale Ausführungsebene
+  ergänzt und das Projekt nach Owner-Freigabe (2026-07-16) einmalig im **vorhandenen
+  zentralen** Nightly-Mechanismus der Workstation registriert (keine zweite Scheduled Task,
+  kein main-Merge, kein Release, kein History-Rewrite, kein Secretzugriff; Contributor-/
+  Marcel-Aufgaben sind ausgeschlossen). *Priorität:* P1 · *Kategorie:* ai · *Owner:* owner ·
+  *Ziel-Release:* v1.0.0.
 
 Die vollständige Liste steht in der Übersichtstabelle oben; jeder Eintrag wird beim
 Aktivieren nach dem Feld-Schema ausgeschrieben.
