@@ -52,6 +52,7 @@ $permissions = Get-Content -Raw (Join-Path $repo 'config/tool-permission-profile
 $names = @()
 foreach ($a in $man.agents) {
     $names += $a.name
+    Check ((([string]$a.canonicalPath) -replace '\\','/') -match '^agents/[a-z0-9-]+\.md$') "Agent $($a.name): kanonischer Pfad unter agents/"
     $p = Resolve-RepositoryFile $a.canonicalPath "Agent $($a.name)"
     Check ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) "Agent-Datei vorhanden/sicher: $($a.canonicalPath)"
     if ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) {
@@ -81,6 +82,10 @@ foreach ($a in $man.agents) {
     foreach ($sk in $a.skills) { Check (($sman.skills.name) -contains $sk) "Agent $($a.name): Skill '$sk' im Skill-Manifest" }
 }
 Check (($names | Sort-Object -Unique).Count -eq $names.Count) 'Agentennamen eindeutig'
+$expectedAgentFiles = @('agents/README.md') + @($man.agents.canonicalPath | ForEach-Object { $_ -replace '\\','/' })
+$trackedAgentFiles = @(git -C $repo ls-files 'agents/**' | ForEach-Object { $_ -replace '\\','/' })
+foreach ($rel in $trackedAgentFiles) { Check ($expectedAgentFiles -contains $rel) "Agentenquelle manifestiert/fest freigegeben: $rel" }
+foreach ($rel in $expectedAgentFiles) { Check ($trackedAgentFiles -contains $rel) "Erwartete Agentenquelle getrackt: $rel" }
 
 # Skills: eindeutige Namen; canonical -> Schema; nicht planned -> Datei existiert
 $snames = @($sman.skills.name)
@@ -98,15 +103,11 @@ foreach ($s in $sman.skills) {
 }
 
 # Jede vorhandene Skillquelle muss manifestiert sein; Migration des Formats bleibt STM-AI-001b.
-$manifestPaths = @($sman.skills.canonicalPath | ForEach-Object { $_ -replace '\\','/' })
-$skillFiles = @(
-    Get-ChildItem (Join-Path $repo '.agents/skills') -File -Filter '*.md' | Where-Object Name -ne 'README.md'
-    Get-ChildItem (Join-Path $repo '.agents/skills') -Recurse -File -Filter 'SKILL.md'
-)
-foreach ($file in ($skillFiles | Sort-Object FullName -Unique)) {
-    $rel = $file.FullName.Substring($repo.Length + 1) -replace '\\','/'
-    Check ($manifestPaths -contains $rel) "Skillquelle manifestiert: $rel"
-}
+$manifestPaths = @($sman.skills | Where-Object format -ne 'planned' | ForEach-Object { $_.canonicalPath -replace '\\','/' })
+$expectedSkillFiles = @('.agents/skills/README.md') + $manifestPaths
+$trackedSkillFiles = @(git -C $repo ls-files '.agents/skills/**' | ForEach-Object { $_ -replace '\\','/' })
+foreach ($rel in $trackedSkillFiles) { Check ($expectedSkillFiles -contains $rel) "Skillquelle manifestiert/fest freigegeben: $rel" }
+foreach ($rel in $expectedSkillFiles) { Check ($trackedSkillFiles -contains $rel) "Erwartete Skillquelle getrackt: $rel" }
 
 # Routing: gueltige Agenten/Skills, keine Modellnamen, Qualitaetsklassen bekannt
 $qc = @($rman.qualityClasses)
@@ -130,7 +131,13 @@ if (Test-Path $claudeAgents) {
         Check ($content -notmatch '\$canonical') "Claude-Adapter '$($f.Name)' enthaelt keinen Platzhalter"
         Check ($content -notmatch '[\x00-\x08\x0B\x0C\x0E-\x1F]') "Claude-Adapter '$($f.Name)' enthaelt keine Steuerzeichen"
     }
+    $expectedAdapters = @('.claude/agents/README.md') + @($man.agents.canonicalPath | ForEach-Object { '.claude/agents/' + [IO.Path]::GetFileName($_) })
+    $trackedAdapters = @(git -C $repo ls-files '.claude/agents/**' | ForEach-Object { $_ -replace '\\','/' })
+    foreach ($rel in $trackedAdapters) { Check ($expectedAdapters -contains $rel) "Claude-Agentadapter manifestiert/fest freigegeben: $rel" }
+    foreach ($rel in $expectedAdapters) { Check ($trackedAdapters -contains $rel) "Erwarteter Claude-Agentadapter getrackt: $rel" }
 }
+$trackedClaudeSkills = @(git -C $repo ls-files '.claude/skills/**' | ForEach-Object { $_ -replace '\\','/' })
+foreach ($rel in $trackedClaudeSkills) { Check ($rel -eq '.claude/skills/README.md') "Claude-Skillpfad auf freigegebenes README begrenzt: $rel" }
 
 $zip = if ($NoArchive) { $null } else { Complete-RunZip $run }
 if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "FAIL: $_" }; Write-Host "AgentSkillReadiness: $($fail.Count) FEHLER"; if ($zip) { Write-Host "UPLOAD_ZIP=$zip" }; exit 1 }

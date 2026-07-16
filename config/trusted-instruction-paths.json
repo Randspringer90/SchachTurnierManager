@@ -4,10 +4,6 @@
   "allowedInstructionPaths": [
     "AGENTS.md",
     ".claude/CLAUDE.md",
-    ".claude/agents/**",
-    ".claude/skills/**",
-    "agents/**",
-    ".agents/skills/**",
     "config/agent-manifest.json",
     "config/skill-manifest.json",
     "config/agent-routing.json",
@@ -20,6 +16,18 @@
     "docs/architecture/AGENT_TRUST_BOUNDARIES.md",
     "docs/architecture/UNTRUSTED_CONTENT_PIPELINE.md",
     "docs/architecture/SECURE_KNOWLEDGE_PERSISTENCE.md"
+  ],
+  "manifestControlledRoots": [
+    "agents/",
+    ".agents/skills/",
+    ".claude/agents/",
+    ".claude/skills/"
+  ],
+  "manifestControlledFiles": [
+    "agents/README.md",
+    ".agents/skills/README.md",
+    ".claude/agents/README.md",
+    ".claude/skills/README.md"
   ],
   "dataOnlyPaths": [
     "docs/knowledge/**",

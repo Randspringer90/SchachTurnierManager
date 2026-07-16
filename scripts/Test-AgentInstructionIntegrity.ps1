@@ -18,9 +18,12 @@ $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((& git rev-parse --show-toplevel).Trim())
 Set-Location $repo
 $fail = New-Object System.Collections.Generic.List[string]
+$script:expectedInstructionFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$script:manifestRoots = @()
 function Bad([string]$file, [string]$rule) { $fail.Add("${file}: ${rule}") }
 function Test-IsAllowedInstructionPath([string]$rel) {
     $normalized = $rel -replace '\\','/'
+    if ($script:expectedInstructionFiles.Contains($normalized)) { return $true }
     foreach ($glob in $script:allowGlobs) {
         $rx = '^' + [regex]::Escape($glob).Replace('\*\*','.*').Replace('\*','[^/]*') + '$'
         if ($normalized -match $rx) { return $true }
@@ -47,6 +50,25 @@ if ($allow) {
         if ([string]::IsNullOrWhiteSpace($glob) -or [IO.Path]::IsPathRooted($glob) -or $glob -match '(^|[\\/])\.\.([\\/]|$)') {
             Bad 'config/trusted-instruction-paths.json' "unsicherer Allowlist-Pfad: $glob"
         }
+    }
+    $script:manifestRoots = @($allow.manifestControlledRoots | ForEach-Object { ([string]$_) -replace '\\','/' })
+    $requiredManifestRoots = @('agents/','.agents/skills/','.claude/agents/','.claude/skills/')
+    foreach ($required in $requiredManifestRoots) {
+        if ($script:manifestRoots -notcontains $required) { Bad 'config/trusted-instruction-paths.json' "manifestgesteuerter Root fehlt: $required" }
+    }
+    foreach ($root in $script:manifestRoots) {
+        if ([string]::IsNullOrWhiteSpace($root) -or [IO.Path]::IsPathRooted($root) -or $root -match '(^|/)\.\.(/|$)' -or -not $root.EndsWith('/')) {
+            Bad 'config/trusted-instruction-paths.json' "unsicherer manifestgesteuerter Root: $root"
+        }
+        elseif ($requiredManifestRoots -notcontains $root) { Bad 'config/trusted-instruction-paths.json' "unbekannter manifestgesteuerter Root: $root" }
+    }
+    $requiredControlledFiles = @('agents/README.md','.agents/skills/README.md','.claude/agents/README.md','.claude/skills/README.md')
+    $controlledFiles = @($allow.manifestControlledFiles | ForEach-Object { ([string]$_) -replace '\\','/' })
+    foreach ($required in $requiredControlledFiles) {
+        if ($controlledFiles -notcontains $required) { Bad 'config/trusted-instruction-paths.json' "manifestgesteuerte Datei fehlt: $required" }
+    }
+    foreach ($controlled in $controlledFiles) {
+        if ($requiredControlledFiles -notcontains $controlled) { Bad 'config/trusted-instruction-paths.json' "unbekannte manifestgesteuerte Datei: $controlled" }
     }
 }
 else { $script:allowGlobs = @() }
@@ -92,11 +114,38 @@ function Resolve-ManifestInstructionFile([string]$rel, [string]$context) {
 if ($allow) {
     try {
         $man = Get-Content -Raw (Join-Path $repo 'config/agent-manifest.json') | ConvertFrom-Json
+        foreach ($fixed in @($script:allowGlobs | Where-Object { $_ -notmatch '\*' }) + @($allow.manifestControlledFiles)) {
+            [void]$script:expectedInstructionFiles.Add((([string]$fixed) -replace '\\','/'))
+        }
+        foreach ($a in $man.agents) {
+            $normalized = ([string]$a.canonicalPath) -replace '\\','/'
+            if ($normalized -notmatch '^agents/(?<base>[a-z0-9-]+)\.md$') {
+                Bad "Agent $($a.name)" "kanonischer Pfad entspricht nicht agents/<name>.md: $normalized"
+                continue
+            }
+            [void]$script:expectedInstructionFiles.Add($normalized)
+            [void]$script:expectedInstructionFiles.Add(".claude/agents/$($Matches.base).md")
+        }
+        $sman = Get-Content -Raw (Join-Path $repo 'config/skill-manifest.json') | ConvertFrom-Json
+        foreach ($s in $sman.skills) {
+            $normalized = ([string]$s.canonicalPath) -replace '\\','/'
+            $validSkillPath = if ($s.format -eq 'canonical' -or $s.format -eq 'planned') {
+                $normalized -match '^\.agents/skills/[a-z0-9-]+/SKILL\.md$'
+            }
+            else {
+                $normalized -match '^\.agents/skills/(?:[a-z0-9-]+\.md|[a-z0-9-]+/SKILL\.md)$'
+            }
+            if (-not $validSkillPath) {
+                Bad "Skill $($s.name)" "kanonischer Pfad entspricht nicht dem Skillformat: $normalized"
+                continue
+            }
+            if ($s.format -ne 'planned') { [void]$script:expectedInstructionFiles.Add($normalized) }
+        }
+
         foreach ($a in $man.agents) {
             $p = Resolve-ManifestInstructionFile $a.canonicalPath "Agent $($a.name)"
             if (-not $p -or -not (Test-Path -LiteralPath $p -PathType Leaf)) { Bad $a.canonicalPath "Agent-Referenz fehlt/unsicher ($($a.name))" } else { Scan $a.canonicalPath }
         }
-        $sman = Get-Content -Raw (Join-Path $repo 'config/skill-manifest.json') | ConvertFrom-Json
         foreach ($s in $sman.skills) {
             if ($s.format -eq 'planned') { continue }
             $p = Resolve-ManifestInstructionFile $s.canonicalPath "Skill $($s.name)"
@@ -117,11 +166,21 @@ if ((Test-Path (Join-Path $repo 'config/agent-routing.json')) -and ((Get-Content
 # Symlinks/Reparse-Points sind fuer Instruktionsquellen unzulaessig, weil ihr Ziel den Repo-Root
 # verlassen oder nach dem Review ausgetauscht werden koennte.
 $tracked = @(git -C $repo ls-files 2>$null | Where-Object { $_ })
+$trackedNormalized = @($tracked | ForEach-Object { $_ -replace '\\','/' })
+foreach ($expected in $script:expectedInstructionFiles) {
+    if ($trackedNormalized -notcontains $expected) { Bad $expected 'erwartete Instruktionsquelle ist nicht getrackt' }
+}
 $instrCandidates = @($tracked | Where-Object {
-    (Test-IsAllowedInstructionPath $_) -or ([IO.Path]::GetFileName($_) -in @('AGENTS.md','CLAUDE.md','SKILL.md'))
+    $candidate = $_ -replace '\\','/'
+    $inManifestRoot = $false
+    foreach ($root in $script:manifestRoots) {
+        if ($candidate.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { $inManifestRoot = $true; break }
+    }
+    $inManifestRoot -or (Test-IsAllowedInstructionPath $candidate) -or ([IO.Path]::GetFileName($candidate) -in @('AGENTS.md','CLAUDE.md','SKILL.md'))
 } | Sort-Object -Unique)
 foreach ($rel in ($instrCandidates | Where-Object { $_ })) {
     $rel = ($rel.Trim() -replace '\\','/')
+    if (-not $script:expectedInstructionFiles.Contains($rel)) { Bad $rel 'unmanifestierte Instruktionsquelle'; continue }
     if (-not (Test-IsAllowedInstructionPath $rel)) { Bad $rel 'Instruktionsdatei liegt ausserhalb der Allowlist'; continue }
     if ([IO.Path]::IsPathRooted($rel) -or $rel -match '(^|/)\.\.(/|$)') { Bad $rel 'Pfadtraversierung/absoluter Pfad'; continue }
     $path = Join-Path $repo $rel

@@ -18,6 +18,7 @@ Describe 'Manifeste gueltig und konsistent' {
         $names = @($AgentMan.agents.name)
         ($names | Sort-Object -Unique).Count | Should -Be $names.Count
         foreach ($a in $AgentMan.agents) {
+            $a.canonicalPath | Should -Match '^agents/[a-z0-9-]+\.md$'
             $a.canonicalPath | Should -Not -Match '(^|[\\/])\.\.([\\/]|$)|^[A-Za-z]:'
             Test-Path (Join-Path $Repo $a.canonicalPath) | Should -BeTrue
         }
@@ -44,15 +45,16 @@ Describe 'Manifeste gueltig und konsistent' {
         }
     }
     It 'alle vorhandenen Skillquellen sind manifestiert' {
-        $manifestPaths = @($SkillMan.skills.canonicalPath | ForEach-Object { $_ -replace '\\','/' })
-        $files = @(
-            Get-ChildItem (Join-Path $Repo '.agents/skills') -File -Filter '*.md' | Where-Object Name -ne 'README.md'
-            Get-ChildItem (Join-Path $Repo '.agents/skills') -Recurse -File -Filter 'SKILL.md'
-        )
-        foreach ($file in ($files | Sort-Object FullName -Unique)) {
-            $rel = $file.FullName.Substring($Repo.Length + 1) -replace '\\','/'
-            $manifestPaths | Should -Contain $rel
-        }
+        $expected = @('.agents/skills/README.md') + @($SkillMan.skills | Where-Object format -ne 'planned' | ForEach-Object { $_.canonicalPath -replace '\\','/' })
+        $actual = @(git -C $Repo ls-files '.agents/skills/**' | ForEach-Object { $_ -replace '\\','/' })
+        $actual | Should -HaveCount $expected.Count
+        foreach ($rel in $actual) { $expected | Should -Contain $rel }
+    }
+    It 'blockiert synthetische unmanifestierte Quellen trotz kontrolliertem Root' {
+        $expected = @('agents/README.md') + @($AgentMan.agents.canonicalPath | ForEach-Object { $_ -replace '\\','/' })
+        $expected | Should -Not -Contain 'agents/unmanifested-instruction.md'
+        (Get-Content -Raw (Join-Path $Repo 'scripts/Test-AgentInstructionIntegrity.ps1')) |
+            Should -Match 'expectedInstructionFiles\.Contains\(\$rel\)'
     }
     It 'kanonische Skills haben discoverbares Frontmatter' {
         foreach ($s in ($SkillMan.skills | Where-Object format -eq 'canonical')) {
@@ -111,6 +113,28 @@ Describe 'Guard-Skripte parsen' {
             $errs = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Repo "scripts/$s"), [ref]$null, [ref]$errs)
             (@($errs).Count) | Should -Be 0
+        }
+    }
+}
+
+Describe 'Claude-Adapter-Synchronisation bleibt innerhalb der Trust-Grenze' {
+    It 'verwirft Traversal im kanonischen Manifestpfad vor jedem Schreibzugriff' {
+        $fixture = Join-Path ([IO.Path]::GetTempPath()) ("stm-adapter-security-" + [guid]::NewGuid().ToString('N'))
+        try {
+            New-Item -ItemType Directory -Force -Path (Join-Path $fixture 'config'), (Join-Path $fixture 'agents') | Out-Null
+            Set-Content -LiteralPath (Join-Path $fixture 'SchachTurnierManager.sln') -Value '' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $fixture 'agents/outside.md') -Value '# Test' -Encoding utf8
+            @{ agents = @(@{ name = 'Traversal'; canonicalPath = 'agents/../outside.md' }) } |
+                ConvertTo-Json -Depth 5 |
+                Set-Content -LiteralPath (Join-Path $fixture 'config/agent-manifest.json') -Encoding utf8
+
+            & pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo 'scripts/Sync-ClaudeAgentAdapters.ps1') -Apply -NoArchive -RepositoryRoot $fixture 2>&1 | Out-Null
+
+            $LASTEXITCODE | Should -Not -Be 0
+            Test-Path -LiteralPath (Join-Path $fixture '.claude/agents/outside.md') | Should -BeFalse
+        }
+        finally {
+            if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force }
         }
     }
 }
