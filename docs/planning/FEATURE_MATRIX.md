@@ -9,8 +9,8 @@ Stand: 2026-07-16 (development). Reifegrad je Fachbereich. Details/Aufgaben in
 | Schweizer System (Basis) | vorhanden, global-optimales Matching ≤ 20 | teilweise | STM-FACH-002, STM-FACH-003 |
 | FIDE-Dutch (vollständig) | Grundlage | offen | STM-FACH-002 |
 | Große Felder > 20 | Basis | offen | STM-FACH-003 |
-| Kampflose Partien / Freilos | teilweise | in Arbeit (Ready) | STM-FACH-001 |
-| Tie-Breaks (Buchholz/Cut/SB/Performance) | vorhanden | absichern | STM-TB-001 |
+| Kampflose Partien / Freilos | teilweise | in Review (PR #10; sichere Adoption geplant) | STM-FACH-001 |
+| Tie-Breaks (Buchholz/Cut/SB/Performance) | vorhanden | Golden-Adoption aus PR #9 in Review | STM-TB-001 |
 | Import/Export (Excel/TRF) | Formatter-Basis | offen | STM-IE-001, STM-IE-002 |
 | Swiss-Manager / Chess-Results | – | offen | STM-IE-002 |
 | Spielerdaten (DSB/DeWIS, FIDE-Suche) | teilweise (externer Lookup) | offen | STM-IE-003, STM-IE-004 |
