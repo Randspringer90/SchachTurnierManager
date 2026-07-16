@@ -1,0 +1,54 @@
+{
+  "$schema": "./nightly-execution.schema.json",
+  "schemaVersion": 1,
+  "description": "Projektlokale Ausfuehrungsebene fuer den zentralen Nightly-Lauf (STM-AI-006). Ergaenzt den plan-only Checkpoint-Unterbau aus STM-AI-004 (config/nightly-run.json bleibt unveraendert nicht selbstaktivierend). Die zentrale Registrierung erfolgt ausschliesslich ueber den vorhandenen zentralen Mechanismus der Workstation; dieses Repo erzeugt nie eine eigene Scheduled Task. Keine Fremdprojektpfade: zentrale Pfade/Tasknamen werden zur Laufzeit als Parameter uebergeben.",
+  "projectKey": "SchachTurnierManager",
+  "defaultBranch": "development",
+  "runRoot": "output/nightly-runs",
+  "requireCleanWorktree": true,
+  "requireBranch": "development",
+  "nightWindowLocal": { "start": "22:00", "end": "06:30" },
+  "maxRunMinutes": 300,
+  "ownerTaskQueue": [
+    "STM-AI-005",
+    "STM-AI-006",
+    "STM-SEC-001",
+    "STM-SEC-002",
+    "STM-SEC-003",
+    "STM-AI-001b",
+    "STM-INFRA-001",
+    "STM-INFRA-002",
+    "STM-UX-001",
+    "STM-UX-002",
+    "STM-UX-003",
+    "STM-REL-001",
+    "STM-REL-002",
+    "STM-REL-003"
+  ],
+  "auditOnlyTasks": ["STM-SEC-004"],
+  "neverProcess": {
+    "assigneeTargets": ["friend"],
+    "branches": ["main"],
+    "branchPrefixes": ["release/"],
+    "statuses": ["Blocked", "Done", "In Review"],
+    "historyRewrite": false,
+    "secretsAccess": false,
+    "contributorBranchesAndPrs": true
+  },
+  "forbiddenActions": [
+    "scheduler-mutation",
+    "second-scheduled-task",
+    "main-merge",
+    "release",
+    "history-rewrite",
+    "secret-access",
+    "force-push",
+    "restart-shutdown-logoff",
+    "windows-update-changes"
+  ],
+  "executionGates": [
+    "scripts/Test-NightlyExecutionReadiness.ps1",
+    "scripts/Test-NightlyReadiness.ps1",
+    "scripts/Test-RoutedExecutionReadiness.ps1"
+  ]
+}

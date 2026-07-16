@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nightly-execution.schema.json",
+  "title": "STM Nightly-Execution-Policy",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "projectKey",
+    "defaultBranch",
+    "runRoot",
+    "requireCleanWorktree",
+    "requireBranch",
+    "nightWindowLocal",
+    "maxRunMinutes",
+    "ownerTaskQueue",
+    "auditOnlyTasks",
+    "neverProcess",
+    "forbiddenActions",
+    "executionGates"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "description": { "type": "string" },
+    "projectKey": { "type": "string", "minLength": 1 },
+    "defaultBranch": { "type": "string", "minLength": 1 },
+    "runRoot": { "type": "string", "pattern": "^output/" },
+    "requireCleanWorktree": { "type": "boolean", "const": true },
+    "requireBranch": { "type": "string" },
+    "nightWindowLocal": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+        "end": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" }
+      }
+    },
+    "maxRunMinutes": { "type": "integer", "minimum": 10, "maximum": 480 },
+    "ownerTaskQueue": { "type": "array", "items": { "type": "string", "pattern": "^STM-" }, "minItems": 1 },
+    "auditOnlyTasks": { "type": "array", "items": { "type": "string", "pattern": "^STM-" } },
+    "neverProcess": {
+      "type": "object",
+      "required": ["assigneeTargets", "branches", "branchPrefixes", "statuses", "historyRewrite", "secretsAccess", "contributorBranchesAndPrs"],
+      "properties": {
+        "assigneeTargets": { "type": "array", "items": { "type": "string" } },
+        "branches": { "type": "array", "items": { "type": "string" } },
+        "branchPrefixes": { "type": "array", "items": { "type": "string" } },
+        "statuses": { "type": "array", "items": { "type": "string" } },
+        "historyRewrite": { "type": "boolean", "const": false },
+        "secretsAccess": { "type": "boolean", "const": false },
+        "contributorBranchesAndPrs": { "type": "boolean", "const": true }
+      }
+    },
+    "forbiddenActions": { "type": "array", "items": { "type": "string" }, "minItems": 5 },
+    "executionGates": { "type": "array", "items": { "type": "string", "pattern": "^scripts/" }, "minItems": 1 }
+  }
+}
