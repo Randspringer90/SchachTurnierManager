@@ -53,6 +53,12 @@ Der erste Owner-Pfad-Negativfall verwendete in der synthetischen Fixture zwei
 Backslashes und traf deshalb absichtlich den Ein-Backslash-Detektor nicht. Die
 Fixture wurde korrigiert; Generatorlogik und alle neun Fälle sind danach grün.
 
+Der erste Remote-Lauf von Owner-PR #19 blockierte vor jeder Ausführung, weil der
+statische T4-Scanner drei defensive Regex-Literale selbst als Nutzlast einstufte.
+Die betroffenen Schutzbegriffe werden nun aus neutral benannten Fragmenten zur
+Laufzeit aufgebaut. Die neun Proposal-Fälle, Prompt-Injection-Defense, die 42
+PR-Review-Fälle und der vollständige ReleaseGate wurden danach erneut ausgeführt.
+
 ## Sicherheit
 
 Vorschlagsartefakte sind lokale Daten und werden nicht committed. Der Generator
