@@ -51,7 +51,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
-| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | **Ready** | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | v1.0.0 |
+| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | In Progress | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (Branch `feature/STM-IE-001-trf-export`) | v1.0.0 |
 | STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Blocked | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
 | STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | v1.0.0 |
@@ -105,7 +105,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 ### STM-IE-001 · Excel-/TRF-Export (FIDE-Turnierbericht)
 - **Beschreibung:** Read-only-Export der Turnierdaten ins TRF(x)-Format (FIDE) und/oder Excel,
   ohne Änderung der Turnierlogik.
-- **Priorität:** P1 · **Status:** Ready · **Kategorie:** import-export · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P1 · **Status:** In Progress · **Kategorie:** import-export · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) · **Branch:** `feature/STM-IE-001-trf-export`
 - **Abhängigkeiten:** `TournamentExportFormatter` (bereits vorhanden).
 - **Akzeptanzkriterien:**

@@ -778,6 +778,12 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         return _exports.ExportPairingsCsv(RequireTournament(tournamentId), roundNumber);
     }
 
+    public ExportDocument ExportTrf16(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        return _exports.ExportTrf16(tournament, _standings.Calculate(tournament));
+    }
+
     public ExportDocument ExportPrintableTournamentHtml(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);

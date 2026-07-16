@@ -1,5 +1,13 @@
 ## Unreleased (development)
 
+- STM-IE-001: Read-only-Export ins FIDE-TRF16-Format (`ExportTrf16` in
+  `TournamentExportFormatter`, Endpoint `standings/export.trf16`, WebApp-Button
+  "TRF16 (FIDE-Turnierbericht)" im Export-Center). Spaltenpositionen exakt nach
+  offizieller FIDE-Spezifikation (C.04 Annex 2), Golden-Test mit 6 Spielern/3
+  Runden inkl. Bye, Forfeit, DoubleForfeit und nicht gepaartem Spieler, plus
+  Determinismus-Test. Bewusste Scope-Grenzen (zurückgezogene Spieler, fehlende
+  Turnier-Metadaten wie Ort/Föderation/Schiedsrichter, kein Vor-/Nachname-Split)
+  in `docs/IMPORT_EXPORT_ROADMAP.md` dokumentiert statt erfunden.
 - Der fortgesetzte Owner-Lauf hat Marcels PRs #9/#10 über die sicheren
   Integrations-PRs #13/#14 übernommen und anschließend STM-AI-003, STM-AI-002 und
   STM-AI-004 über PRs #17/#19/#21 abgeschlossen. Alle Originalbeiträge wurden
