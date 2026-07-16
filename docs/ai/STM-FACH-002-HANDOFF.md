@@ -3,8 +3,9 @@
 **Stand:** 2026-07-16 · **Branch:** `feature/STM-FACH-002-fide-dutch` (6 Commits, **nur lokal**,
 bewusst noch nicht gepusht) · **Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
 
-**Fortschritt: ~50 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung ist die
-Profil-Schicht fertig (grün); das Paarungsverfahren selbst (Art. 3/4, Kriterien [C5]–[C21]) fehlt.
+**Fortschritt: ~55 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung sind
+Profil-Schicht und Farbzuteilung fertig (grün); es fehlt das **Paarungsverfahren** selbst —
+Art. 3/4 und die Kriterien [C5]–[C21].
 
 ---
 
@@ -31,8 +32,9 @@ Profil-Schicht fertig (grün); das Paarungsverfahren selbst (Art. 3/4, Kriterien
 | Golden-Turnier C (8 Spieler, kampflos) | 5/5 Runden hergeleitet **und** gegengeprüft |
 | Property-Tests der absoluten Kriterien | 9 Feldgrößen × 5 Verläufe × 6 Zusagen |
 | **Profil-Schicht (grün)** | `FideDutchPlayerProfile`, `FideDutchProfileBuilder` + 10 Tests |
+| **Farbzuteilung Art. 5 (grün)** | `FideDutchColourAllocator` + 26 Tests |
 
-**Testlage:** 220 bestehende Tests grün, 10 Profil-Tests grün, 286 Golden-/Property-Tests
+**Testlage:** 220 bestehende Tests grün, 36 neue Bausteintests grün, 286 Golden-/Property-Tests
 **absichtlich rot** (`FideDutchPairingStrategy` ist noch ein Stub, der `NotImplementedException` wirft).
 
 ### Die Profil-Schicht ist fertig und verifiziert
@@ -47,11 +49,19 @@ Anschauung. `FideDutchProfileBuilderTests` konstruiert die Rundenverläufe direk
 Paarungsstrategie **nicht** — die Schicht ist unabhängig prüfbar. Wer weiterbaut, kann sich auf diese
 Zahlen verlassen.
 
+### Die Farbzuteilung ist fertig und verifiziert
+
+`FideDutchColourAllocator.Allocate(a, b, initialColour)` setzt Art. 5.2 vollständig um und liefert
+neben den Farben auch Fundstelle und Klartextbegründung für den Audit-Trail. Sie ist total (Stufe
+5.2.5 greift immer) und unabhängig von der Aufrufreihenfolge. **Art. 5 ist damit erledigt** – wer
+weiterbaut, muss sich um Farben nicht mehr kümmern, nur noch um die Frage, WER gegen WEN spielt.
+
 ## Was fehlt
 
 1. **Das Paarungsverfahren** — Art. 3 (Brackets, S1/S2, Limbo, Kandidat, Remainder), Art. 4
-   (BSN, Transpositionen, Exchanges, MDP-Mengen), Art. 5 (Farbzuteilung), Kriterien [C5]–[C21].
-   Das ist der große Rest, ca. 40 % der Gesamtaufgabe. Die Profile stehen als Eingabe bereit.
+   (BSN, Transpositionen, Exchanges, MDP-Mengen), Kriterien [C5]–[C21].
+   Das ist der große Rest, ca. 35–40 % der Gesamtaufgabe. Profile und Farbzuteilung stehen als
+   Bausteine bereit; `FideDutchPairingStrategy.GenerateNextRound` muss sie nur noch verdrahten.
 2. Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung (siehe unten).
 3. `CHANGELOG.md`, `docs/AUDIT_JOURNAL.md`, Push, PR nach **`development`** (nicht `main`!).
 4. Issue-Kommentar zu den veralteten Artikelnummern; Folge-Ticket Setzliste.
