@@ -1,5 +1,11 @@
 ## Unreleased (development)
 
+- STM-TB-001: Marcels zwei handgerechnete Tie-Break-Szenarien aus PR #9 auf dem
+  aktuellen `development` im bestehenden Golden-Testprojekt sicher adaptiert. Die Tests
+  decken Buchholz, Cut-1, Cut-2, Median-Buchholz, Sonneborn-Berger, die konfigurierte
+  Tie-Break-Reihenfolge, exakte Rangnummern und den bisherigen Freilos-Default ab; die
+  produktive Wertungslogik bleibt unveraendert.
+
 - STM-AI-001 (Agenten-/Skill-/Security-Grundlage): providerneutrale, kanonische Agentenstruktur (`agents/**`, 14 Rollen), Manifeste (`config/agent-manifest.json`, `config/skill-manifest.json`, `config/agent-routing.json` mit Qualitätsklassen statt Modellnamen), Trust-/Toolrechte-Policies (`config/agent-trust-policy.json`, `config/tool-permission-profiles.json`, `config/trusted-instruction-paths.json`), 6 neue kanonische Sicherheits-/KI-Skills (SKILL.md), dünne Claude-Adapter (`.claude/agents/**`), projektlokales Wissensmanagement (`docs/knowledge/**`) und Prompt-Injection-/Trust-Boundary-Doku. Neue Guards `Test-AgentInstructionIntegrity`, `Test-AgentSkillReadiness`, `Test-PromptInjectionDefense` (synthetische Fixtures), `Test-KnowledgePersistenceSafety`, `Sync-ClaudeAgentAdapters` (Check/Apply/WhatIf) + Pester-Contract-Tests; Instruction-Integrity als CI-Gate. Grundlage für STM-AI-002 (Wissensmanagement) und STM-SEC-001 (Prompt-Injection). Keine Schachlogik/Secrets/PII berührt.
 
 - STM-INT-001 (v0.41-Reconcile): kanonische lokale KI-Hilfe ist die Frontend-Wissensbasis (offline, providerlos); das tote, nirgends referenzierte Backend-Modul `Application.Ai` samt isoliertem Test wurde entfernt (kein Endpunkt/keine DI betroffen). Export (`TournamentExportFormatter`) und Health-/Dashboard bleiben unverändert kanonisch. Neue Tests sichern die kanonische Wissensbasis (gültig, providerlos, ohne Secrets/Owner-Pfade). Analyse: `docs/architecture/V041_RECONCILIATION.md`.
