@@ -48,6 +48,20 @@ public sealed class OperationalGuardTests
     }
 
     [Fact]
+    public void RunLogBundle_BaseDirectoryFallsBackToTempWhenNoDDriveExists()
+    {
+        // STM-REL-001: Die D:\Temp-Konvention gilt nur auf Rechnern mit Datenpartition.
+        // Auf Maschinen ohne D: muss der Default auf %TEMP% ausweichen, statt auf einen
+        // nicht existierenden Pfad zu zeigen. Der Default wird hier real ausgewertet.
+        var runBundle = File.ReadAllText(FindRepositoryFile("scripts", "New-RunLogBundle.ps1"));
+
+        Assert.Contains("Test-Path -LiteralPath 'D:\\'", runBundle);
+        Assert.Contains("Join-Path $env:TEMP 'SchachTurnierManager'", runBundle);
+        // Der Default darf kein hart verdrahtetes D:\Temp mehr sein.
+        Assert.DoesNotContain("[string]$BaseDirectory = 'D:\\Temp',", runBundle);
+    }
+
+    [Fact]
     public void ReleaseCandidateReadiness_BundlesBuildInstallAndSafetyChecks()
     {
         var releaseScript = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseCandidateReadiness.ps1"));
