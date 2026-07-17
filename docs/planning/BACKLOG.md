@@ -47,9 +47,10 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
-| STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | In Review | infrastructure | owner | PR [#37](https://github.com/Randspringer90/SchachTurnierManager/pull/37) | v1.0.0 |
+| STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | In Review | infrastructure | owner | [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) (PR [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39)) | v1.0.0 |
 | STM-INFRA-005 | Hart verdrahtetes `D:\Temp` in 8 Skripten auf `%TEMP%`-Fallback umstellen | P3 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race) | P2 | Backlog | infrastructure | owner | – | v1.0.0 |
+| STM-INFRA-007 | Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR | P3 | Backlog | infrastructure | owner | – | v1.0.0 |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
@@ -114,16 +115,53 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   Reproduziert am 2026-07-17: gleicher Aufruf, `-RedirectStandardInput` auf eine
   leere Datei → Exit 0 nach 7 s; ohne Redirect → Timeout nach 180 s.
   `Test-PullRequestReviewReadiness.ps1` zeigt dasselbe Verhalten.
-- **Priorität:** P2 · **Status:** Backlog · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **Priorität:** P2 · **Status:** In Review · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **GitHub-Issue:** [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) · **Branch:** `integration/pr-38-safe-adoption`
 - **Abhängigkeiten:** keine.
 - **Akzeptanzkriterien:**
-  - Eigene Variablen heißen nicht mehr `$input` (z. B. `$reviewInput`).
+  - Eigene Variablen heißen nicht mehr wie automatische PowerShell-Variablen.
   - Review läuft mit offenem **und** geschlossenem stdin ohne Hänger.
   - StaticOnly- und Offline-Bundle-Pfad unverändert funktionsfähig.
   - Keine Abschwächung von Security-Policy oder Checks.
-- **Tests:** Regressionstest mit Timeout für beide stdin-Zustände.
+- **Tests:** `PowerShellScripts_DoNotAssignToAutomaticVariables` deckt die ganze
+  Fehlerklasse ab; Nachweis mit offenem stdin (17 s statt Hänger) und 42/42
+  synthetischen Risikofällen.
+- **Zusatzfund:** Der Test hat zwei weitere Fundstellen derselben Klasse in
+  `Import-TournamentPreset.ps1` aufgedeckt (`$matches`, `$args`) – mitbehoben.
 - **Definition of Done:** DoD + Gates grün, eigener Branch und Owner-PR (nicht mit
   Contributor-Adoptionen vermischen).
+- **Branchname:** Die CI verlangt bei Review-Entscheidung ≠ `SAFE_FOR_ISOLATED_BUILD`
+  zwingend `integration/pr-<nr>-safe-adoption` (`ci.yml`, `Assert-OwnerExecutionApproval`).
+  Für Owner-Pakete ohne Contributor-PR wird – wie bei #29/#32 etabliert – die
+  Issue-Nummer verwendet. Siehe STM-INFRA-007.
+- **PR:** [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39) · **Ziel-Release:** v1.0.0
+
+### STM-INFRA-007 · Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR
+- **Beschreibung:** `ci.yml` verlangt über `Assert-OwnerExecutionApproval` bei jeder
+  Review-Entscheidung ≠ `SAFE_FOR_ISOLATED_BUILD` einen Branch nach dem Muster
+  `integration/pr-<nr>-safe-adoption`. Dieses Muster bedeutet semantisch „sichere
+  Adoption des Contributor-PRs Nr. N". Für **Owner**-Pakete, die sicherheitskritische
+  Pfade anfassen, aber keinen Contributor-PR adaptieren (z. B. STM-INFRA-004), gibt es
+  damit keinen semantisch korrekten Branchnamen. `branch-policy` erlaubt zwar
+  `feature|fix|security|docs|refactor/*` nach `development`, `ci-static-prerequisite`
+  lehnt diese Namen dann aber ab.
+- **Belege:** PR #37 (`infra/…`) scheiterte an `branch-policy`; auch policy-konforme
+  Namen wie `fix/…` scheitern an `ci-static-prerequisite`, sobald der Review
+  `OWNER_REVIEW_REQUIRED` liefert. Die bisherige Praxis (#29, #32, #39) umgeht das,
+  indem die **Issue**-Nummer in das Adoptions-Muster gesetzt wird.
+- **Priorität:** P3 · **Status:** Backlog · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **Warum das zählt:** Ein Branchname, der „Adoption von PR N" behauptet, obwohl es
+  keinen PR N gibt, macht die Herkunft von Änderungen an sicherheitskritischen Pfaden
+  unklar – genau dort, wo Nachvollziehbarkeit am wichtigsten ist.
+- **Abhängigkeiten:** keine.
+- **Akzeptanzkriterien:**
+  - Ein sanktionierter Branchname für Owner-Pakete existiert (z. B.
+    `owner/<backlog-id>-<slug>`) und ist in `branch-policy` **und**
+    `Assert-OwnerExecutionApproval` konsistent zugelassen.
+  - Die SHA-gebundene Owner-Freigabe bleibt für diesen Pfad zwingend.
+  - Keine Aufweichung: Contributor-Branches erhalten den Pfad nicht.
+  - `CONTRIBUTING.md`/`BRANCHING_STRATEGY.md` dokumentieren die Regel.
+- **Definition of Done:** DoD + Gates grün.
 - **PR:** – · **Ziel-Release:** v1.0.0
 
 ### STM-INFRA-006 · `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race)
