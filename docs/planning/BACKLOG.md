@@ -47,7 +47,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
-| STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | In Review | infrastructure | owner | [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) (PR [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39)) | v1.0.0 |
+| STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | Done | infrastructure | owner | [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) (PR [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39), Merge `4681e01`) | v1.0.0 |
 | STM-INFRA-005 | Hart verdrahtetes `D:\Temp` in 8 Skripten auf `%TEMP%`-Fallback umstellen | P3 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race) | P2 | Backlog | infrastructure | owner | – | v1.0.0 |
 | STM-INFRA-007 | Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR | P3 | Backlog | infrastructure | owner | – | v1.0.0 |
@@ -115,7 +115,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   Reproduziert am 2026-07-17: gleicher Aufruf, `-RedirectStandardInput` auf eine
   leere Datei → Exit 0 nach 7 s; ohne Redirect → Timeout nach 180 s.
   `Test-PullRequestReviewReadiness.ps1` zeigt dasselbe Verhalten.
-- **Priorität:** P2 · **Status:** In Review · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **Priorität:** P2 · **Status:** Done · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
 - **GitHub-Issue:** [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) · **Branch:** `integration/pr-38-safe-adoption`
 - **Abhängigkeiten:** keine.
 - **Akzeptanzkriterien:**
@@ -134,7 +134,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   zwingend `integration/pr-<nr>-safe-adoption` (`ci.yml`, `Assert-OwnerExecutionApproval`).
   Für Owner-Pakete ohne Contributor-PR wird – wie bei #29/#32 etabliert – die
   Issue-Nummer verwendet. Siehe STM-INFRA-007.
-- **PR:** [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39) · **Ziel-Release:** v1.0.0
+- **PR:** [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39), Squash-Merge `4681e01` · **Ziel-Release:** v1.0.0
 
 ### STM-INFRA-007 · Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR
 - **Beschreibung:** `ci.yml` verlangt über `Assert-OwnerExecutionApproval` bei jeder
