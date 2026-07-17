@@ -3,9 +3,9 @@
 **Stand:** 2026-07-16 · **Branch:** `feature/STM-FACH-002-fide-dutch` (6 Commits, **nur lokal**,
 bewusst noch nicht gepusht) · **Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
 
-**Fortschritt: ~55 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung sind
-Profil-Schicht und Farbzuteilung fertig (grün); es fehlt das **Paarungsverfahren** selbst —
-Art. 3/4 und die Kriterien [C5]–[C21].
+**Fortschritt: ~60 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung sind
+Profile, Farbzuteilung (Art. 5) und die absoluten Kriterien ([C1]–[C3], Art. 1.8) fertig und grün.
+Es fehlt das **Paarungsverfahren** selbst — Art. 3/4 und die Qualitätskriterien [C5]–[C21].
 
 ---
 
@@ -33,8 +33,9 @@ Art. 3/4 und die Kriterien [C5]–[C21].
 | Property-Tests der absoluten Kriterien | 9 Feldgrößen × 5 Verläufe × 6 Zusagen |
 | **Profil-Schicht (grün)** | `FideDutchPlayerProfile`, `FideDutchProfileBuilder` + 10 Tests |
 | **Farbzuteilung Art. 5 (grün)** | `FideDutchColourAllocator` + 26 Tests |
+| **Absolute Kriterien (grün)** | `FideDutchAbsoluteCriteria` ([C1]–[C3], Art. 1.8) + 16 Tests |
 
-**Testlage:** 220 bestehende Tests grün, 36 neue Bausteintests grün, 286 Golden-/Property-Tests
+**Testlage:** 220 bestehende Tests grün, 52 neue Bausteintests grün, 286 Golden-/Property-Tests
 **absichtlich rot** (`FideDutchPairingStrategy` ist noch ein Stub, der `NotImplementedException` wirft).
 
 ### Die Profil-Schicht ist fertig und verifiziert
@@ -56,12 +57,27 @@ neben den Farben auch Fundstelle und Klartextbegründung für den Audit-Trail. S
 5.2.5 greift immer) und unabhängig von der Aufrufreihenfolge. **Art. 5 ist damit erledigt** – wer
 weiterbaut, muss sich um Farben nicht mehr kümmern, nur noch um die Frage, WER gegen WEN spielt.
 
+### Die absoluten Kriterien sind fertig und verifiziert
+
+`FideDutchAbsoluteCriteria.ForRound(tournament, profiles)` legt einmal fest, ob es Topscorer gibt
+(nur in der Schlussrunde!), und beantwortet danach `MayBePaired`, `MayReceiveBye` und
+`ExplainRejection`. **[C1]–[C3] und Art. 1.8 sind damit erledigt.**
+
 ## Was fehlt
 
 1. **Das Paarungsverfahren** — Art. 3 (Brackets, S1/S2, Limbo, Kandidat, Remainder), Art. 4
-   (BSN, Transpositionen, Exchanges, MDP-Mengen), Kriterien [C5]–[C21].
-   Das ist der große Rest, ca. 35–40 % der Gesamtaufgabe. Profile und Farbzuteilung stehen als
-   Bausteine bereit; `FideDutchPairingStrategy.GenerateNextRound` muss sie nur noch verdrahten.
+   (BSN, Transpositionen, Exchanges, MDP-Mengen), Qualitätskriterien [C5]–[C21].
+   Das ist der große Rest, ca. 30–35 % der Gesamtaufgabe.
+
+   **Die Bausteine stehen bereit** und sind einzeln gegen die Referenz-Engine verifiziert:
+   ```
+   var profiles = new FideDutchProfileBuilder().Build(tournament);          // Art. 1.2/1.4/1.6/1.7
+   var criteria = FideDutchAbsoluteCriteria.ForRound(tournament, profiles); // [C1]-[C3], Art. 1.8
+   var colours  = new FideDutchColourAllocator();                           // Art. 5
+   ```
+   Was `FideDutchPairingStrategy.GenerateNextRound` noch selbst leisten muss: Brackets bilden
+   (Art. 1.3/1.9.2), Kandidaten in der Reihenfolge aus Art. 3.6/3.7 und 4.2–4.5 erzeugen, nach
+   [C5]–[C21] bewerten (Art. 3.8) und den Audit-Trail schreiben.
 2. Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung (siehe unten).
 3. `CHANGELOG.md`, `docs/AUDIT_JOURNAL.md`, Push, PR nach **`development`** (nicht `main`!).
 4. Issue-Kommentar zu den veralteten Artikelnummern; Folge-Ticket Setzliste.
