@@ -1,5 +1,17 @@
 ## Unreleased (development)
 
+- STM-DOC-001: Contributor-Onboarding auf einem frischen Klon verifiziert und
+  korrigiert. Die GitHub CLI (`gh`) ist jetzt als **optional** ausgewiesen: Der
+  Pull-Request-Weg über die GitHub-Weboberfläche ist vollständig dokumentiert,
+  inklusive des Hinweises, dass GitHub dort oft `main` statt `development` als
+  Base vorschlägt. Die Node-Angabe nennt weiterhin 22 LTS als Empfehlung, verweist
+  für die verbindliche Mindestversion aber auf die kanonische Quelle (Vite
+  `engines`, aktuell `^20.19.0 || >=22.12.0`) und schließt neuere Versionen nicht
+  mehr aus – mit Node 24 verifiziert. Ursprung: Marcel-Mente (PR #31), sicher an
+  den aktuellen development-Stand adaptiert. Verifiziert über frischen Clone
+  (`git clone` → `git switch development` → `dotnet build` → `dotnet test`,
+  235/235 grün), Markdown-Linkcheck, Skriptreferenzprüfung und
+  `Test-CollaborationReadiness.ps1` (OK).
 - STM-IE-001: Read-only-Export ins FIDE-TRF16-Format (`ExportTrf16` in
   `TournamentExportFormatter`, Endpoint `GET /api/tournaments/{id}/standings/export.trf16`,
   WebApp-Button "TRF16 (FIDE-Turnierbericht)" im Export-Center). Spaltenpositionen

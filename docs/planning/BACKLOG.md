@@ -49,6 +49,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
 | STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | Backlog | infrastructure | owner | – | v1.0.0 |
 | STM-INFRA-005 | Hart verdrahtetes `D:\Temp` in 8 Skripten auf `%TEMP%`-Fallback umstellen | P3 | Backlog | infrastructure | either | – | v1.0.0 |
+| STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race) | P2 | Backlog | infrastructure | owner | – | v1.0.0 |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
@@ -65,7 +66,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | In Review | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), Static-Review: ADAPTATION_REQUIRED) | v1.0.0 |
+| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | Done | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (Original-PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), sichere Adoption [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36)) | v1.0.0 |
 
 ---
 
@@ -125,6 +126,29 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   Contributor-Adoptionen vermischen).
 - **PR:** – · **Ziel-Release:** v1.0.0
 
+### STM-INFRA-006 · `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race)
+- **Beschreibung:** Das Gate schlägt nichtdeterministisch fehl. Symptom ist immer
+  `Cannot find path '<runRoot>/checkpoint.json'`, aber in **wechselnden** Szenarien
+  (`run-budget`, `run-ratelimit`, `run-childerror`). Der Checkpoint wird von einem
+  Kind-`pwsh` geschrieben und vom Elternprozess unmittelbar danach gelesen – der
+  Fehler ist damit sehr wahrscheinlich ein Timing-/Flush-Race, keine Logikänderung.
+- **Belege (2026-07-17, unveränderter Skriptstand):** drei aufeinanderfolgende lokale
+  Läufe ergaben Exit 1 / 0 / 1 mit jeweils anderem betroffenen Szenario. In CI schlug
+  derselbe Job auf einem reinen Doku-PR (#36, 4 Markdown-Dateien, 0 Skripte) fehl,
+  während er Minuten zuvor auf PR #35 grün war.
+- **Priorität:** P2 · **Status:** Backlog · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **Warum P2:** Ein flakiges Pflicht-Gate erzeugt Fehlalarme und verleitet dazu, CI-Rot
+  reflexhaft wegzudrücken. Das untergräbt die Aussagekraft aller anderen Gates.
+- **Abhängigkeiten:** keine.
+- **Akzeptanzkriterien:**
+  - Ursache benannt (Schreib-/Lese-Race auf `checkpoint.json` bestätigt oder widerlegt).
+  - Deterministisches Warten auf den geschriebenen Checkpoint statt impliziter Annahme.
+  - 20 aufeinanderfolgende Läufe ohne Fehlschlag.
+  - Keine Abschwächung der geprüften Zusicherungen, kein Aufweichen der Assertions.
+- **Tests:** Wiederholungslauf als Nachweis; kein `-SkipFlaky`-Schalter.
+- **Definition of Done:** DoD + Gates grün, eigener Branch und Owner-PR.
+- **PR:** – · **Ziel-Release:** v1.0.0
+
 ### STM-INFRA-005 · Hart verdrahtetes `D:\Temp` auf `%TEMP%`-Fallback umstellen
 - **Beschreibung:** Folgeaufgabe aus STM-REL-001. `New-RunLogBundle.ps1` ist bereits
   gefixt; dasselbe Muster steckt noch in 8 Skripten und lässt sie auf Maschinen ohne
@@ -169,16 +193,22 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 ### STM-DOC-001 · Contributor-Doku verifizieren & abrunden
 - **Beschreibung:** Onboarding-/Contributing-Doku praktisch nachvollziehen und Lücken/Fehler
   korrigieren (Befehle, Versionsangaben, Links).
-- **Priorität:** P3 · **Status:** Ready · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P3 · **Status:** Done · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) · **Branch:** `docs/STM-DOC-001-contributor-review`
 - **Abhängigkeiten:** keine.
-- **Akzeptanzkriterien:** Alle in `CONTRIBUTING.md`/Onboarding genannten Befehle funktionieren
-  auf einem frischen Klon; tote Links behoben.
-- **Tests:** Markdown-Linkcheck / manuelle Verifikation dokumentiert im PR.
-- **Security:** keine.
-- **Doku-Bedarf:** die betroffenen Doku-Dateien.
-- **Definition of Done:** DoD + Gates grün.
-- **PR:** – · **Ziel-Release:** v1.0.0
+- **Akzeptanzkriterien:** erfüllt – alle in `CONTRIBUTING.md`/Onboarding genannten Befehle
+  wurden auf einem frischen Klon real ausgeführt (`git clone` → `git switch development` →
+  `dotnet build` → `dotnet test`, 235/235 grün); Links geprüft.
+- **Tests:** Markdown-Linkcheck (8 relative Links OK), Skriptreferenzprüfung (4 Referenzen OK),
+  frischer Clone, `Test-CollaborationReadiness.ps1` = OK.
+- **Security:** keine Abschwächung von Sicherheitsregeln; keine lokalen Pfade, keine Secrets.
+- **Doku-Bedarf:** die betroffenen Doku-Dateien – erledigt.
+- **Ergebnis:** `gh` ist jetzt korrekt als optional dokumentiert (Web-UI-PR-Pfad inkl.
+  Base-Branch-Fallstrick); Versionsangaben verweisen auf die kanonischen Quellen
+  (`global.json`, Vite `engines`) und schließen neuere Versionen nicht mehr aus.
+- **PR:** Original [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31) ·
+  **Sichere Adoption:** [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36) ·
+  **Ziel-Release:** v1.0.0
 
 ### STM-FACH-002 · Vollständigeres FIDE-Dutch-Schweizer-System
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
