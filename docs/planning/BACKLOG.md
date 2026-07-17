@@ -53,8 +53,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
-| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | In Review | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), Static-Review: OWNER_REVIEW_REQUIRED) | v1.0.0 |
-| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Blocked | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | v1.0.0 |
+| STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | Done | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (Original-PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), sichere Adoption [#35](https://github.com/Randspringer90/SchachTurnierManager/pull/35), Merge `6a2d021`) | v1.0.0 |
+| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | **Ready** | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) (entsperrt: STM-IE-001 ist Done) | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
 | STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | v1.0.0 |
 | STM-UX-001 | i18n vervollständigen | P2 | Backlog | ui | either | – | v1.0.0 |
@@ -146,17 +146,25 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 ### STM-IE-001 · Excel-/TRF-Export (FIDE-Turnierbericht)
 - **Beschreibung:** Read-only-Export der Turnierdaten ins TRF(x)-Format (FIDE) und/oder Excel,
   ohne Änderung der Turnierlogik.
-- **Priorität:** P1 · **Status:** Ready · **Kategorie:** import-export · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P1 · **Status:** Done · **Kategorie:** import-export · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) · **Branch:** `feature/STM-IE-001-trf-export`
 - **Abhängigkeiten:** `TournamentExportFormatter` (bereits vorhanden).
-- **Akzeptanzkriterien:**
-  - Gültige TRF(x)-Datei für ein abgeschlossenes Beispielturnier.
-  - Deterministische Ausgabe, keine PII über die Turnierteilnahme hinaus.
-- **Tests:** Formatter-Unit-Tests inkl. Golden-Datei.
-- **Security:** Ausgabe darf keine lokalen Pfade/Secrets enthalten.
-- **Doku-Bedarf:** `docs/IMPORT_EXPORT_ROADMAP.md`, `CHANGELOG.md`.
+- **Akzeptanzkriterien:** alle erfüllt.
+  - Gültige TRF16-Datei für ein abgeschlossenes Beispielturnier (Spaltenpositionen nach C.04 Annex 2).
+  - Deterministische Ausgabe, keine PII über die Turnierteilnahme hinaus (Geburtsdatum bleibt leer).
+- **Tests:** 13 Golden-Tests (Feldpositionen, Bye, Forfeits, offene Runde, Rückzug,
+  Teilnehmerzahl, Unicode, Steuerzeichen, Dateiname, leeres Turnier, 12 Runden,
+  Byte-Determinismus) plus Service- und Endpoint-Tests.
+- **Security:** Ausgabe ohne lokale Pfade/Secrets; Dateiname sanitisiert; Steuerzeichen entfernt;
+  FIDE-ID nur bei plausibler numerischer Form.
+- **Doku-Bedarf:** `docs/IMPORT_EXPORT_ROADMAP.md`, `CHANGELOG.md` – erledigt.
 - **Definition of Done:** DoD + Gates grün.
-- **PR:** – · **Ziel-Release:** v1.0.0
+- **Verbleibende Scope-Grenzen (bewusst, dokumentiert):** Turnier-Metadaten (Ort 022,
+  Föderation 032, Datum 042/052, Schiedsrichter 102) fehlen im Domainmodell und werden
+  ausgelassen statt erfunden; kein automatischer Vor-/Nachname-Split.
+- **PR:** Original [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30) ·
+  **Sichere Adoption:** [#35](https://github.com/Randspringer90/SchachTurnierManager/pull/35),
+  Squash-Merge `6a2d021` · **Ziel-Release:** v1.0.0
 
 ### STM-DOC-001 · Contributor-Doku verifizieren & abrunden
 - **Beschreibung:** Onboarding-/Contributing-Doku praktisch nachvollziehen und Lücken/Fehler
