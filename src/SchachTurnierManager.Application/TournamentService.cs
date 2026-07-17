@@ -791,6 +791,14 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         return _exports.ExportPairingsCsv(RequireTournament(tournamentId), roundNumber);
     }
 
+    public ExportDocument ExportTrf16(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        // FIDE-TRF-Spezifikation erwartet alle Turnierteilnehmer, nicht nur die
+        // in der sichtbaren Rangliste verbliebenen aktiven Spieler (STM-IE-001).
+        return _exports.ExportTrf16(tournament, _standings.Calculate(tournament, includeInactive: true));
+    }
+
     public ExportDocument ExportPrintableTournamentHtml(Guid tournamentId)
     {
         var tournament = RequireTournament(tournamentId);

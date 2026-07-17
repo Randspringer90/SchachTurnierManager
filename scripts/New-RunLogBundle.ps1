@@ -2,7 +2,9 @@
 param(
     [string]$RunDirectory,
     [string]$RunName = 'SchachTurnierManager_Run',
-    [string]$BaseDirectory = 'D:\Temp',
+    # Bevorzugt D:\Temp (Konvention auf Rechnern mit separater Datenpartition), faellt aber
+    # auf %TEMP% zurueck, wenn kein D:-Laufwerk existiert (z. B. frische/andere Maschinen).
+    [string]$BaseDirectory = $(if (Test-Path -LiteralPath 'D:\') { 'D:\Temp' } else { Join-Path $env:TEMP 'SchachTurnierManager' }),
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [switch]$CreateOnly,
     [switch]$IncludeFullDiff

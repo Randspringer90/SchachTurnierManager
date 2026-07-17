@@ -18,15 +18,25 @@ Stand: 2026-07-16.
 
 | # | Backlog-ID | Issue | Status | Abhängigkeit | Hinweis |
 |---|-----------|-------|--------|--------------|---------|
-| 1 | STM-IE-001 | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | **Ready** | – | TRF16-Export; Golden-Datei, Determinismus, PII-Minimierung im Issue präzisiert |
-| 2 | STM-DOC-001 | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) | **Ready** | – | parallel oder nach #3 möglich (frischer Clone als Prüfgrundlage) |
-| 3 | STM-FACH-002 | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | **Ready** | STM-FACH-001 (Done) | FIDE-Dutch; fachlich kritisch → Final-Review durch unabhängigen Owner-Prozess mit stärkstem Review-Profil |
-| 4 | STM-FACH-003 | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | Blocked | STM-FACH-002 | große Felder 21–200; erst nach FACH-002 starten |
-| 5 | STM-IE-002 | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | Blocked | STM-IE-001 | Swiss-Manager/Chess-Results-Kompatibilität |
-| 6 | STM-IE-004 | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | Backlog | – | FIDE-Namenssuche; bewusst hinten, um die Queue nicht zu überladen |
+| – | STM-IE-001 | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | Done | – | TRF16-Export; PR #30 → Adoption #35, Merge `6a2d021` |
+| – | STM-DOC-001 | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) | Done | – | Contributor-Doku; PR #31 → Adoption #36, Merge `aad29e1` |
+| – | STM-REL-001 | – | Done | – | Windows-Installer + ContentRootPath-Bugfix; PR #33 → Adoption #34, Merge `b263925` |
+| 1 | STM-FACH-002 | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | **Ready** | STM-FACH-001 (Done) | FIDE-Dutch; fachlich kritisch → Final-Review durch unabhängigen Owner-Prozess mit stärkstem Review-Profil |
+| 2 | STM-IE-002 | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | **Ready** | STM-IE-001 (Done) | Swiss-Manager/Chess-Results-Kompatibilität; durch IE-001 entsperrt |
+| 3 | STM-FACH-003 | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | Blocked | STM-FACH-002 | große Felder 21–200; erst nach FACH-002 starten |
+| 4 | STM-IE-004 | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | Backlog | – | FIDE-Namenssuche |
+
+## Rolle
+
+Marcel ist **`trusted-collaborator`** – siehe [`COLLABORATION_MODEL.md`](COLLABORATION_MODEL.md)
+und [`config/collaboration-policy.json`](../../config/collaboration-policy.json).
+Kurz: weite Arbeitsbereiche (`src/**`, `tests/**`, `docs/**`, Mobile), Owner-PRs reviewen
+und Dependencies vorschlagen erlaubt; GitHub-Recht bleibt bewusst `write`.
 
 ## Regeln
 
+- **WIP-Regel: maximal 2 Aufgaben *In Progress*, maximal 3 auf *Ready*.** Alles Weitere
+  bleibt Backlog oder Blocked mit benannter Abhängigkeit.
 - Nur **Ready**-Aufgaben starten; beim Start Status in `BACKLOG.md` auf *In Progress*
   setzen und Branch im Issue eintragen.
 - Ein Branch/PR pro Aufgabe, Branchnamen stehen im jeweiligen Issue.

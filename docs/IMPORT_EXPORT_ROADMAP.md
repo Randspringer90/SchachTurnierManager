@@ -14,6 +14,35 @@ Stand: 2026-06-16 (Basis 0.38.5). Status: Analyse/Spezifikation, noch kein produ
    - Teilnehmerliste, Tabelle, Paarungen. Klar definierte Spaltenköpfe, UTF-8.
 2. **TRF (FIDE Tournament Report Format)** — Standard für Ergebnisweitergabe/Auswertung.
    - Spätere Stufe; eignet sich als verlustarmes FIDE-Ergebnisformat.
+   - **Umgesetzt (STM-IE-001):** `TournamentExportFormatter.ExportTrf16` exportiert
+     read-only ins FIDE-TRF16-Format (Spaltenpositionen exakt nach C.04 Annex 2,
+     https://www.fide.com/FIDE/handbook/C04Annex2_TRF16.pdf). Endpoint
+     `GET /api/tournaments/{id}/standings/export.trf16`, WebApp-Button
+     "TRF16 (FIDE-Turnierbericht)" im Export-Center.
+   - **Alle Turnierteilnehmer:** Der Export berechnet die Standings mit
+     `includeInactive: true`. Zurückgezogene und pausierte Spieler bleiben damit im
+     TRF erhalten, obwohl sie nach der STM-FACH-001-Withdrawal-Logik aus der
+     sichtbaren Rangliste gefiltert werden — die FIDE-Spezifikation erwartet den
+     vollständigen Teilnehmerkreis. Die Kopfzeilen 062/072 zählen konsistent die
+     tatsächlich exportierten Spielerzeilen.
+   - **Bewusste Scope-Grenzen (dokumentiert statt erfunden):**
+     - Geburtsdatum (Position 70-79) bleibt aus PII-Minimierungsgründen leer
+       (Spezifikation: nur "warning if wrong", nicht Pflichtfeld).
+     - Turnier-Kopfzeilen ohne Datengrundlage in unserem Domainmodell (Ort 022,
+       Föderation 032, Start-/Enddatum 042/052, Schiedsrichter 102, Rundendaten 132)
+       werden ausgelassen statt mit Platzhaltern erfunden — `TournamentState` hat
+       aktuell keine entsprechenden Felder. Sobald das Domainmodell belastbare Felder
+       dafür besitzt, werden diese Zeilen ergänzt.
+     - Name wird unverändert aus `Player.Name` übernommen; ohne strukturierte
+       Vorname/Nachname-Trennung im Domainmodell ist eine korrekte
+       "Nachname, Vorname"-Umformatierung nicht zuverlässig automatisierbar.
+     - Eine FIDE-ID wird nur übernommen, wenn sie rein numerisch und höchstens 11
+       Stellen lang ist; andernfalls bleibt das Feld leer, statt eine durch Kürzung
+       verfälschte Kennung zu exportieren.
+   - **Format-Härtung:** Zeilenenden sind CR gemäß Remark 1 der Spezifikation.
+     Feldwerte werden positionssicher über einen Line-Builder geschrieben, der bei
+     Feldüberlängen wirft, statt nachfolgende Spalten stillschweigend zu verschieben.
+     Steuerzeichen aus Turnier- und Spielernamen werden vor dem Schreiben entfernt.
 3. **Swiss-Manager / Chess-Results** — weit verbreitetes Ökosystem.
    - Chess-Results stellt Tabellen, Paarungen und Swiss-Manager-Dateien bereit.
    - Zunächst nur Format-Analyse; kein Live-Scrape, kein Reverse-Engineering binärer Formate ohne Quelle.

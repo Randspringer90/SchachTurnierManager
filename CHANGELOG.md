@@ -22,6 +22,68 @@
   die Zuordnung alt/neu steht in der Referenzdatei. Performance für Felder über 20
   Spieler bleibt STM-FACH-003.
 
+- STM-INFRA-004: Safe-PR-Skripte gegen offenes stdin gehärtet.
+  `Invoke-SafePullRequestReview.ps1` wies der automatischen PowerShell-Variablen
+  `$input` (Pipeline-/stdin-Enumerator) einen eigenen Wert zu und blockierte
+  dadurch bei offenem stdin unbegrenzt – betroffen war auch
+  `Test-PullRequestReviewReadiness.ps1`, das das Review aufruft. Umbenannt in
+  `$reviewInput`. Der neue Test `PowerShellScripts_DoNotAssignToAutomaticVariables`
+  deckt die gesamte Fehlerklasse ab (nicht nur `$input`) und hat dabei zwei weitere
+  echte Fundstellen in `Import-TournamentPreset.ps1` aufgedeckt: `$matches` (wird vom
+  `-match`-Operator überschrieben) und `$args` – beide umbenannt.
+  Messbar: `Test-PullRequestReviewReadiness.ps1` läuft mit offenem stdin jetzt in
+  17 s durch (vorher Hänger > 12 min); alle 42 synthetischen Risikofälle bestehen
+  unverändert, keine Security-Prüfung wurde abgeschwächt.
+- STM-DOC-001: Contributor-Onboarding auf einem frischen Klon verifiziert und
+  korrigiert. Die GitHub CLI (`gh`) ist jetzt als **optional** ausgewiesen: Der
+  Pull-Request-Weg über die GitHub-Weboberfläche ist vollständig dokumentiert,
+  inklusive des Hinweises, dass GitHub dort oft `main` statt `development` als
+  Base vorschlägt. Die Node-Angabe nennt weiterhin 22 LTS als Empfehlung, verweist
+  für die verbindliche Mindestversion aber auf die kanonische Quelle (Vite
+  `engines`, aktuell `^20.19.0 || >=22.12.0`) und schließt neuere Versionen nicht
+  mehr aus – mit Node 24 verifiziert. Ursprung: Marcel-Mente (PR #31), sicher an
+  den aktuellen development-Stand adaptiert. Verifiziert über frischen Clone
+  (`git clone` → `git switch development` → `dotnet build` → `dotnet test`,
+  235/235 grün), Markdown-Linkcheck, Skriptreferenzprüfung und
+  `Test-CollaborationReadiness.ps1` (OK).
+- STM-IE-001: Read-only-Export ins FIDE-TRF16-Format (`ExportTrf16` in
+  `TournamentExportFormatter`, Endpoint `GET /api/tournaments/{id}/standings/export.trf16`,
+  WebApp-Button "TRF16 (FIDE-Turnierbericht)" im Export-Center). Spaltenpositionen
+  exakt nach offizieller FIDE-Spezifikation (C.04 Annex 2), Zeilenenden CR gemäß
+  Remark 1. Der Export enthält alle Turnierteilnehmer inklusive zurückgezogener
+  Spieler (`StandingsCalculator.Calculate(includeInactive: true)`), damit die
+  STM-FACH-001-Withdrawal-Filterung der sichtbaren Rangliste keine Spieler aus dem
+  FIDE-Bericht entfernt; die Kopfzeilen 062/072 zählen konsistent die exportierten
+  Zeilen. Feldüberlängen werfen statt Folgespalten zu verschieben, Steuerzeichen
+  werden entfernt, und eine FIDE-ID wird nur bei plausibler numerischer Form
+  übernommen. 13 Golden-Tests (Feldpositionen, Bye, alle Forfeit-Fälle, offene
+  Runde, Rückzug, Teilnehmerzahl, Unicode, Steuerzeichen, Dateiname, leeres
+  Turnier, 12 Runden, Byte-Determinismus) plus Service- und Endpoint-Tests.
+  Ursprung: Marcel-Mente (PR #30), sicher an den aktuellen development-Stand
+  adaptiert. Verbleibende Scope-Grenzen in `docs/IMPORT_EXPORT_ROADMAP.md`.
+- STM-REL-001: Kritischen Startfehler der Desktop-/Portable-Variante behoben.
+  `Program.cs` bindet `ContentRootPath` jetzt explizit an `AppContext.BaseDirectory`
+  statt am aktuellen Arbeitsverzeichnis. Die Launcher starten die EXE über `start`,
+  ohne das Arbeitsverzeichnis zu setzen; dadurch wurde `wwwroot` nicht gefunden und
+  jeder normale Start per Verknüpfung/Doppelklick landete still auf der
+  API-Fallback-Seite statt im Dashboard (`embeddedDashboard: false`). Nach dem Fix
+  meldet `/api/health` unter denselben Startbedingungen `embeddedDashboard: true`.
+  Zusätzlich fällt der `BaseDirectory`-Default in `New-RunLogBundle.ps1` auf `%TEMP%`
+  zurück, wenn kein `D:`-Laufwerk existiert (vorher harter Abbruch auf Maschinen ohne
+  Datenpartition). Beide Änderungen sind durch Vertragstests abgesichert
+  (`WebApi_BindsContentRootToApplicationDirectoryNotCurrentWorkingDirectory`,
+  `RunLogBundle_BaseDirectoryFallsBackToTempWhenNoDDriveExists`).
+  Ursprung: Marcel-Mente (PR #33) – Bug auf einer frischen Maschine reproduziert,
+  Installer-Testmatrix (Inno Setup 6: Installation, Start, Testturnier,
+  Neustart-Persistenz, Deinstallation mit Datenerhalt) real durchlaufen.
+  Sicher an den aktuellen development-Stand adaptiert.
+  Bewusst nicht mitgefixt: dasselbe hart verdrahtete `D:\Temp`-Muster steckt noch in
+  8 weiteren Skripten (`Invoke-ClickInstallReadiness`, `Invoke-ColleagueFreshRunTest`,
+  `Invoke-ColleagueInstallReadiness`, `Invoke-LoggingReadiness`,
+  `Invoke-ReleaseCandidateReadiness`, `Invoke-SecretSafetyReadiness`,
+  `New-ContributorTaskPrompt`, `Test-ContributorKickoffReadiness`) – als eigene
+  Folgeaufgabe erfasst. Weiterhin offen: Portable-ZIP, Upgrade über Vorversion,
+  Sandbox-Frischmaschinentest, echte Code-Signierung.
 - STM-AI-006: projektlokale Nightly-Ausführungsebene ergänzt und zentrale
   Nightly-Aufnahme vorbereitet. `Invoke-NightlyProjectRun.ps1` (Lock,
   Vorbedingungen, kanonische Owner-Queue aus BACKLOG mit striktem Ausschluss von

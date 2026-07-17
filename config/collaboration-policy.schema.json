@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Randspringer90/SchachTurnierManager/config/collaboration-policy.schema.json",
+  "title": "STM Collaboration Policy",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "canonicalTaskSource",
+    "defaultBranch",
+    "roles",
+    "trustedCollaborator",
+    "wipLimits",
+    "ownerOnlyEnforcement",
+    "nightlyExclusion"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "description": { "type": "string" },
+    "canonicalTaskSource": { "type": "string", "const": "docs/planning/BACKLOG.md" },
+    "defaultBranch": { "type": "string", "const": "development" },
+    "roles": {
+      "type": "object",
+      "required": ["owner", "trusted-collaborator"],
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "type": "object",
+          "required": ["githubLogin", "githubPermission"],
+          "additionalProperties": true,
+          "properties": {
+            "githubLogin": { "type": "string", "const": "Randspringer90" },
+            "githubPermission": { "type": "string", "const": "admin" },
+            "description": { "type": "string" }
+          }
+        },
+        "trusted-collaborator": {
+          "type": "object",
+          "required": ["githubLogins", "githubPermission"],
+          "additionalProperties": true,
+          "properties": {
+            "githubLogins": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "githubPermission": {
+              "description": "Bewusst auf write begrenzt. Maintain/Admin wuerde Branchschutz- und Rechtehoheit mitgeben.",
+              "type": "string",
+              "const": "write"
+            },
+            "legacyAliases": { "type": "array", "items": { "type": "string" } },
+            "description": { "type": "string" },
+            "rationale": { "type": "string" }
+          }
+        }
+      }
+    },
+    "trustedCollaborator": {
+      "type": "object",
+      "required": ["standardWorkAreas", "allowed", "protectedAreasProposalOnly", "forbidden", "newDependencies"],
+      "additionalProperties": false,
+      "properties": {
+        "standardWorkAreas": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "allowed": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "protectedAreasProposalOnly": {
+          "type": "object",
+          "required": ["paths"],
+          "additionalProperties": true,
+          "properties": {
+            "description": { "type": "string" },
+            "paths": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        },
+        "forbidden": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "newDependencies": {
+          "type": "object",
+          "required": ["allowedToPropose", "requires"],
+          "additionalProperties": false,
+          "properties": {
+            "allowedToPropose": { "type": "boolean" },
+            "requires": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "wipLimits": {
+      "type": "object",
+      "required": ["maxInProgress", "maxReady"],
+      "additionalProperties": true,
+      "properties": {
+        "maxInProgress": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "maxReady": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "rationale": { "type": "string" },
+        "otherStatuses": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "ownerOnlyEnforcement": {
+      "type": "object",
+      "required": ["mechanisms"],
+      "additionalProperties": true,
+      "properties": {
+        "description": { "type": "string" },
+        "mechanisms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["what", "how"],
+            "additionalProperties": false,
+            "properties": {
+              "what": { "type": "string" },
+              "how": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "nightlyExclusion": {
+      "type": "object",
+      "required": ["assigneeTargets"],
+      "additionalProperties": true,
+      "properties": {
+        "description": { "type": "string" },
+        "assigneeTargets": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}
