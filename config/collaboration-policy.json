@@ -1,0 +1,104 @@
+{
+  "$schema": "./collaboration-policy.schema.json",
+  "schemaVersion": 1,
+  "description": "Maschinenlesbares Kollaborationsmodell des SchachTurnierManagers. Definiert Rollen, erlaubte und geschuetzte Arbeitsbereiche sowie harte Verbote. Diese Datei beschreibt Absicht und wird von Test-CollaborationReadiness.ps1 gegen die tatsaechlich durchsetzenden Mechanismen (CODEOWNERS, Branch-Ruleset, CI-Gates) geprueft. Sie ersetzt keine Durchsetzung: GitHub-Rechte, CODEOWNERS und Rulesets sind die Wahrheit.",
+  "canonicalTaskSource": "docs/planning/BACKLOG.md",
+  "defaultBranch": "development",
+  "roles": {
+    "owner": {
+      "githubLogin": "Randspringer90",
+      "githubPermission": "admin",
+      "description": "Eigentuemer. Einziger Code-Owner, einziger Merger, einziger Freigeber fuer geschuetzte Bereiche."
+    },
+    "trusted-collaborator": {
+      "githubLogins": ["Marcel-Mente"],
+      "githubPermission": "write",
+      "legacyAliases": ["friend"],
+      "description": "Vertrauenswuerdiger Mitentwickler. Arbeitet eigenverantwortlich in den Standardbereichen, darf Produktarchitektur innerhalb seines Pakets verbessern und Owner-PRs reviewen. Erhaelt bewusst KEIN Maintain/Admin: keine Branchschutz-, Rechte- oder Release-Hoheit.",
+      "rationale": "Marcel hat mit den PRs #9, #10, #30, #31 und #33 wiederholt belastbare Arbeit geliefert, inklusive eines real reproduzierten Startfehlers (STM-REL-001) und ehrlicher Angaben darueber, was er nicht getestet hat. Das rechtfertigt erweiterte Bereiche - nicht erweiterte Rechte."
+    }
+  },
+  "trustedCollaborator": {
+    "standardWorkAreas": [
+      "src/SchachTurnierManager.Domain/**",
+      "src/SchachTurnierManager.Application/**",
+      "src/SchachTurnierManager.Infrastructure/**",
+      "src/SchachTurnierManager.WebApi/**",
+      "src/SchachTurnierManager.WebApp/**",
+      "src/SchachTurnierManager.Mobile/**",
+      "tests/**",
+      "docs/**",
+      "CHANGELOG.md"
+    ],
+    "allowed": [
+      "Issues fuer Produktfunktionen erstellen und praezisieren",
+      "eigene Backlog-Eintraege pflegen",
+      "Feature-Branches erstellen",
+      "Pull Requests erstellen",
+      "Owner-PRs reviewen",
+      "Tests ergaenzen",
+      "Produktarchitektur innerhalb des eigenen Pakets verbessern",
+      "API, UI, Mobile und Domain gemeinsam aendern, wenn das Feature es erfordert",
+      "neue Dependencies vorschlagen"
+    ],
+    "protectedAreasProposalOnly": {
+      "description": "Aenderungen hier sind erlaubt, benoetigen aber zusaetzlich Owner- UND Security-Review. Durchgesetzt ueber CODEOWNERS + Ruleset 'require review from Code Owners'.",
+      "paths": [
+        ".github/**",
+        ".agents/**",
+        ".claude/**",
+        "agents/**",
+        "config/**",
+        "scripts/**",
+        "installer/**",
+        "docs/security/**",
+        "docs/architecture/**",
+        "AGENTS.md",
+        "global.json",
+        "Directory.Build.props",
+        "Directory.Packages.props"
+      ]
+    },
+    "forbidden": [
+      "Secrets lesen oder aendern",
+      "Signaturschluessel verwenden",
+      "Branchschutz oder Rulesets aendern",
+      "Collaborator-Rechte verwalten",
+      "direkt nach development oder main pushen",
+      "selbststaendig mergen",
+      "Force-Push",
+      "History-Rewrite",
+      "Tags oder Releases veroeffentlichen",
+      "Website- oder Store-Upload ohne Owner-Freigabe"
+    ],
+    "newDependencies": {
+      "allowedToPropose": true,
+      "requires": [
+        "Begruendung",
+        "Lizenzpruefung",
+        "Vulnerability-Pruefung",
+        "Alternativenvergleich",
+        "Owner-Review"
+      ]
+    }
+  },
+  "wipLimits": {
+    "maxInProgress": 2,
+    "maxReady": 3,
+    "rationale": "Begrenzt gleichzeitige Baustellen. Weitere Aufgaben bleiben Backlog oder Blocked mit klar benannter Abhaengigkeit.",
+    "otherStatuses": ["Backlog", "Blocked", "In Review", "Done"]
+  },
+  "ownerOnlyEnforcement": {
+    "description": "Diese Punkte sind technisch durchgesetzt, nicht nur dokumentiert.",
+    "mechanisms": [
+      { "what": "Merge nach development", "how": "Branch-Ruleset 'collab-development': pull_request mit required_approving_review_count=1 und require_code_owner_review=true" },
+      { "what": "Geschuetzte Pfade", "how": ".github/CODEOWNERS - alle Eintraege @Randspringer90" },
+      { "what": "Ausfuehrung von PR-Code in CI", "how": "ci.yml Assert-OwnerExecutionApproval: SHA-gebundenes Owner-Review 'STATIC-EXECUTION-APPROVED:<head-sha>'" },
+      { "what": "Contributor-Aufgaben in der Nightly", "how": "config/nightly-execution.json neverProcess.assigneeTargets und contributorBranchesAndPrs" }
+    ]
+  },
+  "nightlyExclusion": {
+    "description": "Owner-/Nightly-Agenten implementieren keine Aufgaben, die dem trusted-collaborator zugewiesen sind.",
+    "assigneeTargets": ["friend", "trusted-collaborator"]
+  }
+}

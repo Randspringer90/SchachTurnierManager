@@ -135,6 +135,68 @@ if ($Online) {
 $commonSource = Get-Content -Raw (Join-Path $repo 'scripts/lib/CollaborationCommon.ps1')
 Check ($commonSource -match '\[IO\.Path\]::GetTempPath\(\)' -and $commonSource -notmatch '(?i)[A-Za-z]:\\Temp') 'Run-Kontext verwendet plattformneutralen System-Temp-Pfad'
 
+# --- Kollaborationsmodell (config/collaboration-policy.json) ------------------------
+# Die Policy beschreibt die Absicht; hier wird geprueft, dass sie strukturell gueltig ist
+# UND zu den tatsaechlich durchsetzenden Mechanismen passt. Eine Policy, die etwas
+# behauptet, das CODEOWNERS/Ruleset nicht hergeben, ist schlimmer als keine Policy.
+$policyPath = Join-Path $repo 'config/collaboration-policy.json'
+$schemaPath = Join-Path $repo 'config/collaboration-policy.schema.json'
+Check (Test-Path -LiteralPath $policyPath) 'Datei vorhanden: config/collaboration-policy.json'
+Check (Test-Path -LiteralPath $schemaPath) 'Datei vorhanden: config/collaboration-policy.schema.json'
+Check (Test-Path -LiteralPath (Join-Path $repo 'docs/planning/COLLABORATION_MODEL.md')) 'Datei vorhanden: docs/planning/COLLABORATION_MODEL.md'
+
+if ((Test-Path -LiteralPath $policyPath) -and (Test-Path -LiteralPath $schemaPath)) {
+    $policyRaw = Get-Content -Raw -LiteralPath $policyPath
+    $policy = $null
+    try { $policy = $policyRaw | ConvertFrom-Json } catch { $policy = $null }
+    Check ($null -ne $policy) 'collaboration-policy.json ist gueltiges JSON'
+
+    if ($null -ne $policy) {
+        Check ($policyRaw | Test-Json -SchemaFile $schemaPath -ErrorAction SilentlyContinue) 'collaboration-policy.json erfuellt sein Schema'
+
+        # Rolle und Rechtegrenze
+        $tc = $policy.roles.'trusted-collaborator'
+        Check ($null -ne $tc) 'Policy kennt die Rolle trusted-collaborator'
+        Check ([string]$policy.roles.owner.githubLogin -ceq 'Randspringer90') 'Policy nennt den Owner korrekt'
+        Check ([string]$policy.roles.owner.githubPermission -ceq 'admin') 'Owner hat admin'
+        # Kernaussage des Modells: erweiterte Bereiche, KEINE erweiterten Rechte.
+        Check ([string]$tc.githubPermission -ceq 'write') 'trusted-collaborator hat write (nicht maintain/admin)'
+        Check (@($tc.githubLogins) -contains 'Marcel-Mente') 'trusted-collaborator umfasst Marcel-Mente'
+        # Legacy-Alias muss erhalten bleiben, sonst brechen BACKLOG/Nightly-Parser.
+        Check (@($tc.legacyAliases) -contains 'friend') 'Legacy-Alias friend bleibt erhalten (bestehende Parser)'
+
+        # WIP-Regel
+        Check ([int]$policy.wipLimits.maxInProgress -eq 2) 'WIP-Regel: maximal 2 In Progress'
+        Check ([int]$policy.wipLimits.maxReady -eq 3) 'WIP-Regel: maximal 3 Ready'
+
+        # Harte Verbote muessen benannt sein
+        $forbidden = @($policy.trustedCollaborator.forbidden) -join ' | '
+        foreach ($needle in @('Secrets', 'Force-Push', 'History-Rewrite', 'mergen', 'Branchschutz')) {
+            Check ($forbidden -match [regex]::Escape($needle)) "Policy verbietet ausdruecklich: $needle"
+        }
+
+        # Jeder als geschuetzt deklarierte Pfad muss auch wirklich in CODEOWNERS stehen.
+        # Ohne diese Kopplung waere die Policy eine Behauptung ohne Deckung.
+        foreach ($p in @($policy.trustedCollaborator.protectedAreasProposalOnly.paths)) {
+            $stem = ([string]$p) -replace '/\*\*$', '' -replace '^/', ''
+            if ([string]::IsNullOrWhiteSpace($stem)) { continue }
+            Check ($co -match [regex]::Escape($stem)) "CODEOWNERS deckt geschuetzten Policy-Pfad: $stem"
+        }
+
+        # Nightly darf Contributor-Aufgaben nicht anfassen - Policy und Nightly-Config muessen sich einig sein.
+        $nightlyPath = Join-Path $repo 'config/nightly-execution.json'
+        if (Test-Path -LiteralPath $nightlyPath) {
+            $nightly = Get-Content -Raw -LiteralPath $nightlyPath | ConvertFrom-Json
+            $nightlyTargets = @($nightly.neverProcess.assigneeTargets)
+            foreach ($t in @($policy.nightlyExclusion.assigneeTargets)) {
+                if ([string]$t -ceq 'trusted-collaborator') { continue }  # Alias-Rolle, Nightly kennt 'friend'
+                Check ($nightlyTargets -contains [string]$t) "Nightly schliesst Assignee-Ziel aus: $t"
+            }
+            Check ([bool]$nightly.neverProcess.contributorBranchesAndPrs) 'Nightly fasst Contributor-Branches/PRs nicht an'
+        }
+    }
+}
+
 $zip = if ($NoArchive) { $null } else { Complete-RunZip $run }
 if ($fail.Count -gt 0) {
     Write-Host ("CollaborationReadiness: {0} FEHLER" -f $fail.Count)

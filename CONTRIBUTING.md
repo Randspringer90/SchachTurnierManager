@@ -17,6 +17,7 @@ verlinkten kanonischen Dokumenten.
 
 | Thema                        | Datei |
 |------------------------------|-------|
+| **Rollen & Arbeitsbereiche**  | [`docs/planning/COLLABORATION_MODEL.md`](docs/planning/COLLABORATION_MODEL.md) (maschinenlesbar: [`config/collaboration-policy.json`](config/collaboration-policy.json)) |
 | Branch-Modell                | [`docs/planning/BRANCHING_STRATEGY.md`](docs/planning/BRANCHING_STRATEGY.md) |
 | Zusammenarbeit / PR-Ablauf   | [`docs/planning/COLLABORATION_WORKFLOW.md`](docs/planning/COLLABORATION_WORKFLOW.md) |
 | Release & Hotfix             | [`docs/planning/RELEASE_WORKFLOW.md`](docs/planning/RELEASE_WORKFLOW.md) |
