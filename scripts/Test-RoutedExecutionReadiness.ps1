@@ -209,6 +209,25 @@ try {
         return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($stdout | Out-String) }
     }
 
+    # Liest einen vom Kind-pwsh atomar geschriebenen Checkpoint (STM-INFRA-006). Der Kindprozess
+    # ersetzt die Datei per Move-Item; unter Windows/CI kann sie unmittelbar danach transient
+    # noch nicht sicht-/lesbar sein (Virenscanner-Lock auf der neuen Datei). Deterministisches,
+    # begrenztes Warten auf Existenz UND gueltiges JSON, dann parsen. Kein Skip, keine
+    # Abschwaechung: fehlt die Datei nach dem Timeout, liefert die Funktion $null und der
+    # aufrufende Assert-Check schlaegt weiterhin fehl.
+    function Read-CheckpointWithWait {
+        param([Parameter(Mandatory)][string]$CheckpointPath, [int]$TimeoutMs = 5000)
+        $deadline = [Environment]::TickCount + $TimeoutMs
+        while ([Environment]::TickCount -lt $deadline) {
+            if (Test-Path -LiteralPath $CheckpointPath -PathType Leaf) {
+                try { return (Get-Content -LiteralPath $CheckpointPath -Raw -ErrorAction Stop | ConvertFrom-Json) }
+                catch { Start-Sleep -Milliseconds 50 }
+            }
+            else { Start-Sleep -Milliseconds 50 }
+        }
+        return $null
+    }
+
     # --- 13) Rate Limit erhaelt Taskzustand + Checkpoint -------------------------------
     $graphPath = New-RoutedFixture -Tasks @(
         (New-SyntheticTask -TaskId 't-a'),
@@ -220,8 +239,8 @@ try {
         't-b' = @{ classification = 'ok'; exitCode = 0; outputText = 'nie erreicht' }
     }
     $checkpointPath = Join-Path $runRoot 'checkpoint.json'
-    $cpOk = Test-Path -LiteralPath $checkpointPath
-    $cp = if ($cpOk) { Get-Content -LiteralPath $checkpointPath -Raw | ConvertFrom-Json } else { $null }
+    $cp = Read-CheckpointWithWait -CheckpointPath $checkpointPath
+    $cpOk = $null -ne $cp
     $tA = if ($cpOk) { @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-a' } } else { $null }
     $tB = if ($cpOk) { @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-b' } } else { $null }
     Assert-Check 'ratelimit-erhaelt-zustand' ($r.ExitCode -eq 2 -and $cpOk -and [string]$tA.status -eq 'RATE_LIMITED' -and [string]$tB.status -in @('PENDING', 'READY')) $r.Output
@@ -234,12 +253,12 @@ try {
     $stdout = & pwsh -NoProfile -File (Join-Path $scriptsRoot 'Resume-RoutedTaskGraph.ps1') `
         -CheckpointPath $checkpointPath -SimulateResultsPath $simOkPath 2>&1
     $resumeExit = $LASTEXITCODE
-    $cp = Get-Content -LiteralPath $checkpointPath -Raw | ConvertFrom-Json
-    $allDone = @(@($cp.graph.tasks) | Where-Object { [string]$_.status -ne 'COMPLETED' }).Count -eq 0
+    $cp = Read-CheckpointWithWait -CheckpointPath $checkpointPath
+    $allDone = ($null -ne $cp) -and @(@($cp.graph.tasks) | Where-Object { [string]$_.status -ne 'COMPLETED' }).Count -eq 0
     Assert-Check 'resume-nach-limit' ($resumeExit -eq 0 -and $allDone) ($stdout | Out-String)
 
     # --- 15) Resume blockiert bei manipuliertem Checkpoint -----------------------------
-    $tampered = Get-Content -LiteralPath $checkpointPath -Raw | ConvertFrom-Json
+    $tampered = Read-CheckpointWithWait -CheckpointPath $checkpointPath
     $tampered.graphHash = ('0' * 64)
     ($tampered | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $checkpointPath -Encoding utf8NoBOM
     $stdout = & pwsh -NoProfile -File (Join-Path $scriptsRoot 'Resume-RoutedTaskGraph.ps1') `
@@ -252,9 +271,9 @@ try {
     $r = Invoke-GraphWithSimulation -GraphPath $graphPath -RunRoot $runRoot -Simulation @{
         't-err' = @{ classification = 'error'; exitCode = 5; outputText = 'synthetischer Runnerfehler' }
     }
-    $cp = Get-Content -LiteralPath (Join-Path $runRoot 'checkpoint.json') -Raw | ConvertFrom-Json
-    $tErr = @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-err' }
-    Assert-Check 'childfehler-erhaelt-zustand' ([string]$tErr.status -in @('ESCALATED', 'FAILED') -and $cp.graph.tasks.Count -eq 1) $r.Output
+    $cp = Read-CheckpointWithWait -CheckpointPath (Join-Path $runRoot 'checkpoint.json')
+    $tErr = if ($null -ne $cp) { @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-err' } } else { $null }
+    Assert-Check 'childfehler-erhaelt-zustand' ($null -ne $cp -and [string]$tErr.status -in @('ESCALATED', 'FAILED') -and $cp.graph.tasks.Count -eq 1) $r.Output
     Assert-Check 'childfehler-eskaliert-hoeher' ([string]$tErr.status -eq 'ESCALATED' -and [string]$tErr.assignedProfile -ne [string]$tErr.escalatedFrom)
 
     # --- 17) Prompt Injection im Child-Output wird isoliert ----------------------------
@@ -265,10 +284,10 @@ try {
     $r = Invoke-GraphWithSimulation -GraphPath $graphPath -RunRoot $runRoot -Simulation @{
         't-inj' = @{ classification = 'ok'; exitCode = 0; outputText = $injText }
     }
-    $cp = Get-Content -LiteralPath (Join-Path $runRoot 'checkpoint.json') -Raw | ConvertFrom-Json
-    $tInj = @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-inj' }
+    $cp = Read-CheckpointWithWait -CheckpointPath (Join-Path $runRoot 'checkpoint.json')
+    $tInj = if ($null -ne $cp) { @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-inj' } } else { $null }
     $quarantineFiles = @(Get-ChildItem -Path (Join-Path $runRoot 'quarantine') -File -ErrorAction SilentlyContinue)
-    Assert-Check 'injection-quarantiniert' ([string]$tInj.status -eq 'QUARANTINED' -and $quarantineFiles.Count -eq 1) $r.Output
+    Assert-Check 'injection-quarantiniert' ($null -ne $cp -and [string]$tInj.status -eq 'QUARANTINED' -and $quarantineFiles.Count -eq 1) $r.Output
 
     # --- 18) Tokenbudget-Ueberschreitung erzeugt Checkpoint ----------------------------
     $graphPath = New-RoutedFixture -Tasks @((New-SyntheticTask -TaskId 't-budget' -TokenBudget 10))
@@ -276,9 +295,9 @@ try {
     $r = Invoke-GraphWithSimulation -GraphPath $graphPath -RunRoot $runRoot -Simulation @{
         't-budget' = @{ classification = 'ok'; exitCode = 0; outputText = ('x' * 4000) }
     }
-    $cp = Get-Content -LiteralPath (Join-Path $runRoot 'checkpoint.json') -Raw | ConvertFrom-Json
-    $tBudget = @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-budget' }
-    Assert-Check 'tokenbudget-checkpoint' ($r.ExitCode -eq 2 -and [string]$tBudget.status -eq 'BUDGET_EXCEEDED' -and [string]$cp.runStatus -eq 'INTERRUPTED_BUDGET')
+    $cp = Read-CheckpointWithWait -CheckpointPath (Join-Path $runRoot 'checkpoint.json')
+    $tBudget = if ($null -ne $cp) { @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-budget' } } else { $null }
+    Assert-Check 'tokenbudget-checkpoint' ($null -ne $cp -and $r.ExitCode -eq 2 -and [string]$tBudget.status -eq 'BUDGET_EXCEEDED' -and [string]$cp.runStatus -eq 'INTERRUPTED_BUDGET')
 
     # --- 19) Finaler Integrator uebernimmt nur geprueft freigegebene Ergebnisse --------
     $unreviewed = New-SyntheticTask -TaskId 't-int1'
