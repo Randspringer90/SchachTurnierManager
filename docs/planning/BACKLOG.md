@@ -47,6 +47,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
+| STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | Backlog | infrastructure | owner | – | v1.0.0 |
+| STM-INFRA-005 | Hart verdrahtetes `D:\Temp` in 8 Skripten auf `%TEMP%`-Fallback umstellen | P3 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
@@ -59,7 +61,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-UX-002 | PWA / Offline / Sync-Konflikte | P2 | Backlog | pwa | owner | – | v1.0.0 |
 | STM-UX-003 | Backup/Restore-UX | P2 | Backlog | ui | either | – | v1.0.0 |
 | STM-UX-004 | BYOK-KI-Provider | P3 | Backlog | ai | owner | – | post-1.0 |
-| STM-REL-001 | Setup-EXE (Klick-Installation) | P1 | In Review | release | friend | Original-PR [#33](https://github.com/Randspringer90/SchachTurnierManager/pull/33) (Marcel, auf direkte Bitte des Owners außerhalb der Ready-Queue), sichere Adoption läuft | v1.0.0 |
+| STM-REL-001 | Setup-EXE (Klick-Installation) | P1 | Done | release | friend | Original-PR [#33](https://github.com/Randspringer90/SchachTurnierManager/pull/33) (Marcel), sichere Adoption [#34](https://github.com/Randspringer90/SchachTurnierManager/pull/34), Merge `b263925` | v1.0.0 |
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
@@ -101,6 +103,45 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Doku-Bedarf:** kurze Notiz in `CHANGELOG.md`; ggf. Beispieldaten dokumentieren.
 - **Definition of Done:** DoD + Gates grün. **Guter Einstieg**: additive Tests, kein Risiko an Kernlogik.
 - **PR:** Original [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9) · **Sichere Adoption:** [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Squash-Merge `2e0fdd7f12b4dcc6d25b2103b693356c051ee53e` · **Ziel-Release:** v1.0.0
+
+### STM-INFRA-004 · Safe-PR-Skripte gegen offenes stdin härten
+- **Beschreibung:** `scripts/Invoke-SafePullRequestReview.ps1` weist in Zeile 147
+  (`$input = if ($Offline) { ... }`) der automatischen PowerShell-Variablen `$input`
+  zu. `$input` ist der Enumerator über die Pipeline-/stdin-Eingabe. Bei **offenem**
+  stdin (interaktive Aufrufe, Agenten-Harness) blockiert das Skript dadurch
+  unbegrenzt; mit geschlossenem stdin läuft derselbe Aufruf in unter 10 s durch.
+  Reproduziert am 2026-07-17: gleicher Aufruf, `-RedirectStandardInput` auf eine
+  leere Datei → Exit 0 nach 7 s; ohne Redirect → Timeout nach 180 s.
+  `Test-PullRequestReviewReadiness.ps1` zeigt dasselbe Verhalten.
+- **Priorität:** P2 · **Status:** Backlog · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **Abhängigkeiten:** keine.
+- **Akzeptanzkriterien:**
+  - Eigene Variablen heißen nicht mehr `$input` (z. B. `$reviewInput`).
+  - Review läuft mit offenem **und** geschlossenem stdin ohne Hänger.
+  - StaticOnly- und Offline-Bundle-Pfad unverändert funktionsfähig.
+  - Keine Abschwächung von Security-Policy oder Checks.
+- **Tests:** Regressionstest mit Timeout für beide stdin-Zustände.
+- **Definition of Done:** DoD + Gates grün, eigener Branch und Owner-PR (nicht mit
+  Contributor-Adoptionen vermischen).
+- **PR:** – · **Ziel-Release:** v1.0.0
+
+### STM-INFRA-005 · Hart verdrahtetes `D:\Temp` auf `%TEMP%`-Fallback umstellen
+- **Beschreibung:** Folgeaufgabe aus STM-REL-001. `New-RunLogBundle.ps1` ist bereits
+  gefixt; dasselbe Muster steckt noch in 8 Skripten und lässt sie auf Maschinen ohne
+  `D:`-Laufwerk hart abbrechen. Betroffen (unabhängig nachgezählt 2026-07-17):
+  `Invoke-ClickInstallReadiness.ps1`, `Invoke-ColleagueFreshRunTest.ps1`,
+  `Invoke-ColleagueInstallReadiness.ps1`, `Invoke-LoggingReadiness.ps1`,
+  `Invoke-ReleaseCandidateReadiness.ps1`, `Invoke-SecretSafetyReadiness.ps1`
+  (je Parameter-Default) sowie `New-ContributorTaskPrompt.ps1` (Zeile 187) und
+  `Test-ContributorKickoffReadiness.ps1` (Zeilen 92/94, hartkodierte Pfadnutzung).
+- **Priorität:** P3 · **Status:** Backlog · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** either · **Owner:** der Owner
+- **Abhängigkeiten:** keine (Muster aus `New-RunLogBundle.ps1` übernehmen).
+- **Akzeptanzkriterien:**
+  - Kein Skript setzt ein `D:`-Laufwerk mehr voraus.
+  - Verhalten auf Maschinen **mit** `D:` bleibt unverändert (`D:\Temp`).
+  - Vertragstest analog `RunLogBundle_BaseDirectoryFallsBackToTempWhenNoDDriveExists`.
+- **Definition of Done:** DoD + Gates grün.
+- **PR:** – · **Ziel-Release:** v1.0.0
 
 ### STM-IE-001 · Excel-/TRF-Export (FIDE-Turnierbericht)
 - **Beschreibung:** Read-only-Export der Turnierdaten ins TRF(x)-Format (FIDE) und/oder Excel,
