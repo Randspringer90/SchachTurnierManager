@@ -5,6 +5,44 @@ namespace SchachTurnierManager.Application.Tests;
 public sealed class OperationalGuardTests
 {
     [Fact]
+    public void PowerShellScripts_DoNotAssignToAutomaticVariables()
+    {
+        // STM-INFRA-004: $input ist in PowerShell die automatische Variable fuer den
+        // Pipeline-/stdin-Enumerator. Eine eigene Zuweisung darauf laesst ein Skript bei
+        // offenem stdin blockieren - reproduziert 2026-07-17: Invoke-SafePullRequestReview.ps1
+        // lief mit geschlossenem stdin in 7 s durch, mit offenem stdin gar nicht.
+        // Dieser Test deckt die ganze Klasse ab, nicht nur den einen Fundort.
+        var scriptsRoot = FindRepositoryDirectory("scripts");
+        var reserved = new[] { "input", "args", "error", "host", "home", "pwd", "matches", "psitem", "_" };
+        var offenders = new List<string>();
+
+        foreach (var script in Directory.EnumerateFiles(scriptsRoot, "*.ps1", SearchOption.AllDirectories))
+        {
+            if (script.Contains($"{Path.DirectorySeparatorChar}archive{Path.DirectorySeparatorChar}"))
+            {
+                continue;
+            }
+
+            var lines = File.ReadAllLines(script);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                foreach (var name in reserved)
+                {
+                    // Zuweisung der Form "$name =" am Zeilenanfang (ohne Vergleiche wie -eq).
+                    var pattern = $@"^\s*\${name}\s*=[^=]";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(
+                            lines[i], pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        offenders.Add($"{Path.GetFileName(script)}:{i + 1} weist der automatischen Variablen ${name} zu");
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
     public void Repository_BlocksLocalSecretsAndTransientHandoffFiles()
     {
         var gitignore = File.ReadAllText(FindRepositoryFile(".gitignore"));
@@ -266,5 +304,22 @@ public sealed class OperationalGuardTests
         throw new FileNotFoundException(
             $"Repository file not found: {Path.Combine(relativeParts)}",
             Path.Combine(relativeParts));
+    }
+
+    private static string FindRepositoryDirectory(params string[] relativeParts)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(new[] { current.FullName }.Concat(relativeParts).ToArray());
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"Repository directory not found: {Path.Combine(relativeParts)}");
     }
 }

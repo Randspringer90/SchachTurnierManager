@@ -144,8 +144,11 @@ function Get-OfflineReviewInput {
     return [pscustomobject]@{ metadata=$metadata; files=$files; patch=$patch }
 }
 
-$input = if ($Offline) { Get-OfflineReviewInput } else { Get-OnlineReviewInput }
-$metadata = $input.metadata
+# Bewusst NICHT $input: das ist in PowerShell die automatische Variable fuer den
+# Pipeline-/stdin-Enumerator. Eine eigene Zuweisung darauf laesst das Skript bei
+# offenem stdin (interaktive Shell, Agenten-Harness, CI ohne Redirect) blockieren.
+$reviewInput = if ($Offline) { Get-OfflineReviewInput } else { Get-OnlineReviewInput }
+$metadata = $reviewInput.metadata
 if ([int](Get-ReviewPropertyValue $metadata 'number' 0) -ne $PullRequestNumber) { throw 'PR-Nummer im Input stimmt nicht mit dem Auftrag ueberein.' }
 if ([string](Get-ReviewPropertyValue $metadata 'baseRefName' '') -cne $BaseBranch) { throw 'PR-Zielbranch stimmt nicht mit der Policy ueberein.' }
 $headSha = [string](Get-ReviewPropertyValue $metadata 'headSha' (Get-ReviewPropertyValue $metadata 'headRefOid' ''))
@@ -167,7 +170,7 @@ if ($LASTEXITCODE -eq 0) {
     $baseTreeAvailable = ($LASTEXITCODE -eq 0)
 }
 $metadata | Add-Member -NotePropertyName baseTreeAvailable -NotePropertyValue $baseTreeAvailable -Force
-$analysis = Invoke-PullRequestStaticAnalysis -Metadata $metadata -ChangedFiles @($input.files) -PatchText $input.patch -Policies $policies -BaseFiles $baseFiles
+$analysis = Invoke-PullRequestStaticAnalysis -Metadata $metadata -ChangedFiles @($reviewInput.files) -PatchText $reviewInput.patch -Policies $policies -BaseFiles $baseFiles
 if (-not $Offline) {
     $finalState = Invoke-TrustedGhJson -Context 'abschliessender PR-SHA-Recheck' -Arguments @(
         'pr','view',[string]$PullRequestNumber,'--repo',$Repository,'--json','headRefOid,baseRefOid,baseRefName,state'
