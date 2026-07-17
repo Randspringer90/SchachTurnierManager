@@ -3,9 +3,10 @@
 **Stand:** 2026-07-16 · **Branch:** `feature/STM-FACH-002-fide-dutch` (6 Commits, **nur lokal**,
 bewusst noch nicht gepusht) · **Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
 
-**Fortschritt: ~60 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung sind
-Profile, Farbzuteilung (Art. 5) und die absoluten Kriterien ([C1]–[C3], Art. 1.8) fertig und grün.
-Es fehlt das **Paarungsverfahren** selbst — Art. 3/4 und die Qualitätskriterien [C5]–[C21].
+**Fortschritt: ~65 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung sind
+Profile, Farbzuteilung (Art. 5), die absoluten Kriterien ([C1]–[C3], Art. 1.8) und die
+Bracket-Struktur (Art. 1.3/3.2) fertig und grün. Es fehlt der **Kern des Suchverfahrens** —
+Kandidatenerzeugung (Art. 3.3–3.8, Art. 4) und die Qualitätskriterien [C5]–[C21].
 
 ---
 
@@ -34,8 +35,9 @@ Es fehlt das **Paarungsverfahren** selbst — Art. 3/4 und die Qualitätskriteri
 | **Profil-Schicht (grün)** | `FideDutchPlayerProfile`, `FideDutchProfileBuilder` + 10 Tests |
 | **Farbzuteilung Art. 5 (grün)** | `FideDutchColourAllocator` + 26 Tests |
 | **Absolute Kriterien (grün)** | `FideDutchAbsoluteCriteria` ([C1]–[C3], Art. 1.8) + 16 Tests |
+| **Bracket-Struktur (grün)** | `FideDutchBracket`, `FideDutchScoreGroups` (Art. 1.3/3.2) + 7 Tests |
 
-**Testlage:** 220 bestehende Tests grün, 52 neue Bausteintests grün, 286 Golden-/Property-Tests
+**Testlage:** 220 bestehende Tests grün, 59 neue Bausteintests grün, 286 Golden-/Property-Tests
 **absichtlich rot** (`FideDutchPairingStrategy` ist noch ein Stub, der `NotImplementedException` wirft).
 
 ### Die Profil-Schicht ist fertig und verifiziert
@@ -65,19 +67,29 @@ weiterbaut, muss sich um Farben nicht mehr kümmern, nur noch um die Frage, WER 
 
 ## Was fehlt
 
-1. **Das Paarungsverfahren** — Art. 3 (Brackets, S1/S2, Limbo, Kandidat, Remainder), Art. 4
-   (BSN, Transpositionen, Exchanges, MDP-Mengen), Qualitätskriterien [C5]–[C21].
-   Das ist der große Rest, ca. 30–35 % der Gesamtaufgabe.
+1. **Der Kern des Suchverfahrens** — ca. 25–30 % der Gesamtaufgabe:
+   - Art. 3.3: Kandidat bauen (S1 gegen S2 der Reihe nach; heterogen: MDP-Pairing + Remainder)
+   - Art. 3.6/3.7: Änderungsreihenfolge (erst Transposition, dann Exchange; heterogen erst Remainder)
+   - Art. 4.1–4.5: BSN, Sortierung der Transpositionen und Exchanges, Mengen paarbarer MDPs
+   - Art. 3.8: besten Kandidaten wählen; bei Gleichstand gewinnt der **zuerst erzeugte**
+   - Qualitätskriterien **[C5]–[C21]** (Art. 2.3/2.4)
+   - Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung
 
-   **Die Bausteine stehen bereit** und sind einzeln gegen die Referenz-Engine verifiziert:
-   ```
+   **Alles darunter steht bereit** und ist einzeln gegen die Referenz-Engine verifiziert:
+   ```csharp
    var profiles = new FideDutchProfileBuilder().Build(tournament);          // Art. 1.2/1.4/1.6/1.7
    var criteria = FideDutchAbsoluteCriteria.ForRound(tournament, profiles); // [C1]-[C3], Art. 1.8
-   var colours  = new FideDutchColourAllocator();                           // Art. 5
+   var colours  = new FideDutchColourAllocator();                           // Art. 5 (fertig)
+   var groups   = FideDutchScoreGroups.Build(profiles);                     // Art. 1.3.1/1.9.2
+   var bracket  = FideDutchScoreGroups.ToBracket(groups[0], mdps);          // Art. 1.3.2
+   var (s1, s2, limbo) = bracket.SplitIntoSubgroups(m1);                    // Art. 3.2
    ```
-   Was `FideDutchPairingStrategy.GenerateNextRound` noch selbst leisten muss: Brackets bilden
-   (Art. 1.3/1.9.2), Kandidaten in der Reihenfolge aus Art. 3.6/3.7 und 4.2–4.5 erzeugen, nach
-   [C5]–[C21] bewerten (Art. 3.8) und den Audit-Trail schreiben.
+   `criteria.MayBePaired(a, b)` beantwortet [C1]+[C3], `criteria.MayReceiveBye(p)` beantwortet [C2],
+   `criteria.ExplainRejection(a, b)` liefert die Fundstelle fürs Audit.
+
+   **Falle:** `bracket.MaxPairsUpperBound` ist NUR die Obergrenze aus der Spielerzahl. Die
+   tatsächliche Paarzahl kann niedriger sein, weil [C1]/[C3] sperren oder [C4] zusätzliche Downfloats
+   erzwingt (Golden-Turnier A R3, B R4). Wer die Zahl als verbindlich behandelt, paart falsch.
 2. Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung (siehe unten).
 3. `CHANGELOG.md`, `docs/AUDIT_JOURNAL.md`, Push, PR nach **`development`** (nicht `main`!).
 4. Issue-Kommentar zu den veralteten Artikelnummern; Folge-Ticket Setzliste.
