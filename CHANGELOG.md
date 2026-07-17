@@ -1,5 +1,28 @@
 ## Unreleased (development)
 
+- STM-REL-001: Kritischen Startfehler der Desktop-/Portable-Variante behoben.
+  `Program.cs` bindet `ContentRootPath` jetzt explizit an `AppContext.BaseDirectory`
+  statt am aktuellen Arbeitsverzeichnis. Die Launcher starten die EXE über `start`,
+  ohne das Arbeitsverzeichnis zu setzen; dadurch wurde `wwwroot` nicht gefunden und
+  jeder normale Start per Verknüpfung/Doppelklick landete still auf der
+  API-Fallback-Seite statt im Dashboard (`embeddedDashboard: false`). Nach dem Fix
+  meldet `/api/health` unter denselben Startbedingungen `embeddedDashboard: true`.
+  Zusätzlich fällt der `BaseDirectory`-Default in `New-RunLogBundle.ps1` auf `%TEMP%`
+  zurück, wenn kein `D:`-Laufwerk existiert (vorher harter Abbruch auf Maschinen ohne
+  Datenpartition). Beide Änderungen sind durch Vertragstests abgesichert
+  (`WebApi_BindsContentRootToApplicationDirectoryNotCurrentWorkingDirectory`,
+  `RunLogBundle_BaseDirectoryFallsBackToTempWhenNoDDriveExists`).
+  Ursprung: Marcel-Mente (PR #33) – Bug auf einer frischen Maschine reproduziert,
+  Installer-Testmatrix (Inno Setup 6: Installation, Start, Testturnier,
+  Neustart-Persistenz, Deinstallation mit Datenerhalt) real durchlaufen.
+  Sicher an den aktuellen development-Stand adaptiert.
+  Bewusst nicht mitgefixt: dasselbe hart verdrahtete `D:\Temp`-Muster steckt noch in
+  8 weiteren Skripten (`Invoke-ClickInstallReadiness`, `Invoke-ColleagueFreshRunTest`,
+  `Invoke-ColleagueInstallReadiness`, `Invoke-LoggingReadiness`,
+  `Invoke-ReleaseCandidateReadiness`, `Invoke-SecretSafetyReadiness`,
+  `New-ContributorTaskPrompt`, `Test-ContributorKickoffReadiness`) – als eigene
+  Folgeaufgabe erfasst. Weiterhin offen: Portable-ZIP, Upgrade über Vorversion,
+  Sandbox-Frischmaschinentest, echte Code-Signierung.
 - STM-AI-006: projektlokale Nightly-Ausführungsebene ergänzt und zentrale
   Nightly-Aufnahme vorbereitet. `Invoke-NightlyProjectRun.ps1` (Lock,
   Vorbedingungen, kanonische Owner-Queue aus BACKLOG mit striktem Ausschluss von

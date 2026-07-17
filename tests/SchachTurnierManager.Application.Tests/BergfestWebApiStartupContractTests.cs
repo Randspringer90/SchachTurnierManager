@@ -5,6 +5,21 @@ namespace SchachTurnierManager.Application.Tests;
 public sealed class BergfestWebApiStartupContractTests
 {
     [Fact]
+    public void WebApi_BindsContentRootToApplicationDirectoryNotCurrentWorkingDirectory()
+    {
+        // STM-REL-001: Desktop-/Portable-Starts ueber "start" bzw. Verknuepfungen erben ein
+        // beliebiges Arbeitsverzeichnis. Bleibt ContentRootPath am Default (CWD), wird wwwroot
+        // nicht gefunden und das eingebettete Dashboard still durch die API-Fallback-Seite
+        // ersetzt. Der Bau ueber WebApplicationOptions.ContentRootPath = AppContext.BaseDirectory
+        // ist damit ein Verhaltensvertrag und darf nicht versehentlich zurueckgebaut werden.
+        var programPath = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Program.cs");
+        var program = File.ReadAllText(programPath);
+
+        Assert.Contains("ContentRootPath = AppContext.BaseDirectory", program);
+        Assert.DoesNotContain("WebApplication.CreateBuilder(args)", program);
+    }
+
+    [Fact]
     public void WebApi_UsesConfiguredSingleLineConsoleLoggingForLocalOperatorStartup()
     {
         var programPath = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Program.cs");
