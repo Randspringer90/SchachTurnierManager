@@ -119,6 +119,104 @@ public sealed class TournamentExportFormatter
         };
     }
 
+    /// <summary>
+    /// STM-IE-002: Liest Spieler-Stammdaten (nicht Turnierlogik/Ergebnisse) aus einer
+    /// TRF16-Datei ("001"-Zeilen) zurueck ein. Spaltenpositionen exakt spiegelbildlich zu
+    /// <see cref="ExportTrf16"/> (FIDE C.04 Annex 2). Punkte/Rang/Rundenergebnisse werden
+    /// bewusst nicht gelesen, da das Issue ausdruecklich nur Spieler-Stammdaten verlangt.
+    /// Fehlerhafte Zeilen werden gesammelt statt die gesamte Datei abzubrechen.
+    /// </summary>
+    public Trf16ImportResult ImportTrf16Players(string content)
+    {
+        var errors = new List<string>();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return new Trf16ImportResult(Array.Empty<Player>(), errors);
+        }
+
+        var lines = content.Replace("\r\n", "\n").Replace('\r', '\n')
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var players = new List<Player>();
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            if (line.Length < 3 || line[..3] != "001")
+            {
+                continue;
+            }
+
+            var oneBasedLineNumber = i + 1;
+            var name = Trf16Substring(line, 15, 33).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                errors.Add($"Zeile {oneBasedLineNumber}: Spielerzeile ohne Namen (Position 15-47), uebersprungen.");
+                continue;
+            }
+
+            var startingRank = 0;
+            var rankText = Trf16Substring(line, 5, 4).Trim();
+            if (!string.IsNullOrWhiteSpace(rankText) && !int.TryParse(rankText, NumberStyles.Integer, CultureInfo.InvariantCulture, out startingRank))
+            {
+                errors.Add($"Zeile {oneBasedLineNumber}: Startrang '{rankText}' (Position 5-8) ist keine Zahl, wird ignoriert.");
+                startingRank = 0;
+            }
+
+            var sexText = Trf16Substring(line, 10, 1);
+            var titleText = Trf16Substring(line, 11, 3).Trim();
+            var ratingText = Trf16Substring(line, 49, 4).Trim();
+            var federationText = Trf16Substring(line, 54, 3).Trim();
+            var fideIdText = Trf16Substring(line, 58, 11).Trim();
+
+            int? elo = null;
+            if (!string.IsNullOrWhiteSpace(ratingText))
+            {
+                if (int.TryParse(ratingText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedElo))
+                {
+                    elo = parsedElo;
+                }
+                else
+                {
+                    errors.Add($"Zeile {oneBasedLineNumber}: FIDE-Rating '{ratingText}' (Position 49-52) ist keine Zahl, wird ignoriert.");
+                }
+            }
+
+            players.Add(new Player
+            {
+                StartingRank = startingRank,
+                Name = name,
+                Title = titleText.Length > 0 ? titleText : null,
+                Gender = sexText.Equals("w", StringComparison.OrdinalIgnoreCase)
+                    ? GenderCategory.Female
+                    : sexText.Equals("m", StringComparison.OrdinalIgnoreCase)
+                        ? GenderCategory.Male
+                        : GenderCategory.Unknown,
+                Federation = federationText.Length > 0 ? federationText : null,
+                FideId = fideIdText.Length > 0 ? fideIdText : null,
+                Rating = new RatingProfile { Elo = elo }
+            });
+        }
+
+        return new Trf16ImportResult(players, errors);
+    }
+
+    /// <summary>
+    /// 1-indexierte, sichere Teilstring-Extraktion nach TRF-Spaltenposition: liefert leeren
+    /// String statt zu werfen, wenn die Zeile kuerzer ist als erwartet (z. B. weil ein Editor
+    /// nachlaufende Leerzeichen entfernt hat).
+    /// </summary>
+    private static string Trf16Substring(string line, int startPosition1Based, int length)
+    {
+        var start = startPosition1Based - 1;
+        if (start >= line.Length)
+        {
+            return string.Empty;
+        }
+
+        var available = Math.Min(length, line.Length - start);
+        return line.Substring(start, available);
+    }
+
     public ExportDocument ExportDownloadManifestJson(TournamentState tournament, IReadOnlyList<StandingRow> standings)
     {
         var latestRound = tournament.Rounds.Count == 0
@@ -924,3 +1022,5 @@ public sealed class TournamentExportFormatter
 
     private static string Html(string value) => WebUtility.HtmlEncode(value);
 }
+
+public sealed record Trf16ImportResult(IReadOnlyList<Player> Players, IReadOnlyList<string> Errors);

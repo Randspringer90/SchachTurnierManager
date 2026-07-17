@@ -2,4 +2,9 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- STM-IE-002: Windows-1252-Fallback fuer Import-Dateien aus dem Swiss-Manager-Oekosystem,
+         die haeufig nicht in UTF-8 vorliegen. -->
+    <PackageReference Include="System.Text.Encoding.CodePages" />
+  </ItemGroup>
 </Project>
