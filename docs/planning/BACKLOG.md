@@ -67,6 +67,34 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
+| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43) (blockiert: Android SDK fehlt auf der Workstation) | post-1.0 |
+| STM-MOB-002 | F-Droid-Readiness | P3 | Blocked | mobile | owner | – (blockiert: STM-MOB-001 + Lizenzentscheidung STM-SEC-004) | post-1.0 |
+| STM-MOB-003 | Mobile Paarungsansicht | P2 | Backlog | mobile | friend | – (nach STM-MOB-001) | post-1.0 |
+| STM-MOB-004 | Mobile Ergebniseingabe (Bestätigung, Undo, Audit) | P2 | Backlog | mobile | friend | – (nach STM-MOB-003) | post-1.0 |
+| STM-MOB-005 | QR-Code-Verbindung zum Turnierrechner | P3 | Backlog | mobile | friend | – (keine Secrets im QR, Ablaufzeit) | post-1.0 |
+| STM-MOB-006 | Zuschaueransicht (read-only) | P3 | Backlog | mobile | friend | – | post-1.0 |
+| STM-MOB-007 | Offline-Ergebniswarteschlange mit Konfliktdialog | P3 | Backlog | mobile | friend | – (nach STM-MOB-004) | post-1.0 |
+| STM-MOB-008 | Mobile Export-/Teilen-Funktion (Android Share Sheet) | P3 | Backlog | mobile | friend | – | post-1.0 |
+| STM-MOB-009 | Tablet-Turnierleiteransicht | P3 | Backlog | mobile | friend | – | post-1.0 |
+| STM-FACH-004 | Mannschaftsturniere (Bretter, Mannschafts-/Brettpunkte, Ersatzspieler) | P2 | Backlog | pairing | friend | – (nach STM-FACH-002) | post-1.0 |
+| STM-FACH-005 | Beschleunigtes Schweizer System | P3 | Backlog | pairing | friend | – (nur nach offizieller Spezifikation, Golden-Tests) | post-1.0 |
+| STM-FACH-006 | Flexible Tie-Break-Profile (FIDE-/Vereinsprofile, auditierbar) | P2 | Backlog | tiebreaks | friend | – (keine stillen Regeländerungen) | post-1.0 |
+| STM-FACH-007 | Ergebniskorrektur und Runden-Neuberechnung mit Audit-Trail | P2 | Backlog | pairing | friend | – | v1.0.0 |
+| STM-FACH-008 | Turnierabbruch, Rückzug und Wiedereinstieg (Statusübergänge) | P2 | Backlog | pairing | friend | – (baut auf STM-FACH-001) | post-1.0 |
+| STM-IE-005 | CSV-/Excel-Spielerimport mit Mapping-Vorschau | P2 | Backlog | import-export | friend | – (Vorschau + explizite Bestätigung) | post-1.0 |
+| STM-IE-006 | PDF-Turnierbericht | P3 | Backlog | import-export | friend | – | post-1.0 |
+| STM-IE-007 | Exportpaket für Vereinswebsites (statisch, ohne PII) | P3 | Backlog | import-export | friend | – | post-1.0 |
+| STM-IE-008 | Rundenergebnis-/Paarungsimport (Vorschau, Validierung, Audit) | P3 | Backlog | import-export | friend | – | post-1.0 |
+| STM-UX-005 | Turnierassistent (schrittweises Anlegen) | P2 | Backlog | ui | friend | – | post-1.0 |
+| STM-UX-006 | Spieler-Massenbearbeitung | P3 | Backlog | ui | friend | – | post-1.0 |
+| STM-UX-007 | Duplikaterkennung (Name, FIDE-ID; nie automatisch löschen) | P2 | Backlog | player-data | friend | – | post-1.0 |
+| STM-UX-008 | Rundenkontrollzentrum | P2 | Backlog | ui | friend | – | post-1.0 |
+| STM-UX-009 | Benutzerhandbuch | P3 | Backlog | documentation | friend | – | post-1.0 |
+| STM-UX-010 | Geräteübergreifende Testmatrix | P3 | Backlog | infrastructure | either | – | post-1.0 |
+| STM-UX-011 | Barrierefreiheit (Tastatur, Screenreader, Kontrast, Fokus) | P3 | Backlog | ui | friend | – | post-1.0 |
+| STM-FACH-009 | Vereinsmeisterschaftsmodus (Serien, Saisonwertung) | P3 | Backlog | pairing | friend | – | post-1.0 |
+| STM-FACH-010 | Blitz-/Schnellschach-Vorlagen | P3 | Backlog | pairing | friend | – | post-1.0 |
+| STM-UX-012 | Öffentliche Live-Anzeige im lokalen Netzwerk (read-only) | P3 | Backlog | ui | either | – | post-1.0 |
 | STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | Done | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (Original-PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), sichere Adoption [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36)) | v1.0.0 |
 
 ---
