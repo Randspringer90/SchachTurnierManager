@@ -49,7 +49,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |
 | STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | Done | infrastructure | owner | [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) (PR [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39), Merge `4681e01`) | v1.0.0 |
 | STM-INFRA-005 | Hart verdrahtetes `D:\Temp` in 8 Skripten auf `%TEMP%`-Fallback umstellen | P3 | Backlog | infrastructure | either | – | v1.0.0 |
-| STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race) | P2 | Backlog | infrastructure | owner | – | v1.0.0 |
+| STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` flaky – Wurzel: nichtdeterministischer Graph-Hash | P2 | In Review | infrastructure | owner | [#46](https://github.com/Randspringer90/SchachTurnierManager/issues/46) (PR läuft; 20/20 lokale Läufe grün) | v1.0.0 |
 | STM-INFRA-007 | Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR | P3 | Backlog | infrastructure | owner | – | v1.0.0 |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | **Ready** | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | v1.0.0 |

@@ -290,9 +290,47 @@ function Test-RoutedTaskGraph {
     return @($violations)
 }
 
+# Kanonische, reihenfolgeunabhaengige Repraesentation fuer den Graph-Hash (STM-INFRA-006).
+# Ursache der frueheren Flakiness: ConvertTo-Json serialisiert die Properties eines Objekts in
+# deren Auflistungsreihenfolge. Bei Hashtables ist diese Reihenfolge nicht garantiert und kann
+# zwischen Prozessen variieren (randomisierter Hash-Seed), wodurch derselbe Graph mal denselben,
+# mal einen anderen Hash ergab und Invoke-RoutedTaskGraph faelschlich "Manipulation" meldete -
+# nicht nur im Test, sondern auch bei einem echten Resume. Durch rekursives Sortieren aller
+# Schluessel wird die Serialisierung deterministisch.
+function ConvertTo-CanonicalObject {
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [System.Management.Automation.PSCustomObject]) {
+        $ordered = [ordered]@{}
+        foreach ($p in ($Value.PSObject.Properties | Sort-Object Name -CaseSensitive)) {
+            $ordered[$p.Name] = ConvertTo-CanonicalObject $p.Value
+        }
+        return $ordered
+    }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $ordered = [ordered]@{}
+        foreach ($k in (@($Value.Keys) | Sort-Object -CaseSensitive)) {
+            $ordered[[string]$k] = ConvertTo-CanonicalObject $Value[$k]
+        }
+        return $ordered
+    }
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+        return @(foreach ($item in $Value) { ConvertTo-CanonicalObject $item })
+    }
+    return $Value
+}
+
 function Get-TaskGraphHash {
     param([Parameter(Mandatory)][psobject]$Graph)
-    $json = $Graph | ConvertTo-Json -Depth 16 -Compress
+    # Der Hash muss identisch sein, egal ob der Graph gerade frisch als Hashtable-Struktur
+    # aufgebaut (Erstellen) oder aus JSON deserialisiert (Lesen/Resume) vorliegt. Deshalb wird
+    # die Eingabe zuerst durch einen JSON-Roundtrip auf eine einheitliche Objektform normalisiert
+    # (gleicht Typ-Unterschiede wie int/long und leere Sammlungen an) und danach kanonisch mit
+    # sortierten Schluesseln serialisiert (STM-INFRA-006). So kann derselbe logische Graph nicht
+    # mehr zwei verschiedene Hashes ergeben.
+    $roundTripped = $Graph | ConvertTo-Json -Depth 32 -Compress | ConvertFrom-Json
+    $canonical = ConvertTo-CanonicalObject $roundTripped
+    $json = $canonical | ConvertTo-Json -Depth 32 -Compress
     $bytes = [Text.Encoding]::UTF8.GetBytes($json)
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLowerInvariant() }
@@ -335,7 +373,21 @@ function Write-RoutedCheckpoint {
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
     $temp = "$CheckpointPath.tmp"
     ($checkpoint | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $temp -Encoding utf8NoBOM
-    Move-Item -LiteralPath $temp -Destination $CheckpointPath -Force
+    # Atomarer Austausch, aber gegen transiente Datei-Locks gehaertet (STM-INFRA-006): unter
+    # Windows/CI kann ein Virenscanner die frisch geschriebene temp-Datei kurz sperren, wodurch
+    # Move-Item vereinzelt scheitert und der Checkpoint fehlt. Kurzer, begrenzter Retry; der
+    # letzte Versuch wirft weiterhin (fail-closed), damit ein echtes Schreibproblem sichtbar bleibt.
+    $moved = $false
+    for ($attempt = 1; $attempt -le 5 -and -not $moved; $attempt++) {
+        try {
+            Move-Item -LiteralPath $temp -Destination $CheckpointPath -Force -ErrorAction Stop
+            $moved = $true
+        }
+        catch {
+            if ($attempt -ge 5) { throw }
+            Start-Sleep -Milliseconds (40 * $attempt)
+        }
+    }
 }
 
 function Read-RoutedCheckpoint {
