@@ -39,3 +39,16 @@
 
 # Installer / Paketierung
 /installer/**                   @Randspringer90
+
+# Android-Signing und Release-Konfiguration (STM-MOB-001).
+# Der trusted-collaborator darf hier vorschlagen, aber nichts ohne Owner-Freigabe mergen.
+# Schluesselmaterial selbst gehoert NICHT ins Repository (siehe .gitignore und
+# docs/operations/ANDROID_SIGNING.md) - diese Regeln schuetzen die Konfiguration drumherum.
+/src/SchachTurnierManager.Mobile/android/keystore.properties  @Randspringer90
+/src/SchachTurnierManager.Mobile/android/app/build.gradle     @Randspringer90
+/src/SchachTurnierManager.Mobile/android/**/signing*          @Randspringer90
+/docs/operations/ANDROID_SIGNING.md                           @Randspringer90
+/docs/distribution/**                                         @Randspringer90
+
+# Kollaborationsmodell: wer was darf, ist selbst ein geschuetzter Pfad.
+/docs/planning/COLLABORATION_MODEL.md                         @Randspringer90
