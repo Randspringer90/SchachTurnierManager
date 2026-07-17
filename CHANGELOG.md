@@ -1,5 +1,17 @@
 ## Unreleased (development)
 
+- STM-INFRA-004: Safe-PR-Skripte gegen offenes stdin gehärtet.
+  `Invoke-SafePullRequestReview.ps1` wies der automatischen PowerShell-Variablen
+  `$input` (Pipeline-/stdin-Enumerator) einen eigenen Wert zu und blockierte
+  dadurch bei offenem stdin unbegrenzt – betroffen war auch
+  `Test-PullRequestReviewReadiness.ps1`, das das Review aufruft. Umbenannt in
+  `$reviewInput`. Der neue Test `PowerShellScripts_DoNotAssignToAutomaticVariables`
+  deckt die gesamte Fehlerklasse ab (nicht nur `$input`) und hat dabei zwei weitere
+  echte Fundstellen in `Import-TournamentPreset.ps1` aufgedeckt: `$matches` (wird vom
+  `-match`-Operator überschrieben) und `$args` – beide umbenannt.
+  Messbar: `Test-PullRequestReviewReadiness.ps1` läuft mit offenem stdin jetzt in
+  17 s durch (vorher Hänger > 12 min); alle 42 synthetischen Risikofälle bestehen
+  unverändert, keine Security-Prüfung wurde abgeschwächt.
 - STM-DOC-001: Contributor-Onboarding auf einem frischen Klon verifiziert und
   korrigiert. Die GitHub CLI (`gh`) ist jetzt als **optional** ausgewiesen: Der
   Pull-Request-Weg über die GitHub-Weboberfläche ist vollständig dokumentiert,

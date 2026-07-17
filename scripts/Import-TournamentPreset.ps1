@@ -55,17 +55,17 @@ function Resolve-Preset {
     if ([string]::IsNullOrWhiteSpace($IdValue)) {
         if ($AutoSelect) {
             $localInput = Join-Path $Root 'local-input'
-            $matches = @()
+            $presetFiles = @()
             if (Test-Path -LiteralPath $localInput -PathType Container) {
-                $matches = @(Get-ChildItem -LiteralPath $localInput -Filter '*.local.json' -Recurse -File | Sort-Object FullName)
+                $presetFiles = @(Get-ChildItem -LiteralPath $localInput -Filter '*.local.json' -Recurse -File | Sort-Object FullName)
             }
-            if ($matches.Count -eq 1) {
-                return $matches[0].FullName
+            if ($presetFiles.Count -eq 1) {
+                return $presetFiles[0].FullName
             }
-            if ($matches.Count -eq 0) {
+            if ($presetFiles.Count -eq 0) {
                 throw "AutoSelectSinglePreset: keine *.local.json-Datei unter $localInput gefunden."
             }
-            $list = ($matches | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+            $list = ($presetFiles | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
             throw "AutoSelectSinglePreset: mehrere Preset-Dateien gefunden. Bitte -PresetPath verwenden:$([Environment]::NewLine)$list"
         }
 
@@ -77,15 +77,15 @@ function Resolve-Preset {
         throw "PresetId '$IdValue' wurde nicht gefunden. Erwarteter Ordner: $folder"
     }
 
-    $matches = @(Get-ChildItem -LiteralPath $folder -Filter '*.local.json' -File | Sort-Object Name)
-    if ($matches.Count -eq 0) {
+    $presetFiles = @(Get-ChildItem -LiteralPath $folder -Filter '*.local.json' -File | Sort-Object Name)
+    if ($presetFiles.Count -eq 0) {
         throw "Keine *.local.json-Datei fuer PresetId '$IdValue' gefunden."
     }
-    if ($matches.Count -eq 1) {
-        return $matches[0].FullName
+    if ($presetFiles.Count -eq 1) {
+        return $presetFiles[0].FullName
     }
 
-    $list = ($matches | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+    $list = ($presetFiles | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
     throw "Mehrere Preset-Dateien gefunden. Bitte -PresetPath verwenden:$([Environment]::NewLine)$list"
 }
 
@@ -273,17 +273,17 @@ function Convert-ToCsvContent {
 
 function Invoke-Json {
     param([string]$Method, [string]$Uri, [object]$Body)
-    $args = @{
+    $restArgs = @{
         Method = $Method
         Uri = $Uri
         Headers = @{ Accept = 'application/json' }
     }
     if ($null -ne $Body) {
-        $args['ContentType'] = 'application/json; charset=utf-8'
-        $args['Body'] = ($Body | ConvertTo-Json -Depth 40)
+        $restArgs['ContentType'] = 'application/json; charset=utf-8'
+        $restArgs['Body'] = ($Body | ConvertTo-Json -Depth 40)
     }
     try {
-        return Invoke-RestMethod @args
+        return Invoke-RestMethod @restArgs
     } catch {
         $message = $_.Exception.Message
         if ($_.ErrorDetails -and -not [string]::IsNullOrWhiteSpace($_.ErrorDetails.Message)) {
