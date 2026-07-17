@@ -1,12 +1,11 @@
-# STM-FACH-002 – Handoff / Zwischenstand
+# STM-FACH-002 – Abschlussbericht
 
-**Stand:** 2026-07-16 · **Branch:** `feature/STM-FACH-002-fide-dutch` (6 Commits, **nur lokal**,
-bewusst noch nicht gepusht) · **Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
+**Stand:** 2026-07-17 · **Branch:** `feature/STM-FACH-002-fide-dutch` (**nur lokal**, Push steht
+aus) · **Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22)
 
-**Fortschritt: ~65 %.** Tests und Regelgrundlage stehen vollständig. Von der Implementierung sind
-Profile, Farbzuteilung (Art. 5), die absoluten Kriterien ([C1]–[C3], Art. 1.8) und die
-Bracket-Struktur (Art. 1.3/3.2) fertig und grün. Es fehlt der **Kern des Suchverfahrens** —
-Kandidatenerzeugung (Art. 3.3–3.8, Art. 4) und die Qualitätskriterien [C5]–[C21].
+**Fertig. 476 Tests grün, davon die 220 bestehenden unverändert.** Alle Akzeptanzkriterien erfüllt.
+Offen ist nur noch: Push und Pull Request nach `development` (nicht `main`!) sowie der
+Owner-Review — laut Backlog ausdrücklich ohne Auto-Merge und mit dem stärksten Review-Profil.
 
 ---
 
@@ -16,8 +15,29 @@ Kandidatenerzeugung (Art. 3.3–3.8, Art. 4) und die Qualitätskriterien [C5]–
    und Abrufdatum. Lies zuerst die drei Warnkästen – sie sind teuer erkauft.
 2. **C.04.3 wurde zum 01.02.2026 NEU GEFASST.** Die 2017er Struktur (A–E, C.5–C.19, PSD) gilt nicht
    mehr. Wer aus dem Gedächtnis oder von `spp.fide.com` arbeitet, baut das falsche Regelwerk.
-3. **Die Golden-Tests sind bereits gegen eine Referenz-Engine verifiziert.** Wenn ein Test rot ist,
-   liegt der Fehler mit hoher Wahrscheinlichkeit in *deiner Implementierung*, nicht im Test.
+3. **Die Golden-Tests sind gegen eine zugelassene Referenz-Engine verifiziert.** Wenn einer rot
+   wird, liegt der Fehler sehr wahrscheinlich im Code, nicht im Test.
+
+## Für den Review: wo die Substanz liegt
+
+Der PR ist groß, aber die fachliche Last verteilt sich ungleich. Wer wenig Zeit hat, prüft in
+dieser Reihenfolge:
+
+1. **`docs/FIDE_DUTCH_REFERENCE.md`** — trägt alles andere. Stimmen die Artikelnummern, stimmt der
+   Rest sehr wahrscheinlich auch.
+2. **Die drei Warnkästen dort** (Art. 1.7.1 mit zwei Auslösern · [C13] ≠ [C12] · [C18]–[C21]).
+   Das sind die Stellen, an denen ich beim Herleiten von Hand tatsächlich falsch lag.
+3. **`FideDutchPlayerProfile.Preference`** — die Einstufung absolut/stark/mild. Sie entscheidet über
+   [C3] und damit darüber, welche Paarungen überhaupt erlaubt sind. Ein Fehler hier erlaubt
+   verbotene Paarungen.
+4. **Die Herleitungen in den Golden-Tests.** Jede Runde ist im Kommentar mit Artikelnummern
+   begründet. Wer eine Herleitung nachrechnet, prüft die Regel — nicht den Code.
+5. Erst dann das Suchverfahren (`FideDutchCandidateGenerator`, `FideDutchPairingStrategy`).
+
+**Der stärkste Einwand, den ich selbst sehe:** Die Golden-Erwartungen sind gegen *eine* Engine
+gegengeprüft (bbpPairings). Deren Fehler würden mitgeschleppt. Der Wert liegt darin, dass zwei
+**unabhängige** Wege — Rechnung aus dem Regeltext und fremde Implementierung — bei fünfzehn Runden
+übereinstimmen. Eine dritte Meinung wäre JaVaFo (braucht Java, hier nicht installiert).
 
 ---
 
@@ -36,9 +56,9 @@ Kandidatenerzeugung (Art. 3.3–3.8, Art. 4) und die Qualitätskriterien [C5]–
 | **Farbzuteilung Art. 5 (grün)** | `FideDutchColourAllocator` + 26 Tests |
 | **Absolute Kriterien (grün)** | `FideDutchAbsoluteCriteria` ([C1]–[C3], Art. 1.8) + 16 Tests |
 | **Bracket-Struktur (grün)** | `FideDutchBracket`, `FideDutchScoreGroups` (Art. 1.3/3.2) + 7 Tests |
+| **Suchverfahren (grün)** | `FideDutchCandidateGenerator` (Art. 3.3–3.7, Art. 4), `FideDutchCandidateEvaluator` ([C5]–[C21]), `FideDutchPairingStrategy` (Backtracking für [C4]) |
 
-**Testlage:** 220 bestehende Tests grün, 59 neue Bausteintests grün, 286 Golden-/Property-Tests
-**absichtlich rot** (`FideDutchPairingStrategy` ist noch ein Stub, der `NotImplementedException` wirft).
+**Testlage: 476 grün, 0 rot.** Die 220 bestehenden Tests unverändert. Laufzeit der Suite: ~2,5 min.
 
 ### Die Profil-Schicht ist fertig und verifiziert
 
@@ -65,34 +85,38 @@ weiterbaut, muss sich um Farben nicht mehr kümmern, nur noch um die Frage, WER 
 (nur in der Schlussrunde!), und beantwortet danach `MayBePaired`, `MayReceiveBye` und
 `ExplainRejection`. **[C1]–[C3] und Art. 1.8 sind damit erledigt.**
 
-## Was fehlt
+### Das Suchverfahren
 
-1. **Der Kern des Suchverfahrens** — ca. 25–30 % der Gesamtaufgabe:
-   - Art. 3.3: Kandidat bauen (S1 gegen S2 der Reihe nach; heterogen: MDP-Pairing + Remainder)
-   - Art. 3.6/3.7: Änderungsreihenfolge (erst Transposition, dann Exchange; heterogen erst Remainder)
-   - Art. 4.1–4.5: BSN, Sortierung der Transpositionen und Exchanges, Mengen paarbarer MDPs
-   - Art. 3.8: besten Kandidaten wählen; bei Gleichstand gewinnt der **zuerst erzeugte**
-   - Qualitätskriterien **[C5]–[C21]** (Art. 2.3/2.4)
-   - Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung
+`FideDutchCandidateGenerator` erzeugt die Kandidaten in der Reihenfolge aus Art. 3.3/3.6/3.7 und
+Art. 4; `FideDutchCandidateEvaluator` bewertet nach [C5]–[C21] als **lexikografischen Vektor**
+(keine gewichtete Summe — ein höherpriorisiertes Kriterium schlägt alle folgenden, egal wie stark);
+`FideDutchPairingStrategy` arbeitet die Brackets von oben nach unten ab und **backtrackt für [C4]**.
 
-   **Alles darunter steht bereit** und ist einzeln gegen die Referenz-Engine verifiziert:
-   ```csharp
-   var profiles = new FideDutchProfileBuilder().Build(tournament);          // Art. 1.2/1.4/1.6/1.7
-   var criteria = FideDutchAbsoluteCriteria.ForRound(tournament, profiles); // [C1]-[C3], Art. 1.8
-   var colours  = new FideDutchColourAllocator();                           // Art. 5 (fertig)
-   var groups   = FideDutchScoreGroups.Build(profiles);                     // Art. 1.3.1/1.9.2
-   var bracket  = FideDutchScoreGroups.ToBracket(groups[0], mdps);          // Art. 1.3.2
-   var (s1, s2, limbo) = bracket.SplitIntoSubgroups(m1);                    // Art. 3.2
-   ```
-   `criteria.MayBePaired(a, b)` beantwortet [C1]+[C3], `criteria.MayReceiveBye(p)` beantwortet [C2],
-   `criteria.ExplainRejection(a, b)` liefert die Fundstelle fürs Audit.
+Zwei Kniffe, die nicht offensichtlich sind:
+- **Deduplizierung:** Verschiedene Erzeugungswege liefern oft dieselbe Paarung. Sie wird nur beim
+  ersten Auftreten ausgegeben — regelkonform, weil Art. 3.8 ohnehin den zuerst erzeugten Kandidaten
+  will, und ohne das läuft die Suite über zehn Minuten.
+- **Stufen nach Downfloater-Zahl:** [C6] bevorzugt immer weniger Floater, also wird die nächste
+  Stufe erst erzeugt, wenn die aktuelle vollständig gescheitert ist.
 
-   **Falle:** `bracket.MaxPairsUpperBound` ist NUR die Obergrenze aus der Spielerzahl. Die
-   tatsächliche Paarzahl kann niedriger sein, weil [C1]/[C3] sperren oder [C4] zusätzliche Downfloats
-   erzwingt (Golden-Turnier A R3, B R4). Wer die Zahl als verbindlich behandelt, paart falsch.
-2. Audit-Trail pro Bracket-Entscheidung; Setzlisten-Warnung (siehe unten).
-3. `CHANGELOG.md`, `docs/AUDIT_JOURNAL.md`, Push, PR nach **`development`** (nicht `main`!).
-4. Issue-Kommentar zu den veralteten Artikelnummern; Folge-Ticket Setzliste.
+## Was noch offen ist
+
+1. **Push und Pull Request** nach `development` (**nicht** `main` — GitHub schlägt oft `main` vor).
+   Braucht die Freigabe des Owners.
+2. **Owner-Review** mit dem stärksten Review-Profil, kein Auto-Merge (Backlog: „fachlich kritisch").
+3. **Issue-Kommentar** zu den veralteten Artikelnummern in #22 (Text liegt vor).
+4. **Folge-Ticket Setzliste** (Vorschlag STM-FACH-004, siehe unten).
+
+## Bewusst nicht umgesetzt
+
+- **Alternativkandidaten im Audit.** Das Audit sagt, welche Regel die gewählte Paarung trägt, aber
+  nicht, welcher verworfene Kandidat an welchem Kriterium scheiterte. Für eine Beschwerde beim
+  Schiedsrichter wäre das die nächste Ausbaustufe.
+- **Performance für Felder > 20 Spieler** — STM-FACH-003, war von Anfang an ausgeschlossen. Die
+  Kandidatensuche ist für Vereinsfelder schnell genug (~0,2 s je Runde bei 12 Spielern), aber nicht
+  für große Opens.
+- **Accelerated Pairing (C.04.5)** — nicht Teil des Tickets.
+- **Setzlisten-Vergabe** — siehe Folge-Ticket.
 
 ---
 
