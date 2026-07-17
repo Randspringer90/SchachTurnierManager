@@ -217,6 +217,69 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         return added;
     }
 
+    /// <summary>
+    /// STM-IE-002: Importiert Spieler-Stammdaten aus einer Swiss-Manager-Importlayout-CSV.
+    /// <paramref name="fileBytes"/> statt eines bereits dekodierten Strings, damit echte
+    /// UTF-8-/Windows-1252-Erkennung moeglich ist (Issue-Anforderung), nicht nur eine vom
+    /// Frontend erratene Dekodierung.
+    /// </summary>
+    public PlayerImportOutcome ImportSwissManagerCsv(Guid tournamentId, byte[] fileBytes, bool replaceExisting)
+    {
+        var text = ImportTextDecoder.Decode(fileBytes);
+        var result = SwissManagerCsvCodec.ImportPlayers(text);
+        var added = MergeImportedPlayers(tournamentId, result.Players, replaceExisting);
+        return new PlayerImportOutcome(added, result.Errors);
+    }
+
+    /// <summary>
+    /// STM-IE-002: Importiert Spieler-Stammdaten (keine Turnierlogik/Ergebnisse) aus einer
+    /// TRF16-Datei. Siehe <see cref="ImportSwissManagerCsv"/> zur Begruendung von byte[].
+    /// </summary>
+    public PlayerImportOutcome ImportTrf16Players(Guid tournamentId, byte[] fileBytes, bool replaceExisting)
+    {
+        var text = ImportTextDecoder.Decode(fileBytes);
+        var result = _exports.ImportTrf16Players(text);
+        var added = MergeImportedPlayers(tournamentId, result.Players, replaceExisting);
+        return new PlayerImportOutcome(added, result.Errors);
+    }
+
+    private IReadOnlyList<Player> MergeImportedPlayers(Guid tournamentId, IReadOnlyList<Player> importedPlayers, bool replaceExisting)
+    {
+        var tournament = RequireTournament(tournamentId);
+        if (importedPlayers.Count == 0)
+        {
+            return Array.Empty<Player>();
+        }
+
+        if (replaceExisting)
+        {
+            if (tournament.Rounds.Count > 0)
+            {
+                throw new InvalidOperationException("Teilnehmer können nach ausgelosten Runden nicht vollständig ersetzt werden. Nutze stattdessen Ergänzen oder lege ein neues Turnier an.");
+            }
+
+            tournament.Players.Clear();
+        }
+
+        var added = new List<Player>();
+        foreach (var player in importedPlayers)
+        {
+            var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
+            if (HasExternalIdClash(tournament, normalized.FideId, normalized.NationalId, normalized.Id)
+                || tournament.Players.Any(existing => existing.Id != normalized.Id
+                    && string.Equals(existing.Name, normalized.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            tournament.Players.Add(normalized);
+            added.Add(normalized);
+        }
+
+        _store.Save(tournament);
+        return added;
+    }
+
     public string ExportPlayersCsv(Guid tournamentId)
     {
         return PlayerCsvCodec.ExportPlayers(RequireTournament(tournamentId).Players);
@@ -784,6 +847,18 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         // FIDE-TRF-Spezifikation erwartet alle Turnierteilnehmer, nicht nur die
         // in der sichtbaren Rangliste verbliebenen aktiven Spieler (STM-IE-001).
         return _exports.ExportTrf16(tournament, _standings.Calculate(tournament, includeInactive: true));
+    }
+
+    public ExportDocument ExportSwissManagerCsv(Guid tournamentId)
+    {
+        var tournament = RequireTournament(tournamentId);
+        var csv = SwissManagerCsvCodec.ExportPlayers(tournament.Players);
+        return new ExportDocument
+        {
+            FileName = $"{tournament.Name}_SwissManager.csv".Replace(' ', '_'),
+            ContentType = "text/csv; charset=utf-8",
+            Content = csv
+        };
     }
 
     public ExportDocument ExportPrintableTournamentHtml(Guid tournamentId)
@@ -1439,3 +1514,6 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         }
     }
 }
+
+/// <summary>STM-IE-002: Ergebnis eines Stammdaten-Imports (Swiss-Manager-CSV oder TRF16).</summary>
+public sealed record PlayerImportOutcome(IReadOnlyList<Player> Added, IReadOnlyList<string> FormatErrors);

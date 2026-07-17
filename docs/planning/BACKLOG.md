@@ -56,7 +56,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
 | STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | Done | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (Original-PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), sichere Adoption [#35](https://github.com/Randspringer90/SchachTurnierManager/pull/35), Merge `6a2d021`) | v1.0.0 |
-| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | **Ready** | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) (entsperrt: STM-IE-001 ist Done) | v1.0.0 |
+| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | **In Progress** | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) · Branch `feature/STM-IE-002-swiss-manager-compat` | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
 | STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | v1.0.0 |
 | STM-UX-001 | i18n vervollständigen | P2 | Backlog | ui | either | – | v1.0.0 |
@@ -247,6 +247,58 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **PR:** Original [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31) ·
   **Sichere Adoption:** [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36) ·
   **Ziel-Release:** v1.0.0
+
+### STM-IE-002 · Swiss-Manager / Chess-Results-Kompatibilität
+- **Beschreibung:** Import/Export von Spieler-Stammdaten im Swiss-Manager-CSV-Layout
+  sowie TRF16-Import (Ergänzung zum bestehenden TRF16-Export aus STM-IE-001), damit
+  Turnierdaten mit Swiss-Manager, Chess-Results.com und anderer FIDE-naher Software
+  ausgetauscht werden können.
+- **Priorität:** P2 · **Status:** In Progress · **Kategorie:** import-export · **Ziel-Bearbeiter:** either · **Owner:** der Owner
+- **GitHub-Issue:** [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) · **Branch:** `feature/STM-IE-002-swiss-manager-compat`
+- **Abhängigkeiten:** STM-IE-001 (Done).
+- **Umsetzung:**
+  - `SwissManagerCsvCodec` (Domain) exportiert/importiert das offizielle
+    Swiss-Manager-CSV-Layout aus dem User's Guide, Anhang C (Header
+    `No;Name;Title;FIDE-No;ID no;Rating nat;Rating int;Birth;Fed;Sex;Club`,
+    komma-separiert). Import akzeptiert sowohl eine kombinierte `Name`-Spalte
+    (wie Swiss-Manager sie selbst nutzt) als auch getrennte Vor-/Nachname-Spalten,
+    beliebige Spaltenreihenfolge, Datumsformate `JJJJ/MM/TT`, `TT.MM.JJJJ` und
+    reines Geburtsjahr.
+  - `TournamentExportFormatter.ImportTrf16Players` liest TRF16-Stammdatenzeilen
+    (`001`-Zeilen, nur Name/Rating/Föderation/FIDE-ID – keine Paarungs-/
+    Ergebnisspalten, wie im Issue gefordert) und ergänzt damit den bestehenden
+    reinen Export aus STM-IE-001 um eine Importrichtung.
+  - `ImportTextDecoder` (Domain) versucht zuerst striktes UTF-8 und fällt bei
+    ungültigen Bytes auf Windows-1252 zurück (`System.Text.Encoding.CodePages`),
+    damit Dateien aus älteren Swiss-Manager-Versionen (Windows-1252-Encoding)
+    korrekt gelesen werden.
+  - `TournamentService.ImportSwissManagerCsv` / `.ImportTrf16Players` sammeln
+    Format-Fehler pro Zeile statt beim ersten Fehler abzubrechen
+    (`PlayerImportOutcome`); Endpoints: `GET/POST .../players/export-swissmanager.csv`,
+    `POST .../players/import-swissmanager.csv`, `POST .../players/import-trf16`.
+    WebApp-Bereich "Swiss-Manager / TRF16 (Spieler-Stammdaten)" im Import/Export-Card.
+- **Bewusste Scope-Grenzen (dokumentiert statt erfunden):**
+  - Nur Spieler-Stammdaten (Name, Rating, Föderation, FIDE-ID, Geburtsjahr, Verein,
+    Titel, Geschlecht) – keine Paarungen/Ergebnisse, wie im Issue gefordert.
+  - `Birth` wird beim Export nur als Jahr geschrieben (PII-Minimierung, wie schon
+    bei TRF16/STM-IE-001 entschieden); voller Tag/Monat wird beim Import toleriert,
+    aber nicht persistiert, da `Player.BirthYear` nur ein Jahr kennt.
+  - Swiss-Manager-Felder ohne Entsprechung im Domainmodell (`Type`, `Gr`, `Clubno`,
+    `Team`) werden beim Export ausgelassen statt mit Platzhaltern erfunden.
+  - Kein Live-Scrape von chess-results.com; TRF16 deckt den Datenaustausch mit
+    Chess-Results laut Issue bereits ab, ein gesondertes Chess-Results-Format wurde
+    nicht zusätzlich implementiert.
+- **Tests:** Unit-Tests für `ImportTextDecoder` (UTF-8, BOM, Windows-1252-Fallback,
+  leere Bytes), `SwissManagerCsvCodec` (Header, Spaltenreihenfolge, kombinierter/
+  getrennter Name, Datumsformate, Fehlersammlung, Roundtrip mit Komma im Feldwert)
+  und TRF16-Import (fehlender Name, Turnier-Header-Zeilen werden ignoriert,
+  Export-dann-Import-Roundtrip). Zusätzlich live über die echte HTTP-API verifiziert
+  (Windows-1252-Bytes → korrekt dekodierter Name; TRF16-Export-dann-Import-Roundtrip).
+- **Security:** keine externen Downloads/Scrapes; nur synthetische Testdaten; Import
+  ist fehlertolerant statt abzustürzen; PII-Minimierung wie bei STM-IE-001.
+- **Doku-Bedarf:** `docs/IMPORT_EXPORT_ROADMAP.md`, `CHANGELOG.md` – erledigt.
+- **Definition of Done:** siehe [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md) + alle Gates grün.
+- **PR:** – (folgt) · **Ziel-Release:** v1.0.0
 
 ### STM-FACH-002 · Vollständigeres FIDE-Dutch-Schweizer-System
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System

@@ -1647,6 +1647,7 @@ function App() {
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
   const [importPreview, setImportPreview] = React.useState<PlayerImportPreview | null>(null);
+  const [formatImportResult, setFormatImportResult] = React.useState<{ added: number; errors: string[] } | null>(null);
   const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
@@ -2390,6 +2391,31 @@ function App() {
 
     const csv = await requestText(`/api/tournaments/${selectedTournament.id}/players/export.csv`);
     downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
+  }
+
+  // STM-IE-002: Datei als Bytes lesen (nicht als Text), damit der Server echte
+  // UTF-8-/Windows-1252-Erkennung durchfuehren kann statt einer vom Browser geratenen Dekodierung.
+  async function importPlayerFile(file: File, endpoint: string) {
+    if (!selectedTournament) {
+      return;
+    }
+
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    setError(null);
+    const outcome = await requestJson<{ added: Player[]; formatErrors: string[] }>(
+      `/api/tournaments/${selectedTournament.id}/${endpoint}`,
+      { method: 'POST', body: JSON.stringify({ fileBytes: base64, replaceExisting: replacePlayers }) }
+    );
+    setFormatImportResult({ added: outcome.added.length, errors: outcome.formatErrors });
+    setStatus(`${outcome.added.length} Teilnehmer importiert${outcome.formatErrors.length > 0 ? ` · ${outcome.formatErrors.length} Hinweis(e)` : ''}.`);
+    await refresh(selectedTournament.id);
   }
 
   function openNextRoundPreviewCsv() {
@@ -4510,6 +4536,45 @@ function openRoundPrint(roundNumber: number) {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                )}
+              </section>
+              <section>
+                <h4>Swiss-Manager / TRF16 (Spieler-Stammdaten)</h4>
+                <p className="muted">Import/Export von Spieler-Stammdaten fuer den Austausch mit Swiss-Manager, Chess-Results.com oder FIDE. Nur Name, Rating, Foederation, FIDE-ID u. ae. - keine Paarungen/Ergebnisse.</p>
+                <div className="actions">
+                  <button type="button" className="secondary" onClick={() => openTournamentExport('players/export-swissmanager.csv')} disabled={!selectedTournament}>Swiss-Manager CSV exportieren</button>
+                  <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>TRF16 exportieren</button>
+                </div>
+                <div className="actions">
+                  <label className="file-import-label">
+                    Swiss-Manager CSV importieren
+                    <input type="file" accept=".csv,.txt" disabled={!selectedTournament} onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) { void importPlayerFile(file, 'players/import-swissmanager.csv'); }
+                    }} />
+                  </label>
+                  <label className="file-import-label">
+                    TRF16 importieren
+                    <input type="file" accept=".txt,.trf" disabled={!selectedTournament} onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) { void importPlayerFile(file, 'players/import-trf16'); }
+                    }} />
+                  </label>
+                </div>
+                {formatImportResult && (
+                  <div className="import-preview">
+                    <div className={`preview-summary ${formatImportResult.errors.length > 0 ? 'warning' : 'ready'}`}>
+                      <strong>{formatImportResult.added} Teilnehmer importiert</strong>
+                      {formatImportResult.errors.length > 0 && <span>{formatImportResult.errors.length} Hinweis(e)</span>}
+                    </div>
+                    {formatImportResult.errors.length > 0 && (
+                      <ul className="message-list">
+                        {formatImportResult.errors.map((message, index) => <li key={`format-import-error-${index}`}>{message}</li>)}
+                      </ul>
+                    )}
                   </div>
                 )}
               </section>

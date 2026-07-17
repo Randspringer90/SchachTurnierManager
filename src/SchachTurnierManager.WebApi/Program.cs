@@ -423,6 +423,32 @@ app.MapPost("/api/tournaments/{id:guid}/players/import.csv", (Guid id, ImportPla
     }
 });
 
+// STM-IE-002: Swiss-Manager-/Chess-Results-Kompatibilitaet - nur Spieler-Stammdaten,
+// keine Turnierlogik. Siehe docs/IMPORT_EXPORT_ROADMAP.md.
+app.MapPost("/api/tournaments/{id:guid}/players/import-swissmanager.csv", (Guid id, ImportPlayersFileRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.ImportSwissManagerCsv(id, request.FileBytes, request.ReplaceExisting));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/players/import-trf16", (Guid id, ImportPlayersFileRequest request, TournamentService service) =>
+{
+    try
+    {
+        return Results.Ok(service.ImportTrf16Players(id, request.FileBytes, request.ReplaceExisting));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
 app.MapGet("/api/tournaments/{id:guid}/pairings/preview-next-round", (Guid id, TournamentService service) =>
 {
     try
@@ -816,6 +842,18 @@ app.MapGet("/api/tournaments/{id:guid}/standings/export.trf16", (Guid id, Tourna
     try
     {
         return ToDownload(service.ExportTrf16(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/players/export-swissmanager.csv", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportSwissManagerCsv(id));
     }
     catch (InvalidOperationException ex)
     {

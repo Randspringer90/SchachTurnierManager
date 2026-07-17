@@ -46,6 +46,35 @@ Stand: 2026-06-16 (Basis 0.38.5). Status: Analyse/Spezifikation, noch kein produ
 3. **Swiss-Manager / Chess-Results** — weit verbreitetes Ökosystem.
    - Chess-Results stellt Tabellen, Paarungen und Swiss-Manager-Dateien bereit.
    - Zunächst nur Format-Analyse; kein Live-Scrape, kein Reverse-Engineering binärer Formate ohne Quelle.
+   - **Umgesetzt (STM-IE-002):** `SwissManagerCsvCodec` (Domain) exportiert/importiert
+     das offizielle Swiss-Manager-CSV-Layout aus dem User's Guide, Anhang C:
+     Header `No;Name;Title;FIDE-No;ID no;Rating nat;Rating int;Birth;Fed;Sex;Club`,
+     komma-separiert. Zusätzlich importiert `TournamentExportFormatter.ImportTrf16Players`
+     jetzt auch TRF16-Stammdatenzeilen zurück (Ergänzung zum reinen Export aus
+     STM-IE-001) — das deckt den Chess-Results-Austausch ab, da Chess-Results TRF16
+     liest/schreibt; ein gesondertes Chess-Results-Format wurde nicht zusätzlich gebaut.
+     Endpoints: `GET/POST .../players/export-swissmanager.csv`,
+     `POST .../players/import-swissmanager.csv`, `POST .../players/import-trf16`.
+     WebApp-Bereich "Swiss-Manager / TRF16 (Spieler-Stammdaten)" im Import/Export-Card.
+   - **Namensfeld:** Swiss-Manager unterstützt sowohl eine kombinierte `Name`-Spalte
+     als auch getrennte Vor-/Nachname-Spalten; der Import akzeptiert beide Varianten
+     und übernimmt damit den bereits bei TRF16 etablierten Grundsatz, keine eigene
+     Vor-/Nachname-Split-Logik zu erfinden.
+   - **Encoding-Toleranz:** `ImportTextDecoder` (Domain) versucht zuerst striktes
+     UTF-8 (inkl. BOM-Erkennung) und fällt bei ungültigen Bytes auf Windows-1252
+     zurück (`System.Text.Encoding.CodePages`), da ältere Swiss-Manager-Exporte
+     Windows-1252-kodiert sein können. Live über die echte HTTP-API verifiziert
+     (rohe Windows-1252-Bytes → korrekt dekodierter Umlautname in der API-Antwort).
+   - **Fehlertoleranz:** Import sammelt Format-Fehler pro Zeile (`PlayerImportOutcome`)
+     statt beim ersten Fehler abzubrechen; gültige Zeilen werden trotzdem übernommen.
+   - **Bewusste Scope-Grenzen (dokumentiert statt erfunden):**
+     - Nur Spieler-Stammdaten (Name, Rating, Föderation, FIDE-ID, Geburtsjahr, Verein,
+       Titel, Geschlecht) — keine Paarungen/Ergebnisse (Issue-Anforderung).
+     - `Birth` wird beim Export nur als Jahr geschrieben (PII-Minimierung, konsistent
+       mit der TRF16-Entscheidung aus STM-IE-001); ein voller Tag/Monat wird beim
+       Import toleriert, aber nicht persistiert, da `Player.BirthYear` nur ein Jahr kennt.
+     - Swiss-Manager-Felder ohne Entsprechung im Domainmodell (`Type`, `Gr`, `Clubno`,
+       `Team`) werden beim Export ausgelassen statt mit Platzhaltern erfunden.
 4. **PGN (optional)** — ausschließlich Partien/Züge, nicht für Tabellen/Wertungen.
 
 Quellen werden als Notiz/Link referenziert; kein langer Fremdtext wird kopiert.

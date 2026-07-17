@@ -1,5 +1,26 @@
 ## Unreleased (development)
 
+- STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
+  Richtung zu STM-IE-001s Export). `SwissManagerCsvCodec` (Domain) liest/schreibt
+  das offizielle Swiss-Manager-Layout aus dem User's Guide, Anhang C
+  (`No;Name;Title;FIDE-No;ID no;Rating nat;Rating int;Birth;Fed;Sex;Club`), akzeptiert
+  kombinierte oder getrennte Name-Spalten in beliebiger Reihenfolge sowie die
+  Datumsformate `JJJJ/MM/TT`, `TT.MM.JJJJ` und reines Geburtsjahr.
+  `TournamentExportFormatter.ImportTrf16Players` liest TRF16-Stammdatenzeilen
+  zurück (nur Name/Rating/Föderation/FIDE-ID, keine Paarungen/Ergebnisse, wie im
+  Issue gefordert). Neuer `ImportTextDecoder` (Domain) versucht zuerst striktes
+  UTF-8 und fällt bei ungültigen Bytes auf Windows-1252 zurück
+  (`System.Text.Encoding.CodePages`), damit ältere Swiss-Manager-Exporte korrekt
+  gelesen werden — live über die echte HTTP-API mit rohen Windows-1252-Bytes
+  verifiziert. Import sammelt Format-Fehler pro Zeile statt beim ersten Fehler
+  abzubrechen (`PlayerImportOutcome`). Neue Endpoints: `GET/POST
+  .../players/export-swissmanager.csv`, `POST .../players/import-swissmanager.csv`,
+  `POST .../players/import-trf16`; neuer WebApp-Bereich "Swiss-Manager / TRF16
+  (Spieler-Stammdaten)" im Import/Export-Card. Scope bewusst auf Spieler-
+  Stammdaten begrenzt (keine Paarungen/Ergebnisse); `Birth` wird beim Export nur
+  als Jahr geschrieben (PII-Minimierung, konsistent mit STM-IE-001); Swiss-Manager-
+  Felder ohne Domainmodell-Entsprechung (`Type`, `Gr`, `Clubno`, `Team`) werden
+  ausgelassen statt erfunden. Details in `docs/IMPORT_EXPORT_ROADMAP.md`.
 - STM-INFRA-004: Safe-PR-Skripte gegen offenes stdin gehärtet.
   `Invoke-SafePullRequestReview.ps1` wies der automatischen PowerShell-Variablen
   `$input` (Pipeline-/stdin-Enumerator) einen eigenen Wert zu und blockierte

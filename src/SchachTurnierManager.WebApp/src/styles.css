@@ -335,6 +335,19 @@ th {
   width: auto;
 }
 
+.file-import-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.file-import-label input[type="file"] {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
 .muted-row {
   opacity: 0.55;
 }
