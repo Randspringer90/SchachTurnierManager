@@ -56,7 +56,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Blocked | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
 | STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | Done | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (Original-PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), sichere Adoption [#35](https://github.com/Randspringer90/SchachTurnierManager/pull/35), Merge `6a2d021`) | v1.0.0 |
-| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | **In Progress** | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) · Branch `feature/STM-IE-002-swiss-manager-compat` | v1.0.0 |
+| STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | **In Review** | import-export | either | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24), PR [#44](https://github.com/Randspringer90/SchachTurnierManager/pull/44) | v1.0.0 |
 | STM-IE-003 | DSB / DeWIS-Anbindung | P2 | Backlog | player-data | owner | – | post-1.0 |
 | STM-IE-004 | FIDE-Namenssuche | P2 | Backlog | player-data | either | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | v1.0.0 |
 | STM-UX-001 | i18n vervollständigen | P2 | Backlog | ui | either | – | v1.0.0 |
@@ -253,8 +253,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   sowie TRF16-Import (Ergänzung zum bestehenden TRF16-Export aus STM-IE-001), damit
   Turnierdaten mit Swiss-Manager, Chess-Results.com und anderer FIDE-naher Software
   ausgetauscht werden können.
-- **Priorität:** P2 · **Status:** In Progress · **Kategorie:** import-export · **Ziel-Bearbeiter:** either · **Owner:** der Owner
-- **GitHub-Issue:** [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) · **Branch:** `feature/STM-IE-002-swiss-manager-compat`
+- **Priorität:** P2 · **Status:** In Review · **Kategorie:** import-export · **Ziel-Bearbeiter:** either · **Owner:** der Owner
+- **GitHub-Issue:** [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) · **Branch:** `feature/STM-IE-002-swiss-manager-compat` · **PR:** [#44](https://github.com/Randspringer90/SchachTurnierManager/pull/44)
 - **Abhängigkeiten:** STM-IE-001 (Done).
 - **Umsetzung:**
   - `SwissManagerCsvCodec` (Domain) exportiert/importiert das offizielle
@@ -298,7 +298,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   ist fehlertolerant statt abzustürzen; PII-Minimierung wie bei STM-IE-001.
 - **Doku-Bedarf:** `docs/IMPORT_EXPORT_ROADMAP.md`, `CHANGELOG.md` – erledigt.
 - **Definition of Done:** siehe [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md) + alle Gates grün.
-- **PR:** – (folgt) · **Ziel-Release:** v1.0.0
+- **PR:** [#44](https://github.com/Randspringer90/SchachTurnierManager/pull/44) · **Ziel-Release:** v1.0.0
 
 ### STM-FACH-002 · Vollständigeres FIDE-Dutch-Schweizer-System
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
