@@ -9,6 +9,7 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
     private readonly IAuditJournalSink? _auditSink = auditSink;
     private readonly RoundRobinPairingEngine _roundRobin = new();
     private readonly SwissPairingEngine _swiss = new();
+    private readonly FideDutchPairingStrategy _fideDutch = new();
     private readonly StandingsCalculator _standings = new();
     private readonly CrossTableCalculator _crossTable = new();
     private readonly CategoryStandingsCalculator _categoryStandings = new();
@@ -321,6 +322,18 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         return preview;
     }
 
+    /// <summary>
+    /// Waehlt das Auslosungsverfahren fuer das Schweizer System (STM-FACH-002). Standard bleibt die
+    /// bestehende Optimal-V2-Engine; FIDE-Dutch wird ueber
+    /// <see cref="TournamentSettings.PairingStrategy"/> bewusst ausgewaehlt.
+    /// </summary>
+    private ISwissPairingStrategy SelectSwissStrategy(TournamentState tournament) =>
+        tournament.Settings.PairingStrategy switch
+        {
+            SwissPairingStrategyKind.FideDutch => _fideDutch,
+            _ => _swiss
+        };
+
     private NextRoundPreview BuildNextRoundPreview(TournamentState tournament, string trigger)
     {
         EnsureCanCreateNextRound(tournament);
@@ -328,7 +341,7 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         TournamentRound previewRound = tournament.Settings.Format switch
         {
             TournamentFormat.RoundRobin => GetNextRoundRobinRound(tournament),
-            TournamentFormat.Swiss => _swiss.GenerateNextRound(tournament),
+            TournamentFormat.Swiss => SelectSwissStrategy(tournament).GenerateNextRound(tournament),
             _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
         };
 
@@ -377,7 +390,7 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             nextRound = tournament.Settings.Format switch
             {
                 TournamentFormat.RoundRobin => GetNextRoundRobinRound(tournament),
-                TournamentFormat.Swiss => _swiss.GenerateNextRound(tournament),
+                TournamentFormat.Swiss => SelectSwissStrategy(tournament).GenerateNextRound(tournament),
                 _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
             };
         }

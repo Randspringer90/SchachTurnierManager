@@ -1,5 +1,30 @@
 ## Unreleased (development)
 
+- STM-FACH-002: **FIDE-Dutch-Schweizer-System** als eigene, auswählbare Paarungsstrategie
+  ergänzt (C.04.3 in der ab **01.02.2026** gültigen Fassung). Die bestehende
+  Optimal-V2-Engine bleibt unverändert und **Standard**; FIDE-Dutch wird über
+  `TournamentSettings.PairingStrategy` bewusst gewählt. Umgesetzt sind Score
+  Groups/Brackets (Art. 1.3, 1.9.2), homogene und heterogene Bracket-Behandlung
+  inkl. Limbo (Art. 3.2), Floater- und Float-Historie (Art. 1.4, [C14]–[C21]),
+  Farbpräferenzen absolut/stark/mild (Art. 1.7) mit vollständiger Farbzuteilung
+  (Art. 5), Wiederholungsschutz ([C1]), Bye-Regeln inkl. kampfloser Ergebnisse
+  ([C2], [C5], [C9]), Backtracking für das Vollständigkeitsgebot ([C4]) und ein
+  Audit-Trail, der zu jeder Entscheidung die Artikelnummer nennt (C.04.1 Art. 9).
+  Neu: `TournamentSettings.SwissInitialColour` — die nach Art. 5.1 vor Runde 1
+  **ausgeloste** Anfangsfarbe. Sie ist Eingabe des Turnierleiters, nicht Zufall der
+  Engine, sonst wäre die Auslosung nicht reproduzierbar (C.04.2 Art. 1.4).
+  Validiert durch drei Golden-Turniere über je fünf Runden (inkl. Freilos, kampflosem
+  Ergebnis und erzwungenen Floats), deren Erwartungswerte von Hand aus dem Regeltext
+  hergeleitet und zusätzlich gegen die zugelassene Referenz-Engine bbpPairings 6.0.0
+  gegengeprüft wurden, sowie durch Property-Tests der absoluten Kriterien über sechs
+  Feldgrößen. Regelgrundlage mit allen Fundstellen: `docs/FIDE_DUTCH_REFERENCE.md`.
+  Ursprung: Marcel-Mente (PR #40), sicher an den aktuellen development-Stand adaptiert;
+  FIDE-C.04.3-Fassung 2026, Artikelstruktur 1–5 und Kriterien [C1]–[C21] wurden im
+  Owner-Review unabhängig gegen die Primärquelle (`handbook.fide.com/chapter/C0403202602`)
+  bestätigt. **Offen (Folgearbeit):** Die WebApp-UI bietet noch keine Auswahl für
+  `PairingStrategy`/`SwissInitialColour` — das Backend ist vollständig und über API/Persistenz
+  nutzbar, die Oberfläche folgt separat. Performance für Felder über 20 Spieler bleibt
+  STM-FACH-003.
 - STM-INFRA-004: Safe-PR-Skripte gegen offenes stdin gehärtet.
   `Invoke-SafePullRequestReview.ps1` wies der automatischen PowerShell-Variablen
   `$input` (Pipeline-/stdin-Enumerator) einen eigenen Wert zu und blockierte

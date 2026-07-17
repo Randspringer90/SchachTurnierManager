@@ -2,8 +2,16 @@ using SchachTurnierManager.Domain.Models;
 
 namespace SchachTurnierManager.Domain.Services;
 
-public sealed class SwissPairingEngine
+/// <summary>
+/// Schweizer System V2: global optimiertes Minimum-Penalty-Matching (siehe
+/// docs/SWISS_PAIRING_ENGINE.md). Weiterhin das Standardverfahren
+/// (<see cref="SwissPairingStrategyKind.OptimalMatchingV2"/>); FIDE-Dutch steht seit STM-FACH-002
+/// als eigene Strategie daneben, ohne dieses Verhalten zu veraendern.
+/// </summary>
+public sealed class SwissPairingEngine : ISwissPairingStrategy
 {
+    public SwissPairingStrategyKind Kind => SwissPairingStrategyKind.OptimalMatchingV2;
+
     // Wiederholungspaarungen müssen jede Kombination aus Punktdifferenz- und Farbstrafen
     // sicher dominieren, damit die globale Optimierung ein Rematch ausschließlich dann wählt,
     // wenn es keine rematchfreie vollständige Paarung mehr gibt ("nur wenn unvermeidbar").
