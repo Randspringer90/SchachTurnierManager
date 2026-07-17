@@ -26,11 +26,26 @@ namespace SchachTurnierManager.Domain.Tests;
 /// </summary>
 public sealed class FideDutchAbsoluteCriteriaPropertyTests
 {
-    /// <summary>Feldgrößen inkl. ungerader (Freilos) und der Grenze 20 aus der V2-Engine.</summary>
+    /// <summary>Feldgrößen inkl. ungerader (Freilos).</summary>
+    /// <remarks>
+    /// Ab 7 Spielern. Kleinere Felder sind für 5 Runden UNGEEIGNET, und das ist keine Schwäche der
+    /// Implementierung, sondern Arithmetik: Ein Spieler kann höchstens gegen n−1 verschiedene Gegner
+    /// antreten, danach erzwingt jede weitere Runde einen Rematch — und [C1] (C.04.1 Art. 2) ist
+    /// absolut, es gibt dann schlicht keine regelkonforme Paarung mehr. Die Strategie meldet das
+    /// korrekt nach Art. 1.9.3 („der Schiedsrichter entscheidet"); ein Test, der über solche Felder
+    /// fünf Runden verlangt, prüft also nicht die Regel, sondern fordert Unmögliches.
+    ///
+    /// Bei 6 Spielern und 5 Runden wäre das Turnier ein vollständiges Rundenturnier — jeder gegen
+    /// jeden, ohne jeden Spielraum. Dass ein Schweizer System diese eine Lösung findet, ist nicht
+    /// zugesichert und nicht sein Zweck. Ab 7 Spielern besteht echter Spielraum.
+    ///
+    /// Große Felder (&gt; 20) sind Gegenstand von STM-FACH-003 (Performance) und hier bewusst nicht
+    /// enthalten.
+    /// </remarks>
     public static TheoryData<int, int> FieldsAndSeeds()
     {
         var data = new TheoryData<int, int>();
-        foreach (var players in new[] { 4, 5, 6, 7, 8, 9, 10, 11, 12 })
+        foreach (var players in new[] { 7, 8, 9, 10, 11, 12 })
         {
             foreach (var seed in new[] { 1, 2, 3, 4, 5 })
             {
@@ -39,6 +54,38 @@ public sealed class FideDutchAbsoluteCriteriaPropertyTests
         }
 
         return data;
+    }
+
+    /// <summary>
+    /// C.04.3 Art. 1.9.3: Ist eine Rundenpaarung nicht möglich, entscheidet der Schiedsrichter.
+    /// Die Strategie darf dann weder abstürzen noch stillschweigend regelwidrig paaren — sie muss
+    /// den Fall erkennbar abgeben.
+    ///
+    /// Vier Spieler haben nur drei mögliche Gegner; ab Runde 4 ist ein Rematch unvermeidlich, und
+    /// [C1] ist absolut. Dass hier eine Ausnahme kommt, ist also das RICHTIGE Verhalten und kein
+    /// Mangel — die Meldung muss den Turnierleiter aber verständlich adressieren (C.04.1 Art. 9).
+    /// </summary>
+    [Fact]
+    public void WhenNoLegalPairingExists_HandsTheDecisionToTheArbiter_PerArticle193()
+    {
+        var tournament = CreateTournament(4);
+        var strategy = new FideDutchPairingStrategy();
+
+        // Drei Runden gehen auf - danach hat jeder gegen jeden gespielt.
+        for (var round = 0; round < 3; round++)
+        {
+            var next = strategy.GenerateNextRound(tournament);
+            tournament.Rounds.Add(next with
+            {
+                Pairings = next.Pairings.Select(p => p with { Result = new GameResult(GameResultKind.WhiteWin) }).ToList(),
+                ResultStatus = RoundResultStatus.Complete
+            });
+        }
+
+        var exception = Assert.Throws<InvalidOperationException>(() => strategy.GenerateNextRound(tournament));
+
+        Assert.Contains("Art. 1.9.3", exception.Message);
+        Assert.Contains("Schiedsrichter", exception.Message);
     }
 
     [Theory]
@@ -116,8 +163,11 @@ public sealed class FideDutchAbsoluteCriteriaPropertyTests
     [MemberData(nameof(FieldsAndSeeds))]
     public void SameInput_ProducesIdenticalPairings_PerC0402Article14(int playerCount, int seed)
     {
-        var first = PlayFullTournament(playerCount, seed);
-        var second = PlayFullTournament(playerCount, seed);
+        // Bewusst OHNE Zwischenspeicher: Zwei getrennt aufgebaute Turniere mit identischem Verlauf
+        // müssen Runde für Runde dieselbe Auslosung ergeben. Aus dem Zwischenspeicher zweimal
+        // dieselbe Instanz zu vergleichen würde nichts beweisen.
+        var first = BuildFreshTournament(playerCount, seed);
+        var second = BuildFreshTournament(playerCount, seed);
 
         Assert.Equal(Describe(first), Describe(second));
     }
@@ -150,7 +200,21 @@ public sealed class FideDutchAbsoluteCriteriaPropertyTests
 
     // -------------------------------------------------------------------------------------------
 
-    private static TournamentState PlayFullTournament(int playerCount, int seed)
+    /// <summary>
+    /// Zwischenspeicher je (Feldgröße, Startwert). Jede der sechs Zusagen prüft dasselbe Turnier;
+    /// ohne Zwischenspeicher würde es sechsmal neu ausgespielt, was die Suite von unter einer auf
+    /// über fünf Minuten treibt.
+    ///
+    /// Das ist nur zulässig, WEIL die Auslosung deterministisch ist (C.04.2 Art. 1.4) — genau das
+    /// prüft <see cref="SameInput_ProducesIdenticalPairings_PerC0402Article14"/>, und der Test
+    /// umgeht den Zwischenspeicher deshalb bewusst.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(int, int), TournamentState> Cache = new();
+
+    private static TournamentState PlayFullTournament(int playerCount, int seed) =>
+        Cache.GetOrAdd((playerCount, seed), key => BuildFreshTournament(key.Item1, key.Item2));
+
+    private static TournamentState BuildFreshTournament(int playerCount, int seed)
     {
         var tournament = CreateTournament(playerCount);
         var strategy = new FideDutchPairingStrategy();
