@@ -78,6 +78,47 @@ public sealed class TournamentExportFormatter
     }
 
 
+    /// <summary>
+    /// STM-IE-001: Read-only-Export ins FIDE TRF16-Format (Tournament Report File).
+    /// Spaltenpositionen exakt nach FIDE-Spezifikation (C.04 Annex 2, TRF16-PDF).
+    /// Bewusste Scope-Entscheidungen (siehe docs/IMPORT_EXPORT_ROADMAP.md):
+    /// - <paramref name="standings"/> muss mit <c>includeInactive: true</c> berechnet worden
+    ///   sein, damit zurückgezogene/pausierte Spieler (STM-FACH-001-Withdrawal-Logik) im
+    ///   TRF-Export erhalten bleiben statt durch das Ranglistenfilter zu verschwinden.
+    /// - Geburtsdatum (Position 70-79) bleibt aus PII-Minimierungsgründen leer.
+    /// - Turnier-Kopfzeilen ohne Datengrundlage in unserem Domainmodell (Ort, Föderation,
+    ///   Start-/Enddatum, Schiedsrichter, Rundendaten) werden bewusst ausgelassen statt
+    ///   erfunden.
+    /// - Zeilenenden sind CR wie in Remark 1 der FIDE-Spezifikation gefordert.
+    /// </summary>
+    public ExportDocument ExportTrf16(TournamentState tournament, IReadOnlyList<StandingRow> standings)
+    {
+        var playersById = tournament.Players.ToDictionary(p => p.Id);
+        var startingRankById = tournament.Players.ToDictionary(p => p.Id, p => p.StartingRank);
+        var lastRound = tournament.Rounds.Count == 0 ? 0 : tournament.Rounds.Max(r => r.RoundNumber);
+
+        var lines = new List<string>
+        {
+            Trf16TournamentLine("012", SanitizeLine(tournament.Name)),
+            Trf16TournamentLine("062", standings.Count.ToString(CultureInfo.InvariantCulture)),
+            Trf16TournamentLine("072", standings.Count(row => playersById.TryGetValue(row.PlayerId, out var player) && player.Rating.Elo is > 0).ToString(CultureInfo.InvariantCulture)),
+            Trf16TournamentLine("092", Trf16TournamentType(tournament.Settings.Format))
+        };
+
+        foreach (var row in standings.OrderBy(r => r.StartingRank).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            lines.Add(Trf16PlayerLine(tournament, row, playersById, startingRankById, lastRound));
+        }
+
+        var content = string.Join('\r', lines) + '\r';
+        return new ExportDocument
+        {
+            FileName = $"{SafeFileName(tournament.Name)}_TRF16.txt",
+            ContentType = "text/plain; charset=utf-8",
+            Content = content
+        };
+    }
+
     public ExportDocument ExportDownloadManifestJson(TournamentState tournament, IReadOnlyList<StandingRow> standings)
     {
         var latestRound = tournament.Rounds.Count == 0
@@ -667,6 +708,199 @@ public sealed class TournamentExportFormatter
         return pairing.Chess960StartPosition is null
             ? string.Empty
             : $"{pairing.Chess960StartPosition.WhiteBackRank} (SP {pairing.Chess960StartPosition.PositionNumber})";
+    }
+
+    private static string Trf16TournamentLine(string code, string freeText) =>
+        new TrfLineBuilder().Set(1, code).Set(5, freeText).ToString();
+
+    private static string Trf16TournamentType(TournamentFormat format) => format switch
+    {
+        TournamentFormat.Swiss => "Individual: Swiss System",
+        TournamentFormat.RoundRobin => "Individual: Round-Robin",
+        TournamentFormat.Knockout => "Individual: Knockout",
+        TournamentFormat.DoubleElimination => "Individual: Double-Elimination",
+        TournamentFormat.Rotation => "Individual: Rotation",
+        _ => "Individual"
+    };
+
+    private static string Trf16PlayerLine(
+        TournamentState tournament,
+        StandingRow row,
+        IReadOnlyDictionary<Guid, Player> playersById,
+        IReadOnlyDictionary<Guid, int> startingRankById,
+        int lastRound)
+    {
+        playersById.TryGetValue(row.PlayerId, out var player);
+
+        var line = new TrfLineBuilder()
+            .Set(1, "001")
+            .Set(5, FixedWidth(row.StartingRank.ToString(CultureInfo.InvariantCulture), 4))
+            .Set(10, Trf16Sex(player?.Gender))
+            .Set(11, Truncate(player?.Title, 3).ToUpperInvariant().PadRight(3))
+            .Set(15, SanitizeLine(Truncate(player?.Name ?? row.Name, 33)).PadRight(33))
+            .Set(49, Trf16FideRatingField(player))
+            .Set(54, Trf16FederationField(player))
+            .Set(58, Trf16FideNumberField(player))
+            // Position 70-79 (Geburtsdatum) bleibt bewusst leer - PII-Minimierung.
+            .Set(81, FixedWidth(row.Points.ToString("0.0", CultureInfo.InvariantCulture), 4))
+            .Set(86, FixedWidth(row.Rank.ToString(CultureInfo.InvariantCulture), 4));
+
+        for (var roundNumber = 1; roundNumber <= lastRound; roundNumber++)
+        {
+            var round = tournament.Rounds.FirstOrDefault(r => r.RoundNumber == roundNumber);
+            var (opponentRank, color, result) = Trf16RoundEntry(round, row.PlayerId, startingRankById);
+            var basePosition = 92 + (roundNumber - 1) * 10;
+            line.Set(basePosition, opponentRank is int rank ? FixedWidth(rank.ToString(CultureInfo.InvariantCulture), 4) : "    ");
+            line.Set(basePosition + 5, color?.ToString() ?? " ");
+            line.Set(basePosition + 7, result.ToString());
+        }
+
+        return line.ToString();
+    }
+
+    /// <summary>
+    /// Rechtsbuendige Formatierung auf eine feste TRF-Feldbreite. Wirft statt still zu
+    /// verlaengern, damit ausserplanmaessig grosse Werte (z. B. Punktzahlen &gt;= 100 oder
+    /// Startraenge &gt; 9999) keine nachfolgenden Felder unbemerkt verschieben (STM-IE-001-Adoption).
+    /// </summary>
+    private static string FixedWidth(string value, int width)
+    {
+        if (value.Length > width)
+        {
+            throw new InvalidOperationException(
+                $"TRF16-Wert '{value}' ueberschreitet die zulaessige Feldbreite {width}.");
+        }
+
+        return value.PadLeft(width);
+    }
+
+    private static (int? OpponentStartingRank, char? Color, char Result) Trf16RoundEntry(
+        TournamentRound? round, Guid playerId, IReadOnlyDictionary<Guid, int> startingRankById)
+    {
+        if (round is null)
+        {
+            return (null, null, ' ');
+        }
+
+        var pairing = round.Pairings.FirstOrDefault(p => p.WhitePlayerId == playerId || p.BlackPlayerId == playerId);
+        if (pairing is null || pairing.Result.Kind == GameResultKind.NotPlayed)
+        {
+            // Nicht gepaart bzw. Ergebnis noch offen: neutral als "nicht gespielt" behandeln,
+            // damit laufende Turniere ohne Exception exportiert werden koennen (Issue #3).
+            return (null, null, ' ');
+        }
+
+        if (pairing.IsBye)
+        {
+            return (null, null, 'U');
+        }
+
+        var isWhite = pairing.WhitePlayerId == playerId;
+        var opponentId = isWhite ? pairing.BlackPlayerId : pairing.WhitePlayerId;
+        var opponentRank = opponentId is Guid oid && startingRankById.TryGetValue(oid, out var rank) ? rank : (int?)null;
+        return (opponentRank, isWhite ? 'w' : 'b', Trf16Result(pairing.Result.Kind, isWhite));
+    }
+
+    private static char Trf16Result(GameResultKind kind, bool isWhite) => kind switch
+    {
+        GameResultKind.WhiteWin or GameResultKind.ArmageddonWhiteWin => isWhite ? '1' : '0',
+        GameResultKind.BlackWin or GameResultKind.ArmageddonBlackWin => isWhite ? '0' : '1',
+        GameResultKind.Draw => '=',
+        GameResultKind.WhiteForfeitWin => isWhite ? '+' : '-',
+        GameResultKind.BlackForfeitWin => isWhite ? '-' : '+',
+        GameResultKind.DoubleForfeit => '-',
+        _ => ' '
+    };
+
+    private static string Trf16Sex(GenderCategory? gender) => gender switch
+    {
+        GenderCategory.Male => "m",
+        GenderCategory.Female => "w",
+        _ => " "
+    };
+
+    private static string Trf16FideRatingField(Player? player)
+    {
+        var elo = player?.Rating.Elo;
+        return elo is > 0 ? elo.Value.ToString(CultureInfo.InvariantCulture).PadLeft(4) : "    ";
+    }
+
+    private static string Trf16FederationField(Player? player)
+    {
+        var code = player?.Federation ?? player?.Country;
+        return Truncate(code?.ToUpperInvariant(), 3).PadRight(3);
+    }
+
+    private static string Trf16FideNumberField(Player? player)
+    {
+        var id = player?.FideId;
+        // Nur eine plausible numerische FIDE-ID (max. 11 Ziffern) wird uebernommen;
+        // eine zu lange oder nicht-numerische ID wuerde beim Truncate eine falsche
+        // Kennung erzeugen und bleibt daher lieber leer statt korrumpiert (STM-IE-001-Adoption).
+        if (string.IsNullOrWhiteSpace(id) || id.Length > 11 || !id.All(char.IsAsciiDigit))
+        {
+            return new string(' ', 11);
+        }
+
+        return id.PadLeft(11);
+    }
+
+    private static string Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Length <= maxLength ? value : value[..maxLength];
+    }
+
+    private static string SanitizeLine(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            builder.Append(ch switch
+            {
+                '\r' => ' ',
+                '\n' => ' ',
+                _ when char.IsControl(ch) => ' ',
+                _ => ch
+            });
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Baut eine TRF-Zeile ueber absolute 1-indexierte Spaltenpositionen statt manueller
+    /// Zeichenzaehlung, damit Feldpositionen nicht durch Tippfehler verrutschen. Werte
+    /// muessen bereits auf ihre Zielbreite (ge)trimmt/gepolstert sein. Ein Set() auf eine
+    /// bereits ueberschrittene Position wuerde spaetere Felder unbemerkt verschieben und
+    /// wirft deshalb statt stillschweigend falsch zu schreiben (STM-IE-001-Adoption).
+    /// </summary>
+    private sealed class TrfLineBuilder
+    {
+        private readonly StringBuilder _content = new();
+
+        public TrfLineBuilder Set(int position, string value)
+        {
+            if (_content.Length > position - 1)
+            {
+                throw new InvalidOperationException(
+                    $"TRF16-Feld an Position {position} wuerde durch ein zu langes vorheriges Feld ueberschrieben (aktuelle Laenge {_content.Length}).");
+            }
+
+            while (_content.Length < position - 1)
+            {
+                _content.Append(' ');
+            }
+
+            _content.Append(value);
+            return this;
+        }
+
+        public override string ToString() => _content.ToString();
     }
 
     private static string SafeFileName(string value)

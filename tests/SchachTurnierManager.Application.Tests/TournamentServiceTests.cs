@@ -141,6 +141,45 @@ public sealed class TournamentServiceTests
             service.RollChess960StartPositionForBoard(tournament.Id, round.RoundNumber, 1, overwriteExisting: false, seed: 42));
     }
 
+    [Fact]
+    public void ExportTrf16_ProducesSafeDownloadNameAndTextContentType()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("TRF Export: <Test>/Verein 2026", new TournamentSettings { Format = TournamentFormat.Swiss });
+        AddPlayers(service, tournament.Id, 2, "TRF Spieler");
+
+        var document = service.ExportTrf16(tournament.Id);
+
+        Assert.Equal("text/plain; charset=utf-8", document.ContentType);
+        Assert.EndsWith("_TRF16.txt", document.FileName);
+        foreach (var invalidChar in Path.GetInvalidFileNameChars())
+        {
+            Assert.DoesNotContain(invalidChar, document.FileName);
+        }
+        Assert.StartsWith("012 ", document.Content);
+    }
+
+    [Fact]
+    public void ExportTrf16_IncludesWithdrawnPlayerEvenThoughVisibleStandingsHideThem()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("TRF Withdrawal Test", new TournamentSettings { Format = TournamentFormat.Swiss });
+        AddPlayers(service, tournament.Id, 3, "TRF Withdraw");
+        var withdrawn = service.RequireTournament(tournament.Id).Players[1];
+        service.SetPlayerStatus(tournament.Id, withdrawn.Id, PlayerStatus.Withdrawn);
+
+        var visibleStandings = service.GetStandings(tournament.Id);
+        Assert.DoesNotContain(visibleStandings, row => row.PlayerId == withdrawn.Id);
+
+        var document = service.ExportTrf16(tournament.Id);
+        var lines = document.Content.Split('\r').Where(l => l.Length > 0).ToArray();
+        var declaredCount = int.Parse(lines[1][4..].Trim());
+        var playerLineCount = lines.Skip(4).Count();
+
+        Assert.Equal(3, declaredCount);
+        Assert.Equal(3, playerLineCount);
+    }
+
     private static void AddPlayers(TournamentService service, Guid tournamentId, int count, string prefix)
     {
         for (var i = 1; i <= count; i++)
