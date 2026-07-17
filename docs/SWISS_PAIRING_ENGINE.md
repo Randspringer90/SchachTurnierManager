@@ -37,9 +37,25 @@ Gleiche Eingabe → gleiche Auslosung. Spieler werden nach Punkten, TWZ und Star
 bei strafgleichen Alternativen gewinnt die zuerst gefundene (stärkster verfügbarer Gegner).
 Die Auslosung ist damit testbar und nachvollziehbar.
 
-## Bewusste Grenzen (Roadmap „Swiss v2 / FIDE-Dutch")
+## FIDE-Dutch steht seit STM-FACH-002 daneben
 
-Die Engine ist **kein vollständiges FIDE-Dutch**. Bewusst noch offen:
+Seit STM-FACH-002 gibt es das **FIDE-Dutch-System als eigene, austauschbare Strategie**
+(`FideDutchPairingStrategy`, C.04.3 in der ab 01.02.2026 gültigen Fassung) hinter dem
+Interface `ISwissPairingStrategy`. Regelgrundlage mit allen Fundstellen:
+`docs/FIDE_DUTCH_REFERENCE.md`.
+
+**Die hier beschriebene V2-Engine bleibt unverändert und Standard.** Sie wird durch FIDE-Dutch
+nicht ersetzt: Beide Verfahren sind grundverschieden — V2 minimiert global eine Gesamtstrafe,
+FIDE-Dutch arbeitet eine vorgeschriebene Reihenfolge Bracket für Bracket ab. Sie stehen
+nebeneinander und bleiben vergleichbar. Umgestellt wird bewusst über
+`TournamentSettings.PairingStrategy`.
+
+Die Punkte 1–3 der folgenden Liste sind damit **für FIDE-Dutch erledigt** und beschreiben nur
+noch die Grenzen dieser V2-Engine.
+
+## Bewusste Grenzen dieser V2-Engine
+
+Die V2-Engine ist **kein FIDE-Dutch**. Bewusst offen:
 
 1. **Bracket-/Transpositionsregeln:** FIDE-Dutch paart innerhalb einer Scoregruppe streng
    obere gegen untere Hälfte (S1–S(k+1)) mit definierten Transpositionen/Austauschen. Die
@@ -57,10 +73,20 @@ Die Engine ist **kein vollständiges FIDE-Dutch**. Bewusst noch offen:
 
 ### Nächste Schritte Swiss v2
 
-- FIDE-Dutch-Bracket-Pairing als eigene, austauschbare Strategie (Strategie-Interface), damit
-  V2-Optimal und FIDE-Dutch nebeneinander wähl- und vergleichbar sind.
-- Erstrunden-Setzung obere vs. untere Hälfte als optionale, getestete Verbesserung.
-- Polynomiales Matching (Blossom) statt Bitmasken-DP, um auch große Opens optimal zu paaren.
-- Golden-Tests gegen Referenzauslosungen, sobald ein FIDE-Dutch-Referenzkatalog vorliegt.
+- ✅ **Erledigt (STM-FACH-002):** FIDE-Dutch-Bracket-Pairing als eigene, austauschbare Strategie
+  hinter `ISwissPairingStrategy`; V2-Optimal und FIDE-Dutch sind nebeneinander wähl- und
+  vergleichbar.
+- ✅ **Erledigt (STM-FACH-002):** Erstrunden-Setzung obere vs. untere Hälfte — in FIDE-Dutch nach
+  C.04.3 Art. 3.2.2/3.3.1, getestet.
+- ✅ **Erledigt (STM-FACH-002):** Golden-Tests gegen Referenzauslosungen. Der „Referenzkatalog",
+  auf den dieser Punkt wartete, ist nicht nötig: **C.04.2 Art. 1.4 verlangt, dass zugelassene
+  Programme zu identischen Paarungen kommen** — der Abgleich gegen eine solche Engine ist damit
+  der von der Regel selbst definierte Maßstab. Drei Golden-Turniere à fünf Runden sind von Hand
+  aus dem Regeltext hergeleitet und gegen bbpPairings 6.0.0 gegengeprüft.
+- Polynomiales Matching (Blossom) statt Bitmasken-DP, um auch große Opens optimal zu paaren
+  (**STM-FACH-003**, gilt auch für die Kandidatensuche von FIDE-Dutch).
+- Setzliste nach C.04.2 Art. 2.2–2.3 vergeben (Spielstärke → Titel → alphabetisch). Aktuell
+  vergibt die App Startnummern in Eingabereihenfolge; FIDE-Dutch warnt darüber im Audit, korrigiert
+  aber nicht selbst. Eigenes Folge-Ticket.
 
 Siehe auch `docs/SWISS_CHESS_PARITY_ROADMAP.md`.
