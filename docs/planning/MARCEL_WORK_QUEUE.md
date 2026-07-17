@@ -21,7 +21,7 @@ Stand: 2026-07-16.
 | – | STM-IE-001 | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) | Done | – | TRF16-Export; PR #30 → Adoption #35, Merge `6a2d021` |
 | – | STM-DOC-001 | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) | Done | – | Contributor-Doku; PR #31 → Adoption #36, Merge `aad29e1` |
 | – | STM-REL-001 | – | Done | – | Windows-Installer + ContentRootPath-Bugfix; PR #33 → Adoption #34, Merge `b263925` |
-| 1 | STM-FACH-002 | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | **Ready** | STM-FACH-001 (Done) | FIDE-Dutch; fachlich kritisch → Final-Review durch unabhängigen Owner-Prozess mit stärkstem Review-Profil |
+| 1 | STM-FACH-002 | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) | In Review | STM-FACH-001 (Done) | FIDE-Dutch; PR [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40), fachlich kritisch → Final-Review durch unabhängigen Owner-Prozess mit stärkstem Review-Profil |
 | 2 | STM-IE-002 | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | **Ready** | STM-IE-001 (Done) | Swiss-Manager/Chess-Results-Kompatibilität; durch IE-001 entsperrt |
 | 3 | STM-FACH-003 | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | Blocked | STM-FACH-002 | große Felder 21–200; erst nach FACH-002 starten |
 | 4 | STM-IE-004 | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | Backlog | – | FIDE-Namenssuche |
