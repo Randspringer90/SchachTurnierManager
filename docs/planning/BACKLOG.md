@@ -65,7 +65,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | In Review | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), Static-Review: ADAPTATION_REQUIRED) | v1.0.0 |
+| STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | Done | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (Original-PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), sichere Adoption [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36)) | v1.0.0 |
 
 ---
 
@@ -169,16 +169,22 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 ### STM-DOC-001 · Contributor-Doku verifizieren & abrunden
 - **Beschreibung:** Onboarding-/Contributing-Doku praktisch nachvollziehen und Lücken/Fehler
   korrigieren (Befehle, Versionsangaben, Links).
-- **Priorität:** P3 · **Status:** Ready · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P3 · **Status:** Done · **Kategorie:** documentation · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) · **Branch:** `docs/STM-DOC-001-contributor-review`
 - **Abhängigkeiten:** keine.
-- **Akzeptanzkriterien:** Alle in `CONTRIBUTING.md`/Onboarding genannten Befehle funktionieren
-  auf einem frischen Klon; tote Links behoben.
-- **Tests:** Markdown-Linkcheck / manuelle Verifikation dokumentiert im PR.
-- **Security:** keine.
-- **Doku-Bedarf:** die betroffenen Doku-Dateien.
-- **Definition of Done:** DoD + Gates grün.
-- **PR:** – · **Ziel-Release:** v1.0.0
+- **Akzeptanzkriterien:** erfüllt – alle in `CONTRIBUTING.md`/Onboarding genannten Befehle
+  wurden auf einem frischen Klon real ausgeführt (`git clone` → `git switch development` →
+  `dotnet build` → `dotnet test`, 235/235 grün); Links geprüft.
+- **Tests:** Markdown-Linkcheck (8 relative Links OK), Skriptreferenzprüfung (4 Referenzen OK),
+  frischer Clone, `Test-CollaborationReadiness.ps1` = OK.
+- **Security:** keine Abschwächung von Sicherheitsregeln; keine lokalen Pfade, keine Secrets.
+- **Doku-Bedarf:** die betroffenen Doku-Dateien – erledigt.
+- **Ergebnis:** `gh` ist jetzt korrekt als optional dokumentiert (Web-UI-PR-Pfad inkl.
+  Base-Branch-Fallstrick); Versionsangaben verweisen auf die kanonischen Quellen
+  (`global.json`, Vite `engines`) und schließen neuere Versionen nicht mehr aus.
+- **PR:** Original [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31) ·
+  **Sichere Adoption:** [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36) ·
+  **Ziel-Release:** v1.0.0
 
 ### STM-FACH-002 · Vollständigeres FIDE-Dutch-Schweizer-System
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
