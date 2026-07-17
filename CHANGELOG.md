@@ -1,5 +1,25 @@
 ## Unreleased (development)
 
+- STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
+  Richtung zu STM-IE-001s Export). `SwissManagerCsvCodec` (Domain) liest/schreibt
+  das offizielle Swiss-Manager-Layout aus dem User's Guide, Anhang C, akzeptiert
+  kombinierte oder getrennte Name-Spalten in beliebiger Reihenfolge sowie die
+  Datumsformate `JJJJ/MM/TT`, `TT.MM.JJJJ` und reines Geburtsjahr.
+  `TournamentExportFormatter.ImportTrf16Players` liest TRF16-Stammdatenzeilen
+  zurück (nur Name/Rating/Föderation/FIDE-ID, keine Paarungen/Ergebnisse). Neuer
+  `ImportTextDecoder` versucht zuerst striktes UTF-8 und fällt bei ungültigen Bytes
+  auf Windows-1252 zurück (`System.Text.Encoding.CodePages`), damit ältere
+  Swiss-Manager-Exporte korrekt gelesen werden. Import über die API nimmt Datei-**Bytes**
+  (kein Dateipfad, damit kein Pfad-Traversal); `ReplaceExisting` ist explizit (Default
+  false, kein stilles Überschreiben); Format-Fehler werden pro Zeile gesammelt statt
+  beim ersten Fehler abzubrechen (`PlayerImportOutcome`). Neue Endpoints:
+  `GET .../players/export-swissmanager.csv`, `POST .../players/import-swissmanager.csv`,
+  `POST .../players/import-trf16`; neuer WebApp-Bereich "Swiss-Manager / TRF16
+  (Spieler-Stammdaten)". Scope bewusst auf Spieler-Stammdaten begrenzt; `Birth` beim
+  Export nur als Jahr (PII-Minimierung); Felder ohne Domainmodell-Entsprechung werden
+  ausgelassen statt erfunden. Ursprung: Marcel-Mente (PR #44), sicher adaptiert. Neue
+  Dependency `System.Text.Encoding.CodePages` (Microsoft-First-Party, MIT) im
+  Owner-Review geprüft und genehmigt. Details in `docs/IMPORT_EXPORT_ROADMAP.md`.
 - STM-FACH-002: **FIDE-Dutch-Schweizer-System** als eigene, auswählbare Paarungsstrategie
   ergänzt (C.04.3 in der ab **01.02.2026** gültigen Fassung). Die bestehende
   Optimal-V2-Engine bleibt unverändert und **Standard**; FIDE-Dutch wird über

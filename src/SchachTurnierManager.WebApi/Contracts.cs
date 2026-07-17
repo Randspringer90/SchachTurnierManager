@@ -76,6 +76,14 @@ public sealed record ImportPlayersCsvRequest(string Content, bool ReplaceExistin
 
 public sealed record PreviewPlayersCsvRequest(string Content, bool ReplaceExisting = false);
 
+/// <summary>
+/// STM-IE-002: FileBytes statt eines bereits dekodierten Strings, damit der Server echte
+/// UTF-8-/Windows-1252-Erkennung durchfuehren kann (Issue-Anforderung). System.Text.Json
+/// (de)serialisiert byte[] automatisch als Base64-String, das WebApp-Frontend liest die
+/// Datei entsprechend als Bytes statt als Text.
+/// </summary>
+public sealed record ImportPlayersFileRequest(byte[] FileBytes, bool ReplaceExisting = false);
+
 public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = true);
 
 public sealed record ExternalPlayerDuplicateRequest(ExternalPlayerProfile Profile);
