@@ -57,6 +57,85 @@ public sealed class SqliteTournamentStoreTests
     }
 
     [Fact]
+    public void SaveAndReload_PreservesFideDutchPairingStrategyAndSwissInitialColour()
+    {
+        var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testDirectory);
+        var databasePath = Path.Combine(testDirectory, "fide-dutch-persistence.sqlite");
+
+        try
+        {
+            var options = CreateOptions(databasePath);
+            Guid tournamentId;
+
+            using (var db = new TournamentDbContext(options))
+            {
+                db.Database.EnsureCreated();
+                var service = new TournamentService(new SqliteTournamentStore(db));
+                var tournament = service.CreateTournament("FIDE-Dutch-Persistenztest", new TournamentSettings
+                {
+                    PairingStrategy = SwissPairingStrategyKind.FideDutch,
+                    SwissInitialColour = ChessColor.Black
+                });
+                tournamentId = tournament.Id;
+            }
+
+            using (var db = new TournamentDbContext(options))
+            {
+                var reloaded = new SqliteTournamentStore(db).Get(tournamentId);
+
+                Assert.NotNull(reloaded);
+                Assert.Equal(SwissPairingStrategyKind.FideDutch, reloaded!.Settings.PairingStrategy);
+                Assert.Equal(ChessColor.Black, reloaded.Settings.SwissInitialColour);
+            }
+        }
+        finally
+        {
+            DeleteTestDirectory(testDirectory);
+        }
+    }
+
+    [Fact]
+    public void Reload_LegacySnapshotWithoutFideDutchSettings_UsesOptimalV2AndWhiteDefaults()
+    {
+        var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testDirectory);
+        var databasePath = Path.Combine(testDirectory, "legacy-fide-dutch.sqlite");
+        var tournamentId = Guid.Parse("00000000-0000-0000-0000-000000000078");
+
+        try
+        {
+            var options = CreateOptions(databasePath);
+            using (var db = new TournamentDbContext(options))
+            {
+                db.Database.EnsureCreated();
+                db.TournamentSnapshots.Add(new TournamentSnapshot
+                {
+                    Id = tournamentId,
+                    Name = "Legacy",
+                    CreatedOn = "2026-01-01",
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                    Json = $"{{\"id\":\"{tournamentId}\",\"name\":\"Legacy\",\"settings\":{{\"plannedRounds\":5}},\"players\":[],\"rounds\":[],\"auditJournal\":[]}}"
+                });
+                db.SaveChanges();
+            }
+
+            using (var db = new TournamentDbContext(options))
+            {
+                var reloaded = new SqliteTournamentStore(db).Get(tournamentId);
+
+                Assert.NotNull(reloaded);
+                Assert.Equal(SwissPairingStrategyKind.OptimalMatchingV2, reloaded!.Settings.PairingStrategy);
+                Assert.Equal(ChessColor.White, reloaded.Settings.SwissInitialColour);
+            }
+        }
+        finally
+        {
+            DeleteTestDirectory(testDirectory);
+        }
+    }
+
+    [Fact]
     public void Reload_LegacySnapshotWithoutUnplayedRoundMode_UsesDefault()
     {
         var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");

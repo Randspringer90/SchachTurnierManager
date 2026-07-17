@@ -45,12 +45,41 @@ nach Ergebniseingaben/Statusänderungen gültig bleibt:
 - `byeDecisions`, `rematchWarnings`, `scoreGroupDeviations`, `colorNotes`, `engineMessages`, `findings`
 - `proposedPairings`: je Brett Weiß/Schwarz, Punkte vor der Runde, Differenz, Bye/Override/Rematch-Flags
 
-> **Grenze (TODO):** Seit v0.41.0 paart die Swiss-Engine global optimal (Minimum-Penalty-Matching,
-> siehe `docs/SWISS_PAIRING_ENGINE.md`) und erzeugt Rematches nur noch, wenn sie unvermeidbar
-> sind. Die Forensik protokolliert weiterhin den **gewählten** Entscheidungsstand samt
-> Warnungen/Blockern, jedoch keine bewerteten **Alternativ-Paarungen** („warum diese und nicht
-> jene") und keine FIDE-Dutch-Bracket-Reihenfolge. Ein vollständiges FIDE-Dutch mit
-> Alternativbewertung ist Folgearbeit (siehe `docs/SWISS_CHESS_PARITY_ROADMAP.md`).
+> **Grenze (TODO):** Seit v0.41.0 paart die Optimal-V2-Engine global optimal
+> (Minimum-Penalty-Matching, siehe `docs/SWISS_PAIRING_ENGINE.md`) und erzeugt Rematches nur noch,
+> wenn sie unvermeidbar sind. Die Forensik protokolliert weiterhin den **gewählten**
+> Entscheidungsstand samt Warnungen/Blockern, jedoch keine bewerteten **Alternativ-Paarungen**
+> („warum diese und nicht jene").
+
+## FIDE-Dutch-Audit (STM-FACH-002)
+
+Wählt das Turnier `SwissPairingStrategyKind.FideDutch`, protokolliert die Auslosung zusätzlich
+nach der Struktur des Regelwerks. Grundlage: `docs/FIDE_DUTCH_REFERENCE.md` (C.04.3 in der ab
+**01.02.2026** gültigen Fassung).
+
+- `algorithm` = `Swiss-FIDE-Dutch-C0403`, `rulesetVersion` = `FIDE-C.04.3-2026-02-01`.
+  Die Fassung steht bewusst im Audit: C.04.3 wurde zum 01.02.2026 neu gefasst, und eine Auslosung
+  ist nur gegen die Fassung prüfbar, nach der sie erstellt wurde.
+- **`scoreGroups`**: jede Punktgruppe mit Startnummern (Art. 1.3.1); die Auslosung läuft von der
+  obersten abwärts (Art. 1.9.2).
+- **`floaters`**: je Absteiger die Punktzahl und ob das Bracket homogen oder heterogen war
+  (Art. 1.4.1). Damit ist nachvollziehbar, wer warum die Punktgruppe verlassen hat.
+- **`colorNotes`** und `Pairing.Notes`: je Brett die **angewandte Regelstufe** aus Art. 5.2 samt
+  Klartextbegründung, z. B. *„Stärkere Präferenz erfüllt: #8 (B) vor #2 (b). Weiß: #2, Schwarz: #8.
+  [C.04.3 Art. 5.2.2]"*.
+- **Freilos**: `Pairing.Notes` nennt Empfänger, Punktzahl und die Fundstelle [C5] (Art. 2.3.1).
+- **Setzlisten-Warnung**: Ist die Startliste nicht nach Spielstärke sortiert (C.04.2 Art. 2.2–2.3),
+  erscheint eine Warnung in `messages`. Die Strategie nummeriert **nicht** selbst um — eine intern
+  abweichende Nummerierung würde C.04.1 Art. 9 verletzen, weil das Audit dann Nummern nennte, die
+  in der Oberfläche nirgends stehen.
+- **Keine regelkonforme Paarung möglich**: Die Strategie liefert dann keine Auslosung, sondern gibt
+  den Fall mit Fundstelle an den Turnierleiter ab (Art. 1.9.3 — „der Schiedsrichter entscheidet").
+  Sie paart in diesem Fall bewusst **nicht** regelwidrig weiter.
+
+> **Offen:** Auch hier werden die **verworfenen Alternativkandidaten** nicht mit ihrer Bewertung
+> protokolliert. Das Audit sagt, welche Regel die gewählte Paarung trägt, aber nicht, welcher
+> Kandidat an welchem Kriterium gescheitert ist. Für eine Beschwerde beim Schiedsrichter wäre das
+> die nächste Ausbaustufe.
 
 ## Speicherorte & Format
 

@@ -57,6 +57,58 @@ public sealed class TournamentSettingsTransportContractTests
     }
 
     [Fact]
+    public void ApiJsonRoundtrip_PreservesFideDutchPairingStrategyAndSwissInitialColour()
+    {
+        var settings = new TournamentSettings
+        {
+            PairingStrategy = SwissPairingStrategyKind.FideDutch,
+            SwissInitialColour = ChessColor.Black
+        };
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        var json = JsonSerializer.Serialize(settings, options);
+        var restored = JsonSerializer.Deserialize<TournamentSettings>(json, options);
+
+        Assert.NotNull(restored);
+        Assert.Equal(SwissPairingStrategyKind.FideDutch, restored!.PairingStrategy);
+        Assert.Equal(ChessColor.Black, restored.SwissInitialColour);
+    }
+
+    [Fact]
+    public void LegacyJsonWithoutFideDutchFields_UsesOptimalV2AndWhiteDefaults()
+    {
+        var restored = JsonSerializer.Deserialize<TournamentSettings>("{\"plannedRounds\":7}", new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.NotNull(restored);
+        Assert.Equal(SwissPairingStrategyKind.OptimalMatchingV2, restored!.PairingStrategy);
+        Assert.Equal(ChessColor.White, restored.SwissInitialColour);
+    }
+
+    [Fact]
+    public void BackupRestoreThroughImport_PreservesFideDutchPairingStrategyAndSwissInitialColour()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var backup = new TournamentState
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000098"),
+            Name = "Backup-FIDE-Dutch",
+            Settings = new TournamentSettings
+            {
+                Format = TournamentFormat.Swiss,
+                PairingStrategy = SwissPairingStrategyKind.FideDutch,
+                SwissInitialColour = ChessColor.Black
+            }
+        };
+
+        service.SaveImportedTournament(backup, overwriteExisting: false);
+        var restored = service.RequireTournament(backup.Id);
+
+        Assert.Equal(SwissPairingStrategyKind.FideDutch, restored.Settings.PairingStrategy);
+        Assert.Equal(ChessColor.Black, restored.Settings.SwissInitialColour);
+        Assert.Contains(restored.AuditJournal, entry => entry.Action == AuditJournalAction.TournamentImported);
+    }
+
+    [Fact]
     public void ApiAndUiContracts_TransportTheSameSetting()
     {
         var contracts = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Contracts.cs"));
