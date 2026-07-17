@@ -811,6 +811,18 @@ app.MapGet("/api/tournaments/{id:guid}/standings/export.csv", (Guid id, Tourname
     }
 });
 
+app.MapGet("/api/tournaments/{id:guid}/standings/export.trf16", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportTrf16(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 app.MapGet("/api/tournaments/{id:guid}/pairings/export.csv", (Guid id, int? roundNumber, TournamentService service) =>
 {
     try

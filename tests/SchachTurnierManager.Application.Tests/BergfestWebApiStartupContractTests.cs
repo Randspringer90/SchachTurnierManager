@@ -33,6 +33,16 @@ public sealed class BergfestWebApiStartupContractTests
     }
 
     [Fact]
+    public void WebApi_Trf16ExportEndpoint_IsRegisteredAndDelegatesToTournamentService()
+    {
+        var programPath = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Program.cs");
+        var program = File.ReadAllText(programPath);
+
+        Assert.Contains("app.MapGet(\"/api/tournaments/{id:guid}/standings/export.trf16\"", program);
+        Assert.Contains("ToDownload(service.ExportTrf16(id))", program);
+    }
+
+    [Fact]
     public void WebApi_ContainsDefaultLoggingConfigurationFiles()
     {
         var appSettings = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "appsettings.json");

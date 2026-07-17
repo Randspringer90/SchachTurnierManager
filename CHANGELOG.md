@@ -1,5 +1,20 @@
 ## Unreleased (development)
 
+- STM-IE-001: Read-only-Export ins FIDE-TRF16-Format (`ExportTrf16` in
+  `TournamentExportFormatter`, Endpoint `GET /api/tournaments/{id}/standings/export.trf16`,
+  WebApp-Button "TRF16 (FIDE-Turnierbericht)" im Export-Center). Spaltenpositionen
+  exakt nach offizieller FIDE-Spezifikation (C.04 Annex 2), Zeilenenden CR gemäß
+  Remark 1. Der Export enthält alle Turnierteilnehmer inklusive zurückgezogener
+  Spieler (`StandingsCalculator.Calculate(includeInactive: true)`), damit die
+  STM-FACH-001-Withdrawal-Filterung der sichtbaren Rangliste keine Spieler aus dem
+  FIDE-Bericht entfernt; die Kopfzeilen 062/072 zählen konsistent die exportierten
+  Zeilen. Feldüberlängen werfen statt Folgespalten zu verschieben, Steuerzeichen
+  werden entfernt, und eine FIDE-ID wird nur bei plausibler numerischer Form
+  übernommen. 13 Golden-Tests (Feldpositionen, Bye, alle Forfeit-Fälle, offene
+  Runde, Rückzug, Teilnehmerzahl, Unicode, Steuerzeichen, Dateiname, leeres
+  Turnier, 12 Runden, Byte-Determinismus) plus Service- und Endpoint-Tests.
+  Ursprung: Marcel-Mente (PR #30), sicher an den aktuellen development-Stand
+  adaptiert. Verbleibende Scope-Grenzen in `docs/IMPORT_EXPORT_ROADMAP.md`.
 - STM-REL-001: Kritischen Startfehler der Desktop-/Portable-Variante behoben.
   `Program.cs` bindet `ContentRootPath` jetzt explizit an `AppContext.BaseDirectory`
   statt am aktuellen Arbeitsverzeichnis. Die Launcher starten die EXE über `start`,

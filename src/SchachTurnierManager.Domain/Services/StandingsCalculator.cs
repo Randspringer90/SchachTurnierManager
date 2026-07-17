@@ -4,7 +4,7 @@ namespace SchachTurnierManager.Domain.Services;
 
 public sealed class StandingsCalculator
 {
-    public IReadOnlyList<StandingRow> Calculate(TournamentState tournament)
+    public IReadOnlyList<StandingRow> Calculate(TournamentState tournament, bool includeInactive = false)
     {
         var referenceYear = DateTime.Today.Year;
         // Historische Resultate werden fuer ALLE Turnierteilnehmer berechnet (auch
@@ -125,10 +125,12 @@ public sealed class StandingsCalculator
             row.HeroScore = row.TournamentPerformance is null ? 0m : row.TournamentPerformance.Value - row.Twz;
         }
 
-        // Sichtbar bleibt wie bisher nur der aktive Teilnehmerkreis; zurueckgezogene
+        // Sichtbar bleibt standardmaessig nur der aktive Teilnehmerkreis; zurueckgezogene
         // oder pausierte Spieler erscheinen nicht (erneut) in der Rangliste, ihre
-        // gespielten Partien sind aber oben vollstaendig eingerechnet.
-        var visibleRows = rows.Values.Where(r => r.Player.IsActive).ToList();
+        // gespielten Partien sind aber oben vollstaendig eingerechnet. Fuer Exporte, die
+        // laut FIDE-TRF-Spezifikation ALLE Turnierteilnehmer benoetigen (STM-IE-001),
+        // kann der Aufrufer includeInactive=true setzen.
+        var visibleRows = (includeInactive ? rows.Values : rows.Values.Where(r => r.Player.IsActive)).ToList();
 
         foreach (var group in visibleRows.GroupBy(r => r.Points))
         {
