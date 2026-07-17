@@ -25,6 +25,21 @@
   `PairingStrategy`/`SwissInitialColour` — das Backend ist vollständig und über API/Persistenz
   nutzbar, die Oberfläche folgt separat. Performance für Felder über 20 Spieler bleibt
   STM-FACH-003.
+- STM-INFRA-006: Nichtdeterministischen Graph-Hash in der Routed-Execution behoben.
+  `Get-TaskGraphHash` serialisierte den Graph direkt per `ConvertTo-Json`; dessen
+  Property-Reihenfolge ist bei Hashtables nicht garantiert und variiert zwischen
+  Prozessen (randomisierter Hash-Seed). Derselbe logische Graph konnte dadurch zwei
+  verschiedene Hashes ergeben, worauf `Invoke-RoutedTaskGraph` fälschlich
+  „Manipulation" meldete und abbrach – nicht nur im Gate `Test-RoutedExecutionReadiness.ps1`
+  (reproduzierbar flaky, 9/20 Fehlschläge), sondern potenziell auch bei einem echten
+  Resume. Der Hash normalisiert die Eingabe jetzt über einen JSON-Roundtrip und
+  serialisiert kanonisch mit rekursiv sortierten Schlüsseln; damit ist er unabhängig
+  von Objektform (Hashtable beim Erstellen vs. JSON-Objekt beim Lesen) und
+  Property-Reihenfolge. Zusätzlich gehärtet: atomarer Checkpoint-Austausch mit
+  begrenztem Move-Retry gegen transiente Datei-Locks, und einheitliches
+  deterministisches Warten auf den Checkpoint in den Testassertions (fail-closed).
+  Nachweis: **20/20 aufeinanderfolgende Läufe grün**. Keine Assertion abgeschwächt,
+  kein Skip-Schalter.
 - STM-INFRA-004: Safe-PR-Skripte gegen offenes stdin gehärtet.
   `Invoke-SafePullRequestReview.ps1` wies der automatischen PowerShell-Variablen
   `$input` (Pipeline-/stdin-Enumerator) einen eigenen Wert zu und blockierte
