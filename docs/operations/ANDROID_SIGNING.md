@@ -58,12 +58,24 @@ apksigner verify --print-certs SchachTurnierManager-<version>-test.apk
 Das Keystore-Passwort wird zur Signierzeit aus der DPAPI-Datei entschlüsselt und dem Prozess
 nur im Speicher übergeben – nie als Kommandozeilenargument, nie in ein Log.
 
-## Flavor-Trennung
+## Netzwerkprofil und Versionsbindung
 
-| Flavor | Cleartext-HTTP | Zweck |
-|---|---|---|
-| **Test** (aktuell) | erlaubt (`network_security_config.xml`, nur privates LAN gedacht) | Companion-Verbindung zum PC ohne HTTPS-Zertifikat, Freitagstest |
-| **Release** (offen) | **verboten**, HTTPS erforderlich | Öffentliche Verteilung – siehe Issue #43, noch nicht umgesetzt |
+Das Repository besitzt aktuell **keine technisch getrennten Android-Flavors**. Sowohl
+`assembleDebug` als auch `assembleRelease` verwenden deshalb dieselbe Network-Security-Config.
+Der Release-Build ist in dieser Phase nur die Grundlage für eine lokal signierte **Test-APK**
+und ausdrücklich keine öffentliche Release-Version.
 
-Die Zertifikatsprüfung wird in **keinem** Flavor global abgeschaltet. Der Test-Flavor lässt
-lediglich unverschlüsselten Verkehr zu.
+Für die Verbindung zu einer vom Nutzer eingegebenen PC-Adresse im lokalen WLAN ist HTTP im
+Android-Netzwerk-Layer erlaubt. Der gebündelte Launcher akzeptiert nur Loopback, private oder
+link-lokale IPv4-Adressen und einlabelige `.local`-Namen. Capacitors `allowNavigation` spiegelt
+dieselben Hostbereiche ohne Catch-all. URL-Zugangsdaten, öffentliche Hosts und Redirects werden
+abgewiesen. HTTPS verwendet ausschließlich den System-Truststore; die Zertifikatsprüfung wird
+nicht abgeschaltet.
+
+Die öffentliche Distribution bleibt blockiert, bis ein eigenes HTTPS-Konzept und eine echte
+Flavor-Trennung umgesetzt sind. Das ist Roadmap, nicht Bestandteil dieses Test-Candidates.
+
+`versionName` folgt der kanonischen Version aus
+`src/SchachTurnierManager.WebApp/package.json`. Für `0.54.1` ist `versionCode` nach dem Schema
+`major * 1.000.000 + minor * 100 + patch` auf `5401` gesetzt. Vor jedem Candidate-Build müssen
+beide Werte erneut gegen die kanonische Versionsquelle geprüft werden.

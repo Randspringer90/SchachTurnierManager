@@ -1,21 +1,32 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// STM-MOB-001: Android-Begleit-App (Companion) zum SchachTurnierManager-PC.
-// Die App bündelt das bestehende React-/Vite-Frontend und verbindet sich zur Laufzeit mit
-// einem vom Nutzer konfigurierten SchachTurnierManager-WebApi-Server im lokalen Netz.
-// Bewusst KEINE feste Server-URL, keine Cloud, kein Tracking, keine feste IP.
+// Capacitor 7 host masks are matched label by label. These masks cover only loopback,
+// IPv4 private/link-local ranges and one-label mDNS names; no catch-all host is allowed.
+const localNetworkHosts = [
+  'localhost',
+  '127.*.*.*',
+  '10.*.*.*',
+  '169.254.*.*',
+  '192.168.*.*',
+  '172.16.*.*', '172.17.*.*', '172.18.*.*', '172.19.*.*',
+  '172.20.*.*', '172.21.*.*', '172.22.*.*', '172.23.*.*',
+  '172.24.*.*', '172.25.*.*', '172.26.*.*', '172.27.*.*',
+  '172.28.*.*', '172.29.*.*', '172.30.*.*', '172.31.*.*',
+  '*.local',
+];
+
 const config: CapacitorConfig = {
   appId: 'io.github.randspringer90.schachturniermanager',
   appName: 'SchachTurnierManager',
-  // Companion-Launcher (statische Konfigurationsseite). Die eigentliche WebApp wird zur
-  // Laufzeit vom konfigurierten PC geladen, nicht mit in die APK gebündelt.
   webDir: '../SchachTurnierManager.Mobile/companion-web',
-  // Keine eingebaute server.url: die Verbindung zum PC wird zur Laufzeit konfiguriert.
   android: {
-    // Release-Flavor: kein Cleartext. Der ausdrücklich gekennzeichnete Test-Build darf HTTP
-    // im privaten LAN über eine eigene Network-Security-Config erlauben (STM-MOB-001, Test-Flavor).
-    allowMixedContent: false
-  }
+    // The local launcher is served from Capacitor's HTTPS origin while tournament PCs use
+    // user-entered HTTP LAN addresses. Public hosts remain blocked by both JS and HostMask.
+    allowMixedContent: true,
+  },
+  server: {
+    allowNavigation: localNetworkHosts,
+  },
 };
 
 export default config;

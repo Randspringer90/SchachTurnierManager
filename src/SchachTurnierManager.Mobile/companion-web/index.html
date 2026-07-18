@@ -4,23 +4,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light dark" />
-  <title>SchachTurnierManager – Verbinden</title>
+  <title>SchachTurnierManager – Companion</title>
   <style>
     :root { --bg:#f6f7f9; --fg:#1a1c20; --card:#fff; --border:#d5d8dd; --accent:#2d6cdf; --ok:#1c8a4a; --err:#c0392b; --muted:#6b7280; }
     @media (prefers-color-scheme: dark) { :root { --bg:#15171b; --fg:#e8eaed; --card:#20242b; --border:#333a44; --accent:#5b8def; --ok:#3ac06d; --err:#e56b5d; --muted:#9aa2ad; } }
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    body { padding: max(16px, env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); min-height:100dvh; }
-    .wrap { max-width: 460px; margin: 0 auto; }
-    h1 { font-size: 1.3rem; margin: 8px 0 4px; }
-    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 20px; }
+    body { padding:max(16px, env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); min-height:100dvh; }
+    .wrap { max-width:460px; margin:0 auto; }
+    .topline { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .language-switch { display:flex; gap:6px; }
+    .language-switch button { width:44px; min-height:44px; margin:0; padding:8px; background:transparent; color:var(--fg); border:1px solid var(--border); }
+    .language-switch button[aria-pressed="true"] { color:#fff; background:var(--accent); border-color:var(--accent); }
+    h1 { font-size:1.3rem; margin:8px 0 4px; }
+    .sub { color:var(--muted); font-size:.9rem; margin-bottom:20px; }
     .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:16px; }
     label { display:block; font-weight:600; margin-bottom:6px; }
-    input[type=text] { width:100%; padding:14px; font-size:16px; border:1px solid var(--border); border-radius:10px; background:transparent; color:var(--fg); }
-    button { width:100%; padding:15px; font-size:16px; font-weight:600; border:0; border-radius:10px; margin-top:12px; cursor:pointer; min-height:52px; }
+    input[type=text] { width:100%; padding:14px; min-height:48px; font-size:16px; border:1px solid var(--border); border-radius:10px; background:transparent; color:var(--fg); }
+    button { width:100%; padding:15px; min-height:52px; font-size:16px; font-weight:600; border:0; border-radius:10px; margin-top:12px; cursor:pointer; }
+    button:focus-visible, input:focus-visible { outline:3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset:3px; }
     .primary { background:var(--accent); color:#fff; }
     .secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
-    button:disabled { opacity:.5; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
     .status { margin-top:14px; padding:12px; border-radius:10px; font-size:.92rem; display:none; }
     .status.show { display:block; }
     .status.ok { background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok); }
@@ -28,118 +33,171 @@
     .status.info { background:color-mix(in srgb, var(--accent) 12%, transparent); color:var(--accent); }
     .meta { font-size:.85rem; color:var(--muted); margin-top:10px; }
     .hint { font-size:.82rem; color:var(--muted); margin-top:8px; }
-    .companion-badge { display:inline-block; font-size:.72rem; background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); border-radius:6px; padding:2px 8px; margin-bottom:12px; }
+    .companion-badge { display:inline-block; font-size:.72rem; background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); border-radius:6px; padding:2px 8px; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <span class="companion-badge">Companion-Modus</span>
-    <h1>Mit dem Turnier-PC verbinden</h1>
-    <p class="sub">Diese App zeigt Turniere, Paarungen und Tabellen von einem laufenden
-      SchachTurnierManager auf deinem PC. Der PC muss im selben WLAN erreichbar sein.</p>
-
-    <div class="card">
-      <label for="server">Serveradresse des PCs</label>
-      <input id="server" type="text" inputmode="url" autocapitalize="none" autocorrect="off"
-             spellcheck="false" placeholder="http://192.168.0.10:5088" />
-      <p class="hint">Die Adresse steht im PC-Fenster beim Start (z. B. „http://192.168.…:5088").
-        Keine feste Adresse fest eingebaut – du gibst sie selbst ein.</p>
-      <button id="test" class="secondary">Verbindung testen</button>
-      <button id="connect" class="primary" disabled>Verbinden</button>
-      <div id="status" class="status"></div>
-      <div id="meta" class="meta"></div>
-    </div>
-
-    <div class="card">
-      <div class="meta">
-        <div>App-Version: <span id="appver">–</span></div>
-        <div>Server-Version: <span id="srvver">noch nicht verbunden</span></div>
+  <main class="wrap">
+    <div class="topline">
+      <span class="companion-badge" data-i18n="badge">Companion-Modus</span>
+      <div class="language-switch" aria-label="Language / Sprache">
+        <button id="lang-de" type="button" aria-label="Deutsch" aria-pressed="true">DE</button>
+        <button id="lang-en" type="button" aria-label="English" aria-pressed="false">EN</button>
       </div>
     </div>
-  </div>
+    <h1 data-i18n="title">Mit dem Turnier-PC verbinden</h1>
+    <p class="sub" data-i18n="subtitle">Diese App zeigt Turniere, Paarungen und Tabellen von einem laufenden SchachTurnierManager auf deinem PC. Der PC muss im selben WLAN erreichbar sein.</p>
+
+    <section class="card" aria-labelledby="server-label">
+      <label id="server-label" for="server" data-i18n="serverLabel">Serveradresse des PCs</label>
+      <input id="server" type="text" inputmode="url" autocapitalize="none" autocorrect="off" autocomplete="off"
+             spellcheck="false" placeholder="http://192.168.0.10:5088" aria-describedby="server-hint" />
+      <p id="server-hint" class="hint" data-i18n="hint">Die Adresse steht im PC-Fenster. Erlaubt sind nur private WLAN-Adressen, localhost und Namen mit .local.</p>
+      <button id="test" type="button" class="secondary" data-i18n="test">Verbindung testen</button>
+      <button id="connect" type="button" class="primary" disabled data-i18n="connect">Verbinden</button>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <div id="meta" class="meta"></div>
+    </section>
+
+    <section class="card" aria-label="Version">
+      <div class="meta">
+        <div><span data-i18n="appVersion">App-Version</span>: <span id="appver">–</span></div>
+        <div><span data-i18n="serverVersion">Server-Version</span>: <span id="srvver" data-i18n="notConnected">noch nicht verbunden</span></div>
+      </div>
+    </section>
+  </main>
 
   <script>
-    // STM-MOB-001 Companion-Launcher. Bewusst ohne Framework, ohne Tracking, ohne Netzwerk
-    // zu Dritten. Die einzige ausgehende Verbindung geht an die vom Nutzer eingegebene Adresse.
+    // STM-MOB-001 Companion launcher: no tracking, no third-party requests and no cloud dependency.
     'use strict';
     var APP_VERSION = '0.54.1';
-    var STORAGE_KEY = 'stm.companion.serverUrl';
+    var SERVER_STORAGE_KEY = 'stm.companion.serverUrl';
+    var LANGUAGE_STORAGE_KEY = 'stm.companion.language';
+    var translations = {
+      de: {
+        badge:'Companion-Modus', title:'Mit dem Turnier-PC verbinden',
+        subtitle:'Diese App zeigt Turniere, Paarungen und Tabellen von einem laufenden SchachTurnierManager auf deinem PC. Der PC muss im selben WLAN erreichbar sein.',
+        serverLabel:'Serveradresse des PCs', hint:'Die Adresse steht im PC-Fenster. Erlaubt sind nur private WLAN-Adressen, localhost und Namen mit .local.',
+        test:'Verbindung testen', connect:'Verbinden', appVersion:'App-Version', serverVersion:'Server-Version', notConnected:'noch nicht verbunden',
+        invalid:'Bitte eine private Adresse im lokalen Netz eingeben, z. B. http://192.168.0.10:5088.',
+        testing:'Verbindung wird getestet …', wrongServer:'Die Adresse antwortet, ist aber kein passender SchachTurnierManager.',
+        connected:'Verbunden. Der lokale Turnier-PC ist erreichbar.', localConfirmed:'Lokaler SchachTurnierManager bestätigt.',
+        timeout:'Zeitüberschreitung. Sind PC und Smartphone im selben WLAN?',
+        failed:'Verbindung fehlgeschlagen. Läuft der SchachTurnierManager auf dem PC?', testFirst:'Bitte diese Adresse zuerst erfolgreich testen.'
+      },
+      en: {
+        badge:'Companion mode', title:'Connect to the tournament PC',
+        subtitle:'This app shows tournaments, pairings and standings from SchachTurnierManager running on your PC. The PC must be reachable on the same Wi-Fi network.',
+        serverLabel:'PC server address', hint:'The address is shown on the PC. Only private Wi-Fi addresses, localhost and .local names are accepted.',
+        test:'Test connection', connect:'Connect', appVersion:'App version', serverVersion:'Server version', notConnected:'not connected',
+        invalid:'Enter a private local-network address, for example http://192.168.0.10:5088.',
+        testing:'Testing the connection …', wrongServer:'The address responds, but it is not a compatible SchachTurnierManager.',
+        connected:'Connected. The local tournament PC is reachable.', localConfirmed:'Local SchachTurnierManager confirmed.',
+        timeout:'Connection timed out. Are the PC and phone on the same Wi-Fi network?',
+        failed:'Connection failed. Is SchachTurnierManager running on the PC?', testFirst:'Test this address successfully before connecting.'
+      }
+    };
     var el = function (id) { return document.getElementById(id); };
-    el('appver').textContent = APP_VERSION;
-
+    var language = 'de';
+    var verifiedBase = null;
     var serverInput = el('server');
     var testBtn = el('test');
     var connectBtn = el('connect');
     var statusBox = el('status');
     var metaBox = el('meta');
+    el('appver').textContent = APP_VERSION;
 
-    // Zuletzt genutzte Adresse lokal wiederherstellen (nur auf dem Geraet, kein Cloud-Sync).
-    try {
-      var saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) { serverInput.value = saved; }
-    } catch (e) { /* localStorage kann in manchen WebViews deaktiviert sein */ }
-
+    function t(key) { return translations[language][key]; }
+    function setLanguage(nextLanguage) {
+      language = nextLanguage === 'en' ? 'en' : 'de';
+      document.documentElement.lang = language;
+      document.querySelectorAll('[data-i18n]').forEach(function (node) {
+        var key = node.getAttribute('data-i18n');
+        if (translations[language][key]) { node.textContent = translations[language][key]; }
+      });
+      el('lang-de').setAttribute('aria-pressed', String(language === 'de'));
+      el('lang-en').setAttribute('aria-pressed', String(language === 'en'));
+      try { localStorage.setItem(LANGUAGE_STORAGE_KEY, language); } catch (e) {}
+    }
     function showStatus(kind, text) {
       statusBox.className = 'status show ' + kind;
       statusBox.textContent = text;
     }
-
-    // Normalisiert und validiert die Eingabe. Erlaubt nur http/https; verhindert offensichtlichen
-    // Unfug (leere/kaputte Eingaben). Keine automatische Auswahl fremder Server.
+    function isLocalHostname(hostname) {
+      var host = (hostname || '').toLowerCase();
+      if (host.charAt(0) === '[' && host.charAt(host.length - 1) === ']') { host = host.slice(1, -1); }
+      if (host === 'localhost' || host === '::1') { return true; }
+      if (/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.local$/.test(host)) { return true; }
+      var parts = host.split('.');
+      if (parts.length !== 4 || parts.some(function (part) { return !/^\d{1,3}$/.test(part) || Number(part) > 255; })) { return false; }
+      var first = Number(parts[0]);
+      var second = Number(parts[1]);
+      return first === 10 || first === 127 ||
+        (first === 169 && second === 254) ||
+        (first === 172 && second >= 16 && second <= 31) ||
+        (first === 192 && second === 168);
+    }
     function normalizeUrl(raw) {
-      var v = (raw || '').trim();
-      if (!v) { return null; }
-      if (!/^https?:\/\//i.test(v)) { v = 'http://' + v; }
+      var value = (raw || '').trim();
+      if (!value) { return null; }
+      if (!/^https?:\/\//i.test(value)) { value = 'http://' + value; }
       try {
-        var u = new URL(v);
-        if (u.protocol !== 'http:' && u.protocol !== 'https:') { return null; }
-        return u.origin;
+        var url = new URL(value);
+        if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username || url.password || !isLocalHostname(url.hostname)) { return null; }
+        return url.origin;
       } catch (e) { return null; }
     }
 
+    try {
+      var savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+      setLanguage(savedLanguage || ((navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en'));
+      var savedServer = localStorage.getItem(SERVER_STORAGE_KEY);
+      if (savedServer && normalizeUrl(savedServer)) { serverInput.value = savedServer; }
+    } catch (e) { setLanguage('de'); }
+
     function testConnection() {
       var base = normalizeUrl(serverInput.value);
-      if (!base) { showStatus('err', 'Bitte eine gültige Adresse eingeben, z. B. http://192.168.0.10:5088'); connectBtn.disabled = true; return; }
-      showStatus('info', 'Teste Verbindung zu ' + base + ' …');
+      verifiedBase = null;
+      connectBtn.disabled = true;
+      if (!base) { showStatus('err', t('invalid')); return; }
+      showStatus('info', t('testing'));
       testBtn.disabled = true;
-      // Verbindungstest mit Timeout, damit die App bei falscher Adresse nicht haengt.
       var controller = new AbortController();
       var timer = setTimeout(function () { controller.abort(); }, 5000);
-      fetch(base + '/api/health', { signal: controller.signal, cache: 'no-store' })
-        .then(function (r) {
-          clearTimeout(timer);
-          if (!r.ok) { throw new Error('HTTP ' + r.status); }
-          return r.json();
+      fetch(base + '/api/health', { signal:controller.signal, cache:'no-store', credentials:'omit', redirect:'error', referrerPolicy:'no-referrer' })
+        .then(function (response) {
+          if (!response.ok) { throw new Error('HTTP'); }
+          return response.json();
         })
         .then(function (health) {
-          try { localStorage.setItem(STORAGE_KEY, base); } catch (e) {}
-          el('srvver').textContent = (health && health.status ? health.status : 'ok') +
-            (health && health.embeddedDashboard === false ? ' (Dashboard nicht eingebettet!)' : '');
-          showStatus('ok', 'Verbunden! Server erreichbar. Du kannst jetzt „Verbinden" drücken.');
-          metaBox.textContent = 'Datenbank: ' + (health && health.database ? health.database : 'unbekannt');
+          if (!health || health.status !== 'ok' || health.app !== 'SchachTurnierManager' || health.embeddedDashboard === false) { throw new Error('WRONG_SERVER'); }
+          verifiedBase = base;
+          try { localStorage.setItem(SERVER_STORAGE_KEY, base); } catch (e) {}
+          el('srvver').textContent = health.version || health.status;
+          metaBox.textContent = t('localConfirmed');
+          showStatus('ok', t('connected'));
           connectBtn.disabled = false;
         })
-        .catch(function (err) {
-          clearTimeout(timer);
-          var msg = err && err.name === 'AbortError'
-            ? 'Zeitüberschreitung – der Server ist unter dieser Adresse nicht erreichbar. Gleiches WLAN? Firewall? Adresse richtig?'
-            : 'Verbindung fehlgeschlagen: ' + (err && err.message ? err.message : 'unbekannter Fehler') + '. Läuft der SchachTurnierManager auf dem PC?';
-          showStatus('err', msg);
-          connectBtn.disabled = true;
+        .catch(function (error) {
+          metaBox.textContent = '';
+          if (error && error.name === 'AbortError') { showStatus('err', t('timeout')); }
+          else if (error && error.message === 'WRONG_SERVER') { showStatus('err', t('wrongServer')); }
+          else { showStatus('err', t('failed')); }
         })
-        .finally(function () { testBtn.disabled = false; });
+        .finally(function () { clearTimeout(timer); testBtn.disabled = false; });
     }
-
     function connect() {
       var base = normalizeUrl(serverInput.value);
-      if (!base) { showStatus('err', 'Bitte zuerst eine gültige Adresse testen.'); return; }
-      // Lädt die vom PC gehostete WebApp (Frontend + API von derselben Origin).
+      if (!base || base !== verifiedBase) { showStatus('err', t('testFirst')); connectBtn.disabled = true; return; }
       window.location.href = base + '/';
     }
 
+    el('lang-de').addEventListener('click', function () { setLanguage('de'); });
+    el('lang-en').addEventListener('click', function () { setLanguage('en'); });
     testBtn.addEventListener('click', testConnection);
     connectBtn.addEventListener('click', connect);
-    serverInput.addEventListener('input', function () { connectBtn.disabled = true; });
+    serverInput.addEventListener('input', function () { verifiedBase = null; connectBtn.disabled = true; });
   </script>
 </body>
 </html>
