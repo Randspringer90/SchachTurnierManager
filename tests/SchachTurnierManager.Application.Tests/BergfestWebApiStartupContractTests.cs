@@ -56,6 +56,17 @@ public sealed class BergfestWebApiStartupContractTests
         Assert.Contains("\"Microsoft.EntityFrameworkCore\": \"Warning\"", appSettingsText);
     }
 
+    [Fact]
+    public void PublicHealthResponse_DoesNotExposeAbsoluteStoragePaths()
+    {
+        var programPath = FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Program.cs");
+        var program = File.ReadAllText(programPath);
+
+        Assert.DoesNotContain("databasePath = databaseFullPath", program);
+        Assert.DoesNotContain("directory = runtimeLogDirectory", program);
+        Assert.Contains("storage = \"local\"", program);
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

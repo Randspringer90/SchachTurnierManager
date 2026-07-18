@@ -248,7 +248,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("FindRepositoryRoot", program);
         Assert.Contains("SchachTurnierManager:LogDirectory", program);
         Assert.Contains("SchachTurnierManager:FileLogging:RetainedFileCount", program);
-        Assert.Contains("directory = runtimeLogDirectory", program);
+        Assert.Contains("storage = \"local\"", program);
+        Assert.DoesNotContain("directory = runtimeLogDirectory", program);
+        Assert.DoesNotContain("databasePath = databaseFullPath", program);
         Assert.Contains("Path.Value", program);
         Assert.DoesNotContain("QueryString", program);
 

@@ -37,8 +37,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-004 | Public Snapshot & Git-History-Abnahme | P0 | Blocked | security | owner | – | v1.0.0 |
 | STM-SEC-005 | Sichere Pull-Request-Prüfung und kontrollierte Übernahme | P1 | Done | security | owner | [#11](https://github.com/Randspringer90/SchachTurnierManager/issues/11) (PR [#12](https://github.com/Randspringer90/SchachTurnierManager/pull/12)) | v1.0.0 |
-| STM-SEC-006 | CSV-Formel-Injection in allen CSV-Exporten neutralisieren (führende `=`/`+`/`-`/`@`/Tab) | P2 | Backlog | security | either | – (projektweit: TRF16/Tabelle/Paarungen/Swiss-Manager; bestehendes Muster, kein Regress von STM-IE-002) | v1.0.0 |
-| STM-INFRA-008 | PR-Security-Gate für Android-/Binär-Buildartefakte tragfähig machen | P2 | Backlog | infrastructure | owner | – (der textbasierte Static-Review blockiert `gradle-wrapper.jar` als `BLOCKED_ARCHIVE` und Icon-/Splash-PNGs als `INCOMPLETE_PATCH`; blockiert den Merge von STM-MOB-001 #49) | post-1.0 |
+| STM-SEC-006 | CSV-Formel-Injection in allen CSV-Exporten neutralisieren (führende `=`/`+`/`-`/`@`/Tab) | P2 | Ready | security | friend | – (projektweit: TRF16/Tabelle/Paarungen/Swiss-Manager; bestehendes Muster, kein Regress von STM-IE-002) | v1.0.0 |
+| STM-INFRA-008 | PR-Security-Gate für Android-/Binär-Buildartefakte tragfähig machen | P2 | In Review | infrastructure | owner | PR [#50](https://github.com/Randspringer90/SchachTurnierManager/pull/50) (exakte Android-Artefaktattestierung; Owner-Review erforderlich; blockiert den Merge von STM-MOB-001 #49) | post-1.0 |
 | STM-AI-001 | Agenten- & Skill-Zielstandard + Migration | P2 | Done | ai | owner | [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) (PR [#8](https://github.com/Randspringer90/SchachTurnierManager/pull/8)) | v1.0.0 |
 | STM-AI-001b | Restliche Legacy-Skills nach SKILL.md migrieren + geplante Skills autorieren | P3 | Backlog | ai | owner | – | v1.0.0 |
 | STM-AI-002 | Wissensmanagement repo-intern konsolidieren | P2 | Done | ai | owner | [#18](https://github.com/Randspringer90/SchachTurnierManager/issues/18), [PR #19](https://github.com/Randspringer90/SchachTurnierManager/pull/19), Merge `98648e7` | v1.0.0 |
@@ -57,7 +57,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Done | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) (Original-PR [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40), sichere Adoption [#45](https://github.com/Randspringer90/SchachTurnierManager/pull/45), Merge `7634399`; Folge: STM-FACH-011/012) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) (entsperrt: STM-FACH-002 ist Done) | v1.0.0 |
 | STM-FACH-011 | Setzlisten-Vergabe nach C.04.2 Art. 2.2 (Startrang statt Eingabereihenfolge) | P2 | Backlog | pairing | friend | – (Folge aus STM-FACH-002; die FIDE-Dutch-Strategie warnt aktuell nur im Audit) | post-1.0 |
-| STM-FACH-012 | WebApp-UI-Auswahl für Pairing-Strategie und Anfangsfarbe | P2 | Backlog | ui | friend | – (Folge aus STM-FACH-002; Backend/API/Persistenz fertig, Oberfläche fehlt) | v1.0.0 |
+| STM-FACH-012 | WebApp-UI-Auswahl für Pairing-Strategie und Anfangsfarbe | P2 | In Review | ui | owner | Build-Week-UX-Freeze `8fbf021` (Owner-PR wird vorbereitet; bestehende Turniere bleiben unverändert) | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
 | STM-IE-001 | Excel-/TRF-Export (FIDE-Turnierbericht) | P1 | Done | import-export | friend | [#3](https://github.com/Randspringer90/SchachTurnierManager/issues/3) (Original-PR [#30](https://github.com/Randspringer90/SchachTurnierManager/pull/30), sichere Adoption [#35](https://github.com/Randspringer90/SchachTurnierManager/pull/35), Merge `6a2d021`) | v1.0.0 |
 | STM-IE-002 | Swiss-Manager / Chess-Results-Kompatibilität | P2 | Done | import-export | friend | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) (Original-PR [#44](https://github.com/Randspringer90/SchachTurnierManager/pull/44), sichere Adoption [#48](https://github.com/Randspringer90/SchachTurnierManager/pull/48), Merge `8f6ce32`) | v1.0.0 |
@@ -71,7 +71,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43) (blockiert: Android SDK fehlt auf der Workstation) | post-1.0 |
+| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | owner | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43), PR [#49](https://github.com/Randspringer90/SchachTurnierManager/pull/49) (blockiert bis Owner-Review/Merge von STM-INFRA-008 und erneuter SHA-gebundener Prüfung) | post-1.0 |
 | STM-MOB-002 | F-Droid-Readiness | P3 | Blocked | mobile | owner | – (blockiert: STM-MOB-001 + Lizenzentscheidung STM-SEC-004) | post-1.0 |
 | STM-MOB-003 | Mobile Paarungsansicht | P2 | Backlog | mobile | friend | – (nach STM-MOB-001) | post-1.0 |
 | STM-MOB-004 | Mobile Ergebniseingabe (Bestätigung, Undo, Audit) | P2 | Backlog | mobile | friend | – (nach STM-MOB-003) | post-1.0 |
@@ -93,8 +93,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-UX-006 | Spieler-Massenbearbeitung | P3 | Backlog | ui | friend | – | post-1.0 |
 | STM-UX-007 | Duplikaterkennung (Name, FIDE-ID; nie automatisch löschen) | P2 | Backlog | player-data | friend | – | post-1.0 |
 | STM-UX-008 | Rundenkontrollzentrum | P2 | Backlog | ui | friend | – | post-1.0 |
-| STM-UX-009 | Benutzerhandbuch | P3 | Backlog | documentation | friend | – | post-1.0 |
-| STM-UX-010 | Geräteübergreifende Testmatrix | P3 | Backlog | infrastructure | either | – | post-1.0 |
+| STM-UX-009 | Benutzerhandbuch | P3 | Backlog | documentation | friend | – (Build-Week-Queue 2026-07-19; erst nach Merge des UX-Pakets neu binden) | post-1.0 |
+| STM-UX-010 | Geräteübergreifende Testmatrix | P3 | Backlog | infrastructure | friend | – (Build-Week-Queue 2026-07-19; erst nach Merge des UX-Pakets neu binden) | post-1.0 |
 | STM-UX-011 | Barrierefreiheit (Tastatur, Screenreader, Kontrast, Fokus) | P3 | Backlog | ui | friend | – | post-1.0 |
 | STM-FACH-009 | Vereinsmeisterschaftsmodus (Serien, Saisonwertung) | P3 | Backlog | pairing | friend | – | post-1.0 |
 | STM-FACH-010 | Blitz-/Schnellschach-Vorlagen | P3 | Backlog | pairing | friend | – | post-1.0 |
