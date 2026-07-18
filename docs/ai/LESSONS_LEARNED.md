@@ -4,6 +4,16 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-07-18 — Vollständige SHAs werden von Git aufgelöst, nie von Hand ergänzt
+
+- Kontext: Unabhängiger Competition-Audit der Build-Week-Queue und des UX-Freeze.
+- Lesson: Eine plausible manuelle Erweiterung eines kurzen Commit-SHAs kann auf einen nicht
+  existierenden Commit zeigen und dennoch in mehreren Dokumenten konsistent aussehen. Formale
+  40-Zeichen-Prüfung allein beweist weder Existenz noch geeignete Herkunft als Arbeitsbasis.
+- Konsequenz: Dokumentierte SHAs werden mit `git rev-parse` ermittelt. Der Contributor-Generator
+  prüft Commit-Existenz und erlaubt startbare Prompts nur exakt vom aktuellen `development`;
+  ungemergte Feature-SHAs bleiben Planning-only.
+
 ## 2026-07-18 — Submission-Qualität entsteht durch Fokus und beweisbare Grenzen
 
 - Kontext: OpenAI Build Week finalization, STM-FACH-012, synthetischer Jury-Pfad und
