@@ -19,6 +19,22 @@
   ],
   "binaryPolicy": "block-unverified",
   "archivePolicy": "block-unverified",
+  "verifiedArtifactPolicy": {
+    "attestationFile": "config/pull-request-artifact-attestations.json",
+    "maximumArtifactBytes": 1048576,
+    "requireExactPullRequestNumber": true,
+    "requireExactHeadSha": true,
+    "requireExactGitBlobSha": true,
+    "requireExactSha256": true,
+    "requireExactSize": true,
+    "requireOwnerReview": true,
+    "allowedKinds": [
+      "android-png",
+      "gradle-wrapper-jar",
+      "gradle-wrapper-properties",
+      "third-party-build-wrapper"
+    ]
+  },
   "symlinkPolicy": "block-unverified",
   "submodulePolicy": "block-unverified",
   "workflowPolicy": {

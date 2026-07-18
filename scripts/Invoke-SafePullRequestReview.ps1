@@ -58,7 +58,8 @@ if (-not $Offline) {
     $trustedRuntimeRef = if ($ExpectedBaseSha) { $ExpectedBaseSha } else { 'refs/remotes/origin/development' }
     $runtimePaths = @(
         'scripts/Invoke-SafePullRequestReview.ps1','scripts/lib/PullRequestReviewCommon.ps1',
-        'config/pull-request-review-policy.json','config/dependency-review-policy.json',
+        'scripts/lib/PullRequestArtifactVerification.ps1',
+        'config/pull-request-review-policy.json','config/pull-request-artifact-attestations.json','config/dependency-review-policy.json',
         'config/suspicious-change-patterns.json','config/pr-adoption-policy.json'
     )
     & git -C $repoRoot diff --quiet --no-ext-diff --no-textconv $trustedRuntimeRef -- @runtimePaths
@@ -112,7 +113,23 @@ function Get-OnlineReviewInput {
     $baseTree = Invoke-TrustedGhJson -Context 'PR-Base-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$metadata.baseRefOid)?recursive=1")
     $converted = ConvertFrom-GitHubPullRequestReviewData -ApiFiles $apiFiles -HeadTree $headTree -BaseTree $baseTree
     $metadata | Add-Member -NotePropertyName gitTreeMetadataComplete -NotePropertyValue ([bool]$converted.treeMetadataComplete) -Force
-    return [pscustomobject]@{ metadata=$metadata; files=$converted.files; patch=$converted.patch }
+    $blobProvider = {
+        param([string]$BlobSha, [int64]$ExpectedSize)
+        if ($BlobSha -cnotmatch '^[0-9a-f]{40}$' -or $ExpectedSize -lt 1 -or $ExpectedSize -gt [int]$policies.review.verifiedArtifactPolicy.maximumArtifactBytes) {
+            throw 'Attestierter Git-Blob-Aufruf ist ungueltig.'
+        }
+        $blob = Invoke-TrustedGhJson -Context 'attestierter PR-Git-Blob' -Arguments @('api',"repos/$Repository/git/blobs/$BlobSha")
+        if ([string]$blob.sha -cne $BlobSha -or [string]$blob.encoding -cne 'base64' -or [int64]$blob.size -ne $ExpectedSize) {
+            throw 'Attestierter PR-Git-Blob stimmt nicht mit SHA, Encoding oder Groesse ueberein.'
+        }
+        try { [byte[]]$bytes = [Convert]::FromBase64String(([string]$blob.content -replace '\s','')) }
+        catch { throw 'Attestierter PR-Git-Blob besitzt kein gueltiges Base64.' }
+        if ($bytes.Length -ne $ExpectedSize) { throw 'Dekodierte Blob-Groesse weicht von der Attestation ab.' }
+        return $bytes
+    }
+    $verifiedFiles = Add-PullRequestArtifactVerifications -Metadata $metadata -Files @($converted.files) -HeadTree $headTree `
+        -ReviewPolicy $policies.review -Attestations $policies.artifacts -BlobProvider $blobProvider
+    return [pscustomobject]@{ metadata=$metadata; files=@($verifiedFiles); patch=$converted.patch }
 }
 
 function Get-OfflineReviewInput {
@@ -214,6 +231,8 @@ $metadataReport.bodyLength = ([string](Get-ReviewPropertyValue $metadata 'body' 
 $metadataReport.author = $safeAuthor
 $metadataReport.headRefName = $safeHeadRef
 $metadataReport.gitTreeMetadataComplete = [bool](Get-ReviewPropertyValue $metadata 'gitTreeMetadataComplete' $true)
+$metadataReport.artifactAttestationStatus = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'artifactAttestationStatus' 'NOT_EVALUATED')) 40
+$metadataReport.artifactAttestationApprovalId = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'artifactAttestationApprovalId' '')) 80
 $metadataReport.state = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'state' 'UNKNOWN')) 30
 $metadataReport.isDraft = [bool](Get-ReviewPropertyValue $metadata 'isDraft' $false)
 

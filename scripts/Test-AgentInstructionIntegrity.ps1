@@ -74,7 +74,7 @@ if ($allow) {
 else { $script:allowGlobs = @() }
 
 # 2) JSON-Policies/Manifeste gueltig
-foreach ($j in 'config/agent-manifest.json','config/skill-manifest.json','config/agent-routing.json','config/agent-trust-policy.json','config/tool-permission-profiles.json','config/model-routing.json','config/model-routing.schema.json','config/pull-request-review-policy.json','config/dependency-review-policy.json','config/suspicious-change-patterns.json','config/pr-adoption-policy.json') {
+foreach ($j in 'config/agent-manifest.json','config/skill-manifest.json','config/agent-routing.json','config/agent-trust-policy.json','config/tool-permission-profiles.json','config/model-routing.json','config/model-routing.schema.json','config/pull-request-review-policy.json','config/pull-request-artifact-attestations.json','config/dependency-review-policy.json','config/suspicious-change-patterns.json','config/pr-adoption-policy.json') {
     $p = Join-Path $repo $j
     if (-not (Test-Path $p)) { Bad $j 'fehlt'; continue }
     try { Get-Content -Raw $p | ConvertFrom-Json | Out-Null } catch { Bad $j 'ungueltiges JSON' }
@@ -92,6 +92,21 @@ try {
     }
     foreach ($property in 'contributorAttributionRequired','feedbackRequired','ownerReviewRequired') {
         if ($prPolicy.$property -ne $true) { Bad 'config/pull-request-review-policy.json' "$property muss true sein" }
+    }
+    $artifactPolicy = $prPolicy.verifiedArtifactPolicy
+    foreach ($property in 'requireExactPullRequestNumber','requireExactHeadSha','requireExactGitBlobSha','requireExactSha256','requireExactSize','requireOwnerReview') {
+        if ($artifactPolicy.$property -ne $true) { Bad 'config/pull-request-review-policy.json' "verifiedArtifactPolicy.$property muss true sein" }
+    }
+    if ($artifactPolicy.attestationFile -cne 'config/pull-request-artifact-attestations.json' -or
+        [int]$artifactPolicy.maximumArtifactBytes -gt 1048576 -or [int]$artifactPolicy.maximumArtifactBytes -lt 1024) {
+        Bad 'config/pull-request-review-policy.json' 'Artifact-Attestationspfad oder Groessenlimit ist ungueltig'
+    }
+    foreach ($kind in 'android-png','gradle-wrapper-jar','gradle-wrapper-properties','third-party-build-wrapper') {
+        if (@($artifactPolicy.allowedKinds) -cnotcontains $kind) { Bad 'config/pull-request-review-policy.json' "Artifact-Kind fehlt: $kind" }
+    }
+    $artifactAttestations = Get-Content -Raw (Join-Path $repo 'config/pull-request-artifact-attestations.json') | ConvertFrom-Json
+    if ([int]$artifactAttestations.schemaVersion -ne 1 -or $null -eq $artifactAttestations.approvals) {
+        Bad 'config/pull-request-artifact-attestations.json' 'Schema oder approvals fehlt'
     }
     if ($prPolicy.isolatedExecutionApproval.shaBoundReviewMarkerPrefix -cne 'STATIC-EXECUTION-APPROVED:' -or
         $prPolicy.isolatedExecutionApproval.reviewTriggerLabel -cne 'security:static-review-trigger' -or

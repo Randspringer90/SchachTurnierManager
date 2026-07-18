@@ -47,6 +47,7 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `New-PullRequestFeedback.ps1` – erzeugt standardmäßig nur redigiertes Feedback; Posting verlangt expliziten Schalter und aktuellen Head-/Base-Recheck.
 - `Test-PullRequestReviewReadiness.ps1` – providerunabhängiger Gate mit synthetischen Positiv-, Risiko-, Tamper-, Pfad- und WhatIf-Szenarien.
 - `lib/PullRequestReviewCommon.ps1` – pure Validierung, Redaction, defensive Klassifikation und Reportbindung.
+- `lib/PullRequestArtifactVerification.ps1` – reine In-Memory-Prüfung exakt attestierter Android-PNGs, Gradle-Wrapper-Dateien und Buildwrapper; keine Payload-Ausführung und kein Entpacken.
 
 ## Contributor / Kollaboration
 
