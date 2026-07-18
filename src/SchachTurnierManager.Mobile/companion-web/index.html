@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>SchachTurnierManager – Verbinden</title>
+  <style>
+    :root { --bg:#f6f7f9; --fg:#1a1c20; --card:#fff; --border:#d5d8dd; --accent:#2d6cdf; --ok:#1c8a4a; --err:#c0392b; --muted:#6b7280; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#15171b; --fg:#e8eaed; --card:#20242b; --border:#333a44; --accent:#5b8def; --ok:#3ac06d; --err:#e56b5d; --muted:#9aa2ad; } }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { padding: max(16px, env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); min-height:100dvh; }
+    .wrap { max-width: 460px; margin: 0 auto; }
+    h1 { font-size: 1.3rem; margin: 8px 0 4px; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 20px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:16px; }
+    label { display:block; font-weight:600; margin-bottom:6px; }
+    input[type=text] { width:100%; padding:14px; font-size:16px; border:1px solid var(--border); border-radius:10px; background:transparent; color:var(--fg); }
+    button { width:100%; padding:15px; font-size:16px; font-weight:600; border:0; border-radius:10px; margin-top:12px; cursor:pointer; min-height:52px; }
+    .primary { background:var(--accent); color:#fff; }
+    .secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+    button:disabled { opacity:.5; }
+    .status { margin-top:14px; padding:12px; border-radius:10px; font-size:.92rem; display:none; }
+    .status.show { display:block; }
+    .status.ok { background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok); }
+    .status.err { background:color-mix(in srgb, var(--err) 15%, transparent); color:var(--err); }
+    .status.info { background:color-mix(in srgb, var(--accent) 12%, transparent); color:var(--accent); }
+    .meta { font-size:.85rem; color:var(--muted); margin-top:10px; }
+    .hint { font-size:.82rem; color:var(--muted); margin-top:8px; }
+    .companion-badge { display:inline-block; font-size:.72rem; background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); border-radius:6px; padding:2px 8px; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="companion-badge">Companion-Modus</span>
+    <h1>Mit dem Turnier-PC verbinden</h1>
+    <p class="sub">Diese App zeigt Turniere, Paarungen und Tabellen von einem laufenden
+      SchachTurnierManager auf deinem PC. Der PC muss im selben WLAN erreichbar sein.</p>
+
+    <div class="card">
+      <label for="server">Serveradresse des PCs</label>
+      <input id="server" type="text" inputmode="url" autocapitalize="none" autocorrect="off"
+             spellcheck="false" placeholder="http://192.168.0.10:5088" />
+      <p class="hint">Die Adresse steht im PC-Fenster beim Start (z. B. „http://192.168.…:5088").
+        Keine feste Adresse fest eingebaut – du gibst sie selbst ein.</p>
+      <button id="test" class="secondary">Verbindung testen</button>
+      <button id="connect" class="primary" disabled>Verbinden</button>
+      <div id="status" class="status"></div>
+      <div id="meta" class="meta"></div>
+    </div>
+
+    <div class="card">
+      <div class="meta">
+        <div>App-Version: <span id="appver">–</span></div>
+        <div>Server-Version: <span id="srvver">noch nicht verbunden</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // STM-MOB-001 Companion-Launcher. Bewusst ohne Framework, ohne Tracking, ohne Netzwerk
+    // zu Dritten. Die einzige ausgehende Verbindung geht an die vom Nutzer eingegebene Adresse.
+    'use strict';
+    var APP_VERSION = '0.54.1';
+    var STORAGE_KEY = 'stm.companion.serverUrl';
+    var el = function (id) { return document.getElementById(id); };
+    el('appver').textContent = APP_VERSION;
+
+    var serverInput = el('server');
+    var testBtn = el('test');
+    var connectBtn = el('connect');
+    var statusBox = el('status');
+    var metaBox = el('meta');
+
+    // Zuletzt genutzte Adresse lokal wiederherstellen (nur auf dem Geraet, kein Cloud-Sync).
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) { serverInput.value = saved; }
+    } catch (e) { /* localStorage kann in manchen WebViews deaktiviert sein */ }
+
+    function showStatus(kind, text) {
+      statusBox.className = 'status show ' + kind;
+      statusBox.textContent = text;
+    }
+
+    // Normalisiert und validiert die Eingabe. Erlaubt nur http/https; verhindert offensichtlichen
+    // Unfug (leere/kaputte Eingaben). Keine automatische Auswahl fremder Server.
+    function normalizeUrl(raw) {
+      var v = (raw || '').trim();
+      if (!v) { return null; }
+      if (!/^https?:\/\//i.test(v)) { v = 'http://' + v; }
+      try {
+        var u = new URL(v);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') { return null; }
+        return u.origin;
+      } catch (e) { return null; }
+    }
+
+    function testConnection() {
+      var base = normalizeUrl(serverInput.value);
+      if (!base) { showStatus('err', 'Bitte eine gültige Adresse eingeben, z. B. http://192.168.0.10:5088'); connectBtn.disabled = true; return; }
+      showStatus('info', 'Teste Verbindung zu ' + base + ' …');
+      testBtn.disabled = true;
+      // Verbindungstest mit Timeout, damit die App bei falscher Adresse nicht haengt.
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, 5000);
+      fetch(base + '/api/health', { signal: controller.signal, cache: 'no-store' })
+        .then(function (r) {
+          clearTimeout(timer);
+          if (!r.ok) { throw new Error('HTTP ' + r.status); }
+          return r.json();
+        })
+        .then(function (health) {
+          try { localStorage.setItem(STORAGE_KEY, base); } catch (e) {}
+          el('srvver').textContent = (health && health.status ? health.status : 'ok') +
+            (health && health.embeddedDashboard === false ? ' (Dashboard nicht eingebettet!)' : '');
+          showStatus('ok', 'Verbunden! Server erreichbar. Du kannst jetzt „Verbinden" drücken.');
+          metaBox.textContent = 'Datenbank: ' + (health && health.database ? health.database : 'unbekannt');
+          connectBtn.disabled = false;
+        })
+        .catch(function (err) {
+          clearTimeout(timer);
+          var msg = err && err.name === 'AbortError'
+            ? 'Zeitüberschreitung – der Server ist unter dieser Adresse nicht erreichbar. Gleiches WLAN? Firewall? Adresse richtig?'
+            : 'Verbindung fehlgeschlagen: ' + (err && err.message ? err.message : 'unbekannter Fehler') + '. Läuft der SchachTurnierManager auf dem PC?';
+          showStatus('err', msg);
+          connectBtn.disabled = true;
+        })
+        .finally(function () { testBtn.disabled = false; });
+    }
+
+    function connect() {
+      var base = normalizeUrl(serverInput.value);
+      if (!base) { showStatus('err', 'Bitte zuerst eine gültige Adresse testen.'); return; }
+      // Lädt die vom PC gehostete WebApp (Frontend + API von derselben Origin).
+      window.location.href = base + '/';
+    }
+
+    testBtn.addEventListener('click', testConnection);
+    connectBtn.addEventListener('click', connect);
+    serverInput.addEventListener('input', function () { connectBtn.disabled = true; });
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  STM-MOB-001 – Network Security Config, TEST-Flavor.
+
+  Diese Test-APK verbindet sich mit einem SchachTurnierManager-PC im lokalen WLAN, der sein
+  WebApi standardmäßig über HTTP (http://<lan-ip>:5088) bereitstellt. Damit der Freitagstest
+  ohne HTTPS-Zertifikat auf dem PC funktioniert, ist Cleartext-HTTP hier bewusst erlaubt.
+
+  WICHTIG: Das ist ausdrücklich der TEST-Flavor. Ein späterer Release-Flavor muss HTTPS
+  verlangen und darf Cleartext NICHT global freigeben (siehe docs/operations/ANDROID_SIGNING.md
+  und Issue #43). Die Zertifikatsprüfung wird NICHT global abgeschaltet – es wird lediglich
+  unverschlüsselter Verkehr zugelassen.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
