@@ -191,7 +191,6 @@ app.MapGet("/api/health", () => Results.Ok(new
     version = "0.54.1",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
-    databasePath = databaseFullPath,
     embeddedDashboard = embeddedDashboardAvailable,
     logging = new
     {
@@ -199,7 +198,7 @@ app.MapGet("/api/health", () => Results.Ok(new
         applicationLevel = configuredApplicationLogLevel,
         console = "simple-single-line",
         file = fileLoggingEnabled ? "enabled" : "disabled",
-        directory = runtimeLogDirectory,
+        storage = "local",
         retainedFiles = retainedLogFileCount,
         maxFileSizeBytes = maxLogFileSizeBytes
     }

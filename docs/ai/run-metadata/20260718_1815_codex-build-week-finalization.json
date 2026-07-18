@@ -1,0 +1,19 @@
+{
+  "runId": "STM_BUILD_WEEK_2026_20260718_181524",
+  "purpose": "OpenAI Build Week finalization",
+  "tool": "Codex CLI",
+  "model": "GPT-5.6 Sol",
+  "modelVerification": "Owner/thread selection and repository sol-to-gpt-5.6-sol mapping confirmed; the active process exposes no independently queryable model argument.",
+  "codexVersion": "0.144.5",
+  "startedAt": "2026-07-18T18:15:24+02:00",
+  "finishedAt": null,
+  "primaryPrompt": "docs/ai/prompts/20260718_1815_codex-build-week-finalization.md",
+  "report": "docs/ai/reports/20260718_1815_codex-build-week-finalization_REPORT.md",
+  "initialDevelopmentSha": "a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518",
+  "finalCandidateSha": null,
+  "buildWeekCommitRange": null,
+  "feedbackSessionIdStatus": "pending",
+  "feedbackSessionIdSha256": null,
+  "feedbackCapturedAt": null,
+  "actualSessionIdCommitted": false
+}
