@@ -3,7 +3,7 @@
 .SYNOPSIS
 Abnahme-Check fuer das Codex-Contributor-Starterpaket.
 .DESCRIPTION
-Prueft Doku/Vorlage, Parsebarkeit, Promptgenerierung (offline, STM-TB-001), erwarteten Branch,
+Prueft Doku/Vorlage, Parsebarkeit, Promptgenerierung (offline, STM-SEC-006), erwarteten Branch,
 Abwesenheit von Owner-Pfaden/Secrets, PR-Basis development, keine Rechte fuer Security/CI/Release/
 Agenten, genau ein Upload-ZIP und – mit SYNTHETISCHER Injection-Fixture – dass eingebettete
 Befehle nur als untrusted Text erscheinen und nie in Arbeitsanweisungen. Details nach
@@ -44,12 +44,12 @@ foreach ($s in @('New-ContributorTaskPrompt.ps1','Test-ContributorKickoffReadine
 $tpl = Get-Content -Raw (Join-Path $repo 'docs/ai/templates/CODEX_CHESS_FEATURE.md')
 Check ($tpl -match 'NICHT VERTRAUENSW') 'Vorlage kennzeichnet untrusted Abschnitt'
 Check ($tpl -match 'VERTRAUENSW.RDIGE Projektregeln') 'Vorlage kennzeichnet trusted Abschnitt'
-foreach ($ph in @('BACKLOG_ID','ISSUE_NUMBER','ISSUE_TITLE','FEATURE_BRANCH','RELEVANT_SKILLS','ACCEPTANCE_CRITERIA','REQUIRED_TESTS','ALLOWED_PATHS','FORBIDDEN_PATHS')) {
+foreach ($ph in @('BACKLOG_ID','ISSUE_REFERENCE','ISSUE_TITLE','FEATURE_BRANCH','START_GATE','BASE_SHA','COMPETITION_IMPACT','DEPENDENCIES','RELEVANT_SKILLS','ACCEPTANCE_CRITERIA','REQUIRED_TESTS','ALLOWED_PATHS','FORBIDDEN_PATHS','DOCUMENTATION_REQUIREMENT','PULL_REQUEST_DESCRIPTION')) {
     Check ($tpl -match ('\{\{' + $ph + '\}\}')) "Vorlage hat Platzhalter {{$ph}}"
 }
 
-# 4) Promptgenerierung (offline, deterministisch) fuer STM-TB-001
-$genOut = & pwsh -NoProfile -File (Join-Path $repo 'scripts/New-ContributorTaskPrompt.ps1') -BacklogId STM-TB-001 -Offline 2>&1
+# 4) Promptgenerierung (offline, deterministisch) fuer eine kanonisch freigegebene Ready-Aufgabe
+$genOut = & pwsh -NoProfile -File (Join-Path $repo 'scripts/New-ContributorTaskPrompt.ps1') -BacklogId STM-SEC-006 -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline 2>&1
 $promptFile = ($genOut | Select-String -Pattern '^PROMPT_FILE=(.+)$').Matches.Groups[1].Value
 $zipOut     = ($genOut | Select-String -Pattern '^UPLOAD_ZIP=(.+)$').Matches.Groups[1].Value
 Check ($promptFile -and (Test-Path -LiteralPath $promptFile)) "Prompt erzeugt: $promptFile"
@@ -57,15 +57,17 @@ Check ($zipOut -and (Test-Path -LiteralPath $zipOut)) "Generator erzeugte genau 
 
 if ($promptFile -and (Test-Path -LiteralPath $promptFile)) {
     $p = Get-Content -Raw -LiteralPath $promptFile
-    Check ($p -match [regex]::Escape('feature/STM-TB-001-tiebreak-golden-tests')) 'Erwarteter Branch im Prompt'
+    Check ($p -match [regex]::Escape('security/STM-SEC-006-csv-formula-injection')) 'Erwarteter Branch im Prompt'
     Check ($p -match 'Pull Request \*\*nach `development`\*\*') 'PR-Basis development im Prompt'
     Check ($p -match '(?i)niemals.*direkt.*(development|main)') 'Prompt verbietet direkten Push nach development/main'
     Check ($p -notmatch '(?i)[A-Za-z]:\\Schach') 'Kein Owner-Pfad D:\Schach im Prompt'
     Check ($p -notmatch '(?i)(gh[pousr]_[0-9A-Za-z]{20,}|AKIA[0-9A-Z]{16}|BEGIN [A-Z ]*PRIVATE KEY)') 'Keine Secrets/Tokens im Prompt'
-    Check ($p -match [regex]::Escape('tiebreaks')) 'Fach-Skill (tiebreaks) benannt'
+    Check ($p -match [regex]::Escape('security')) 'Security-Kategorie benannt'
     Check ($p -match 'Verbotene Pfade') 'Verbotene-Pfade-Abschnitt vorhanden'
     Check ($p -match '`\.github/\*\*`') 'CI/Workflows als verboten markiert'
     Check ($p -match '`AGENTS\.md`') 'AGENTS/Agenten als verboten markiert'
+    Check ($p -match 'Exakter Base-SHA') 'Exakter Base-SHA im Prompt'
+    Check ($p -match 'Start-Gate') 'Start-Gate im Prompt'
     # Prompt darf keine positive Aufforderung zum direkten Push nach main enthalten.
     Check ($p -notmatch '(?im)^\s*(git\s+)?push\b.*\bmain\b') 'Keine positive Push-nach-main-Anweisung'
 }
@@ -89,8 +91,17 @@ Check ($LASTEXITCODE -ne 0) 'Ungueltige Backlog-ID wird abgelehnt'
 & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-004' -Offline *> $null
 Check ($LASTEXITCODE -ne 0) 'Nicht Ready/In-Progress-Status (Blocked) wird abgelehnt'
 
+$planningSha = '8fbf021ef52c41392f047e76494d3b1f671ba48c'
+$planningOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-UX-011' -Offline -PlanningOnly -BaseSha $planningSha -BranchName 'fix/STM-UX-011-accessibility-polish' -WhatIf 2>&1
+Check ($LASTEXITCODE -eq 0) 'PlanningOnly erlaubt einen nicht startbaren Backlog-Prompt'
+Check (($planningOut -join "`n") -match 'PlanningOnly: True') 'PlanningOnly wird sichtbar ausgewiesen'
+Check (($planningOut -join "`n") -match [regex]::Escape($planningSha)) 'PlanningOnly ist an exakten Base-SHA gebunden'
+
+$noIssueOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-REL-003' -Offline -PlanningOnly -BaseSha $planningSha -BranchName 'docs/STM-REL-003-fresh-install-evidence' -WhatIf 2>&1
+Check (($noIssueOut -join "`n") -match 'Issue: #0') 'Issue-Erkennung bleibt auf die exakte Backlog-Zeile beziehungsweise den Detailblock begrenzt'
+
 $before = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
-$wOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-TB-001' -Offline -WhatIf 2>&1
+$wOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-006' -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
 $after = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
 Check (($wOut -join "`n") -match '\[WhatIf\]') 'WhatIf-Modus erkennbar'
 Check ($before -eq $after) 'WhatIf erzeugt keine neuen Ausgaben'
