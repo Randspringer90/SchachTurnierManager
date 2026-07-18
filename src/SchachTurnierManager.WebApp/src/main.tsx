@@ -775,17 +775,17 @@ const tiebreakOptions = [
 ];
 
 const genderOptions = [
-  { value: 0, label: 'unbekannt' },
-  { value: 1, label: 'offen' },
-  { value: 2, label: 'weiblich' },
-  { value: 3, label: 'männlich' },
-  { value: 4, label: 'divers' }
+  { value: 0, label: 'unbekannt', labelEn: 'unknown' },
+  { value: 1, label: 'offen', labelEn: 'open' },
+  { value: 2, label: 'weiblich', labelEn: 'female' },
+  { value: 3, label: 'männlich', labelEn: 'male' },
+  { value: 4, label: 'divers', labelEn: 'diverse' }
 ];
 
 const playerStatusOptions = [
-  { value: 0, label: 'aktiv' },
-  { value: 1, label: 'pausiert' },
-  { value: 2, label: 'zurückgezogen' }
+  { value: 0, label: 'aktiv', labelEn: 'active' },
+  { value: 1, label: 'pausiert', labelEn: 'paused' },
+  { value: 2, label: 'zurückgezogen', labelEn: 'withdrawn' }
 ];
 
 const externalSourceOptions = [
@@ -907,15 +907,15 @@ function safeFileNamepart(value: string): string {
   return value.replace(/[^A-Za-z0-9_\-]+/g, '_').replace(/^_+|_+$/g, '') || 'turnier';
 }
 
-function backupTimeLabel(iso: string | null): string {
+function backupTimeLabel(iso: string | null, english = false): string {
   if (!iso) {
-    return 'noch kein lokaler Backup-Export';
+    return english ? 'no local backup exported yet' : 'noch kein lokaler Backup-Export';
   }
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) {
-    return 'unbekannt';
+    return english ? 'unknown' : 'unbekannt';
   }
-  return parsed.toLocaleString('de-DE');
+  return parsed.toLocaleString(english ? 'en-US' : 'de-DE');
 }
 
 function resultLabel(kind: number, english = false): string {
@@ -923,12 +923,14 @@ function resultLabel(kind: number, english = false): string {
   return (english ? option?.labelEn : option?.label) ?? String(kind);
 }
 
-function genderLabel(kind: number): string {
-  return genderOptions.find(option => option.value === kind)?.label ?? String(kind);
+function genderLabel(kind: number, english = false): string {
+  const option = genderOptions.find(item => item.value === kind);
+  return (english ? option?.labelEn : option?.label) ?? String(kind);
 }
 
-function statusLabel(kind: number): string {
-  return playerStatusOptions.find(option => option.value === kind)?.label ?? String(kind);
+function statusLabel(kind: number, english = false): string {
+  const option = playerStatusOptions.find(item => item.value === kind);
+  return (english ? option?.labelEn : option?.label) ?? String(kind);
 }
 
 function roundStatusLabel(kind: number, english = false): string {
@@ -1071,12 +1073,12 @@ function importPreviewMessages(row: PlayerImportPreviewRow): string[] {
   return [...row.blockingIssues, ...row.warnings];
 }
 
-function pairingQualitySeverityLabel(severity: number): string {
+function pairingQualitySeverityLabel(severity: number, english = false): string {
   switch (severity) {
-    case 0: return 'gut';
-    case 1: return 'Hinweis';
-    case 2: return 'Warnung';
-    case 3: return 'kritisch';
+    case 0: return english ? 'good' : 'gut';
+    case 1: return english ? 'notice' : 'Hinweis';
+    case 2: return english ? 'warning' : 'Warnung';
+    case 3: return english ? 'critical' : 'kritisch';
     default: return String(severity);
   }
 }
@@ -2210,7 +2212,9 @@ function App() {
     const preview = await requestJson<NextRoundPreview>(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round`);
     setNextRoundPreview(preview);
     setIsNextRoundPreviewDialogOpen(true);
-    setStatus(`Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
+    setStatus(lang === 'en'
+      ? `Pairing preview for round ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity, true)}.`
+      : `Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
   }
   async function generateRound() {
     if (!selectedTournament) {
@@ -2218,7 +2222,9 @@ function App() {
     }
 
     if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      const confirmed = window.confirm('Die Vorschau enthält kritische Hinweise. Bei kleinen Turnieren können Rematches/Scoregruppen-Abweichungen unvermeidbar sein. Trotzdem Runde auslosen?');
+      const confirmed = window.confirm(lang === 'en'
+        ? 'The preview contains critical findings. In small tournaments, rematches or score-group deviations may be unavoidable. Pair this round anyway?'
+        : 'Die Vorschau enthält kritische Hinweise. Bei kleinen Turnieren können Rematches/Scoregruppen-Abweichungen unvermeidbar sein. Trotzdem Runde auslosen?');
       if (!confirmed) {
         return;
       }
@@ -2227,7 +2233,7 @@ function App() {
     setError(null);
     try {
       const created = await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST' });
-      setStatus('Neue Runde ausgelost. Tipp: Jetzt ein lokales Backup ziehen.');
+      setStatus(lang === 'en' ? 'New round paired. Tip: create a local backup now.' : 'Neue Runde ausgelost. Tipp: Jetzt ein lokales Backup ziehen.');
       setBackupRecommended(true);
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
@@ -2559,7 +2565,9 @@ function App() {
     setError(null);
     const report = await requestJson<PairingQualityReport>(`/api/tournaments/${selectedTournament.id}/rounds/${roundNumber}/pairing-quality`);
     setPairingQualityReports(previous => ({ ...previous, [roundNumber]: report }));
-    setStatus(`Pairing-Qualität Runde ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity)}.`);
+    setStatus(lang === 'en'
+      ? `Pairing quality for round ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity, true)}.`
+      : `Pairing-Qualität Runde ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity)}.`);
   }
   async function importPlayers() {
     if (!selectedTournament) {
@@ -2928,6 +2936,20 @@ function openRoundPrint(roundNumber: number) {
     return 'keine Fälle';
   }
 
+  function byeForfeitAuditStatusDisplayLabel(): string {
+    const label = byeForfeitAuditStatusLabel();
+    if (lang !== 'en') {
+      return label;
+    }
+    switch (label) {
+      case 'noch keine Runde': return 'no round yet';
+      case 'kampflos prüfen': return 'review forfeits';
+      case 'Bye sichtbar': return 'bye visible';
+      case 'keine Fälle': return 'no cases';
+      default: return label;
+    }
+  }
+
   function byeForfeitAuditStatusClass(): string {
     const label = byeForfeitAuditStatusLabel();
     if (label === 'keine Fälle') {
@@ -2962,11 +2984,15 @@ function openRoundPrint(roundNumber: number) {
 
     const unverifiedRounds = pairingReadinessUnverifiedRoundCount();
     if (unverifiedRounds > 0) {
-      issues.push(`${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
+      issues.push(lang === 'en'
+        ? `${unverifiedRounds} completed round(s) are not marked as reviewed.`
+        : `${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
     }
 
     if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      issues.push('Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bei kleinen Turnieren kann das unvermeidbar sein; nach bewusster Prüfung darf trotzdem ausgelost werden.');
+      issues.push(lang === 'en'
+        ? 'The current pairing preview contains critical notes. This can be unavoidable in small events; pair the round only after a deliberate review.'
+        : 'Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bei kleinen Turnieren kann das unvermeidbar sein; nach bewusster Prüfung darf trotzdem ausgelost werden.');
     }
 
     return issues;
@@ -2976,22 +3002,22 @@ function openRoundPrint(roundNumber: number) {
     const issues: string[] = [];
 
     if (!selectedTournament) {
-      issues.push('Kein Turnier ausgewählt.');
+      issues.push(lang === 'en' ? 'No tournament selected.' : 'Kein Turnier ausgewählt.');
       return issues;
     }
 
     const activePlayers = activePlayerCount();
     if (activePlayers < 2) {
-      issues.push('Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
+      issues.push(lang === 'en' ? 'At least two active players are required to create pairings.' : 'Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
     }
 
     const openResults = pairingReadinessOpenResultCount();
     if (openResults > 0) {
-      issues.push(`${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
+      issues.push(lang === 'en' ? `${openResults} open result(s) must be resolved before pairing the next round.` : `${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
     }
 
     if (selectedTournament.rounds.length >= selectedTournament.settings.plannedRounds) {
-      issues.push(`Die geplante Rundenzahl (${selectedTournament.settings.plannedRounds}) ist bereits erreicht.`);
+      issues.push(lang === 'en' ? `The planned number of rounds (${selectedTournament.settings.plannedRounds}) has already been reached.` : `Die geplante Rundenzahl (${selectedTournament.settings.plannedRounds}) ist bereits erreicht.`);
     }
 
     return issues;
@@ -2999,32 +3025,33 @@ function openRoundPrint(roundNumber: number) {
 
   function pairingReadinessStatusLabel(): string {
     if (!selectedTournament) {
-      return 'kein Turnier';
+      return lang === 'en' ? 'no tournament' : 'kein Turnier';
     }
 
     if (pairingReadinessBlockingIssues().length > 0) {
-      return 'blockiert';
+      return lang === 'en' ? 'blocked' : 'blockiert';
     }
 
     if (pairingReadinessUnverifiedRoundCount() > 0 || nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      return 'prüfen';
+      return lang === 'en' ? 'review' : 'prüfen';
     }
 
-    return 'bereit';
+    return lang === 'en' ? 'ready' : 'bereit';
   }
 
   function pairingReadinessStatusClass(): string {
-    const label = pairingReadinessStatusLabel();
-    if (label === 'bereit') {
-      return 'pairing-readiness-status ok';
+    if (!selectedTournament) {
+      return 'pairing-readiness-status neutral';
     }
-    if (label === 'prüfen') {
-      return 'pairing-readiness-status warn';
-    }
-    if (label === 'blockiert') {
+    if (pairingReadinessBlockingIssues().length > 0) {
       return 'pairing-readiness-status danger';
     }
-    return 'pairing-readiness-status neutral';
+    if (pairingReadinessUnverifiedRoundCount() > 0 || nextRoundPreview?.pairingQuality.hasCriticalIssues) {
+      return 'pairing-readiness-status warn';
+    }
+    {
+      return 'pairing-readiness-status ok';
+    }
   }
 
   function pairingReadinessCanCreatePreview(): boolean {
@@ -3174,7 +3201,9 @@ function openRoundPrint(roundNumber: number) {
         key: `player-status-${player.id}`,
         scope: 'Teilnehmer',
         severity: 'warning',
-        title: `${player.name} ist ${statusLabel(player.status).toLowerCase()}`,
+        title: lang === 'en'
+          ? `${player.name} is ${statusLabel(player.status, true).toLowerCase()}`
+          : `${player.name} ist ${statusLabel(player.status).toLowerCase()}`,
         detail: `${player.name}${player.club ? ` · ${player.club}` : ''}${player.notes ? ` · ${player.notes}` : ''}`,
         action: 'Teilnehmerstatus vor der nächsten Auslosung und vor Aushängen bewusst prüfen.'
       });
@@ -3315,7 +3344,7 @@ function openRoundPrint(roundNumber: number) {
               <div className={`operator-chip ${backupRecommended ? 'danger' : lastBackupAt ? 'ok' : ''}`}>
                 <span className="operator-chip-label">{t('operator.lastBackup')}</span>
                 <strong>{backupRecommended ? t('operator.backupRecommended') : lastBackupAt ? t('operator.backupCurrent') : t('operator.backupNone')}</strong>
-                <small>{backupTimeLabel(lastBackupAt)}</small>
+                <small>{backupTimeLabel(lastBackupAt, lang === 'en')}</small>
               </div>
             </div>
             <div className={`operator-next tone-${step.tone}`}>
@@ -3334,18 +3363,18 @@ function openRoundPrint(roundNumber: number) {
                 className={outdoorMode ? '' : 'secondary'}
                 aria-pressed={outdoorMode}
                 onClick={() => setOutdoorMode(previous => !previous)}
-                title="Größere Schrift, größere Buttons und höherer Kontrast für den Einsatz draußen. Wird lokal gespeichert."
+                title={lang === 'en' ? 'Larger text and controls with stronger contrast for outdoor use. Stored locally.' : 'Größere Schrift, größere Buttons und höherer Kontrast für den Einsatz draußen. Wird lokal gespeichert.'}
               >
-                {outdoorMode ? '☀ Turniertag-Modus AN' : '☀ Turniertag-Modus AUS'}
+                {outdoorMode ? (lang === 'en' ? '☀ Tournament mode ON' : '☀ Turniertag-Modus AN') : (lang === 'en' ? '☀ Tournament mode OFF' : '☀ Turniertag-Modus AUS')}
               </button>
               <button
                 type="button"
                 className={backupRecommended ? '' : 'secondary'}
                 onClick={() => void exportTournamentJson()}
                 disabled={!selectedTournament}
-                title="Lädt einen lokalen JSON-Snapshot mit Turniername, Runde und Zeitstempel herunter. Keine Cloud."
+                title={lang === 'en' ? 'Downloads a local JSON snapshot with tournament name, round and timestamp. No cloud.' : 'Lädt einen lokalen JSON-Snapshot mit Turniername, Runde und Zeitstempel herunter. Keine Cloud.'}
               >
-                💾 Jetzt Backup erstellen
+                {lang === 'en' ? '💾 Create backup now' : '💾 Jetzt Backup erstellen'}
               </button>
             </div>
           </section>
@@ -3353,42 +3382,42 @@ function openRoundPrint(roundNumber: number) {
       })()}
 
       {nextRoundPreview && isNextRoundPreviewDialogOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}>
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}>
           <article className={`card preview-card preview-modal ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
             <div className="preview-card-header">
               <div>
-                <p className="eyebrow">Popup-Vorschau · noch nicht gespeichert</p>
-                <h3>Auslosungsvorschau Runde {nextRoundPreview.roundNumber}</h3>
+                <p className="eyebrow">{lang === 'en' ? 'Preview · not saved yet' : 'Popup-Vorschau · noch nicht gespeichert'}</p>
+                <h3>{lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}</h3>
                 <p className="muted">{nextRoundPreview.summary}</p>
               </div>
               <div className="preview-score">
                 <strong>{nextRoundPreview.pairingQuality.qualityScore}/100</strong>
-                <span>{pairingQualitySeverityLabel(nextRoundPreview.pairingQuality.severity)}</span>
+                <span>{pairingQualitySeverityLabel(nextRoundPreview.pairingQuality.severity, lang === 'en')}</span>
               </div>
             </div>
             <div className="preview-metrics">
-              <span>{nextRoundPreview.boardCount} Bretter</span>
+              <span>{nextRoundPreview.boardCount} {lang === 'en' ? 'boards' : 'Bretter'}</span>
               <span>{nextRoundPreview.pairingQuality.rematchCount} Rematches</span>
-              <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} Scoregruppen-Hinweise</span>
-              <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} Farbfolge-Risiken</span>
+              <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} {lang === 'en' ? 'score-group findings' : 'Scoregruppen-Hinweise'}</span>
+              <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} {lang === 'en' ? 'colour-sequence risks' : 'Farbfolge-Risiken'}</span>
               <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
             </div>
             {nextRoundPreview.pairingQuality.hasCriticalIssues && (
               <div className="preview-warning critical">
-                <strong>Hinweise prüfen, aber nicht automatisch blockieren:</strong> Bei kleinen Turnieren sind Rematches und Scoregruppen-Abweichungen häufig unvermeidbar.
+                <strong>{lang === 'en' ? 'Review findings without automatically blocking:' : 'Hinweise prüfen, aber nicht automatisch blockieren:'}</strong> {lang === 'en' ? 'In small tournaments, rematches and score-group deviations can be unavoidable.' : 'Bei kleinen Turnieren sind Rematches und Scoregruppen-Abweichungen häufig unvermeidbar.'}
               </div>
             )}
             {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-modal-message-${index}`}>{message}</li>)}</ul>}
             {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-modal-quality-${index}`}>{finding}</li>)}</ul>}
             <div className="table-scroll compact preview-pairings preview-modal-table">
               <table>
-                <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead>
+                <thead><tr><th>{lang === 'en' ? 'Board' : 'Brett'}</th><th>{lang === 'en' ? 'White' : 'Weiß'}</th><th>{lang === 'en' ? 'Black' : 'Schwarz'}</th><th>{lang === 'en' ? 'Score before round' : 'Score vor Runde'}</th><th>{lang === 'en' ? 'Findings' : 'Hinweise'}</th></tr></thead>
                 <tbody>
                   {nextRoundPreview.pairingQuality.boards.map(board => (
                     <tr key={`preview-modal-board-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
                       <td>{board.boardNumber}</td>
                       <td>{board.whiteName}</td>
-                      <td>{board.isBye ? 'spielfrei' : board.blackName}</td>
+                      <td>{board.isBye ? (lang === 'en' ? 'bye' : 'spielfrei') : board.blackName}</td>
                       <td>{board.isBye ? 'Bye' : `${board.whiteScoreBeforeRound} : ${board.blackScoreBeforeRound}`}</td>
                       <td>{board.findings.length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{board.findings.map((finding, index) => <li key={`preview-modal-board-${board.boardNumber}-${index}`}>{finding}</li>)}</ul>}</td>
                     </tr>
@@ -3397,10 +3426,10 @@ function openRoundPrint(roundNumber: number) {
               </table>
             </div>
             <div className="actions preview-actions">
-              <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Diese Runde jetzt auslosen</button>
-              <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>Druckansicht öffnen</button>
-              <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>CSV exportieren</button>
-              <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(false)}>Schließen</button>
+              <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Pair this round now' : 'Diese Runde jetzt auslosen'}</button>
+              <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>{lang === 'en' ? 'Open print view' : 'Druckansicht öffnen'}</button>
+              <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>{lang === 'en' ? 'Export CSV' : 'CSV exportieren'}</button>
+              <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(false)}>{lang === 'en' ? 'Close' : 'Schließen'}</button>
             </div>
           </article>
         </div>
@@ -3605,7 +3634,7 @@ function openRoundPrint(roundNumber: number) {
                 className={tournament.id === selectedTournament?.id ? 'selected' : ''}
                 onClick={() => setSelectedId(tournament.id)}
               >
-                {tournament.name}<small>{tournament.players.length} Teilnehmer · {tournament.rounds.length} Runden</small>
+                {tournament.name}<small>{tournament.players.length} {lang === 'en' ? 'players' : 'Teilnehmer'} · {tournament.rounds.length} {lang === 'en' ? 'rounds' : 'Runden'}</small>
               </button>
             ))}
           </div>
@@ -3615,7 +3644,7 @@ function openRoundPrint(roundNumber: number) {
           <div className="panel-header">
             <div>
               <h2>{selectedTournament?.name ?? t('tournaments.noSelection')}</h2>
-              <p>{selectedTournament ? `${selectedTournament.players.length} Teilnehmer · ${selectedTournament.rounds.length} Runden` : 'Lege zuerst ein Turnier an.'}</p>
+              <p>{selectedTournament ? `${selectedTournament.players.length} ${lang === 'en' ? 'players' : 'Teilnehmer'} · ${selectedTournament.rounds.length} ${lang === 'en' ? 'rounds' : 'Runden'}` : (lang === 'en' ? 'Create a tournament first.' : 'Lege zuerst ein Turnier an.')}</p>
             </div>
             {activeMainTab === 'rounds' && <div className="actions">
               <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>{t('rounds.preview')}</button>
@@ -3623,7 +3652,7 @@ function openRoundPrint(roundNumber: number) {
             </div>}
           </div>
 
-          <nav className="tab-bar" role="tablist" aria-label="Turnierbereiche">
+          <nav className="tab-bar" role="tablist" aria-label={lang === 'en' ? 'Tournament areas' : 'Turnierbereiche'}>
             {mainTabs.filter(tab => !tab.secondary).map(tab => (
               <button
                 key={tab.id}
@@ -3664,7 +3693,7 @@ function openRoundPrint(roundNumber: number) {
                     <div><span>{t('operator.openResults')}</span><strong>{totalOpenBoardCount()}</strong></div>
                     <div><span>{t('nav.participants')}</span><strong>{activePlayerCount()} {t('operator.active')} · {inactivePlayerCount()} {t('operator.inactive')}</strong></div>
                     <div><span>{t('backend.title')}</span><strong>{health ? `${t('backend.online')} · ${health.version}` : t('backend.offline')}</strong></div>
-                    <div><span>{t('operator.lastBackup')}</span><strong>{backupRecommended ? t('operator.backupRecommended') : lastBackupAt ? t('operator.backupCurrent') : t('operator.backupNone')}</strong><small>{backupTimeLabel(lastBackupAt)}</small></div>
+                    <div><span>{t('operator.lastBackup')}</span><strong>{backupRecommended ? t('operator.backupRecommended') : lastBackupAt ? t('operator.backupCurrent') : t('operator.backupNone')}</strong><small>{backupTimeLabel(lastBackupAt, lang === 'en')}</small></div>
                   </div>
                   {(() => {
                     const step = nextOperatorStep();
@@ -3875,7 +3904,7 @@ function openRoundPrint(roundNumber: number) {
                 </div>
                 <div className="preview-score">
                   <strong>{nextRoundPreview.pairingQuality.qualityScore}/100</strong>
-                  <span>{pairingQualitySeverityLabel(nextRoundPreview.pairingQuality.severity)}</span>
+                  <span>{pairingQualitySeverityLabel(nextRoundPreview.pairingQuality.severity, lang === 'en')}</span>
                 </div>
               </div>
               <div className="preview-metrics">
@@ -4020,7 +4049,7 @@ function openRoundPrint(roundNumber: number) {
           )}
 
           {activeMainTab === 'participants' && (
-          <div className="grid two">
+          <div className={showAdvancedStandings ? 'grid two' : 'grid'}>
             <article className="card external-lookup-card">
               <h3>{lang === 'en' ? 'Find a player' : 'Spieler suchen'}</h3>
               <p className="muted">{lang === 'en' ? 'Available sources are checked together. FIDE ID lookup is active; prepared but inactive sources are labelled clearly.' : 'Eine Suche – alle verfügbaren Quellen werden automatisch geprüft und Treffer zusammengeführt. FIDE-ID-Abruf ist aktiv; DSB/DeWIS und ThSB sind vorbereitet und werden klar als „aktuell nicht aktiv" markiert.'}</p>
@@ -4093,7 +4122,7 @@ function openRoundPrint(roundNumber: number) {
                 <input aria-label={lang === 'en' ? 'Country' : 'Land'} value={playerForm.country} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, country: event.target.value })} placeholder={lang === 'en' ? 'Country' : 'Land'} />
                 <input aria-label={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} type="number" min="1900" max="2100" />
                 <select aria-label={lang === 'en' ? 'Gender category' : 'Geschlechtskategorie'} value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
-                  {genderOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {genderOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
                 </select>
                 <input aria-label="DWZ" value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
                 <input aria-label="DWZ-Index" value={playerForm.dwzIndex} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwzIndex: event.target.value })} placeholder="DWZ-Index" type="number" min="0" />
@@ -4105,7 +4134,7 @@ function openRoundPrint(roundNumber: number) {
                 <input aria-label="DSB ID" value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
                 <input aria-label={lang === 'en' ? 'Title' : 'Titel'} value={playerForm.title} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, title: event.target.value })} placeholder={lang === 'en' ? 'Title' : 'Titel'} />
                 <select aria-label={lang === 'en' ? 'Participant status' : 'Teilnehmerstatus'} value={playerForm.status} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, status: Number(event.target.value) })}>
-                  {playerStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {playerStatusOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
                 </select>
                 <input aria-label={lang === 'en' ? 'Notes' : 'Notizen'} value={playerForm.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, notes: event.target.value })} placeholder={lang === 'en' ? 'Notes' : 'Notizen'} />
                 <button type="submit" disabled={!selectedTournament}>{editingPlayerId ? (lang === 'en' ? 'Update' : 'Aktualisieren') : (lang === 'en' ? 'Save' : 'Speichern')}</button>
@@ -4142,8 +4171,8 @@ function openRoundPrint(roundNumber: number) {
                       <td>{twzOf(player)}</td>
                       <td>{player.birthYear ?? '—'}</td>
                       <td>{approximateAgeLabel(player.birthYear)}</td>
-                      <td>{genderLabel(player.gender)}</td>
-                      <td>{statusLabel(player.status)}</td>
+                      <td>{genderLabel(player.gender, lang === 'en')}</td>
+                      <td>{statusLabel(player.status, lang === 'en')}</td>
                       <td className="actions col-actions">
                         <button type="button" className="small" onClick={() => editPlayer(player)}>{t('common.edit')}</button>
                         {player.status === 0
@@ -4186,11 +4215,11 @@ function openRoundPrint(roundNumber: number) {
               </div>
             </article>
 
-            <article className="card">
-              <h3>Heldenpokal</h3>
+            {showAdvancedStandings && <article className="card">
+              <h3>{lang === 'en' ? 'Hero Cup' : 'Heldenpokal'}</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>Rang</th><th>Name</th><th>Über Erwartung</th><th>Ist</th><th>Erwartet</th><th>Ø Gegner</th></tr></thead>
+                  <thead><tr><th>{lang === 'en' ? 'Rank' : 'Rang'}</th><th>Name</th><th>{lang === 'en' ? 'Above expectation' : 'Über Erwartung'}</th><th>{lang === 'en' ? 'Actual' : 'Ist'}</th><th>{lang === 'en' ? 'Expected' : 'Erwartet'}</th><th>{lang === 'en' ? 'Avg. opponents' : 'Ø Gegner'}</th></tr></thead>
                   <tbody>
                     {heroCup.map(row => (
                       <tr key={row.playerId}>
@@ -4205,15 +4234,15 @@ function openRoundPrint(roundNumber: number) {
                   </tbody>
                 </table>
               </div>
-            </article>
+            </article>}
           </div>
 
           )}
 
-          {activeMainTab === 'standings' && (
+          {activeMainTab === 'standings' && showAdvancedStandings && (
           <article className="card">
-            <h3>Kategorieauswertungen</h3>
-            {categories.length === 0 && <p>Noch keine Kategorie mit passenden Spielern.</p>}
+            <h3>{lang === 'en' ? 'Category standings' : 'Kategorieauswertungen'}</h3>
+            {categories.length === 0 && <p>{lang === 'en' ? 'No category with matching players yet.' : 'Noch keine Kategorie mit passenden Spielern.'}</p>}
             <div className="category-grid">
               {categories.map(category => (
                 <section key={category.category} className="mini-table">
@@ -4230,13 +4259,13 @@ function openRoundPrint(roundNumber: number) {
 
           )}
 
-          {activeMainTab === 'standings' && (
+          {activeMainTab === 'standings' && showAdvancedStandings && (
           <article className="card">
-            <h3>Kreuztabelle</h3>
+            <h3>{lang === 'en' ? 'Cross table' : 'Kreuztabelle'}</h3>
             <div className="table-scroll">
               <table className="cross-table">
                 <thead>
-                  <tr><th>Spieler</th>{crossTable?.players.map(player => <th key={player.playerId}>{player.rank}</th>)}<th>Pkt.</th></tr>
+                  <tr><th>{lang === 'en' ? 'Player' : 'Spieler'}</th>{crossTable?.players.map(player => <th key={player.playerId}>{player.rank}</th>)}<th>{lang === 'en' ? 'Pts.' : 'Pkt.'}</th></tr>
                 </thead>
                 <tbody>
                   {crossTable?.rows.map(row => (
@@ -4348,15 +4377,16 @@ function openRoundPrint(roundNumber: number) {
                     </div>
                   </details>
                 )}
-                <div className={`quality-box ${pairingQualityFor(round.roundNumber) ? pairingQualitySeverityClass(pairingQualityFor(round.roundNumber)!.severity) : 'quality-empty'}`}>
+                <details className={`quality-box ${pairingQualityFor(round.roundNumber) ? pairingQualitySeverityClass(pairingQualityFor(round.roundNumber)!.severity) : 'quality-empty'}`}>
+                  <summary>{lang === 'en' ? 'Advanced: pairing quality' : 'Erweitert: Pairing-Qualität'}</summary>
                   <div className="quality-header">
                     <div>
-                      <strong>Pairing-Qualität</strong>
+                      <strong>{lang === 'en' ? 'Pairing quality' : 'Pairing-Qualität'}</strong>
                       {pairingQualityFor(round.roundNumber)
-                        ? <span>{pairingQualityFor(round.roundNumber)!.qualityScore}/100 · {pairingQualitySeverityLabel(pairingQualityFor(round.roundNumber)!.severity)}</span>
-                        : <span>noch nicht berechnet</span>}
+                        ? <span>{pairingQualityFor(round.roundNumber)!.qualityScore}/100 · {pairingQualitySeverityLabel(pairingQualityFor(round.roundNumber)!.severity, lang === 'en')}</span>
+                        : <span>{lang === 'en' ? 'not calculated yet' : 'noch nicht berechnet'}</span>}
                     </div>
-                    <button type="button" className="small secondary" onClick={() => void loadPairingQuality(round.roundNumber)}>Qualität prüfen</button>
+                    <button type="button" className="small secondary" onClick={() => void loadPairingQuality(round.roundNumber)}>{lang === 'en' ? 'Check quality' : 'Qualität prüfen'}</button>
                   </div>
                   {pairingQualityFor(round.roundNumber) && (
                     <details open={pairingQualityFor(round.roundNumber)!.severity >= 2}>
@@ -4381,19 +4411,20 @@ function openRoundPrint(roundNumber: number) {
                       </div>
                     </details>
                   )}
-                </div>
-                <div className="chess960-dice-panel">
+                </details>
+                <details className="chess960-dice-panel">
+                  <summary>{lang === 'en' ? 'Advanced: Chess960 starting positions' : 'Erweitert: Schachwürfel / Chess960'}</summary>
                   <div className="chess960-dice-header">
                     <div>
-                      <strong>Schachwürfel / Chess960</strong>
-                      <span>{chess960PositionCount(round)} von {chess960GameBoardCount(round)} regulären Brettern haben eine Startstellung.</span>
+                      <strong>{lang === 'en' ? 'Chess960 starting positions' : 'Schachwürfel / Chess960'}</strong>
+                      <span>{chess960PositionCount(round)} {lang === 'en' ? `of ${chess960GameBoardCount(round)} regular boards have a starting position.` : `von ${chess960GameBoardCount(round)} regulären Brettern haben eine Startstellung.`}</span>
                     </div>
-                    <button type="button" className="secondary" onClick={() => openChess960Dice(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>🎲 Schachwürfel öffnen</button>
+                    <button type="button" className="secondary" onClick={() => openChess960Dice(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>{lang === 'en' ? '🎲 Open Chess960 dice' : '🎲 Schachwürfel öffnen'}</button>
                   </div>
                   {chess960PositionCount(round) > 0 && (
                     <div className="table-scroll compact chess960-table">
                       <table>
-                        <thead><tr><th>Brett</th><th>Paarung</th><th>Startstellung</th><th>ID / Seed</th></tr></thead>
+                        <thead><tr><th>{lang === 'en' ? 'Board' : 'Brett'}</th><th>{lang === 'en' ? 'Pairing' : 'Paarung'}</th><th>{lang === 'en' ? 'Starting position' : 'Startstellung'}</th><th>ID / Seed</th><th>{lang === 'en' ? 'Action' : 'Aktion'}</th></tr></thead>
                         <tbody>
                           {round.pairings.map(pairing => (
                             <tr key={`chess960-${round.roundNumber}-${pairing.boardNumber}`}>
@@ -4401,16 +4432,17 @@ function openRoundPrint(roundNumber: number) {
                               <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
                               <td><strong>{chess960Display(pairing)}</strong></td>
                               <td>{pairing.chess960StartPosition ? `SP ${pairing.chess960StartPosition.positionNumber}${chess960SeedDisplay(pairing) ? ` · ${chess960SeedDisplay(pairing)}` : ''}` : '—'}</td>
+                              <td>{!pairing.isBye && <button type="button" className="small board-dice-button" title={lang === 'en' ? `Roll Chess960 for board ${pairing.boardNumber}` : `Chess960 für Brett ${pairing.boardNumber} würfeln`} onClick={() => openBoardDice(round.roundNumber, pairing.boardNumber)} disabled={round.isLocked || round.isVerified}>{lang === 'en' ? '🎲 Roll' : '🎲 Würfeln'}</button>}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   )}
-                </div>
+                </details>
                 <div className="table-scroll">
                   <table>
-                    <thead><tr><th>{t('rounds.board')}</th><th>{t('rounds.white')}</th><th>{t('rounds.black')}</th><th>Chess960</th><th>{t('rounds.result')}</th><th>{t('rounds.manual')}</th></tr></thead>
+                    <thead><tr><th>{t('rounds.board')}</th><th>{t('rounds.white')}</th><th>{t('rounds.black')}</th><th>{t('rounds.result')}</th><th>{t('rounds.manual')}</th></tr></thead>
                     <tbody>
                       {round.pairings.map(pairing => {
                         const edit = pairingEdit(round, pairing);
@@ -4420,19 +4452,6 @@ function openRoundPrint(roundNumber: number) {
                             <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
                             <td>{playerNameById(pairing.whitePlayerId)}</td>
                             <td>{pairing.isBye ? t('rounds.bye') : playerNameById(pairing.blackPlayerId)}</td>
-                            <td>
-                              <strong>{chess960Display(pairing)}</strong>
-                              {chess960SeedDisplay(pairing) && <small>{chess960SeedDisplay(pairing)}</small>}
-                              {!pairing.isBye && (
-                                <button
-                                  type="button"
-                                  className="small board-dice-button"
-                                  title={`Chess960 für Brett ${pairing.boardNumber} würfeln`}
-                                  onClick={() => openBoardDice(round.roundNumber, pairing.boardNumber)}
-                                  disabled={roundClosed}
-                                >🎲 Würfeln</button>
-                              )}
-                            </td>
                             <td>
                               <select
                                 value={pairing.result.kind}
@@ -4491,24 +4510,24 @@ function openRoundPrint(roundNumber: number) {
           <article className="card pairing-readiness-card">
               <div className="pairing-readiness-header">
                 <div>
-                  <h3>Auslosungsfreigabe</h3>
-                  <p className="muted">Prüft vor der nächsten Auslosung, ob Ergebnisse, Rundenprüfung und Vorschauqualität zusammenpassen.</p>
+                  <h3>{lang === 'en' ? 'Pairing readiness' : 'Auslosungsfreigabe'}</h3>
+                  <p className="muted">{lang === 'en' ? 'Check results, round review and preview quality before pairing the next round.' : 'Prüft vor der nächsten Auslosung, ob Ergebnisse, Rundenprüfung und Vorschauqualität zusammenpassen.'}</p>
                 </div>
                 <span className={pairingReadinessStatusClass()}>{pairingReadinessStatusLabel()}</span>
               </div>
 
               <div className="pairing-readiness-metrics">
-                <div><strong>{pairingReadinessOpenResultCount()}</strong><span>offene Ergebnisse</span></div>
-                <div><strong>{pairingReadinessUnverifiedRoundCount()}</strong><span>ungeprüfte Runden</span></div>
-                <div><strong>{selectedTournament?.players.filter(player => player.status === 0).length ?? 0}</strong><span>aktive Spieler</span></div>
-                <div><strong>{nextRoundPreview ? nextRoundPreview.pairingQuality.qualityScore : '—'}</strong><span>Vorschauqualität</span></div>
+                <div><strong>{pairingReadinessOpenResultCount()}</strong><span>{lang === 'en' ? 'open results' : 'offene Ergebnisse'}</span></div>
+                <div><strong>{pairingReadinessUnverifiedRoundCount()}</strong><span>{lang === 'en' ? 'unreviewed rounds' : 'ungeprüfte Runden'}</span></div>
+                <div><strong>{selectedTournament?.players.filter(player => player.status === 0).length ?? 0}</strong><span>{lang === 'en' ? 'active players' : 'aktive Spieler'}</span></div>
+                <div><strong>{nextRoundPreview ? nextRoundPreview.pairingQuality.qualityScore : '—'}</strong><span>{lang === 'en' ? 'preview quality' : 'Vorschauqualität'}</span></div>
               </div>
 
               {pairingReadinessIssues().length === 0 ? (
-                <div className="pairing-readiness-ok"><strong>Bereit:</strong> Es sind keine blockierenden Punkte für die nächste Auslosung sichtbar.</div>
+                <div className="pairing-readiness-ok"><strong>{lang === 'en' ? 'Ready:' : 'Bereit:'}</strong> {lang === 'en' ? 'No blocking issues are visible for the next pairing.' : 'Es sind keine blockierenden Punkte für die nächste Auslosung sichtbar.'}</div>
               ) : (
                 <div className="pairing-readiness-warning">
-                  <strong>Vor der nächsten Auslosung prüfen:</strong>
+                  <strong>{lang === 'en' ? 'Review before pairing the next round:' : 'Vor der nächsten Auslosung prüfen:'}</strong>
                   <ul>
                     {pairingReadinessIssues().map((issue, index) => <li key={index}>{issue}</li>)}
                   </ul>
@@ -4516,24 +4535,24 @@ function openRoundPrint(roundNumber: number) {
               )}
 
               <div className="pairing-readiness-actions">
-                <button type="button" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>Auslosungsvorschau erzeugen</button>
-                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Nächste Runde auslosen</button>
-                <button type="button" className="secondary" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
+                <button type="button" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>{lang === 'en' ? 'Create pairing preview' : 'Auslosungsvorschau erzeugen'}</button>
+                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Pair next round' : 'Nächste Runde auslosen'}</button>
+                <button type="button" className="secondary" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : 'Aktuelle Runde drucken'}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Open tournament report' : 'Turnierbericht öffnen'}</button>
               </div>
 
-              <p className="muted small">Hinweis: Diese Freigabe ergänzt die bestehenden Aktionen im Kopfbereich. Sie ist als bewusster Turnierleiter-Check vor der nächsten Runde gedacht.</p>
+              <p className="muted small">{lang === 'en' ? 'This panel is the tournament director’s deliberate check before the next round.' : 'Hinweis: Diese Freigabe ergänzt die bestehenden Aktionen im Kopfbereich. Sie ist als bewusster Turnierleiter-Check vor der nächsten Runde gedacht.'}</p>
             </article>
           )}
 
-          {activeMainTab === 'standings' && (
+          {activeMainTab === 'standings' && showAdvancedStandings && (
           <article className="card bye-forfeit-card">
               <div className="bye-forfeit-header">
                 <div>
-                  <h3>Bye- und Kampflos-Audit</h3>
-                  <p className="muted">Macht spielfreie und kampflose Bretter inklusive Wertungswirkung sichtbar. Das hilft vor Tabelle, Export und nächster Auslosung.</p>
+                  <h3>{lang === 'en' ? 'Bye and forfeit audit' : 'Bye- und Kampflos-Audit'}</h3>
+                  <p className="muted">{lang === 'en' ? 'Shows byes and forfeits with their tie-break impact before standings, exports or the next pairing.' : 'Macht spielfreie und kampflose Bretter inklusive Wertungswirkung sichtbar. Das hilft vor Tabelle, Export und nächster Auslosung.'}</p>
                 </div>
-                <span className={byeForfeitAuditStatusClass()}>{byeForfeitAuditStatusLabel()}</span>
+                <span className={byeForfeitAuditStatusClass()}>{byeForfeitAuditStatusDisplayLabel()}</span>
               </div>
 
               <div className="bye-forfeit-metrics">
@@ -4587,33 +4606,33 @@ function openRoundPrint(roundNumber: number) {
           <article className="card result-review-card">
               <div className="result-review-header">
                 <div>
-                  <h3>Rundenabschluss-Checkliste</h3>
-                  <p className="muted">Prüft offene Ergebnisse, kampflose Bretter, ungeprüfte Runden und Diagnosehinweise vor Aushang oder nächster Auslosung.</p>
+                  <h3>{lang === 'en' ? 'Round completion checklist' : 'Rundenabschluss-Checkliste'}</h3>
+                  <p className="muted">{lang === 'en' ? 'Checks open results, forfeits, unreviewed rounds and diagnostic findings before publishing or pairing again.' : 'Prüft offene Ergebnisse, kampflose Bretter, ungeprüfte Runden und Diagnosehinweise vor Aushang oder nächster Auslosung.'}</p>
                 </div>
-                <span className={resultReviewStatusClass()}>{resultReviewStatusLabel()}</span>
+                <span className={resultReviewStatusClass()}>{resultReviewStatusDisplayLabel()}</span>
               </div>
 
               <div className="result-review-metrics">
-                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>Runden</span></div>
-                <div><strong>{completedRoundCount()}</strong><span>vollständig</span></div>
-                <div><strong>{totalOpenBoardCount()}</strong><span>offen</span></div>
-                <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
-                <div><strong>{unverifiedCompleteRoundCount()}</strong><span>ungeprüft</span></div>
-                <div><strong>{lockedRoundCount()}</strong><span>gesperrt</span></div>
-                <div><strong>{diagnosticWarningCount()}</strong><span>Hinweise</span></div>
+                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>{lang === 'en' ? 'rounds' : 'Runden'}</span></div>
+                <div><strong>{completedRoundCount()}</strong><span>{lang === 'en' ? 'complete' : 'vollständig'}</span></div>
+                <div><strong>{totalOpenBoardCount()}</strong><span>{lang === 'en' ? 'open' : 'offen'}</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>{lang === 'en' ? 'forfeits' : 'kampflos'}</span></div>
+                <div><strong>{unverifiedCompleteRoundCount()}</strong><span>{lang === 'en' ? 'unreviewed' : 'ungeprüft'}</span></div>
+                <div><strong>{lockedRoundCount()}</strong><span>{lang === 'en' ? 'locked' : 'gesperrt'}</span></div>
+                <div><strong>{diagnosticWarningCount()}</strong><span>{lang === 'en' ? 'findings' : 'Hinweise'}</span></div>
               </div>
 
-              {!selectedTournament && <p className="muted">Bitte zuerst ein Turnier auswählen.</p>}
-              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="result-review-empty">Noch keine Runde ausgelost. Die Checkliste wird aktiv, sobald Paarungen vorhanden sind.</div>}
-              {selectedTournament && selectedTournament.rounds.length > 0 && totalOpenBoardCount() === 0 && unverifiedCompleteRoundCount() === 0 && diagnosticWarningCount() === 0 && <div className="result-review-ok">Alle bekannten Runden sind vollständig, geprüft oder ohne Diagnosewarnung. Der Turnierbericht kann veröffentlicht werden.</div>}
-              {totalOpenBoardCount() > 0 && <div className="result-review-warning danger"><strong>Offene Ergebnisse:</strong> Vor Tabelle, Aushang oder nächster Auslosung bitte alle offenen Bretter erfassen.</div>}
-              {unverifiedCompleteRoundCount() > 0 && totalOpenBoardCount() === 0 && <div className="result-review-warning"><strong>Prüfung offen:</strong> Mindestens eine vollständige Runde ist noch nicht als geprüft markiert.</div>}
+              {!selectedTournament && <p className="muted">{lang === 'en' ? 'Select a tournament first.' : 'Bitte zuerst ein Turnier auswählen.'}</p>}
+              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="result-review-empty">{lang === 'en' ? 'No round has been paired yet. The checklist activates once pairings exist.' : 'Noch keine Runde ausgelost. Die Checkliste wird aktiv, sobald Paarungen vorhanden sind.'}</div>}
+              {selectedTournament && selectedTournament.rounds.length > 0 && totalOpenBoardCount() === 0 && unverifiedCompleteRoundCount() === 0 && diagnosticWarningCount() === 0 && <div className="result-review-ok">{lang === 'en' ? 'All known rounds are complete, reviewed or free of diagnostic warnings. The tournament report is ready.' : 'Alle bekannten Runden sind vollständig, geprüft oder ohne Diagnosewarnung. Der Turnierbericht kann veröffentlicht werden.'}</div>}
+              {totalOpenBoardCount() > 0 && <div className="result-review-warning danger"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Enter every open board before standings, publication or the next pairing.' : 'Vor Tabelle, Aushang oder nächster Auslosung bitte alle offenen Bretter erfassen.'}</div>}
+              {unverifiedCompleteRoundCount() > 0 && totalOpenBoardCount() === 0 && <div className="result-review-warning"><strong>{lang === 'en' ? 'Review pending:' : 'Prüfung offen:'}</strong> {lang === 'en' ? 'At least one complete round has not been marked as reviewed.' : 'Mindestens eine vollständige Runde ist noch nicht als geprüft markiert.'}</div>}
 
               {resultReviewRows().length > 0 && (
                 <div className="table-wrap result-review-table-wrap">
                   <table>
                     <thead>
-                      <tr><th>Runde</th><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Status</th><th>Hinweis</th></tr>
+                      <tr><th>{lang === 'en' ? 'Round' : 'Runde'}</th><th>{lang === 'en' ? 'Board' : 'Brett'}</th><th>{lang === 'en' ? 'White' : 'Weiß'}</th><th>{lang === 'en' ? 'Black' : 'Schwarz'}</th><th>Status</th><th>{lang === 'en' ? 'Finding' : 'Hinweis'}</th></tr>
                     </thead>
                     <tbody>
                       {resultReviewRows().map(row => (
@@ -4632,9 +4651,9 @@ function openRoundPrint(roundNumber: number) {
               )}
 
               <div className="result-review-actions">
-                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle CSV</button>
+                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : 'Aktuelle Runde drucken'}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Open tournament report' : 'Turnierbericht öffnen'}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Standings CSV' : 'Tabelle CSV'}</button>
               </div>
             </article>
           )}
@@ -4718,7 +4737,7 @@ function openRoundPrint(roundNumber: number) {
               </div>
 
               {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Review open boards before publishing final standings.' : 'Vor Finaltabellen oder Veröffentlichungen bitte offene Bretter prüfen.'}</div>}
-              {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>Kritische Vorschau:</strong> Pairing-Hinweise vor Aushang oder Auslosung prüfen.</div>}
+              {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>{lang === 'en' ? 'Critical preview:' : 'Kritische Vorschau:'}</strong> {lang === 'en' ? 'Review pairing findings before publishing or committing the round.' : 'Pairing-Hinweise vor Aushang oder Auslosung prüfen.'}</div>}
 
               <div className="export-center-grid">
                 <section>
@@ -4730,16 +4749,16 @@ function openRoundPrint(roundNumber: number) {
                   </div>
                 </section>
                 <section>
-                  <h4>CSV / Daten</h4>
+                  <h4>{lang === 'en' ? 'CSV / data' : 'CSV / Daten'}</h4>
                   <div className="export-center-actions">
                     <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>{lang === 'en' ? 'Players CSV' : 'Teilnehmer CSV'}</button>
                     <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Standings CSV' : 'Tabelle CSV'}</button>
-                    <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>TRF16 (FIDE-Turnierbericht)</button>
-                    <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen CSV</button>
-                    <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Paarungen CSV</button>
-                    <button type="button" className="secondary" onClick={openNextRoundPreviewCsv} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau CSV</button>
-                    <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>Exportmanifest JSON</button>
-                    <button type="button" className="secondary" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup JSON</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>{lang === 'en' ? 'TRF16 (FIDE tournament report)' : 'TRF16 (FIDE-Turnierbericht)'}</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'All pairings CSV' : 'Alle Paarungen CSV'}</button>
+                    <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Current pairings CSV' : 'Aktuelle Paarungen CSV'}</button>
+                    <button type="button" className="secondary" onClick={openNextRoundPreviewCsv} disabled={!selectedTournament || activePlayerCount() < 2}>{lang === 'en' ? 'Preview CSV' : 'Vorschau CSV'}</button>
+                    <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>{lang === 'en' ? 'Export manifest JSON' : 'Exportmanifest JSON'}</button>
+                    <button type="button" className="secondary" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>{lang === 'en' ? 'Backup JSON' : 'Backup JSON'}</button>
                   </div>
                 </section>
               </div>

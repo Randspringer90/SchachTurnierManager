@@ -663,41 +663,42 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         GameResultKind resultKind,
         GameResultKind? expectedPreviousResult = null)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
-        EnsureRoundEditable(round);
-
-        var foundBoard = false;
-        var updatedPairings = round.Pairings
-            .Select(p =>
-            {
-                if (p.BoardNumber != boardNumber)
-                {
-                    return p;
-                }
-
-                foundBoard = true;
-                if (expectedPreviousResult is not null && p.Result.Kind != expectedPreviousResult.Value)
-                {
-                    throw new InvalidOperationException(
-                        $"Das Ergebnis für Runde {roundNumber}, Brett {boardNumber} wurde zwischenzeitlich geändert. " +
-                        "Bitte Turnierstand neu laden und die Korrektur erneut prüfen.");
-                }
-                return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
-            })
-            .ToList();
-
-        if (!foundBoard)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
-        }
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
+            EnsureRoundEditable(round);
 
-        var updated = WithCalculatedStatus(round with { Pairings = updatedPairings });
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(tournament, AuditJournalAction.ResultRecorded, AuditJournalSeverity.Info, $"Ergebnis eingetragen: Runde {roundNumber}, Brett {boardNumber}.", resultKind.ToString(), roundNumber: roundNumber, boardNumber: boardNumber);
-        _store.Save(tournament);
-        return updated;
+            var foundBoard = false;
+            var updatedPairings = round.Pairings
+                .Select(p =>
+                {
+                    if (p.BoardNumber != boardNumber)
+                    {
+                        return p;
+                    }
+
+                    foundBoard = true;
+                    if (expectedPreviousResult is not null && p.Result.Kind != expectedPreviousResult.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"Das Ergebnis für Runde {roundNumber}, Brett {boardNumber} wurde zwischenzeitlich geändert. " +
+                            "Bitte Turnierstand neu laden und die Korrektur erneut prüfen.");
+                    }
+                    return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
+                })
+                .ToList();
+
+            if (!foundBoard)
+            {
+                throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
+            }
+
+            var updated = WithCalculatedStatus(round with { Pairings = updatedPairings });
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(tournament, AuditJournalAction.ResultRecorded, AuditJournalSeverity.Info, $"Ergebnis eingetragen: Runde {roundNumber}, Brett {boardNumber}.", resultKind.ToString(), roundNumber: roundNumber, boardNumber: boardNumber);
+            return updated;
+        });
     }
 
     public TournamentRound OverridePairing(Guid tournamentId, int roundNumber, int boardNumber, Guid? whitePlayerId, Guid? blackPlayerId, string? notes)
