@@ -4,6 +4,17 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-07-18 — Erwartungswerte schützen nur innerhalb einer atomaren Schreibgrenze
+
+- Kontext: Unabhängiger Technik-Review der bestätigten Desktop-/Companion-Ergebniseingabe.
+- Lesson: Ein `expectedPreviousResult` verhindert sequenziell veraltete Änderungen, ist allein aber
+  kein Compare-and-Swap. Zwei parallele Requests können denselben Snapshot lesen und beide eine
+  scheinbar gültige Ganzzustands-Speicherung beginnen.
+- Konsequenz: Prüfung, Audit und Speichern laufen für Ergebnisänderungen unter derselben
+  Store-Operation; in-memory per Lock und in SQLite per serialisierter Transaktion. Ein
+  deterministisch zuvor roter Test und ein echter SQLite-Parallelitätstest verlangen genau einen
+  erfolgreichen Schreiber.
+
 ## 2026-07-18 — Vollständige SHAs werden von Git aufgelöst, nie von Hand ergänzt
 
 - Kontext: Unabhängiger Competition-Audit der Build-Week-Queue und des UX-Freeze.

@@ -62,9 +62,10 @@ These earlier capabilities are product context. They are not presented as Build 
   `b52a54092c9529ea5cbc744f134ddc5fb15d6d87`. Its isolated tests are green, but protected-path
   owner review/merge is still required.
 - The current UX branch adds the five-area navigation, opt-in FIDE-Dutch UI, explicit synthetic
-  demo, confirmed/undoable result writes, progressive standings, responsive/theme/accessibility
-  polish, public-health path redaction and English submission package. These remain candidate work
-  until the exact branch commit passes full gates and is merged.
+  demo, confirmed/undoable and transactionally concurrency-checked result writes, progressive
+  standings/round tools, responsive/theme/accessibility polish, public-health path redaction and
+  English submission package. These remain candidate work until the exact branch commit passes
+  full gates and is merged.
 
 ## Finalization rule
 

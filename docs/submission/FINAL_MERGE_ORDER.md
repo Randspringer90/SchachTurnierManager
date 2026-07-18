@@ -35,7 +35,7 @@ The current UX freeze remains:
 `UX_FREEZE_SHA=8fbf0213bdcc57c60e0c9c9e16387dee4e994a53`
 
 The audited product/security correction is commit
-`237b6a2ff7d01567bbd92a9be4ade56ad2d271a2`. Query the live PR head again at review time and bind
+`4ea8228b70120fa62e2f71de57ab57f34a0a04dd`. Query the live PR head again at review time and bind
 the static decision to that exact value; later documentation commits do not authorize new product
 features. Owner review is mandatory before merge.
 

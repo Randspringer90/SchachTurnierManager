@@ -20,7 +20,7 @@ equivalent to complete.
 - [x] FIDE-Dutch is opt-in, keeps Optimal V2 default, and does not silently change existing tournaments.
 - [x] Result changes use an explicit confirmation and one-step undo through the audited API path.
 - [x] Standings show core columns before opt-in advanced tie-breaks.
-- [ ] German and English five-minute demo paths are complete.
+- [x] German and English core demo paths are implemented; the final timed visual run remains pending.
 - [ ] Required viewport/light/dark/keyboard/accessibility evidence is captured.
 
 ## Compatibility and mobile
@@ -47,7 +47,7 @@ equivalent to complete.
 
 - [ ] Final SHA frozen; no features after freeze.
 - [x] Required PowerShell/security/collaboration/routing source gates green on the UX branch.
-- [x] `dotnet restore`, build, and all 519 tests green on the UX branch.
+- [x] `dotnet restore`, build, and all 522 tests green on the UX branch.
 - [x] `npm ci` (0 advisories), TypeScript, and Vite build green.
 - [x] Portable packaging and ReleaseGate green; exact-candidate fresh runs remain pending.
 - [ ] Final Setup built, smoked, hashed, and manifest-bound.

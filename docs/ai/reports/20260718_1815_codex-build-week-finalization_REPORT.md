@@ -14,8 +14,8 @@ but current CI remains blocked by the old binary gate. The narrow STM-INFRA-008 
 draft owner PR #50 at `b52a54092c9529ea5cbc744f134ddc5fb15d6d87`. It verified all 30 expected
 Android/Gradle artifacts on the real PR input, but it and PR #49 remain unmerged. The progressive
 UX/demo/submission package is implemented on draft PR #51. Its canonical branch ReleaseGate is
-green, and final independent-audit corrections are committed at
-`237b6a2ff7d01567bbd92a9be4ade56ad2d271a2`. The public repository has no
+green, and final independent-audit product/security corrections are committed at
+`4ea8228b70120fa62e2f71de57ab57f34a0a04dd`. The public repository has no
 declared licence, which remains an owner decision. No unified competition candidate can be frozen
 before the three Owner-controlled PR decisions.
 
@@ -75,9 +75,10 @@ the primary-thread `/feedback` Session ID, and the four equally weighted judging
 - Explicit local eight-player synthetic demo, confirmed/undoable result entry, participant filter,
   reduced standings, light/dark mode, visible focus and mobile navigation added.
 - Independent audit findings were verified and corrected: demo reset is bound to a strong
-  synthetic marker, result writes are tournament-bound and reject stale expected state, focus
-  returns after confirmation, manual overrides are collapsed, mobile width/reduced motion/light
-  contrast were improved, and the English pairing/export path was tightened.
+  synthetic marker, result writes are tournament-bound and compare/update inside an atomic store
+  lock or SQLite transaction, focus returns after confirmation, specialist round/standings tools
+  are collapsed, mobile width/reduced motion/light contrast were improved, and the English
+  pairing/export path was completed.
 - Contributor prompts now validate Git commit existence, allow startable work only from current
   `development`, validate skill paths, and keep all unmerged-UX packages Planning-only. Ten complete
   packages are prepared, but only STM-SEC-006 is Ready.
@@ -94,7 +95,9 @@ the primary-thread `/feedback` Session ID, and the four equally weighted judging
 - TypeScript/Vite production build after UX changes: PASS
 - Isolated demo API smoke: PASS (8 players, 1 round, 8 standings, FIDE Dutch/White, TRF16 872 bytes, cleanup)
 - Full UX-branch ReleaseGate before final audit fixes: PASS (519/519 tests, TypeScript/Vite, portable package)
-- Canonical ReleaseGate after final audit fixes: PASS (520/520 tests, TypeScript/Vite, portable package)
+- Canonical ReleaseGate after final audit fixes: PASS (522/522 tests, TypeScript/Vite, portable package)
+- Competing-result tests: PASS in deterministic in-memory coordination and the real SQLite store;
+  exactly one writer succeeds for a shared expected previous value.
 - Contributor kickoff readiness after base/skill hardening: PASS, including negative SHA cases
 - PowerShell parser: PASS 145 files; Git/Public Snapshot, instruction, prompt-injection,
   collaboration and PR-readiness gates: PASS; Routed Execution: PASS 34/34 twice
@@ -106,7 +109,6 @@ the primary-thread `/feedback` Session ID, and the four equally weighted judging
 - Owner review/merge of protected PR #50, then a new exact-head PR #49 review and CI run.
 - In-app browser availability was absent; final breakpoint/theme/keyboard/device visual evidence is
   pending the Owner's manual test and is not represented by fabricated screenshots.
-- Push of the final documentation handoff and updated SHA-bound PR #51 static review.
 - Exact-SHA Windows/Android rebuild and the Owner's physical-device test.
 - Final `/feedback` capture by the Owner in this same thread.
 

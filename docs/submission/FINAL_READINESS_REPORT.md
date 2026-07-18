@@ -5,7 +5,7 @@ Status: **PARTIAL — not yet a submission candidate**
 Primary run: `STM_BUILD_WEEK_2026_20260718_181524`
 
 Initial/current `development`: `a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518`
-Audited product/security correction: `237b6a2ff7d01567bbd92a9be4ade56ad2d271a2`
+Audited product/security correction: `4ea8228b70120fa62e2f71de57ab57f34a0a04dd`
 
 ## Decision
 
@@ -28,11 +28,13 @@ capture. No old 0.54.1 Setup, Portable ZIP or APK is accepted as final evidence.
   not deleted automatically.
 - Optimal V2 stays the default. FIDE Dutch and initial colour are explicit, relevant-only settings.
 - Result changes require confirmation, preserve focus, offer one-step undo, bind to the selected
-  tournament and reject stale overwrites through an expected-previous-result contract.
-- Manual pairing overrides and specialist table/export details remain available through
-  progressive disclosure; the core result path remains touch-oriented.
+  tournament and reject stale overwrites through an expected-previous-result contract. That
+  compare-and-write now runs inside the store lock/SQLite transaction; deterministic in-memory
+  and real SQLite concurrency tests allow exactly one of two competing writers.
+- Manual pairing overrides, pairing diagnostics, Chess960 controls and specialist standings remain
+  available through progressive disclosure; the core result path remains touch-oriented.
 - Core judge controls and submission materials have German and English text. Dense expert and
-  administrative screens remain a documented manual language-review item.
+  administrative screens outside the demo remain a documented manual language-review item.
 - Contributor prompts are WIP-limited. Only STM-SEC-006 is Ready on the exact current
   `development` SHA; UI packages are planning-only until PR #51 is merged and a new base SHA is
   explicitly issued. The generator rejects unknown commits, startable feature SHAs and missing or
@@ -43,7 +45,7 @@ capture. No old 0.54.1 Setup, Portable ZIP or APK is accepted as final evidence.
 
 ## Automated evidence
 
-- Canonical branch ReleaseGate: **PASS** — restore, build, 520/520 tests, npm/Vite production build
+- Canonical branch ReleaseGate: **PASS** — restore, build, 522/522 tests, npm/Vite production build
   and Portable packaging.
 - Targeted result/settings/demo contracts: **PASS**, 10/10 after the final audit corrections.
 - Contributor kickoff readiness: **PASS**, including negative tests for nonexistent and unmerged
@@ -75,13 +77,13 @@ primary thread. Confirmed findings led to these corrections:
 
 | Criterion | Score | Remaining deduction |
 |---|---:|---|
-| Technological Implementation | 7.8/10 | Strong pairing, audit, local-first and automated test foundation; no unified Android/desktop candidate, fresh artifact evidence or real-device result yet. |
-| Design | 7.6/10 | Clearer hierarchy, synthetic demo and progressive disclosure; required viewport/theme/keyboard/device acceptance is not yet visually evidenced. |
-| Potential Impact | 8.2/10 | Concrete need for volunteer clubs, local operation and compatibility; adoption evidence and a final install/device proof remain absent. |
-| Quality of the Idea | 8.1/10 | Coherent privacy-friendly tournament workstation and narrow phone companion; differentiation must be demonstrated in the final sub-three-minute video. |
+| Technological Implementation | 8.0/10 | Pairing, audit, transactional result concurrency, local-first operation and 522 tests are substantial; no unified Android/desktop candidate, fresh artifact evidence or real-device result yet. |
+| Design | 7.8/10 | Clearer hierarchy, synthetic demo, bilingual core path and stronger progressive disclosure; required viewport/theme/keyboard/device acceptance is not yet visually evidenced. |
+| Potential Impact | 8.1/10 | Concrete need for volunteer clubs, local operation and compatibility; adoption evidence and a final install/device proof remain absent. |
+| Quality of the Idea | 7.9/10 | Coherent privacy-friendly tournament workstation and narrow phone companion; differentiation from established tournament tools must be demonstrated in the final video. |
 
-The requested 8/10 threshold is therefore not yet honestly met for Technology and Design. The
-remaining work is evidence and integration work, not a reason to inflate the scores.
+The requested 8/10 threshold is therefore not yet honestly met for Design and Quality of the Idea.
+The remaining work is evidence, integration and demonstration work, not a reason to inflate scores.
 
 ## Required order to reach submission readiness
 

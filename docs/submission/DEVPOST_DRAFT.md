@@ -79,7 +79,8 @@ with the candidate; the raw `/feedback` session ID is entered manually and is no
 ## Accomplishments
 
 - A calm five-area core workflow with progressive disclosure.
-- Explicit, reproducible synthetic demo data and a sub-five-minute judge path.
+- Explicit, reproducible synthetic demo data and a judge path designed for under five minutes;
+  the final timed run remains an exact-candidate acceptance step.
 - Auditable opt-in FIDE Dutch selection while keeping Optimal V2 default.
 - Confirmed, reversible result entry and narrower mobile/standings views.
 - Swiss-Manager player-master-data exchange and TRF16 tournament-report compatibility in the same local workflow.

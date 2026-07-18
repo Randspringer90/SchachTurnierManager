@@ -38,7 +38,10 @@ top-level actions without deleting expert capability.
 
 - Pairing strategy is under Advanced during creation.
 - The standings show rank, player, points, wins, Buchholz and Sonneborn-Berger first.
-- Additional tie-break columns are user-controlled.
+- Additional tie-break columns, Hero Cup, category standings, cross table and bye/forfeit audit
+  are revealed together only after the user asks for more standings detail.
+- Pairing quality and Chess960 controls are collapsed expert sections in the Round view; per-board
+  Chess960 actions remain available inside that section rather than competing with result entry.
 - Dense exports such as TRF16 and Swiss-Manager are grouped under More, not promoted as the normal
   first action.
 
