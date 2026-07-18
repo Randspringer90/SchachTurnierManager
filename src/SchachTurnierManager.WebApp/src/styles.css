@@ -424,6 +424,18 @@ th {
   min-width: 620px;
 }
 
+.manual-pairing-disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.manual-pairing-disclosure[open] summary {
+  margin-bottom: 0.35rem;
+}
+
 .manual-pairing input,
 .manual-pairing select {
   min-width: 0;
@@ -434,6 +446,10 @@ th {
   .manual-pairing {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .manual-pairing {
+    min-width: 0;
   }
 }
 
@@ -1633,8 +1649,14 @@ th {
 .dice-stage.compact .dice-face-5 { transform: rotateX(-90deg) translateZ(39px); }
 
 @media (prefers-reduced-motion: reduce) {
-  .dice-cube.rolling { animation-duration: 0.2s; }
-  .dice-cube.rolling-quick { animation-duration: 0.12s; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .dice-result-line {
@@ -2657,6 +2679,22 @@ summary:focus-visible,
 .theme-light .hero p,
 .theme-light .overview-next p,
 .theme-light .overview-grid span {
+  color: #475569;
+}
+
+.theme-light .eyebrow,
+.theme-light .operator-next-eyebrow {
+  color: #1d4ed8 !important;
+}
+
+.theme-light .ok,
+.theme-light .result-review-status.ok,
+.theme-light .bye-forfeit-status.ok,
+.theme-light .pairing-readiness-status.ok {
+  color: #166534;
+}
+
+.theme-light .language-switcher {
   color: #475569;
 }
 

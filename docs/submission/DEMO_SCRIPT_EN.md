@@ -57,8 +57,8 @@ not private paths.
 **Voice-over:**
 
 > Standings update from the recorded results. Common columns stay readable, with detailed tie-breaks
-> available on demand. Tournament directors can exchange Swiss-Manager CSV and TRF16 data, print
-> round sheets and create local backups.
+> available on demand. Tournament directors can exchange Swiss-Manager player master data, create
+> TRF16 tournament reports, print round sheets and make local backups.
 
 ## 2:15–2:40 — local-first and safety
 
@@ -76,7 +76,7 @@ not private paths.
 
 **Voice-over:**
 
-> This project existed before Build Week. During the submission period, Codex and GPT-5.6 helped
-> implement and review the documented additions: pairing and format compatibility, safer mobile
-> integration, progressive UX, synthetic demo data, tests and submission evidence. Owner decisions
-> and earlier human or other-tool contributions remain credited separately.
+> This project existed before Build Week. In this primary finalisation thread, Codex with GPT-5.6
+> implemented and reviewed the progressive demo UX, safer result corrections, synthetic demo data,
+> tests and submission evidence. Other Build Week additions were independently reviewed here, while
+> their original human or tool authors remain credited separately.

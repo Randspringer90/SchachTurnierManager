@@ -33,8 +33,8 @@ Candidate benennen.
 ## 1:50–2:15 — Tabelle und Kompatibilität
 
 > Die Tabelle aktualisiert sich aus den Ergebnissen. Häufige Spalten bleiben lesbar, seltene
-> Tie-Breaks erscheinen nur bei Bedarf. Swiss-Manager-CSV, TRF16, Rundenblätter und lokale Backups
-> stehen unter Mehr bereit.
+> Tie-Breaks erscheinen nur bei Bedarf. Swiss-Manager-Spielerstammdaten, TRF16-Turnierberichte,
+> Rundenblätter und lokale Backups stehen unter Mehr bereit.
 
 ## 2:15–2:40 — Local-first und Sicherheit
 
@@ -44,7 +44,7 @@ Candidate benennen.
 
 ## 2:40–2:55 — Codex und GPT-5.6
 
-> Das Projekt bestand bereits vor Build Week. In der Submission-Phase halfen Codex und GPT-5.6 bei
-> den dokumentierten Erweiterungen: Paarung und Austauschformate, sichere Mobile-Integration,
-> progressive UX, synthetische Demo, Tests und Evidence. Owner-Entscheidungen und frühere Beiträge
-> anderer Menschen oder Werkzeuge bleiben getrennt ausgewiesen.
+> Das Projekt bestand bereits vor Build Week. In diesem primären Finalisierungsthread setzten Codex
+> und GPT-5.6 die progressive Demo-UX, sichere Ergebniskorrekturen, synthetische Demo-Daten, Tests
+> und Submission-Evidence um und prüften sie. Andere Build-Week-Erweiterungen wurden hier unabhängig
+> geprüft; ihre ursprünglichen menschlichen oder technischen Autoren bleiben getrennt ausgewiesen.

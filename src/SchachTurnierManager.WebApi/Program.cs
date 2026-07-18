@@ -511,7 +511,12 @@ app.MapPost("/api/tournaments/{id:guid}/results", (Guid id, RecordBoardResultReq
 {
     try
     {
-        return Results.Ok(service.RecordResult(id, request.RoundNumber, request.BoardNumber, request.Result));
+        return Results.Ok(service.RecordResult(
+            id,
+            request.RoundNumber,
+            request.BoardNumber,
+            request.Result,
+            request.ExpectedPreviousResult));
     }
     catch (InvalidOperationException ex)
     {
@@ -523,7 +528,12 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNu
 {
     try
     {
-        return Results.Ok(service.RecordResult(id, roundNumber, boardNumber, request.Result));
+        return Results.Ok(service.RecordResult(
+            id,
+            roundNumber,
+            boardNumber,
+            request.Result,
+            request.ExpectedPreviousResult));
     }
     catch (InvalidOperationException ex)
     {

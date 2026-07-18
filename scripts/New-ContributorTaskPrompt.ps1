@@ -92,6 +92,16 @@ if ([string]::IsNullOrWhiteSpace($BaseSha)) {
     $BaseSha = (& git rev-parse HEAD).Trim().ToLowerInvariant()
 }
 if ($BaseSha -notmatch '^[0-9a-f]{40}$') { throw "BaseSha muss ein vollstaendiger Git-SHA (40 Hex-Zeichen) sein." }
+& git cat-file -e "$BaseSha^{commit}" 2>$null
+if ($LASTEXITCODE -ne 0) { throw "BaseSha '$BaseSha' bezeichnet keinen vorhandenen Commit." }
+if (-not $PlanningOnly) {
+    & git show-ref --verify --quiet refs/remotes/origin/development
+    $developmentRef = if ($LASTEXITCODE -eq 0) { 'refs/remotes/origin/development' } else { 'refs/heads/development' }
+    $currentDevelopmentSha = (& git rev-parse $developmentRef).Trim().ToLowerInvariant()
+    if ($BaseSha -cne $currentDevelopmentSha) {
+        throw "Startbarer Prompt muss exakt auf aktuellem development basieren ($currentDevelopmentSha), nicht auf '$BaseSha'."
+    }
+}
 
 $startGate = if ($PlanningOnly) {
     "PLANUNGSPROMPT – NICHT STARTEN. Der Owner muss Abhaengigkeiten, WIP-Slot und exakten Base-SHA erneut freigeben. Aktueller Backlog-Status: $status."
@@ -106,11 +116,29 @@ $skillMap = @{
     'pairing'        = 'pairing-engine'
     'player-data'    = 'external-player-lookup'
     'ui'             = 'ui-dashboard'
+    'security'       = 'repository-security'
+    'release'        = 'release-operations'
 }
 $skill = if ($skillMap.ContainsKey($category)) { $skillMap[$category] } else { $category }
 if ([string]::IsNullOrWhiteSpace($RelevantSkills)) {
-    $RelevantSkills = "``.agents/skills/$skill.md`` (Kategorie: $category)"
+    $defaultSkillPath = ".agents/skills/$skill.md"
+    $RelevantSkills = if (Test-Path -LiteralPath (Join-Path $repo $defaultSkillPath)) {
+        $defaultSkillPath
+    } else {
+        '.agents/skills/repository-security.md'
+    }
 }
+$validatedSkillPaths = @($RelevantSkills -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($validatedSkillPaths.Count -eq 0) { throw 'RelevantSkills muss mindestens einen Skillpfad enthalten.' }
+foreach ($skillPath in $validatedSkillPaths) {
+    if ($skillPath -notmatch '^\.agents/skills/[a-z0-9][a-z0-9/-]*(?:\.md|/SKILL\.md)$') {
+        throw "Ungueltiger Skillpfad in RelevantSkills: '$skillPath'."
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $repo $skillPath))) {
+        throw "RelevantSkills verweist auf einen nicht vorhandenen Skill: '$skillPath'."
+    }
+}
+$RelevantSkills = $validatedSkillPaths -join '; '
 
 # --- Issue-Nummer bestimmen ---
 if ($IssueNumber -le 0) {

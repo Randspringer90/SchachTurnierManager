@@ -36,7 +36,7 @@ Verbindliche Arbeitsweise:
 
 ### Startfreigabe und Basis
 - **Start-Gate:** PLANUNGSPROMPT – NICHT STARTEN. Der Owner muss Abhaengigkeiten, WIP-Slot und exakten Base-SHA erneut freigeben. Aktueller Backlog-Status: Backlog.
-- **Exakter Base-SHA:** `8fbf021ef52c41392f047e76494d3b1f671ba48c`
+- **Exakter Base-SHA:** `8fbf0213bdcc57c60e0c9c9e16387dee4e994a53`
 - **Wettbewerbsauswirkung:** Sichere mobile Ergebniseingabe mit Bestaetigung, Undo und Audit macht den Smartphone-Companion im Turniertag praktisch nutzbar.
 - Bei abweichendem Base-SHA, fehlender Abhängigkeit oder geändertem Scope: **nicht starten**,
   sondern einen aktualisierten Auftrag vom Owner anfordern.

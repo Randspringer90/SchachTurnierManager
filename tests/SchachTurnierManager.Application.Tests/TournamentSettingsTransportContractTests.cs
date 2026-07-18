@@ -136,7 +136,10 @@ public sealed class TournamentSettingsTransportContractTests
         Assert.Contains("async function createDemoTournament()", ui);
         Assert.Contains("Build Week Demo Open", ui);
         Assert.Contains("Demo Player ${String(index + 1).padStart(2, '0')}", ui);
-        Assert.Contains("Synthetic Build Week demo data", ui);
+        Assert.Contains("STM_BUILD_WEEK_DEMO_V1", ui);
+        Assert.Contains("isBuildWeekDemoTournament", ui);
+        Assert.Contains("tournaments.find(isBuildWeekDemoTournament)", ui);
+        Assert.Contains("method: 'DELETE'", ui);
         Assert.Contains("pairingStrategy: 1", ui);
         Assert.Contains("plannedRounds: 3", ui);
         Assert.DoesNotContain("fideId: '11", ui);
@@ -151,6 +154,10 @@ public sealed class TournamentSettingsTransportContractTests
         Assert.Contains("confirmResultChange()", ui);
         Assert.Contains("undoLastResultChange()", ui);
         Assert.Contains("role=\"alertdialog\"", ui);
+        Assert.Contains("tournamentId: selectedTournament.id", ui);
+        Assert.Contains("expectedPreviousResult", ui);
+        Assert.Contains("setPendingResultChange(null)", ui);
+        Assert.Contains("setLastResultChange(null)", ui);
     }
 
     private static string FindRepositoryFile(params string[] segments)

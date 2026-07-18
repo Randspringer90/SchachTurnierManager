@@ -36,13 +36,13 @@ Verbindliche Arbeitsweise:
 
 ### Startfreigabe und Basis
 - **Start-Gate:** START FREIGEGEBEN fuer Backlog-Status Ready und exakt den unten genannten Base-SHA; WIP-Regel vorher erneut pruefen.
-- **Exakter Base-SHA:** `8fbf021ef52c41392f047e76494d3b1f671ba48c`
+- **Exakter Base-SHA:** `a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518`
 - **Wettbewerbsauswirkung:** Schuetzt exportierte Tabellen vor Formel-Injection beim Oeffnen in Tabellenkalkulationen.
 - Bei abweichendem Base-SHA, fehlender Abhängigkeit oder geändertem Scope: **nicht starten**,
   sondern einen aktualisierten Auftrag vom Owner anfordern.
 - **Abhängigkeiten:**
 - STM-IE-002 ist Done; Import- und TRF16-Kompatibilitaet darf nicht regressieren.
-- Freier WIP-Slot; unveraenderter UX-Freeze-SHA.
+- Freier WIP-Slot; Base-SHA entspricht dem aktuellen `development`-Stand.
 
 ### Aufgabe
 - **Titel:** CSV-Formel-Injection in allen CSV-Exporten neutralisieren (führende `=`/`+`/`-`/`@`/Tab)

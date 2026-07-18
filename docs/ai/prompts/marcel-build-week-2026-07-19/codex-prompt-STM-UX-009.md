@@ -35,13 +35,14 @@ Verbindliche Arbeitsweise:
 10. Bei Unsicherheit zur Schachlogik: **nicht raten** – im Issue nachfragen und auf Antwort warten.
 
 ### Startfreigabe und Basis
-- **Start-Gate:** START FREIGEGEBEN fuer Backlog-Status Ready und exakt den unten genannten Base-SHA; WIP-Regel vorher erneut pruefen.
-- **Exakter Base-SHA:** `8fbf021ef52c41392f047e76494d3b1f671ba48c`
+- **Start-Gate:** PLANUNGSPROMPT – NICHT STARTEN. PR #51 muss zuerst gemergt und der Auftrag auf den dann aktuellen development-SHA neu erzeugt werden.
+- **Exakter Base-SHA:** `8fbf0213bdcc57c60e0c9c9e16387dee4e994a53`
 - **Wettbewerbsauswirkung:** Ein kurzer deutscher und englischer Turniertag-Walkthrough macht den Jury-Testpfad und die Vereinsnutzung ohne Entwicklerwissen verstaendlich.
 - Bei abweichendem Base-SHA, fehlender Abhängigkeit oder geändertem Scope: **nicht starten**,
   sondern einen aktualisierten Auftrag vom Owner anfordern.
 - **Abhängigkeiten:**
-- Build-Week-Demo-Pfad und Terminologie am UX-Freeze-SHA sind verbindlich.
+- Build-Week-Demo-Pfad und Terminologie am UX-Freeze-SHA sind nur Review-Basis; der Commit ist nicht in `development` gemergt.
+- PR #51 muss zuerst gemergt und der Prompt neu gebunden werden.
 - Freier WIP-Slot; keine parallele Aenderung derselben Dokumente.
 
 ### Aufgabe

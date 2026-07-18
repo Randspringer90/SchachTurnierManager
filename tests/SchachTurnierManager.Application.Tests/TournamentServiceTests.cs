@@ -25,6 +25,34 @@ public sealed class TournamentServiceTests
     }
 
     [Fact]
+    public void RecordResult_WithStaleExpectedPreviousResult_RejectsOverwrite()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Concurrent Result Test", new TournamentSettings { Format = TournamentFormat.RoundRobin });
+        service.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 01" });
+        service.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 02" });
+        var round = service.GenerateNextRound(tournament.Id);
+
+        service.RecordResult(
+            tournament.Id,
+            round.RoundNumber,
+            boardNumber: 1,
+            GameResultKind.WhiteWin,
+            expectedPreviousResult: GameResultKind.NotPlayed);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => service.RecordResult(
+            tournament.Id,
+            round.RoundNumber,
+            boardNumber: 1,
+            GameResultKind.Draw,
+            expectedPreviousResult: GameResultKind.NotPlayed));
+
+        Assert.Contains("zwischenzeitlich geändert", exception.Message, StringComparison.OrdinalIgnoreCase);
+        var stored = service.RequireTournament(tournament.Id).Rounds.Single().Pairings.Single();
+        Assert.Equal(GameResultKind.WhiteWin, stored.Result.Kind);
+    }
+
+    [Fact]
     public void ResetTournament_RemovesRoundsAndRoundAuditButKeepsPlayersAndSettings()
     {
         var service = new TournamentService(new InMemoryTournamentStore());

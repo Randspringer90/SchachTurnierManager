@@ -45,7 +45,8 @@ Describe 'Vorlage trennt trusted/untrusted' {
 
 Describe 'Generator (offline, deterministisch)' {
     It 'erzeugt Prompt fuer STM-SEC-006 mit erwartetem Branch und PR-Basis development' {
-        $out = & pwsh -NoProfile -File $Gen -BacklogId STM-SEC-006 -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline 2>&1
+        $readyBase = (& git rev-parse refs/remotes/origin/development).Trim()
+        $out = & pwsh -NoProfile -File $Gen -BacklogId STM-SEC-006 -BaseSha $readyBase -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline 2>&1
         $LASTEXITCODE | Should -Be 0
         $pf = ($out | Select-String '^PROMPT_FILE=(.+)$').Matches.Groups[1].Value
         Test-Path $pf | Should -BeTrue
@@ -62,21 +63,22 @@ Describe 'Generator (offline, deterministisch)' {
         $LASTEXITCODE | Should -Not -Be 0
     }
     It 'erzeugt PlanningOnly fuer Backlog mit exaktem Base-SHA, ohne Dateien zu schreiben' {
-        $sha = '8fbf021ef52c41392f047e76494d3b1f671ba48c'
+        $sha = '8fbf0213bdcc57c60e0c9c9e16387dee4e994a53'
         $out = & pwsh -NoProfile -File $Gen -BacklogId STM-UX-011 -Offline -PlanningOnly -BaseSha $sha -BranchName 'fix/STM-UX-011-accessibility-polish' -WhatIf 2>&1
         $LASTEXITCODE | Should -Be 0
         ($out -join "`n") | Should -Match 'PlanningOnly: True'
         ($out -join "`n") | Should -Match $sha
     }
     It 'uebernimmt keine Issue-Nummer aus einer benachbarten Backlog-Zeile' {
-        $sha = '8fbf021ef52c41392f047e76494d3b1f671ba48c'
+        $sha = '8fbf0213bdcc57c60e0c9c9e16387dee4e994a53'
         $out = & pwsh -NoProfile -File $Gen -BacklogId STM-REL-003 -Offline -PlanningOnly -BaseSha $sha -BranchName 'docs/STM-REL-003-fresh-install-evidence' -WhatIf 2>&1
         $LASTEXITCODE | Should -Be 0
         ($out -join "`n") | Should -Match 'Issue: #0'
     }
     It 'WhatIf erzeugt keine Ausgaben' {
         $before = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
-        $out = & pwsh -NoProfile -File $Gen -BacklogId STM-SEC-006 -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
+        $readyBase = (& git rev-parse refs/remotes/origin/development).Trim()
+        $out = & pwsh -NoProfile -File $Gen -BacklogId STM-SEC-006 -BaseSha $readyBase -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
         $after = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
         ($out -join "`n") | Should -Match '\[WhatIf\]'
         $after | Should -Be $before

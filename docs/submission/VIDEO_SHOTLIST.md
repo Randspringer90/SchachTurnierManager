@@ -9,7 +9,7 @@ Maximum public duration: 2:59. Target 2:50–2:55. Use the English voice-over in
 | 0:20–0:45 | Installed Windows app, empty state and demo action | Final setup/manual install passed |
 | 0:45–1:20 | Demo participants, FIDE Dutch and pairing preview | Exact candidate, synthetic data |
 | 1:20–1:50 | Galaxy S25 connection and one result | Real device test passed; otherwise omit |
-| 1:50–2:15 | Standings, TRF16 and Swiss-Manager output | Export smoke passed |
+| 1:50–2:15 | Standings, TRF16 report and Swiss-Manager player-data output | Verify both outputs again on the exact candidate before recording |
 | 2:15–2:40 | Local PC/phone flow, privacy and audit | No private IP/path/token visible |
 | 2:40–2:55 | Public-safe Codex/GPT-5.6 collaboration evidence | Accurate Build Week boundary |
 

@@ -34,7 +34,7 @@ pairing, audit, backup and compatibility tools remain available through progress
 - Pairing preview, quality findings, round locks, manual overrides and a persistent audit journal.
 - Confirmed result entry with a visible undo path.
 - Standings, cross table, categories, tie-breaks, performance and printable round sheets.
-- Swiss-Manager CSV and TRF16 import/export, plus JSON backup and CSV exports.
+- Swiss-Manager CSV player-master-data exchange, TRF16 tournament export/player-data import, plus JSON backup and CSV exports.
 - German and English demo path; additional registered languages are explicitly marked preview.
 - Self-contained Windows desktop/portable packaging and an Inno Setup per-user installer path.
 - Android companion candidate for same-Wi-Fi use; see the status boundary below.

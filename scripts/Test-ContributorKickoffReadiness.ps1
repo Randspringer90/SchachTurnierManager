@@ -49,9 +49,12 @@ foreach ($ph in @('BACKLOG_ID','ISSUE_REFERENCE','ISSUE_TITLE','FEATURE_BRANCH',
 }
 
 # 4) Promptgenerierung (offline, deterministisch) fuer eine kanonisch freigegebene Ready-Aufgabe
-$genOut = & pwsh -NoProfile -File (Join-Path $repo 'scripts/New-ContributorTaskPrompt.ps1') -BacklogId STM-SEC-006 -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline 2>&1
-$promptFile = ($genOut | Select-String -Pattern '^PROMPT_FILE=(.+)$').Matches.Groups[1].Value
-$zipOut     = ($genOut | Select-String -Pattern '^UPLOAD_ZIP=(.+)$').Matches.Groups[1].Value
+$readyBaseSha = (& git rev-parse refs/remotes/origin/development).Trim()
+$genOut = & pwsh -NoProfile -File (Join-Path $repo 'scripts/New-ContributorTaskPrompt.ps1') -BacklogId STM-SEC-006 -BaseSha $readyBaseSha -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline 2>&1
+$promptMatch = $genOut | Select-String -Pattern '^PROMPT_FILE=(.+)$' | Select-Object -First 1
+$zipMatch = $genOut | Select-String -Pattern '^UPLOAD_ZIP=(.+)$' | Select-Object -First 1
+$promptFile = if ($promptMatch) { $promptMatch.Matches[0].Groups[1].Value } else { $null }
+$zipOut = if ($zipMatch) { $zipMatch.Matches[0].Groups[1].Value } else { $null }
 Check ($promptFile -and (Test-Path -LiteralPath $promptFile)) "Prompt erzeugt: $promptFile"
 Check ($zipOut -and (Test-Path -LiteralPath $zipOut)) "Generator erzeugte genau ein Upload-ZIP"
 
@@ -91,7 +94,13 @@ Check ($LASTEXITCODE -ne 0) 'Ungueltige Backlog-ID wird abgelehnt'
 & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-004' -Offline *> $null
 Check ($LASTEXITCODE -ne 0) 'Nicht Ready/In-Progress-Status (Blocked) wird abgelehnt'
 
-$planningSha = '8fbf021ef52c41392f047e76494d3b1f671ba48c'
+$planningSha = '8fbf0213bdcc57c60e0c9c9e16387dee4e994a53'
+& pwsh -NoProfile -File $gen -BacklogId 'STM-UX-011' -Offline -PlanningOnly -BaseSha '0000000000000000000000000000000000000000' -BranchName 'fix/STM-UX-011-accessibility-polish' -WhatIf *> $null
+Check ($LASTEXITCODE -ne 0) 'Nicht vorhandener Base-SHA wird auch fuer PlanningOnly abgelehnt'
+
+& pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-006' -Offline -BaseSha $planningSha -BranchName 'security/STM-SEC-006-csv-formula-injection' -WhatIf *> $null
+Check ($LASTEXITCODE -ne 0) 'Startbarer Prompt auf ungemergtem Feature-SHA wird abgelehnt'
+
 $planningOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-UX-011' -Offline -PlanningOnly -BaseSha $planningSha -BranchName 'fix/STM-UX-011-accessibility-polish' -WhatIf 2>&1
 Check ($LASTEXITCODE -eq 0) 'PlanningOnly erlaubt einen nicht startbaren Backlog-Prompt'
 Check (($planningOut -join "`n") -match 'PlanningOnly: True') 'PlanningOnly wird sichtbar ausgewiesen'
@@ -101,7 +110,7 @@ $noIssueOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-REL-003' -Offline -Pl
 Check (($noIssueOut -join "`n") -match 'Issue: #0') 'Issue-Erkennung bleibt auf die exakte Backlog-Zeile beziehungsweise den Detailblock begrenzt'
 
 $before = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
-$wOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-006' -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
+$wOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-006' -BaseSha $readyBaseSha -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
 $after = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
 Check (($wOut -join "`n") -match '\[WhatIf\]') 'WhatIf-Modus erkennbar'
 Check ($before -eq $after) 'WhatIf erzeugt keine neuen Ausgaben'

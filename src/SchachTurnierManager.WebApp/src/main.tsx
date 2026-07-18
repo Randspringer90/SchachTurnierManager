@@ -722,6 +722,19 @@ const swissInitialColourOptions = [
   { value: 2, label: 'Schwarz' }
 ];
 
+const buildWeekDemoName = 'Build Week Demo Open';
+const buildWeekDemoMarker = 'STM_BUILD_WEEK_DEMO_V1';
+
+function isBuildWeekDemoTournament(tournament: Tournament): boolean {
+  return tournament.name === buildWeekDemoName
+    && tournament.settings.format === 1
+    && tournament.settings.pairingStrategy === 1
+    && tournament.players.length === 8
+    && tournament.players.every((player, index) =>
+      player.name === `Demo Player ${String(index + 1).padStart(2, '0')}`
+      && player.notes === buildWeekDemoMarker);
+}
+
 const scoringOptions = [
   { value: 0, label: 'Klassisch: Sieg 1 · Remis ½ · Niederlage 0' },
   { value: 1, label: '3-1-0: Sieg 3 · Remis 1 · Niederlage 0' },
@@ -1678,8 +1691,10 @@ function App() {
   const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
-  const [pendingResultChange, setPendingResultChange] = React.useState<{ roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
-  const [lastResultChange, setLastResultChange] = React.useState<{ roundNumber: number; boardNumber: number; previousResult: number } | null>(null);
+  const [pendingResultChange, setPendingResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
+  const [lastResultChange, setLastResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
+  const resultConfirmButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const resultReturnFocusRef = React.useRef<HTMLElement | null>(null);
   const [status, setStatus] = React.useState('Bereit.');
   const [error, setError] = React.useState<string | null>(null);
   const [outdoorMode, setOutdoorMode] = React.useState<boolean>(() => readLocalStorage('stm.outdoorMode') === '1');
@@ -1827,6 +1842,16 @@ function App() {
   }, [selectedTournament?.id]);
 
   React.useEffect(() => {
+    if (!pendingResultChange) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      resultConfirmButtonRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      resultConfirmButtonRef.current?.focus();
+    });
+  }, [pendingResultChange]);
+
+  React.useEffect(() => {
     writeLocalStorage('stm.outdoorMode', outdoorMode ? '1' : '0');
   }, [outdoorMode]);
 
@@ -1870,6 +1895,8 @@ function App() {
     setNextRoundPreview(null);
     setIsNextRoundPreviewDialogOpen(false);
     setChess960DialogRound(null);
+    setPendingResultChange(null);
+    setLastResultChange(null);
   }, [selectedTournament?.id]);
 
   React.useEffect(() => {
@@ -1938,26 +1965,22 @@ function App() {
   }
 
   async function createDemoTournament(): Promise<void> {
-    const demoName = 'Build Week Demo Open';
-    const existing = tournaments.find(tournament => tournament.name === demoName);
-    if (existing) {
-      setSelectedId(existing.id);
-      setActiveMainTab('overview');
-      setStatus(lang === 'en'
-        ? 'The existing synthetic demo was opened. It can be reset safely under More → Administration.'
-        : 'Das vorhandene synthetische Demo-Turnier wurde geöffnet. Unter Mehr → Verwaltung kann es sicher zurückgesetzt werden.');
-      return;
-    }
+    const existing = tournaments.find(isBuildWeekDemoTournament);
 
     setDemoBusy(true);
     setError(null);
-    setStatus(lang === 'en' ? 'Creating the synthetic demo locally …' : 'Synthetisches Demo-Turnier wird lokal angelegt …');
+    setStatus(lang === 'en'
+      ? (existing ? 'Resetting the synthetic demo locally …' : 'Creating the synthetic demo locally …')
+      : (existing ? 'Synthetisches Demo-Turnier wird lokal zurückgesetzt …' : 'Synthetisches Demo-Turnier wird lokal angelegt …'));
     let createdDemoId: string | null = null;
     try {
+      if (existing) {
+        await requestJson<{ deleted: boolean }>(`/api/tournaments/${existing.id}`, { method: 'DELETE' });
+      }
       const created = await requestJson<Tournament>('/api/tournaments', {
         method: 'POST',
         body: JSON.stringify({
-          name: demoName,
+          name: buildWeekDemoName,
           settings: {
             ...formToSettings(emptySettingsForm),
             format: 1,
@@ -1990,7 +2013,7 @@ function App() {
           nationalId: null,
           title: null,
           status: 0,
-          notes: 'Synthetic Build Week demo data',
+          notes: buildWeekDemoMarker,
           startingRank: null
           })
         });
@@ -2268,31 +2291,44 @@ function App() {
     }
   }
 
-  async function recordResult(roundNumber: number, boardNumber: number, result: number): Promise<boolean> {
-    if (!selectedTournament) {
+  async function recordResult(tournamentId: string, roundNumber: number, boardNumber: number, result: number, expectedPreviousResult: number): Promise<boolean> {
+    if (!selectedTournament || selectedTournament.id !== tournamentId) {
+      setError(lang === 'en'
+        ? 'The selected tournament changed. Reload the board and confirm the result again.'
+        : 'Das ausgewählte Turnier hat gewechselt. Brett neu laden und Ergebnis erneut bestätigen.');
       return false;
     }
     setError(null);
-    setStatus(`Speichere Ergebnis Runde ${roundNumber}, Brett ${boardNumber} …`);
+    setStatus(lang === 'en'
+      ? `Saving result for round ${roundNumber}, board ${boardNumber} …`
+      : `Speichere Ergebnis Runde ${roundNumber}, Brett ${boardNumber} …`);
     try {
-      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/results`, {
+      await requestJson<TournamentRound>(`/api/tournaments/${tournamentId}/results`, {
         method: 'POST',
-        body: JSON.stringify({ roundNumber, boardNumber, result })
+        body: JSON.stringify({ roundNumber, boardNumber, result, expectedPreviousResult })
       });
-      await refresh(selectedTournament.id);
-      setStatus(`✓ Ergebnis gespeichert: Runde ${roundNumber}, Brett ${boardNumber}.`);
+      await refresh(tournamentId);
+      setStatus(lang === 'en'
+        ? `✓ Result saved: round ${roundNumber}, board ${boardNumber}.`
+        : `✓ Ergebnis gespeichert: Runde ${roundNumber}, Brett ${boardNumber}.`);
       return true;
     } catch (ex) {
-      setError(`Ergebnis Runde ${roundNumber}, Brett ${boardNumber} konnte NICHT gespeichert werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(`${lang === 'en' ? `Result for round ${roundNumber}, board ${boardNumber} could not be saved` : `Ergebnis Runde ${roundNumber}, Brett ${boardNumber} konnte NICHT gespeichert werden`}: ${ex instanceof Error ? ex.message : String(ex)}`);
       return false;
     }
   }
 
-  function requestResultChange(roundNumber: number, boardNumber: number, result: number, previousResult: number): void {
-    if (result === previousResult) {
+  function requestResultChange(roundNumber: number, boardNumber: number, result: number, previousResult: number, source?: HTMLElement): void {
+    if (!selectedTournament || result === previousResult) {
       return;
     }
-    setPendingResultChange({ roundNumber, boardNumber, result, previousResult });
+    resultReturnFocusRef.current = source ?? null;
+    setPendingResultChange({ tournamentId: selectedTournament.id, roundNumber, boardNumber, result, previousResult });
+  }
+
+  function closeResultConfirmation(): void {
+    setPendingResultChange(null);
+    window.requestAnimationFrame(() => resultReturnFocusRef.current?.focus());
   }
 
   async function confirmResultChange(): Promise<void> {
@@ -2300,10 +2336,10 @@ function App() {
       return;
     }
     const change = pendingResultChange;
-    const saved = await recordResult(change.roundNumber, change.boardNumber, change.result);
+    const saved = await recordResult(change.tournamentId, change.roundNumber, change.boardNumber, change.result, change.previousResult);
     if (saved) {
-      setLastResultChange({ roundNumber: change.roundNumber, boardNumber: change.boardNumber, previousResult: change.previousResult });
-      setPendingResultChange(null);
+      setLastResultChange(change);
+      closeResultConfirmation();
     }
   }
 
@@ -2312,9 +2348,11 @@ function App() {
       return;
     }
     const undo = lastResultChange;
-    if (await recordResult(undo.roundNumber, undo.boardNumber, undo.previousResult)) {
+    if (await recordResult(undo.tournamentId, undo.roundNumber, undo.boardNumber, undo.previousResult, undo.result)) {
       setLastResultChange(null);
-      setStatus(`Ergebniskorrektur rückgängig gemacht: Runde ${undo.roundNumber}, Brett ${undo.boardNumber}.`);
+      setStatus(lang === 'en'
+        ? `Result correction undone: round ${undo.roundNumber}, board ${undo.boardNumber}.`
+        : `Ergebniskorrektur rückgängig gemacht: Runde ${undo.roundNumber}, Brett ${undo.boardNumber}.`);
     }
   }
 
@@ -3255,9 +3293,9 @@ function openRoundPrint(roundNumber: number) {
         </div>
       </header>
 
-      <section className="status-line">
+      <section className="status-line" role="status" aria-live="polite" aria-atomic="true">
         <span>{status}</span>
-        {error && <strong className="error">{error}</strong>}
+        {error && <strong className="error" role="alert">{error}</strong>}
       </section>
 
       {selectedTournament && (() => {
@@ -3538,7 +3576,9 @@ function openRoundPrint(roundNumber: number) {
                       {pairingStrategyOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' && option.value === 0 ? 'Optimal V2 (recommended)' : option.label}</option>)}
                     </select>
                   </label>
-                  <p className="muted">Optimal V2 bleibt der bewährte Standard. FIDE Dutch nutzt die implementierten Dutch-Kriterien und erzeugt einen detaillierten Audit-Hinweis; dies ist keine FIDE-Zertifizierung.</p>
+                  <p className="muted">{lang === 'en'
+                    ? 'Optimal V2 remains the proven default. FIDE Dutch uses the implemented Dutch criteria and creates a detailed audit note; this is not FIDE certification.'
+                    : 'Optimal V2 bleibt der bewährte Standard. FIDE Dutch nutzt die implementierten Dutch-Kriterien und erzeugt einen detaillierten Audit-Hinweis; dies ist keine FIDE-Zertifizierung.'}</p>
                   {pairingStrategy === 1 && (
                     <label>{t('tournaments.initialColour')}
                       <select value={swissInitialColour} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSwissInitialColour(Number(event.target.value))}>
@@ -3806,21 +3846,21 @@ function openRoundPrint(roundNumber: number) {
           )}
 
           {activeMainTab === 'rounds' && pendingResultChange && (
-            <article className="card result-confirm" role="alertdialog" aria-labelledby="result-confirm-title">
+            <article className="card result-confirm" role="alertdialog" aria-modal="true" aria-labelledby="result-confirm-title">
               <div>
                 <p className="eyebrow">{t('result.confirmEyebrow')}</p>
                 <h3 id="result-confirm-title">{t('result.confirmTitle')}</h3>
                 <p>{t('rounds.round')} {pendingResultChange.roundNumber}, {t('rounds.board')} {pendingResultChange.boardNumber}: <strong>{resultLabel(pendingResultChange.previousResult, lang === 'en')}</strong> → <strong>{resultLabel(pendingResultChange.result, lang === 'en')}</strong></p>
               </div>
               <div className="actions">
-                <button type="button" className="secondary" onClick={() => setPendingResultChange(null)}>{t('common.cancel')}</button>
-                <button type="button" onClick={() => void confirmResultChange()}>{t('result.save')}</button>
+                <button type="button" className="secondary" onClick={closeResultConfirmation}>{t('common.cancel')}</button>
+                <button ref={resultConfirmButtonRef} type="button" onClick={() => void confirmResultChange()}>{t('result.save')}</button>
               </div>
             </article>
           )}
           {activeMainTab === 'rounds' && !pendingResultChange && lastResultChange && (
             <div className="undo-bar" role="status">
-              <span>Ergebnis gespeichert: Runde {lastResultChange.roundNumber}, Brett {lastResultChange.boardNumber}.</span>
+              <span>{lang === 'en' ? `Result saved: round ${lastResultChange.roundNumber}, board ${lastResultChange.boardNumber}.` : `Ergebnis gespeichert: Runde ${lastResultChange.roundNumber}, Brett ${lastResultChange.boardNumber}.`}</span>
               <button type="button" className="small secondary" onClick={() => void undoLastResultChange()}>{t('result.undo')}</button>
             </div>
           )}
@@ -3829,9 +3869,9 @@ function openRoundPrint(roundNumber: number) {
             <article className={`card preview-card ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
               <div className="preview-card-header">
                 <div>
-                  <p className="eyebrow">Vorschau · noch nicht gespeichert</p>
-                  <h3>Auslosungsvorschau Runde {nextRoundPreview.roundNumber}</h3>
-                  <p className="muted">{nextRoundPreview.summary}</p>
+                  <p className="eyebrow">{lang === 'en' ? 'Preview · not saved yet' : 'Vorschau · noch nicht gespeichert'}</p>
+                  <h3>{lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}</h3>
+                  <p className="muted">{lang === 'en' ? 'Review the proposed boards and quality score before creating the round.' : nextRoundPreview.summary}</p>
                 </div>
                 <div className="preview-score">
                   <strong>{nextRoundPreview.pairingQuality.qualityScore}/100</strong>
@@ -3839,25 +3879,30 @@ function openRoundPrint(roundNumber: number) {
                 </div>
               </div>
               <div className="preview-metrics">
-                <span>{nextRoundPreview.boardCount} Bretter</span>
+                <span>{nextRoundPreview.boardCount} {lang === 'en' ? 'boards' : 'Bretter'}</span>
                 <span>{nextRoundPreview.pairingQuality.rematchCount} Rematches</span>
-                <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} Scoregruppen-Abweichungen</span>
-                <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} Farbfolge-Risiken</span>
+                <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} {lang === 'en' ? 'cross-score-group pairings' : 'Scoregruppen-Abweichungen'}</span>
+                <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} {lang === 'en' ? 'colour-sequence risks' : 'Farbfolge-Risiken'}</span>
                 <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
               </div>
-              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>Kritische Vorschau:</strong> Bitte Paarungen, Rematches und Farbfolge prüfen. Bei kleinen Turnieren kann das unvermeidbar sein; nach Bestätigung darf trotzdem ausgelost werden.</div>}
-              {!nextRoundPreview.isSavable && <div className="preview-warning critical"><strong>Nicht speicherbar:</strong> Diese Vorschau darf nicht übernommen werden. Bitte Hinweise prüfen.</div>}
-              {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-message-${index}`}>{message}</li>)}</ul>}
-              {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-quality-${index}`}>{finding}</li>)}</ul>}
+              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>{lang === 'en' ? 'Critical preview:' : 'Kritische Vorschau:'}</strong> {lang === 'en' ? 'Review pairings, rematches and colour sequences. Some constraints can be unavoidable in small events.' : 'Bitte Paarungen, Rematches und Farbfolge prüfen. Bei kleinen Turnieren kann das unvermeidbar sein; nach Bestätigung darf trotzdem ausgelost werden.'}</div>}
+              {!nextRoundPreview.isSavable && <div className="preview-warning critical"><strong>{lang === 'en' ? 'Cannot be saved:' : 'Nicht speicherbar:'}</strong> {lang === 'en' ? 'This preview cannot be accepted. Review the technical notes.' : 'Diese Vorschau darf nicht übernommen werden. Bitte Hinweise prüfen.'}</div>}
+              {(nextRoundPreview.messages.length > 0 || nextRoundPreview.pairingQuality.findings.length > 0) && (
+                <details className="preview-audit-notes">
+                  <summary>{lang === 'en' ? 'Technical pairing notes' : 'Technische Paarungshinweise'}</summary>
+                  {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-message-${index}`}>{message}</li>)}</ul>}
+                  {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-quality-${index}`}>{finding}</li>)}</ul>}
+                </details>
+              )}
               <div className="table-scroll compact preview-pairings">
                 <table>
-                  <thead><tr><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead>
+                  <thead><tr><th>{t('rounds.board')}</th><th>{t('rounds.white')}</th><th>{t('rounds.black')}</th><th>{lang === 'en' ? 'Score before round' : 'Score vor Runde'}</th><th>{lang === 'en' ? 'Notes' : 'Hinweise'}</th></tr></thead>
                   <tbody>
                     {nextRoundPreview.pairingQuality.boards.map(board => (
                       <tr key={`preview-board-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
                         <td>{board.boardNumber}</td>
                         <td>{board.whiteName}</td>
-                        <td>{board.isBye ? 'spielfrei' : board.blackName}</td>
+                        <td>{board.isBye ? t('rounds.bye') : board.blackName}</td>
                         <td>{board.isBye ? 'Bye' : `${board.whiteScoreBeforeRound} : ${board.blackScoreBeforeRound}`}</td>
                         <td>{board.findings.length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{board.findings.map((finding, index) => <li key={`preview-board-${board.boardNumber}-${index}`}>{finding}</li>)}</ul>}</td>
                       </tr>
@@ -3866,20 +3911,20 @@ function openRoundPrint(roundNumber: number) {
                 </table>
               </div>
               <details className="audit-box preview-audit">
-                <summary>Audit der Vorschau anzeigen</summary>
+                <summary>{lang === 'en' ? 'Show preview audit' : 'Audit der Vorschau anzeigen'}</summary>
                 <div className="audit-grid">
-                  <section><strong>Hinweise</strong><ul>{nextRoundPreview.round.audit.messages.map((message, index) => <li key={`preview-audit-message-${index}`}>{message}</li>)}</ul></section>
-                  <section><strong>Scoregruppen</strong><ul>{nextRoundPreview.round.audit.scoreGroups.map((message, index) => <li key={`preview-audit-score-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{lang === 'en' ? 'Notes' : 'Hinweise'}</strong><ul>{nextRoundPreview.round.audit.messages.map((message, index) => <li key={`preview-audit-message-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{lang === 'en' ? 'Score groups' : 'Scoregruppen'}</strong><ul>{nextRoundPreview.round.audit.scoreGroups.map((message, index) => <li key={`preview-audit-score-${index}`}>{message}</li>)}</ul></section>
                   <section><strong>Floater</strong><ul>{nextRoundPreview.round.audit.floaters.length === 0 ? <li>keine</li> : nextRoundPreview.round.audit.floaters.map((message, index) => <li key={`preview-audit-floater-${index}`}>{message}</li>)}</ul></section>
-                  <section><strong>Farben</strong><ul>{nextRoundPreview.round.audit.colorNotes.map((message, index) => <li key={`preview-audit-color-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{lang === 'en' ? 'Colours' : 'Farben'}</strong><ul>{nextRoundPreview.round.audit.colorNotes.map((message, index) => <li key={`preview-audit-color-${index}`}>{message}</li>)}</ul></section>
                 </div>
               </details>
               <div className="actions preview-actions">
-                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>Diese Runde jetzt auslosen</button>
-                <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>Druckansicht öffnen</button>
-                <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>CSV exportieren</button>
-                <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(true)}>Als Popup öffnen</button>
-                <button type="button" className="secondary" onClick={() => { setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false); }}>Vorschau schließen</button>
+                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Create this round' : 'Diese Runde jetzt auslosen'}</button>
+                <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>{lang === 'en' ? 'Open print view' : 'Druckansicht öffnen'}</button>
+                <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>{lang === 'en' ? 'Export CSV' : 'CSV exportieren'}</button>
+                <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(true)}>{lang === 'en' ? 'Open dialog' : 'Als Popup öffnen'}</button>
+                <button type="button" className="secondary" onClick={() => { setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false); }}>{lang === 'en' ? 'Close preview' : 'Vorschau schließen'}</button>
               </div>
             </article>
           )}
@@ -3977,11 +4022,11 @@ function openRoundPrint(roundNumber: number) {
           {activeMainTab === 'participants' && (
           <div className="grid two">
             <article className="card external-lookup-card">
-              <h3>Spieler suchen</h3>
-              <p className="muted">Eine Suche – alle verfügbaren Quellen werden automatisch geprüft und Treffer zusammengeführt. FIDE-ID-Abruf ist aktiv; DSB/DeWIS und ThSB sind vorbereitet und werden klar als „aktuell nicht aktiv" markiert.</p>
+              <h3>{lang === 'en' ? 'Find a player' : 'Spieler suchen'}</h3>
+              <p className="muted">{lang === 'en' ? 'Available sources are checked together. FIDE ID lookup is active; prepared but inactive sources are labelled clearly.' : 'Eine Suche – alle verfügbaren Quellen werden automatisch geprüft und Treffer zusammengeführt. FIDE-ID-Abruf ist aktiv; DSB/DeWIS und ThSB sind vorbereitet und werden klar als „aktuell nicht aktiv" markiert.'}</p>
               <form onSubmit={(event) => void searchExternalPlayers(event)} className="external-lookup-form single">
-                <input value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder="Name oder FIDE-ID (z. B. 99900123)" />
-                <button type="submit" disabled={externalSearching}>{externalSearching ? 'Suche läuft …' : 'Spieler suchen'}</button>
+                <input aria-label={lang === 'en' ? 'Player name or FIDE ID' : 'Spielername oder FIDE-ID'} value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder={lang === 'en' ? 'Name or FIDE ID' : 'Name oder FIDE-ID (z. B. 99900123)'} />
+                <button type="submit" disabled={externalSearching}>{externalSearching ? (lang === 'en' ? 'Searching …' : 'Suche läuft …') : (lang === 'en' ? 'Find player' : 'Spieler suchen')}</button>
               </form>
               {externalLookup && (
                 <div className="lookup-results">
@@ -4040,31 +4085,31 @@ function openRoundPrint(roundNumber: number) {
             </article>
 
             <article className="card">
-              <h3>{editingPlayerId ? 'Teilnehmer bearbeiten' : 'Teilnehmer erfassen'}</h3>
+              <h3>{editingPlayerId ? (lang === 'en' ? 'Edit participant' : 'Teilnehmer bearbeiten') : (lang === 'en' ? 'Add participant' : 'Teilnehmer erfassen')}</h3>
               <form onSubmit={(event) => void savePlayer(event)} className="player-form wide">
-                <input value={playerForm.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, name: event.target.value })} placeholder="Name *" />
-                <input value={playerForm.club} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, club: event.target.value })} placeholder="Verein" />
-                <input value={playerForm.federation} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, federation: event.target.value })} placeholder="Verband/Federation" />
-                <input value={playerForm.country} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, country: event.target.value })} placeholder="Land" />
-                <input value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder="Geburtsjahr" type="number" min="1900" max="2100" />
-                <select value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
+                <input aria-label={lang === 'en' ? 'Name, required' : 'Name, erforderlich'} value={playerForm.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, name: event.target.value })} placeholder={lang === 'en' ? 'Name *' : 'Name *'} />
+                <input aria-label={lang === 'en' ? 'Club' : 'Verein'} value={playerForm.club} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, club: event.target.value })} placeholder={lang === 'en' ? 'Club' : 'Verein'} />
+                <input aria-label={lang === 'en' ? 'Federation' : 'Verband oder Federation'} value={playerForm.federation} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, federation: event.target.value })} placeholder={lang === 'en' ? 'Federation' : 'Verband/Federation'} />
+                <input aria-label={lang === 'en' ? 'Country' : 'Land'} value={playerForm.country} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, country: event.target.value })} placeholder={lang === 'en' ? 'Country' : 'Land'} />
+                <input aria-label={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} type="number" min="1900" max="2100" />
+                <select aria-label={lang === 'en' ? 'Gender category' : 'Geschlechtskategorie'} value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
                   {genderOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <input value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
-                <input value={playerForm.dwzIndex} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwzIndex: event.target.value })} placeholder="DWZ-Index" type="number" min="0" />
-                <input value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo Standard" type="number" min="0" />
-                <input value={playerForm.rapidElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, rapidElo: event.target.value })} placeholder="Elo Rapid" type="number" min="0" />
-                <input value={playerForm.blitzElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, blitzElo: event.target.value })} placeholder="Elo Blitz" type="number" min="0" />
-                <input value={playerForm.manualTwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, manualTwz: event.target.value })} placeholder="TWZ manuell" type="number" min="0" />
-                <input value={playerForm.fideId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, fideId: event.target.value })} placeholder="FIDE-ID" />
-                <input value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
-                <input value={playerForm.title} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, title: event.target.value })} placeholder="Titel" />
-                <select value={playerForm.status} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, status: Number(event.target.value) })}>
+                <input aria-label="DWZ" value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
+                <input aria-label="DWZ-Index" value={playerForm.dwzIndex} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwzIndex: event.target.value })} placeholder="DWZ-Index" type="number" min="0" />
+                <input aria-label="Elo Standard" value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo Standard" type="number" min="0" />
+                <input aria-label="Elo Rapid" value={playerForm.rapidElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, rapidElo: event.target.value })} placeholder="Elo Rapid" type="number" min="0" />
+                <input aria-label="Elo Blitz" value={playerForm.blitzElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, blitzElo: event.target.value })} placeholder="Elo Blitz" type="number" min="0" />
+                <input aria-label={lang === 'en' ? 'Manual tournament rating' : 'Manuelle Turnierwertungszahl'} value={playerForm.manualTwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, manualTwz: event.target.value })} placeholder={lang === 'en' ? 'Manual tournament rating' : 'TWZ manuell'} type="number" min="0" />
+                <input aria-label="FIDE ID" value={playerForm.fideId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, fideId: event.target.value })} placeholder="FIDE-ID" />
+                <input aria-label="DSB ID" value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
+                <input aria-label={lang === 'en' ? 'Title' : 'Titel'} value={playerForm.title} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, title: event.target.value })} placeholder={lang === 'en' ? 'Title' : 'Titel'} />
+                <select aria-label={lang === 'en' ? 'Participant status' : 'Teilnehmerstatus'} value={playerForm.status} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, status: Number(event.target.value) })}>
                   {playerStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <input value={playerForm.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, notes: event.target.value })} placeholder="Notizen" />
-                <button type="submit" disabled={!selectedTournament}>{editingPlayerId ? 'Aktualisieren' : 'Speichern'}</button>
-                {editingPlayerId && <button type="button" className="secondary" onClick={() => { setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); }}>Abbrechen</button>}
+                <input aria-label={lang === 'en' ? 'Notes' : 'Notizen'} value={playerForm.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, notes: event.target.value })} placeholder={lang === 'en' ? 'Notes' : 'Notizen'} />
+                <button type="submit" disabled={!selectedTournament}>{editingPlayerId ? (lang === 'en' ? 'Update' : 'Aktualisieren') : (lang === 'en' ? 'Save' : 'Speichern')}</button>
+                {editingPlayerId && <button type="button" className="secondary" onClick={() => { setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); }}>{t('common.cancel')}</button>}
               </form>
             </article>
           </div>
@@ -4391,7 +4436,7 @@ function openRoundPrint(roundNumber: number) {
                             <td>
                               <select
                                 value={pairing.result.kind}
-                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) => requestResultChange(round.roundNumber, pairing.boardNumber, Number(event.target.value), pairing.result.kind)}
+                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) => requestResultChange(round.roundNumber, pairing.boardNumber, Number(event.target.value), pairing.result.kind, event.currentTarget)}
                                 disabled={pairing.isBye || roundClosed}
                                 aria-label={`${t('rounds.result')}: ${t('rounds.round')} ${round.roundNumber}, ${t('rounds.board')} ${pairing.boardNumber}`}
                               >
@@ -4400,18 +4445,21 @@ function openRoundPrint(roundNumber: number) {
                               <small>{resultLabel(pairing.result.kind, lang === 'en')}</small>
                             </td>
                             <td>
-                              <div className="manual-pairing">
-                                <select value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={roundClosed}>
-                                  <option value="">Weiß wählen</option>
+                              <details className="manual-pairing-disclosure">
+                                <summary>{lang === 'en' ? 'Advanced override' : 'Erweiterte Korrektur'}</summary>
+                                <div className="manual-pairing">
+                                <select aria-label={lang === 'en' ? 'Override white player' : 'Weißspieler manuell wählen'} value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={roundClosed}>
+                                  <option value="">{lang === 'en' ? 'Select White' : 'Weiß wählen'}</option>
                                   {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                                 </select>
-                                <select value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={roundClosed}>
-                                  <option value="">Schwarz/Bye leer</option>
+                                <select aria-label={lang === 'en' ? 'Override black player or bye' : 'Schwarzspieler oder spielfrei manuell wählen'} value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={roundClosed}>
+                                  <option value="">{lang === 'en' ? 'Black / leave empty for bye' : 'Schwarz/Bye leer'}</option>
                                   {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                                 </select>
-                                <input value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder="Notiz" disabled={roundClosed} />
-                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={roundClosed || !edit.whitePlayerId}>Paarung speichern</button>
-                              </div>
+                                <input aria-label={lang === 'en' ? 'Override reason' : 'Grund der manuellen Korrektur'} value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder={lang === 'en' ? 'Reason' : 'Notiz'} disabled={roundClosed} />
+                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={roundClosed || !edit.whitePlayerId}>{lang === 'en' ? 'Save override' : 'Paarung speichern'}</button>
+                                </div>
+                              </details>
                             </td>
                           </tr>
                         );
@@ -4654,38 +4702,38 @@ function openRoundPrint(roundNumber: number) {
           <article className="card export-center-card">
               <div className="export-center-header">
                 <div>
-                  <h3>Turnierleiter-Exportcenter</h3>
-                  <p className="muted">Schnellzugriff auf Aushänge, Tabellen, Paarungen, Vorschau und Backup. Ideal vor, während und nach einer Runde.</p>
+                  <h3>{lang === 'en' ? 'Tournament director export centre' : 'Turnierleiter-Exportcenter'}</h3>
+                  <p className="muted">{lang === 'en' ? 'Local printouts, standings, pairings, previews and backups in one place.' : 'Schnellzugriff auf Aushänge, Tabellen, Paarungen, Vorschau und Backup. Ideal vor, während und nach einer Runde.'}</p>
                 </div>
                 <span className="export-center-badge">RUN-15 · v0.49</span>
               </div>
 
               <div className="export-center-metrics">
-                <div><strong>{selectedTournament?.players.length ?? 0}</strong><span>Teilnehmer</span></div>
-                <div><strong>{activePlayerCount()}</strong><span>aktiv</span></div>
-                <div><strong>{inactivePlayerCount()}</strong><span>inaktiv</span></div>
-                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>Runden</span></div>
-                <div><strong>{totalOpenBoardCount()}</strong><span>offene Bretter</span></div>
-                <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
+                <div><strong>{selectedTournament?.players.length ?? 0}</strong><span>{lang === 'en' ? 'players' : 'Teilnehmer'}</span></div>
+                <div><strong>{activePlayerCount()}</strong><span>{lang === 'en' ? 'active' : 'aktiv'}</span></div>
+                <div><strong>{inactivePlayerCount()}</strong><span>{lang === 'en' ? 'inactive' : 'inaktiv'}</span></div>
+                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>{lang === 'en' ? 'rounds' : 'Runden'}</span></div>
+                <div><strong>{totalOpenBoardCount()}</strong><span>{lang === 'en' ? 'open boards' : 'offene Bretter'}</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>{lang === 'en' ? 'forfeits' : 'kampflos'}</span></div>
               </div>
 
-              {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>Offene Ergebnisse:</strong> Vor Finaltabellen oder Veröffentlichungen bitte offene Bretter prüfen.</div>}
+              {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Review open boards before publishing final standings.' : 'Vor Finaltabellen oder Veröffentlichungen bitte offene Bretter prüfen.'}</div>}
               {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>Kritische Vorschau:</strong> Pairing-Hinweise vor Aushang oder Auslosung prüfen.</div>}
 
               <div className="export-center-grid">
                 <section>
-                  <h4>Aushänge</h4>
+                  <h4>{lang === 'en' ? 'Printouts' : 'Aushänge'}</h4>
                   <div className="export-center-actions">
-                    <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Gesamt-Druckansicht</button>
-                    <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
-                    <button type="button" onClick={openNextRoundPreviewPrint} disabled={!selectedTournament || activePlayerCount() < 2}>Vorschau drucken</button>
+                    <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Full tournament print view' : 'Gesamt-Druckansicht'}</button>
+                    <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : 'Aktuelle Runde drucken'}</button>
+                    <button type="button" onClick={openNextRoundPreviewPrint} disabled={!selectedTournament || activePlayerCount() < 2}>{lang === 'en' ? 'Print preview' : 'Vorschau drucken'}</button>
                   </div>
                 </section>
                 <section>
                   <h4>CSV / Daten</h4>
                   <div className="export-center-actions">
-                    <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>Teilnehmer CSV</button>
-                    <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle CSV</button>
+                    <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>{lang === 'en' ? 'Players CSV' : 'Teilnehmer CSV'}</button>
+                    <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Standings CSV' : 'Tabelle CSV'}</button>
                     <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>TRF16 (FIDE-Turnierbericht)</button>
                     <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen CSV</button>
                     <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Paarungen CSV</button>
@@ -4696,7 +4744,7 @@ function openRoundPrint(roundNumber: number) {
                 </section>
               </div>
 
-              <p className="muted export-center-note">Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.</p>
+              <p className="muted export-center-note">{lang === 'en' ? 'Preview exports do not save a round. Pairings are committed only after you confirm the round.' : 'Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.'}</p>
             </article>
           )}
 
@@ -4756,7 +4804,7 @@ function openRoundPrint(roundNumber: number) {
 
           {activeMainTab === 'print' && (
           <article className="card">
-            <h3>Import / Export</h3>
+            <h3>{lang === 'en' ? 'Import / export' : 'Import / Export'}</h3>
             <div className="grid two">
               <section>
                 <h4>Teilnehmer-CSV</h4>
@@ -4806,15 +4854,15 @@ function openRoundPrint(roundNumber: number) {
                 )}
               </section>
               <section>
-                <h4>Swiss-Manager / TRF16 (Spieler-Stammdaten)</h4>
-                <p className="muted">Import/Export von Spieler-Stammdaten fuer den Austausch mit Swiss-Manager, Chess-Results.com oder FIDE. Nur Name, Rating, Foederation, FIDE-ID u. ae. - keine Paarungen/Ergebnisse.</p>
+                <h4>{lang === 'en' ? 'Swiss-Manager / TRF16 (player master data)' : 'Swiss-Manager / TRF16 (Spieler-Stammdaten)'}</h4>
+                <p className="muted">{lang === 'en' ? 'Exchange player master data such as name, rating, federation and FIDE ID. Pairings and results are not imported.' : 'Import/Export von Spieler-Stammdaten für den Austausch mit Swiss-Manager, Chess-Results.com oder FIDE. Nur Name, Rating, Föderation, FIDE-ID u. ä. – keine Paarungen/Ergebnisse.'}</p>
                 <div className="actions">
-                  <button type="button" className="secondary" onClick={() => openTournamentExport('players/export-swissmanager.csv')} disabled={!selectedTournament}>Swiss-Manager CSV exportieren</button>
-                  <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>TRF16 exportieren</button>
+                  <button type="button" className="secondary" onClick={() => openTournamentExport('players/export-swissmanager.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Export Swiss-Manager CSV' : 'Swiss-Manager CSV exportieren'}</button>
+                  <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>{lang === 'en' ? 'Export TRF16' : 'TRF16 exportieren'}</button>
                 </div>
                 <div className="actions">
                   <label className="file-import-label">
-                    Swiss-Manager CSV importieren
+                    {lang === 'en' ? 'Import Swiss-Manager CSV' : 'Swiss-Manager CSV importieren'}
                     <input type="file" accept=".csv,.txt" disabled={!selectedTournament} onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                       const file = event.target.files?.[0];
                       event.target.value = '';
@@ -4822,7 +4870,7 @@ function openRoundPrint(roundNumber: number) {
                     }} />
                   </label>
                   <label className="file-import-label">
-                    TRF16 importieren
+                    {lang === 'en' ? 'Import TRF16' : 'TRF16 importieren'}
                     <input type="file" accept=".txt,.trf" disabled={!selectedTournament} onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                       const file = event.target.files?.[0];
                       event.target.value = '';

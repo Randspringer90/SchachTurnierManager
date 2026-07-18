@@ -656,7 +656,12 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             _ => "gut"
         };
     }
-    public TournamentRound RecordResult(Guid tournamentId, int roundNumber, int boardNumber, GameResultKind resultKind)
+    public TournamentRound RecordResult(
+        Guid tournamentId,
+        int roundNumber,
+        int boardNumber,
+        GameResultKind resultKind,
+        GameResultKind? expectedPreviousResult = null)
     {
         var tournament = RequireTournament(tournamentId);
         var roundIndex = RequireRoundIndex(tournament, roundNumber);
@@ -673,6 +678,12 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                 }
 
                 foundBoard = true;
+                if (expectedPreviousResult is not null && p.Result.Kind != expectedPreviousResult.Value)
+                {
+                    throw new InvalidOperationException(
+                        $"Das Ergebnis für Runde {roundNumber}, Brett {boardNumber} wurde zwischenzeitlich geändert. " +
+                        "Bitte Turnierstand neu laden und die Korrektur erneut prüfen.");
+                }
                 return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
             })
             .ToList();

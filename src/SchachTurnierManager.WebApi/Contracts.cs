@@ -56,9 +56,13 @@ public sealed record PlayerRequest(
     }
 }
 
-public sealed record RecordResultRequest(GameResultKind Result);
+public sealed record RecordResultRequest(GameResultKind Result, GameResultKind? ExpectedPreviousResult = null);
 
-public sealed record RecordBoardResultRequest(int RoundNumber, int BoardNumber, GameResultKind Result);
+public sealed record RecordBoardResultRequest(
+    int RoundNumber,
+    int BoardNumber,
+    GameResultKind Result,
+    GameResultKind? ExpectedPreviousResult = null);
 
 public sealed record OverridePairingRequest(Guid? WhitePlayerId, Guid? BlackPlayerId, string? Notes);
 

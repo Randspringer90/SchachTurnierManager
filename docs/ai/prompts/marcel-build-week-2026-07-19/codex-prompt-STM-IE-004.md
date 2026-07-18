@@ -35,7 +35,7 @@ Verbindliche Arbeitsweise:
 
 ### Startfreigabe und Basis
 - **Start-Gate:** PLANUNGSPROMPT – NICHT STARTEN. Der Owner muss Abhaengigkeiten, WIP-Slot und exakten Base-SHA erneut freigeben. Aktueller Backlog-Status: Backlog.
-- **Exakter Base-SHA:** `8fbf021ef52c41392f047e76494d3b1f671ba48c`
+- **Exakter Base-SHA:** `8fbf0213bdcc57c60e0c9c9e16387dee4e994a53`
 - **Wettbewerbsauswirkung:** Roadmap-Paket fuer bestaetigte, read-only Spielersuche; wird wegen Netzwerk- und Datenschutzrisiken nicht in den Submission Candidate aufgenommen.
 - Bei abweichendem Base-SHA, fehlender Abhängigkeit oder geändertem Scope: **nicht starten**,
   sondern einen aktualisierten Auftrag vom Owner anfordern.

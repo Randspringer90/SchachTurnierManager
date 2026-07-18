@@ -4,7 +4,7 @@ Stand: 2026-07-18  ·  Koordination: Owner  ·  Ziel-Bearbeiter: `friend`
 
 ## Verbindliche Basis und Freeze
 
-`UX_FREEZE_SHA=8fbf021ef52c41392f047e76494d3b1f671ba48c`
+`UX_FREEZE_SHA=8fbf0213bdcc57c60e0c9c9e16387dee4e994a53`
 
 Dieser SHA reserviert und stabilisiert die zentrale WebApp-Shell für den Build-Week-Demo-
 Pfad. Ein Prompt ist nur auf seinem genannten Base-SHA gültig. Bei Drift, geänderten
@@ -22,7 +22,8 @@ berühren.
 - Maximal zwei Pakete gleichzeitig `In Progress`.
 - Maximal drei Pakete `Ready`.
 - Aktuell `In Progress`: keines aus dieser Queue.
-- Aktuell `Ready`: STM-SEC-006, STM-UX-009, STM-UX-010.
+- Aktuell `Ready`: nur STM-SEC-006 auf dem aktuellen `development`-SHA
+  `a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518`.
 - Ein Ready-Prompt ist keine Merge-Freigabe. Feature-Branch und PR nach `development` bleiben
   Pflicht; der Contributor merged nicht selbst.
 - Planning-only-Prompts dürfen nicht ausgeführt werden. Sie sind vorbereitete, SHA-gebundene
@@ -33,8 +34,8 @@ berühren.
 | Reihenfolge | Paket | Queue-Status | Startbedingung | Wettbewerbsauswirkung |
 |---:|---|---|---|---|
 | 1 | STM-SEC-006 CSV-Formel-Injection | Ready | Freier WIP-Slot, Base-SHA unverändert | Schützt Jury- und Vereins-Exporte vor Tabellenkalkulationsformeln. |
-| 2 | STM-UX-009 Benutzerhandbuch DE/EN | Ready | Freier WIP-Slot, Doku-Freeze beachten | Verkürzt den Jury-Testpfad und den Einstieg am Turniertag. |
-| 3 | STM-UX-010 Geräte-Testmatrix | Ready | Freier WIP-Slot, keine neue Dependency | Macht Breakpoint- und Gerätetest reproduzierbar. |
+| 2 | STM-UX-009 Benutzerhandbuch DE/EN | Backlog / Planning only | PR #51 gemergt, neuer `development`-SHA | Verkürzt den Jury-Testpfad und den Einstieg am Turniertag. |
+| 3 | STM-UX-010 Geräte-Testmatrix | Backlog / Planning only | PR #51 gemergt, neuer `development`-SHA | Macht Breakpoint- und Gerätetest reproduzierbar. |
 | 4 | STM-UX-011 Accessibility-Polish | Backlog / Planning only | Einer der drei Ready-Slots frei; erneuter UX-Scope-Check | Verbessert Fokus, Tastatur, Labels und mobile Bedienbarkeit. |
 | 5 | STM-REL-003 Frischinstallation | Backlog / Owner-Zuweisung | Exakter finaler Candidate-SHA und Testrechner verfügbar | Liefert reale Installations-Evidence; kein Code-/Gate-Scope. |
 | 6 | STM-UX-005 Turnierassistent-Polish | Backlog / Planning only | Nach Submission-Freeze und erneuter UX-Entscheidung | Ersatz für STM-FACH-012, das im UX-Freeze bereits umgesetzt ist. |
@@ -53,8 +54,8 @@ Texte wurden nicht als Instruktionsquelle geladen.
 | Paket | Prompt | Freigabeart |
 |---|---|---|
 | STM-SEC-006 | `codex-prompt-STM-SEC-006.md` | Ready |
-| STM-UX-009 | `codex-prompt-STM-UX-009.md` | Ready |
-| STM-UX-010 | `codex-prompt-STM-UX-010.md` | Ready |
+| STM-UX-009 | `codex-prompt-STM-UX-009.md` | Planning only |
+| STM-UX-010 | `codex-prompt-STM-UX-010.md` | Planning only |
 | STM-UX-011 | `codex-prompt-STM-UX-011.md` | Planning only |
 | STM-REL-003 | `codex-prompt-STM-REL-003.md` | Planning only; Owner-Zuweisung offen |
 | STM-UX-005 | `codex-prompt-STM-UX-005.md` | Planning only |

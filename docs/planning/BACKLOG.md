@@ -93,8 +93,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-UX-006 | Spieler-Massenbearbeitung | P3 | Backlog | ui | friend | – | post-1.0 |
 | STM-UX-007 | Duplikaterkennung (Name, FIDE-ID; nie automatisch löschen) | P2 | Backlog | player-data | friend | – | post-1.0 |
 | STM-UX-008 | Rundenkontrollzentrum | P2 | Backlog | ui | friend | – | post-1.0 |
-| STM-UX-009 | Benutzerhandbuch | P3 | Ready | documentation | friend | – (Build-Week-Queue 2026-07-19; Dokumentationsscope) | post-1.0 |
-| STM-UX-010 | Geräteübergreifende Testmatrix | P3 | Ready | infrastructure | friend | – (Build-Week-Queue 2026-07-19; keine neue Dependency) | post-1.0 |
+| STM-UX-009 | Benutzerhandbuch | P3 | Backlog | documentation | friend | – (Build-Week-Queue 2026-07-19; erst nach Merge des UX-Pakets neu binden) | post-1.0 |
+| STM-UX-010 | Geräteübergreifende Testmatrix | P3 | Backlog | infrastructure | friend | – (Build-Week-Queue 2026-07-19; erst nach Merge des UX-Pakets neu binden) | post-1.0 |
 | STM-UX-011 | Barrierefreiheit (Tastatur, Screenreader, Kontrast, Fokus) | P3 | Backlog | ui | friend | – | post-1.0 |
 | STM-FACH-009 | Vereinsmeisterschaftsmodus (Serien, Saisonwertung) | P3 | Backlog | pairing | friend | – | post-1.0 |
 | STM-FACH-010 | Blitz-/Schnellschach-Vorlagen | P3 | Backlog | pairing | friend | – | post-1.0 |

@@ -27,7 +27,8 @@ as the tournament data.
 
 SchachTurnierManager installs as a per-user Windows application and stores tournament state locally.
 A director can create a round-robin or Swiss event, manage participants, preview auditable pairings,
-record confirmed results, review standings and generate print, CSV, Swiss-Manager and TRF16 output.
+record confirmed results, review standings, exchange Swiss-Manager player master data and generate
+print, CSV and TRF16 tournament output.
 
 Optimal V2 remains the normal Swiss strategy. FIDE Dutch is an explicit advanced option with an
 initial-colour setting and detailed audit evidence; this is not a claim of FIDE certification. A
@@ -81,7 +82,7 @@ with the candidate; the raw `/feedback` session ID is entered manually and is no
 - Explicit, reproducible synthetic demo data and a sub-five-minute judge path.
 - Auditable opt-in FIDE Dutch selection while keeping Optimal V2 default.
 - Confirmed, reversible result entry and narrower mobile/standings views.
-- Swiss-Manager/TRF16 compatibility in the same local workflow.
+- Swiss-Manager player-master-data exchange and TRF16 tournament-report compatibility in the same local workflow.
 - Exact-path/hash/type/provenance Android artifact verification prepared for owner acceptance.
 - Public-safe evidence that does not commit binaries, signing keys, private paths or the feedback ID.
 

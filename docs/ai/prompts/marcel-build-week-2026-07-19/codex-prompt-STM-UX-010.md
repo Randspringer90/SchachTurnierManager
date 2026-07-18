@@ -35,13 +35,14 @@ Verbindliche Arbeitsweise:
 10. Bei Unsicherheit zur Schachlogik: **nicht raten** – im Issue nachfragen und auf Antwort warten.
 
 ### Startfreigabe und Basis
-- **Start-Gate:** START FREIGEGEBEN fuer Backlog-Status Ready und exakt den unten genannten Base-SHA; WIP-Regel vorher erneut pruefen.
-- **Exakter Base-SHA:** `8fbf021ef52c41392f047e76494d3b1f671ba48c`
+- **Start-Gate:** PLANUNGSPROMPT – NICHT STARTEN. PR #51 muss zuerst gemergt und der Auftrag auf den dann aktuellen development-SHA neu erzeugt werden.
+- **Exakter Base-SHA:** `8fbf0213bdcc57c60e0c9c9e16387dee4e994a53`
 - **Wettbewerbsauswirkung:** Eine reproduzierbare Testmatrix belegt die Bedienbarkeit auf Desktop, Tablet und Galaxy S25 ohne neue Testinfrastruktur.
 - Bei abweichendem Base-SHA, fehlender Abhängigkeit oder geändertem Scope: **nicht starten**,
   sondern einen aktualisierten Auftrag vom Owner anfordern.
 - **Abhängigkeiten:**
-- UX_FREEZE_SHA ist visuelle Referenz.
+- UX_FREEZE_SHA ist nur visuelle Review-Referenz und noch nicht in `development` gemergt.
+- PR #51 muss zuerst gemergt und der Prompt neu gebunden werden.
 - Reale Geraeteergebnisse bleiben als manuelle Evidence gekennzeichnet und duerfen nicht erfunden werden.
 
 ### Aufgabe
