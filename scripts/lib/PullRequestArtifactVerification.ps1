@@ -128,7 +128,8 @@ function Assert-PullRequestArtifactAttestations {
                 'gradle-wrapper-jar' {
                     if ($path -cne 'src/SchachTurnierManager.WebApp/android/gradle/wrapper/gradle-wrapper.jar' -or
                         [string]$validation.gradleVersion -cne '8.11.1' -or
-                        [string]$validation.officialWrapperSha256 -cne $sha256 -or
+                        $sha256 -cne '2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046' -or
+                        [string]$validation.officialWrapperSha256 -cne '2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046' -or
                         [string]$validation.distributionSha256Sum -cne '89d4e70e4e84e2d2dfbb63e4daa53e21b25017cc70c37e4eea31ee51fb15098a') {
                         throw 'Gradle-Wrapper-JAR-Attestation ist ungueltig.'
                     }
@@ -137,7 +138,8 @@ function Assert-PullRequestArtifactAttestations {
                     if ($path -cne 'src/SchachTurnierManager.WebApp/android/gradle/wrapper/gradle-wrapper.properties' -or
                         [string]$validation.distributionUrl -cne 'https\://services.gradle.org/distributions/gradle-8.11.1-all.zip' -or
                         [string]$validation.distributionSha256Sum -cne '89d4e70e4e84e2d2dfbb63e4daa53e21b25017cc70c37e4eea31ee51fb15098a' -or
-                        $validation.validateDistributionUrl -ne $true) {
+                        $validation.validateDistributionUrl -ne $true -or
+                        $derivation -cne 'Capacitor CLI 7.4.3 template with the official Gradle 8.11.1 all-distribution SHA-256 added; validateDistributionUrl=true was already present.') {
                         throw 'Gradle-Wrapper-Properties-Attestation ist ungueltig.'
                     }
                 }
@@ -145,7 +147,9 @@ function Assert-PullRequestArtifactAttestations {
                     if ($path -cnotin @('src/SchachTurnierManager.WebApp/android/gradlew','src/SchachTurnierManager.WebApp/android/gradlew.bat') -or
                         [string]$validation.role -cne 'third-party-build-wrapper' -or
                         [string]$validation.gradleVersion -cne '8.11.1' -or
-                        [string]$validation.lineEndings -cnotin @('lf','crlf')) {
+                        [string]$validation.lineEndings -cne 'lf' -or
+                        ($path -ceq 'src/SchachTurnierManager.WebApp/android/gradlew.bat' -and
+                            $derivation -cne 'Capacitor CLI 7.4.3 template content normalized by Git from CRLF to LF; no semantic content change.')) {
                         throw "Build-Wrapper-Attestation ist fuer $path ungueltig."
                     }
                 }

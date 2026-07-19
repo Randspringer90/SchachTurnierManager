@@ -910,7 +910,7 @@
             "sourceSha256": "f7fafb1ddd0a2a1d2ef01ead773d9a88c1f889ef341e4e93c09c0724ade79b32",
             "generator": "Capacitor CLI",
             "generatorVersion": "7.4.3",
-            "derivation": "Capacitor CLI 7.4.3 template with the official Gradle 8.11.1 all-distribution SHA-256 and validateDistributionUrl=true added."
+            "derivation": "Capacitor CLI 7.4.3 template with the official Gradle 8.11.1 all-distribution SHA-256 added; validateDistributionUrl=true was already present."
           },
           "validation": {
             "distributionUrl": "https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip",
