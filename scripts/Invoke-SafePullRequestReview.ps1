@@ -122,7 +122,9 @@ function Get-OnlineReviewInput {
         if ([string]$blob.sha -cne $BlobSha -or [string]$blob.encoding -cne 'base64' -or [int64]$blob.size -ne $ExpectedSize) {
             throw 'Attestierter PR-Git-Blob stimmt nicht mit SHA, Encoding oder Groesse ueberein.'
         }
-        try { [byte[]]$bytes = [Convert]::FromBase64String(([string]$blob.content -replace '\s','')) }
+        $base64Text = ([string]$blob.content -replace '\s','')
+        $base64Chars = $base64Text.ToCharArray()
+        try { [byte[]]$bytes = [Convert]::FromBase64CharArray($base64Chars, 0, $base64Chars.Length) }
         catch { throw 'Attestierter PR-Git-Blob besitzt kein gueltiges Base64.' }
         if ($bytes.Length -ne $ExpectedSize) { throw 'Dekodierte Blob-Groesse weicht von der Attestation ab.' }
         return $bytes

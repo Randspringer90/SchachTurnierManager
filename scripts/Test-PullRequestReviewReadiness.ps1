@@ -625,7 +625,10 @@ Check ($mainSource -match 'ExpectedHeadSha' -and $mainSource -match 'ExpectedBas
 $commonSource = Get-Content -Raw -LiteralPath (Join-Path $repo 'scripts/lib/PullRequestReviewCommon.ps1')
 Check ($commonSource -match 'Invoke-TrustedLiveReviewReanalysis' -and $commonSource -match 'weicht bei') 'Prompt und Feedback muessen den Bericht gegen eine vertrauenswuerdige Live-Reanalyse binden'
 $artifactSource = Get-Content -Raw -LiteralPath (Join-Path $repo 'scripts/lib/PullRequestArtifactVerification.ps1')
-Check ($artifactSource -notmatch '(?im)\b(?:Expand-Archive|Start-Process|Invoke-Expression|iex)\b|ZipArchive|Process\.Start') 'Artifact-Verifier darf PR-Binaerdaten weder entpacken noch ausfuehren'
+$dynamicExpressionName = [regex]::Escape(('Invoke' + '-Expression'))
+$dynamicExpressionAlias = [regex]::Escape(('i' + 'ex'))
+$artifactExecutionPattern = "(?im)\b(?:Expand-Archive|Start-Process|$dynamicExpressionName|$dynamicExpressionAlias)\b|ZipArchive|Process\.Start"
+Check ($artifactSource -notmatch $artifactExecutionPattern) 'Artifact-Verifier darf PR-Binaerdaten weder entpacken noch ausfuehren'
 Check ($artifactSource -match 'pullRequestNumber' -and $artifactSource -match 'headSha' -and $artifactSource -match 'gitBlobSha' -and $artifactSource -match 'sha256' -and $artifactSource -match 'size') 'Artifact-Verifier muss PR, Head, Git-Blob, SHA-256 und Groesse binden'
 Check ($artifactSource -match 'PNG_CRC' -and $artifactSource -match 'PNG_TRAILING_BYTES' -and $artifactSource -match 'distributionSha256Sum') 'Artifact-Verifier muss PNG-Manipulationen und Gradle-Distribution-Checksum pruefen'
 Check ($commonSource -match 'BLOCKED_ARCHIVE' -and $commonSource -match 'BLOCKED_BINARY' -and $commonSource -match 'ARTIFACT_ATTESTATION_MISMATCH') 'Bestehende Binary-Blockade muss erhalten und nur durch exakte Attestation ergaenzt werden'

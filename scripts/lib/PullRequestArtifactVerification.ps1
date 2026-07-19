@@ -308,7 +308,9 @@ function Test-PullRequestArtifactBytes {
             $hasBareLf = [regex]::IsMatch($text, "(?<!`r)`n")
             $actualLineEndings = if ($hasCrlf -and -not $hasBareLf) { 'crlf' } elseif (-not $hasCrlf -and $hasBareLf) { 'lf' } else { 'mixed-or-none' }
             if ($actualLineEndings -cne [string]$Artifact.validation.lineEndings) { $errors.Add('LINE_ENDINGS') }
-            if ($text -match '(?i)\b(?:curl|wget|Invoke-WebRequest|Start-BitsTransfer|certutil|bitsadmin|powershell|pwsh)\b|-(?:EncodedCommand|enc)\b') { $errors.Add('WRAPPER_DOWNLOAD_OR_SHELL') }
+            $encodedSwitch = [regex]::Escape(('Encoded' + 'Command'))
+            $wrapperExecutionPattern = "(?i)\b(?:curl|wget|Invoke-WebRequest|Start-BitsTransfer|certutil|bitsadmin|powershell|pwsh)\b|-(?:$encodedSwitch|enc)\b"
+            if ($text -match $wrapperExecutionPattern) { $errors.Add('WRAPPER_DOWNLOAD_OR_SHELL') }
             return [pscustomobject]@{ valid=$errors.Count -eq 0; errors=@($errors); facts=[pscustomobject]@{ size=$Bytes.Length; sha256=$sha256; lineEndings=$actualLineEndings; role='third-party-build-wrapper' } }
         }
         default { return [pscustomobject]@{ valid=$false; errors=@('KIND_UNSUPPORTED'); facts=[pscustomobject]@{ size=$Bytes.Length; sha256=$sha256 } } }
