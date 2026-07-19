@@ -71,7 +71,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43) (blockiert: Android SDK fehlt auf der Workstation) | post-1.0 |
+| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | In Review | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43) (Capacitor-Companion; signierte Test-APK gebaut+verifiziert; SDK eingerichtet; Gerätetest MANUAL_PENDING) | post-1.0 |
 | STM-MOB-002 | F-Droid-Readiness | P3 | Blocked | mobile | owner | – (blockiert: STM-MOB-001 + Lizenzentscheidung STM-SEC-004) | post-1.0 |
 | STM-MOB-003 | Mobile Paarungsansicht | P2 | Backlog | mobile | friend | – (nach STM-MOB-001) | post-1.0 |
 | STM-MOB-004 | Mobile Ergebniseingabe (Bestätigung, Undo, Audit) | P2 | Backlog | mobile | friend | – (nach STM-MOB-003) | post-1.0 |

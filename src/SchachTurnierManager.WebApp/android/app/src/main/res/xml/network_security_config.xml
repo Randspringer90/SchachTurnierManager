@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  STM-MOB-001 test candidate, not a public release configuration.
+
+  Tournament PCs currently expose their local WebApi over user-entered HTTP LAN addresses.
+  Android Network Security Config cannot express dynamic RFC1918 hosts, so cleartext is enabled
+  at this layer. The bundled launcher and Capacitor HostMask independently reject public hosts,
+  credentials in URLs and redirects. HTTPS certificate validation continues to use the system
+  trust store and is never disabled.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

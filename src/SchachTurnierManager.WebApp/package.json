@@ -9,11 +9,14 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
+    "@capacitor/android": "7.4.3",
+    "@capacitor/cli": "7.4.3",
+    "@capacitor/core": "7.4.3",
     "@vitejs/plugin-react": "6.0.2",
-    "vite": "8.0.16",
-    "typescript": "6.0.3",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "typescript": "6.0.3",
+    "vite": "8.0.16"
   },
   "devDependencies": {
     "@types/react": "19.2.17",
