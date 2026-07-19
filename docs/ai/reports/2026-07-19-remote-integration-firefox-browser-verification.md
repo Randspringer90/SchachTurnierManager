@@ -97,7 +97,42 @@ critical preview findings), `App.tsx:756` and `BoardDiceRoller.tsx:93`
 confirmation, not a chain, so the Firefox suppression behaviour does not apply.
 They are outside the scope of this fix and are left as is.
 
-## Verification at `0666e05`
+### Three readiness scripts that could never pass
+
+Running the remaining gates surfaced three pre-existing defects. None was caused
+by this run; all three were found by executing the tools rather than reading
+them, and all three are fixed in `6dc57af`.
+
+**`Invoke-PortableFreshFolderTest`** asserted against `health.databasePath`. The
+health endpoint deliberately exposes only the database *file name*
+(`databaseHealthLabel`), never the full path, so local machine paths cannot leak
+— that property has never existed. Under `Set-StrictMode` the script threw. It
+now proves the same property, that the SQLite file is created inside the
+isolated test data directory, against the file system instead of trusting the
+API to reveal a path it must not reveal.
+
+**`Test-PortablePackageGate`** called `Pack-Portable.ps1` with `-OutputRoot`,
+`-LogRoot` and `-StepTimeoutSeconds`. `Pack-Portable` declared none of them, and
+without `[CmdletBinding()]` PowerShell accepts unknown named arguments in
+silence. The gate therefore built the package into the **real** `output/`
+directory — overwriting it as a side effect — and then verified its own empty
+`tmp/` directory, failing on a missing `app` folder. `Pack-Portable` now
+declares `[CmdletBinding()]` and a genuine `-OutputRoot`, so the gate builds
+hermetically under `tmp/` and any future parameter typo fails loudly instead of
+being swallowed.
+
+**`Invoke-PublicSafetySnapshot`** piped each step through `Tee-Object` without
+discarding the pass-through, so `Run-Step` returned every log line *and* the
+result object. The report loop then ran on strings and died on a missing `name`
+property. It now completes and reports 6/6, release gate included.
+
+`Test-ContributorKickoffReadiness` was also re-checked. It fails on an
+`integration/*` branch because `New-ContributorTaskPrompt` refuses to run
+outside `development` or a conforming feature branch. That is a deliberate
+precondition, not a defect: on `security/STM-SEC-006-csv-formula-injection` the
+gate passes completely. The previous report's explanation was correct.
+
+## Verification at `6dc57af`
 
 | Gate | Result |
 |---|---|
@@ -110,9 +145,30 @@ They are outside the scope of this fix and are left as is.
 | `git diff --check` | clean |
 | GitCommitSafety, PromptInjectionDefense, AgentInstructionIntegrity, AgentSkillReadiness, AgentSkillProposalSafety, KnowledgePersistenceSafety, ModelRouting, CollaborationReadiness, RepositoryOpenSourceSafety, RoutedExecution, NightlyExecution, PullRequestReviewReadiness | 12/12 pass |
 | Routed execution, three consecutive runs | 34/34 each, identical |
+| Portable package gate, portable fresh-folder test, click-install readiness | pass (after the fixes above) |
+| Public safety snapshot | 6/6 pass |
+| Contributor kickoff readiness | pass on a valid feature branch; refuses by design on `integration/*` |
 | `npm audit` | **could not run** — registry unreachable |
 
 No test was weakened.
+
+## Artifact
+
+Rebuilt from the head commit rather than relabelling the earlier build:
+
+| Field | Value |
+|---|---|
+| File | `output/installer/SchachTurnierManager_Setup_0.54.1.exe` |
+| Built from | `6dc57af3413356a514d16efd3fed17cef309c407` |
+| Size | 38,557,085 bytes |
+| SHA-256 | `145007B1FC994AD81945309CC7EE21E9FA765183F78EC278778E334950AB4190` |
+| Signature | **unsigned** (`NotSigned`) — no code-signing certificate exists |
+| Toolchain | Inno Setup 6.7.3, .NET SDK 10.0.400-preview.0.26322.102, Node v24.16.0, npm 11.13.0 |
+
+Run bundle and manifest:
+`D:\KFM\logs\SchachTurnierManager\runs\STM_CLAUDE_REMOTE_20260719_2000`.
+
+No APK: PR #49 is unmerged, so no companion source exists at this SHA.
 
 ## Still open, and why
 
