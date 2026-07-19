@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc --noEmit && vite build --configLoader native --outDir ../../tmp/webapp-dist --emptyOutDir false",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "test": "node --test \"test/**/*.test.ts\""
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.2",

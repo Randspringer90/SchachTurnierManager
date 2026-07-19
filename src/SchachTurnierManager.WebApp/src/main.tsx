@@ -3,463 +3,56 @@ import ReactDOM from 'react-dom/client';
 import { encodeText, Ecl } from './qrcodegen';
 import { I18nProvider, LanguageSwitcher, useI18n } from './i18n';
 import rawLocalKnowledgeBase from './knowledge/localKnowledgeBase.json';
+import { requestJson, requestText } from './api/client';
+import { assistantNumber, recommendedSwissRounds, assistantScenarioRoundMinutes } from './lib/assistant';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles.css';
 
-type Health = {
-  status: string;
-  app: string;
-  version: string;
-  time: string;
-  database?: string;
-};
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-};
-
-type PwaStatus = 'checking' | 'unsupported' | 'ready' | 'installable' | 'installed' | 'update-available' | 'error';
-
-type RatingProfile = {
-  manualTwz?: number | null;
-  elo?: number | null;
-  rapidElo?: number | null;
-  blitzElo?: number | null;
-  dwz?: number | null;
-  dwzIndex?: number | null;
-};
-
-type Player = {
-  id: string;
-  name: string;
-  club?: string | null;
-  federation?: string | null;
-  country?: string | null;
-  birthYear?: number | null;
-  gender: number;
-  fideId?: string | null;
-  nationalId?: string | null;
-  title?: string | null;
-  startingRank: number;
-  rating: RatingProfile;
-  status: number;
-  notes?: string | null;
-};
-
-type GameResult = {
-  kind: number;
-  isPlayed: boolean;
-  isBye: boolean;
-};
-
-type Chess960StartPosition = {
-  whiteBackRank: string;
-  blackBackRank: string;
-  positionNumber: number;
-  seed?: number | null;
-  createdAt: string;
-  notation: string;
-  displayName: string;
-};
-
-type Pairing = {
-  boardNumber: number;
-  whitePlayerId?: string | null;
-  blackPlayerId?: string | null;
-  result: GameResult;
-  notes?: string | null;
-  isBye: boolean;
-  isManualOverride: boolean;
-  lastChangedAt?: string | null;
-  chess960StartPosition?: Chess960StartPosition | null;
-};
-
-type PairingAudit = {
-  algorithm: string;
-  rulesetVersion: string;
-  createdAt: string;
-  messages: string[];
-  scoreGroups: string[];
-  floaters: string[];
-  colorNotes: string[];
-};
-
-type TournamentRound = {
-  roundNumber: number;
-  pairings: Pairing[];
-  audit: PairingAudit;
-  isLocked: boolean;
-  isVerified: boolean;
-  resultStatus: number;
-  lockedAt?: string | null;
-  verifiedAt?: string | null;
-  notes?: string | null;
-};
-
-type StandingRow = {
-  rank: number;
-  playerId: string;
-  name: string;
-  startingRank: number;
-  twz: number;
-  points: number;
-  wins: number;
-  blackWins: number;
-  buchholz: number;
-  buchholzCutOne: number;
-  buchholzCutTwo: number;
-  medianBuchholz: number;
-  sonnebornBerger: number;
-  koyaScore: number;
-  progressiveScore: number;
-  averageOpponentRating: number;
-  tournamentPerformance?: number | null;
-  heroScore: number;
-  categories: Record<string, boolean>;
-};
-
-type Tournament = {
-  id: string;
-  name: string;
-  createdOn: string;
-  settings: {
-    format: number;
-    scoringSystem: number;
-    twzSource: number;
-    plannedRounds: number;
-    seniorBirthYearOrEarlier?: number | null;
-    heroCupMinimumRatedGames: number;
-    forfeitTiebreakPolicy: number;
-    unplayedRoundBuchholzMode: number;
-    countByeAsWin: boolean;
-    allowManualPairingOverrides: boolean;
-    pairingStrategy: number;
-    swissInitialColour: number;
-    tiebreaks: number[];
-  };
-  players: Player[];
-  rounds: TournamentRound[];
-};
-
-type AuditJournalEntry = {
-  id: string;
-  createdAt: string;
-  action: number | string;
-  severity: number | string;
-  actor: string;
-  summary: string;
-  details?: string | null;
-  reason?: string | null;
-  roundNumber?: number | null;
-  boardNumber?: number | null;
-  playerId?: string | null;
-  playerName?: string | null;
-};
-
-type CategoryStandingTable = {
-  category: string;
-  rows: StandingRow[];
-};
-
-type CrossTable = {
-  players: CrossTablePlayer[];
-  rows: CrossTableRow[];
-};
-
-type CrossTablePlayer = {
-  playerId: string;
-  name: string;
-  rank: number;
-  startingRank: number;
-  points: number;
-};
-
-type CrossTableRow = {
-  playerId: string;
-  name: string;
-  rank: number;
-  points: number;
-  cells: CrossTableCell[];
-};
-
-type CrossTableCell = {
-  playerId: string;
-  opponentId: string;
-  isSelf: boolean;
-  roundNumber?: number | null;
-  boardNumber?: number | null;
-  color: number;
-  resultLabel: string;
-  points?: number | null;
-  isBye: boolean;
-  notes?: string | null;
-};
-
-type HeroCupRow = {
-  rank: number;
-  playerId: string;
-  name: string;
-  twz: number;
-  ratedGames: number;
-  actualScore: number;
-  expectedScore: number;
-  overPerformance: number;
-  averageOpponentRating: number;
-  tournamentPerformance?: number | null;
-  reason: string;
-};
-
-type BoardDiagnostic = {
-  boardNumber: number;
-  white: string;
-  black: string;
-  result: number;
-  resultLabel: string;
-  isOpen: boolean;
-  isForfeit: boolean;
-  countsForBuchholz: boolean;
-  countsForDirectAndSonneborn: boolean;
-  countsForPerformance: boolean;
-  note: string;
-};
-
-type RoundDiagnostics = {
-  roundNumber: number;
-  resultStatus: number;
-  isComplete: boolean;
-  isLocked: boolean;
-  isVerified: boolean;
-  openBoards: number;
-  forfeitBoards: number;
-  byeBoards: number;
-  warnings: string[];
-  boards: BoardDiagnostic[];
-};
-
-type PairingQualityBoard = {
-  boardNumber: number;
-  whitePlayerId?: string | null;
-  blackPlayerId?: string | null;
-  whiteName: string;
-  blackName: string;
-  whiteScoreBeforeRound: number;
-  blackScoreBeforeRound: number;
-  scoreDifference: number;
-  isBye: boolean;
-  isRematch: boolean;
-  isCrossScoreGroupPairing: boolean;
-  wouldGiveWhiteThirdSameColor: boolean;
-  wouldGiveBlackThirdSameColor: boolean;
-  findings: string[];
-};
-
-type PairingQualityReport = {
-  roundNumber: number;
-  boardCount: number;
-  gameCount: number;
-  byeCount: number;
-  rematchCount: number;
-  crossScoreGroupPairingCount: number;
-  thirdSameColorRiskCount: number;
-  maxScoreDifference: number;
-  averageScoreDifference: number;
-  qualityScore: number;
-  severity: number;
-  findings: string[];
-  boards: PairingQualityBoard[];
-  hasCriticalIssues: boolean;
-  hasWarnings: boolean;
-  findingCount: number;
-};
-
-type NextRoundPreview = {
-  roundNumber: number;
-  boardCount: number;
-  isSavable: boolean;
-  summary: string;
-  round: TournamentRound;
-  pairingQuality: PairingQualityReport;
-  messages: string[];
-};
-type ExternalPlayerProviderInfo = {
-  source: number;
-  name: string;
-  supportsIdLookup: boolean;
-  supportsNameSearch: boolean;
-  description: string;
-  url?: string | null;
-};
-
-type ExternalPlayerProfile = {
-  source: number;
-  externalId: string;
-  name: string;
-  club?: string | null;
-  federation?: string | null;
-  country?: string | null;
-  birthYear?: number | null;
-  gender: number;
-  fideId?: string | null;
-  nationalId?: string | null;
-  title?: string | null;
-  elo?: number | null;
-  rapidElo?: number | null;
-  blitzElo?: number | null;
-  dwz?: number | null;
-  dwzIndex?: number | null;
-  profileUrl?: string | null;
-  retrievedAt: string;
-  confidence: number;
-  notes?: string | null;
-  warnings: string[];
-};
-
-type ExternalPlayerLookupResult = {
-  source: number;
-  query: string;
-  status: number;
-  message: string;
-  players: ExternalPlayerProfile[];
-};
-
-type ExternalPlayerAggregateSourceResult = {
-  source: number;
-  sourceName: string;
-  status: number;
-  isActive: boolean;
-  message: string;
-  count: number;
-};
-
-type ExternalPlayerAggregateResult = {
-  query: string;
-  mode: string;
-  message: string;
-  players: ExternalPlayerProfile[];
-  sources: ExternalPlayerAggregateSourceResult[];
-};
-
-type ExternalPlayerDuplicateMatch = {
-  playerId: string;
-  playerName: string;
-  kind: number;
-  score: number;
-  reason: string;
-};
-
-type ExternalPlayerDuplicateCheck = {
-  profile: ExternalPlayerProfile;
-  matches: ExternalPlayerDuplicateMatch[];
-  hasLikelyDuplicate: boolean;
-};
-
-type ExternalPlayerApplyResult = {
-  player: Player;
-  created: boolean;
-  updated: boolean;
-  duplicateCheck: ExternalPlayerDuplicateCheck;
-  changedFields: string[];
-  message: string;
-};
-
-type PlayerImportPreview = {
-  replaceExisting: boolean;
-  rows: PlayerImportPreviewRow[];
-  globalWarnings: string[];
-  totalRows: number;
-  importableRows: number;
-  warningRows: number;
-  blockingRows: number;
-  likelyDuplicateRows: number;
-  hasBlockingIssues: boolean;
-};
-
-type PlayerImportPreviewRow = {
-  rowNumber: number;
-  player: Player;
-  profile: ExternalPlayerProfile;
-  duplicateCheck: ExternalPlayerDuplicateCheck;
-  warnings: string[];
-  blockingIssues: string[];
-  status: number;
-};
-
-type PairingEdit = { whitePlayerId: string; blackPlayerId: string; notes: string; };
-
-type SettingsForm = {
-  format: number;
-  scoringSystem: number;
-  twzSource: number;
-  plannedRounds: string;
-  forfeitTiebreakPolicy: number;
-  unplayedRoundBuchholzMode: number;
-  countByeAsWin: boolean;
-  allowManualPairingOverrides: boolean;
-  pairingStrategy: number;
-  swissInitialColour: number;
-  seniorBirthYearOrEarlier: string;
-  heroCupMinimumRatedGames: string;
-  tiebreaks: number[];
-};
-
-type TournamentAssistantScenario = 'club-night' | 'youth' | 'open' | 'blitz' | 'chess960' | 'team';
-
-type TournamentAssistantForm = {
-  playerCount: string;
-  availableMinutes: string;
-  boardCount: string;
-  scenario: TournamentAssistantScenario;
-  rated: boolean;
-  chess960: boolean;
-  needsQr: boolean;
-};
-
-type TournamentAssistantRecommendation = {
-  title: string;
-  format: number;
-  formatLabel: string;
-  plannedRounds: number;
-  scoringSystem: number;
-  scoringLabel: string;
-  estimatedRoundMinutes: number;
-  estimatedTotalMinutes: number;
-  estimatedBoards: number;
-  timeFit: 'ok' | 'tight' | 'blocked';
-  timeFitLabel: string;
-  setupSteps: string[];
-  warnings: string[];
-  operatorChecklist: string[];
-  exportPlan: string[];
-  handoffPrompt: string;
-};
-
-
-type KnowledgeChatRole = 'user' | 'assistant';
-
-type KnowledgeChatMessage = {
-  id: string;
-  role: KnowledgeChatRole;
-  text: string;
-  sources: string[];
-};
-
-type KnowledgeTopic = {
-  id: string;
-  title: string;
-  keywords: string[];
-  answer: string;
-  steps: string[];
-  sources: string[];
-};
-
-type KnowledgeBase = {
-  sourceVersion: string;
-  sourceUpdated: string;
-  providerMode: 'local-only';
-  privacyNotice: string;
-  quickQuestions: string[];
-  topics: KnowledgeTopic[];
-};
+import type {
+  Health,
+  BeforeInstallPromptEvent,
+  PwaStatus,
+  RatingProfile,
+  Player,
+  GameResult,
+  Chess960StartPosition,
+  Pairing,
+  PairingAudit,
+  TournamentRound,
+  StandingRow,
+  Tournament,
+  AuditJournalEntry,
+  CategoryStandingTable,
+  CrossTable,
+  CrossTablePlayer,
+  CrossTableRow,
+  CrossTableCell,
+  HeroCupRow,
+  BoardDiagnostic,
+  RoundDiagnostics,
+  PairingQualityBoard,
+  PairingQualityReport,
+  NextRoundPreview,
+  ExternalPlayerProviderInfo,
+  ExternalPlayerProfile,
+  ExternalPlayerLookupResult,
+  ExternalPlayerAggregateSourceResult,
+  ExternalPlayerAggregateResult,
+  ExternalPlayerDuplicateMatch,
+  ExternalPlayerDuplicateCheck,
+  ExternalPlayerApplyResult,
+  PlayerImportPreview,
+  PlayerImportPreviewRow,
+  PairingEdit,
+  SettingsForm,
+  TournamentAssistantScenario,
+  TournamentAssistantForm,
+  TournamentAssistantRecommendation,
+  KnowledgeChatRole,
+  KnowledgeChatMessage,
+  KnowledgeTopic,
+  KnowledgeBase,
+} from './api/contracts';
 
 const localKnowledgeBase = rawLocalKnowledgeBase as KnowledgeBase;
 const knowledgeQuickQuestions = localKnowledgeBase.quickQuestions;
@@ -554,35 +147,6 @@ const defaultTournamentAssistantForm: TournamentAssistantForm = {
   chess960: false,
   needsQr: true
 };
-
-function assistantNumber(value: string, fallback: number, min: number, max: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-
-  return Math.min(max, Math.max(min, Math.round(parsed)));
-}
-
-function recommendedSwissRounds(playerCount: number): number {
-  if (playerCount <= 4) return 3;
-  if (playerCount <= 8) return 5;
-  if (playerCount <= 16) return 5;
-  if (playerCount <= 32) return 6;
-  if (playerCount <= 64) return 7;
-  return 9;
-}
-
-function assistantScenarioRoundMinutes(form: TournamentAssistantForm): number {
-  switch (form.scenario) {
-    case 'blitz': return 12;
-    case 'youth': return 18;
-    case 'chess960': return 22;
-    case 'open': return 30;
-    case 'team': return 35;
-    default: return 20;
-  }
-}
 
 function buildTournamentAssistantRecommendation(form: TournamentAssistantForm): TournamentAssistantRecommendation {
   const playerCount = assistantNumber(form.playerCount, 12, 2, 512);
@@ -837,32 +401,6 @@ const emptySettingsForm: SettingsForm = {
   heroCupMinimumRatedGames: '1',
   tiebreaks: defaultTiebreaks
 };
-
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init
-  });
-  if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const body = await response.json() as { error?: string };
-      message = body.error ?? message;
-    } catch {
-      // ignore non-json error body
-    }
-    throw new Error(message);
-  }
-  return await response.json() as T;
-}
-
-async function requestText(url: string): Promise<string> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  return await response.text();
-}
 
 function readLocalStorage(key: string): string | null {
   try {
@@ -4945,7 +4483,9 @@ function openRoundPrint(roundNumber: number) {
 
 const boardDiceParams = parseBoardDiceParams(window.location.search);
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <I18nProvider>
-    {boardDiceParams ? <MobileDicePage params={boardDiceParams} /> : <App />}
-  </I18nProvider>
+  <ErrorBoundary>
+    <I18nProvider>
+      {boardDiceParams ? <MobileDicePage params={boardDiceParams} /> : <App />}
+    </I18nProvider>
+  </ErrorBoundary>
 );

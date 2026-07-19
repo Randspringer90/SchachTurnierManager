@@ -2759,3 +2759,33 @@ summary:focus-visible,
     min-height: 44px;
   }
 }
+
+/* STM-FE-013: top-level error boundary fallback */
+.app-error-boundary {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 2rem;
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 0.75rem;
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+  text-align: center;
+}
+.app-error-boundary h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+.app-error-boundary p { margin: 0.5rem 0; line-height: 1.5; }
+.app-error-boundary__detail {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  text-align: left;
+  font-size: 0.85rem;
+  background: rgba(127, 127, 127, 0.12);
+  border-radius: 0.5rem;
+}
+.app-error-boundary__reload {
+  margin-top: 1rem;
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+}

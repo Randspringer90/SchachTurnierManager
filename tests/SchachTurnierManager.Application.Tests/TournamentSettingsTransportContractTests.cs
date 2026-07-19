@@ -113,14 +113,18 @@ public sealed class TournamentSettingsTransportContractTests
     {
         var contracts = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Contracts.cs"));
         var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+        // STM-FE-013: the UI/API contract types were extracted from main.tsx into a
+        // dedicated module. Type-field declarations are asserted there; the wiring
+        // (form <-> settings mapping) stays asserted against main.tsx.
+        var uiContracts = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "api", "contracts.ts"));
 
         Assert.Contains("UpdateTournamentSettingsRequest(TournamentSettings Settings)", contracts);
-        Assert.Contains("unplayedRoundBuchholzMode: number", ui);
+        Assert.Contains("unplayedRoundBuchholzMode: number", uiContracts);
         Assert.Contains("unplayedRoundBuchholzMode: form.unplayedRoundBuchholzMode", ui);
         Assert.Contains("settings.unplayedRoundBuchholzMode ?? 0", ui);
         Assert.Contains("FIDE-Modus (Schweizer)", ui);
-        Assert.Contains("pairingStrategy: number", ui);
-        Assert.Contains("swissInitialColour: number", ui);
+        Assert.Contains("pairingStrategy: number", uiContracts);
+        Assert.Contains("swissInitialColour: number", uiContracts);
         Assert.Contains("pairingStrategy: form.pairingStrategy", ui);
         Assert.Contains("swissInitialColour: form.swissInitialColour", ui);
         Assert.Contains("settings.pairingStrategy ?? 0", ui);
