@@ -169,9 +169,13 @@ never by disabling a check.
 `SchachTurnierManager_Setup_0.54.1.exe`, 38,556,523 bytes, SHA-256
 `D5D9E1DFE3A20209609F0DE9AC6E9B5468FF8E7F19D8DC253534961DA2D8CAE0`, **unsigned**.
 
-It was rebuilt after the final documentation commit so the artifact is tied to
-the actual head `9fe2443`, not to an earlier commit. The first build (at
-`eee20dd`) was discarded rather than relabelled.
+Built from `9fe2443`. The first build (at `eee20dd`) was discarded and rebuilt
+rather than relabelled.
+
+Commits after `9fe2443` touch `docs/` only and change no build input — verify
+with `git diff --name-only 9fe2443 HEAD`. The artifact therefore still
+corresponds to the candidate. If any non-documentation file changes, the
+installer must be rebuilt and its hash re-recorded before the artifact is used.
 
 No Android APK: PR #49 is unmerged, so no companion source exists at the
 candidate SHA.
