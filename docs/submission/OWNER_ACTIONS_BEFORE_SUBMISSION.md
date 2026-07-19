@@ -2,6 +2,50 @@
 
 Complete these actions in order. None is represented as already complete.
 
+## 0. State after the run of 2026-07-19 (read first)
+
+That run had **no network access at all**: `github.com:443` and
+`registry.npmjs.org:443` were both unreachable and the stored `gh` token is
+invalid. Consequently **nothing was pushed, no pull request was opened, updated
+or merged, and no CI ran.** Everything it produced exists only in the local
+clone.
+
+| Item | State |
+|---|---|
+| Candidate branch | `integration/final-candidate` at `eee20dd50e7403d4728367ce69ef6eb80d985d99`, **local only** |
+| Base | `development` at `995d1a1f50fc883e8533d69eddcc8f894555cf84` |
+| PR #51 scope (Build Week UX, demo) | integrated into the candidate branch locally |
+| STM-FE-013/014 frontend modularization | integrated; `main.tsx` is now a 23-line bootstrap |
+| Firefox reset/delete fix | implemented and unit/guard tested; **manual browser pass still owed** |
+| PR #49 (Android companion) | **not merged**, see below |
+| Windows Setup | built from the candidate: `SchachTurnierManager_Setup_0.54.1.exe`, SHA-256 `A4E44D6D997248FC40C0943054A2CB9B5A218B333C87854A6D0438C6EB181707`, unsigned |
+| Android APK | **not produced** |
+
+**First action:** restore network/auth and push, otherwise none of the above
+reaches `origin/development`.
+
+```powershell
+gh auth refresh -h github.com
+git fetch origin --prune
+git log --oneline origin/development..integration/final-candidate
+git push -u origin integration/final-candidate
+```
+
+### Why PR #49 was deliberately not merged
+
+Merging it would have invalidated the gate built to make it safe.
+`config/pull-request-artifact-attestations.json` pins 30 binary artifacts to
+head `5aecee91…` **and** base `a6f68e8`. `development` has since moved to
+`995d1a1`, so that attestation no longer covers a merge onto the current
+candidate, and the approval is explicitly `OWNER_REVIEW_REQUIRED`. Committing
+binaries into a public repository stays an owner decision. Either re-verify and
+re-issue the attestation against the new base, or rebuild the companion from a
+fresh branch off the merged candidate and replace #49.
+
+Until that is resolved there is no APK for this candidate, and section B of
+`OWNER_MANUAL_TEST.md` cannot be run. Do not present an older APK as this
+candidate.
+
 ## Repository and merge control
 
 1. Resolve the public-repository licence decision in `LICENSE_DECISION.md`.

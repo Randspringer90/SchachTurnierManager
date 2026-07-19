@@ -4,6 +4,25 @@ Run only against filenames and hashes from the final `artifact-manifest.json`. R
 candidate SHA, version, Windows build, Galaxy model/Android version, timestamps and tester. Use a
 fresh synthetic profile; do not modify a real tournament database.
 
+## Candidate under test (run of 2026-07-19)
+
+| Item | Value |
+|---|---|
+| Candidate commit | `eee20dd50e7403d4728367ce69ef6eb80d985d99` |
+| Branch | `integration/final-candidate` — **local only, not yet pushed** |
+| App version | 0.54.1 |
+| Setup | `SchachTurnierManager_Setup_0.54.1.exe` |
+| SHA-256 | `A4E44D6D997248FC40C0943054A2CB9B5A218B333C87854A6D0438C6EB181707` |
+| Size | 38,553,710 bytes (36.77 MB) |
+| Signature | **unsigned** — SmartScreen will warn ("unknown publisher"). No production code-signing certificate exists for this project. |
+| Android APK | **not produced by this run** — see section B. |
+
+Verify the hash before running the setup:
+
+```powershell
+Get-FileHash .\SchachTurnierManager_Setup_0.54.1.exe -Algorithm SHA256
+```
+
 ## Result classes
 
 - **P0 Submission blocker:** installation, launch, core data integrity, pairing/result path,
@@ -33,7 +52,60 @@ Mark every step Pass, Fail or Not applicable and attach a public-safe screenshot
 14. Uninstall through Windows.
 15. Confirm binaries/shortcuts are removed and document whether local tournament data was retained.
 
+## A2. Reset and delete — the Firefox regression (run in Firefox first, then Chromium)
+
+This is the defect this candidate fixes, and it is on the recorded judge path.
+Previously the flow used `window.confirm` and then `window.prompt`; Firefox
+suppresses repeated modal dialogs from the same script turn ("prevent this page
+from creating additional dialogs"), which silently aborted the delete and left a
+stale selection behind. Both actions now use an in-app dialog.
+
+Open *More → Admin → Dangerous actions*.
+
+**Reset**
+
+1. Press **Turnier zurücksetzen**.
+   - An in-app dialog opens. **No** native browser dialog appears at any point.
+   - The dialog names the tournament and lists the exact consequences:
+     participants and settings kept; rounds, results and Chess960 starting
+     positions removed.
+2. Press `Esc` — the dialog closes and nothing changed.
+3. Click outside the dialog — it closes and nothing changed.
+4. Reopen and use the keyboard only: `Tab` and `Shift+Tab` cycle inside the
+   dialog and never move focus behind it.
+5. Cancel — focus returns to the *Turnier zurücksetzen* button.
+6. Confirm — participants and settings remain, rounds and results are gone.
+
+**Delete**
+
+7. Press **Turnier löschen**.
+   - An in-app dialog opens. **No** native `confirm` and **no** native `prompt`
+     appears at any point.
+8. The delete button stays disabled until the tournament name is typed exactly.
+   Verify that wrong case, a leading/trailing space and a partial name all keep
+   it disabled, and that the exact name enables it.
+9. Confirm — the tournament is deleted, the list refreshes and another
+   tournament is selected automatically.
+10. Double-click the confirm button on a second tournament: the button shows a
+    loading state and disables itself; exactly one delete request is sent.
+11. Delete the last remaining tournament: a clean empty state appears with no
+    error banner and no request against the deleted id.
+12. Repeat steps 1–11 in Chromium/Edge.
+
+Anything failing here is **P0** for the demo video.
+
 ## B. Samsung Galaxy S25
+
+> **Not deliverable from this run.** No APK was produced. The Android companion
+> (PR #49) is not merged: its 30 binary artifacts are pinned to an
+> `OWNER_REVIEW_REQUIRED` attestation bound to base `a6f68e8`, which
+> `development` (`995d1a1`) has since superseded, and this run had no network
+> access to update, re-verify or merge the pull request. See
+> `docs/submission/OWNER_ACTIONS_BEFORE_SUBMISSION.md`.
+>
+> Do not install an older APK from a previous run and present it as this
+> candidate — it would not match the candidate commit. Run the steps below only
+> once a companion APK has been built from the merged candidate SHA.
 
 1. Verify APK filename and SHA-256 against the final manifest.
 2. Deliberately enable installation from the chosen trusted file source; do not weaken unrelated

@@ -100,6 +100,13 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-010 | Blitz-/Schnellschach-Vorlagen | P3 | Backlog | pairing | friend | – | post-1.0 |
 | STM-UX-012 | Öffentliche Live-Anzeige im lokalen Netzwerk (read-only) | P3 | Backlog | ui | either | – | post-1.0 |
 | STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | Done | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (Original-PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), sichere Adoption [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36)) | v1.0.0 |
+| STM-UX-013 | Zurücksetzen/Löschen ohne native Browserdialoge (Firefox-Fix) | P1 | Done | ui | owner | – (Commit `b4f9008` auf `integration/final-candidate`; **Achtung:** die Commit-Betreffzeile nennt versehentlich `STM-UX-012`, das an die read-only Live-Anzeige vergeben ist. Kanonisch gilt diese Zeile.) | v1.0.0 |
+| STM-FE-013 | WebApp-Contracts, HTTP-Client und Assistentenlogik aus `main.tsx` lösen | P2 | Done | ui | owner | – (Branch `feature/STM-FE-013-frontend-modularization`, in `integration/final-candidate` gemergt) | v1.0.0 |
+| STM-FE-014 | `main.tsx` auf Bootstrap reduzieren, App-Shell und Libs extrahieren | P2 | Done | ui | owner | – (Commit `b174519`; 4550 → 23 Zeilen; Contract-Checks prüfen jetzt den ganzen Quellbaum) | v1.0.0 |
+| STM-FE-015 | `app/App.tsx` (3253 Zeilen) in Featurebereiche zerlegen | P2 | Backlog | ui | either | – (Folge von STM-FE-014: Teilnehmer, Runden/Ergebnisse, Tabelle/Export, Einstellungen, Assistent je eigenes Modul; verhaltensbewahrend, kein neues God-Component) | post-1.0 |
+| STM-API-003 | Turnierpaket-Exportendpunkte bereitstellen | P2 | Done | infrastructure | owner | – (Commit `0f5c2bb`; Formatter/Service existierten, die beiden Routen fehlten; Operator-Smoke 31 OK / 0 Fehler) | v1.0.0 |
+| STM-DOC-002 | Repository- und KI-Adapter-Layout konsolidieren | P2 | Done | documentation | owner | – (Commits `ab61005`, `eee20dd`; `.codex`-Adapter, REPOSITORY_LAYOUT.md, AI_PROVIDER_ADAPTERS.md, docs/ai/README.md) | v1.0.0 |
+| STM-REL-004 | Veraltete Vite-Bundles aus dem Installer entfernen | P3 | Backlog | release | either | – (Frontend-Build läuft mit `--emptyOutDir false`; dadurch liegen ~5 MB tote `index-*.js`/`.css` im ausgelieferten `wwwroot`. `index.html` referenziert das korrekte Bundle.) | post-1.0 |
 
 ---
 

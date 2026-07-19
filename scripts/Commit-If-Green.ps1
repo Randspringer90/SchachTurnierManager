@@ -52,9 +52,28 @@ function Add-SafeChangedFiles {
         $skipped | ForEach-Object { Write-Host "  $_" }
     }
 
+    # Bei einer Umbenennung liefert der Status alte und neue Seite. Ist die
+    # Umbenennung bereits im Index (git mv), existiert die alte Seite weder im
+    # Worktree noch im Index; git add bricht dann mit "pathspec did not match"
+    # ab und es liesse sich ueberhaupt keine Umbenennung committen. Solche
+    # bereits aufgeloesten Pfade werden hier verworfen, statt pauschal zu stagen.
+    $addable = @($paths | Where-Object {
+        if (Test-Path -LiteralPath $_) { return $true }
+        & git ls-files --error-unmatch -- $_ 2>$null | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    })
+    $resolved = @($paths | Where-Object { $addable -notcontains $_ })
+    if ($resolved.Count -gt 0) {
+        Write-Host '[CommitGuard] Bereits im Index aufgeloeste Pfade (z. B. alte Seite einer Umbenennung):'
+        $resolved | ForEach-Object { Write-Host "  $_" }
+    }
+    if ($addable.Count -eq 0) { Write-Host '[CommitGuard] Keine zusaetzlich stagebaren Pfade.'; return }
+
     Write-Host '[CommitGuard] Stage explizit gepruefter Pfade, kein git add --all:'
-    $paths | ForEach-Object { Write-Host "  $_" }
-    & git add -- @paths
+    $addable | ForEach-Object { Write-Host "  $_" }
+    # -A gilt hier nur fuer die oben einzeln geprueften Pfade, nicht fuer den Baum,
+    # erfasst aber auch Loeschungen (unstaged umbenannte Dateien).
+    & git add -A -- @addable
     if ($LASTEXITCODE -ne 0) { throw "git add fuer gepruefte Pfade ist fehlgeschlagen mit Exitcode $LASTEXITCODE." }
 }
 
