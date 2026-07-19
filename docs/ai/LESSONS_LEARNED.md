@@ -4,6 +4,16 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-07-18 — Dateiinventare brauchen dieselbe Pfadnormalisierung wie der Git-Index
+
+- Kontext: Read-only Repository-Hygiene-Audit vor der Build-Week-Integration.
+- Lesson: Git liefert kanonische Pfade mit `/`, während eine Windows-Dateisysteminventur zunächst
+  `\` verwendet. Ein Mengenvergleich ohne Normalisierung kann tausende getrackte Dateien
+  fälschlich als ungetrackte Quellen klassifizieren, obwohl `git ls-files --others` leer ist.
+- Konsequenz: Beide Pfadmengen werden vor der Klassifizierung auf `/` normalisiert; Summen werden
+  zusätzlich gegen Git-untracked und Git-ignored abgeglichen. Fehlerhafte Zwischenklassifizierungen
+  werden verworfen und nicht als Evidence persistiert.
+
 ## 2026-07-18 — Erwartungswerte schützen nur innerhalb einer atomaren Schreibgrenze
 
 - Kontext: Unabhängiger Technik-Review der bestätigten Desktop-/Companion-Ergebniseingabe.
