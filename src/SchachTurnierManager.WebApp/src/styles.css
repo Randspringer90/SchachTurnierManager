@@ -2789,3 +2789,76 @@ summary:focus-visible,
   cursor: pointer;
   border-radius: 0.5rem;
 }
+
+/* Accessible in-app confirmation dialog (replaces window.confirm/prompt). */
+.confirm-dialog {
+  width: min(560px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.confirm-dialog h3 {
+  margin-top: 0;
+}
+
+.confirm-dialog-destructive {
+  border: 1px solid rgba(248, 113, 113, 0.55);
+}
+
+.confirm-dialog-consequences {
+  margin: 0.75rem 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.confirm-dialog-typed {
+  margin: 1rem 0 0.5rem;
+}
+
+.confirm-dialog-typed label {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.confirm-dialog-typed-target {
+  margin: 0 0 0.4rem;
+}
+
+.confirm-dialog-typed-target code {
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgba(127, 127, 127, 0.18);
+  word-break: break-word;
+}
+
+.confirm-dialog-typed input {
+  width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.confirm-dialog-error {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.confirm-dialog-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.confirm-dialog-actions button {
+  min-height: 2.75rem;
+}
+
+.confirm-dialog-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

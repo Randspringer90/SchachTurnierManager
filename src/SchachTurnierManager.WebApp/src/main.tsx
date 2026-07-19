@@ -6,6 +6,9 @@ import rawLocalKnowledgeBase from './knowledge/localKnowledgeBase.json';
 import { requestJson, requestText } from './api/client';
 import { assistantNumber, recommendedSwissRounds, assistantScenarioRoundMinutes } from './lib/assistant';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ConfirmDialog } from './components/dialogs/ConfirmDialog';
+import { canDispatchDestructiveAction, selectNextTournamentId } from './lib/destructiveActions';
+import type { DestructiveAction, DestructiveDialogState } from './lib/destructiveActions';
 import './styles.css';
 
 import type {
@@ -1197,6 +1200,7 @@ function App() {
   const [diceSpin, setDiceSpin] = React.useState(0);
   const [diceFace, setDiceFace] = React.useState(0);
   const [boardDiceModal, setBoardDiceModal] = React.useState<{ roundNumber: number; boardNumber: number } | null>(null);
+  const [destructiveDialog, setDestructiveDialog] = React.useState<DestructiveDialogState | null>(null);
   const [boardDiceTab, setBoardDiceTab] = React.useState<'browser' | 'qr'>('browser');
   const [laptopIp, setLaptopIp] = React.useState<string>(() => readLocalStorage('stm.laptopIp') ?? defaultLanHost());
   const [diceUrlCopied, setDiceUrlCopied] = React.useState(false);
@@ -1609,72 +1613,64 @@ function App() {
     await refresh(updated.id);
   }
 
-  async function resetSelectedTournament() {
+  function openDestructiveDialog(action: DestructiveAction): void {
     if (!selectedTournament) {
       return;
     }
 
-    const target = selectedTournament;
-    const confirmed = window.confirm(
-      `Turnier "${target.name}" wirklich auf Start zurücksetzen?\n\n` +
-      `• Teilnehmer und Einstellungen BLEIBEN erhalten.\n` +
-      `• Alle Runden, Ergebnisse und Chess960-Startstellungen werden GELÖSCHT.\n\n` +
-      `Empfehlung: Vorher unten "Jetzt Backup erstellen" nutzen.`
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setError(null);
-    try {
-      const updated = await requestJson<Tournament>(`/api/tournaments/${target.id}/reset`, { method: 'POST' });
-      setNextRoundPreview(null);
-      setIsNextRoundPreviewDialogOpen(false);
-      setChess960DialogRound(null);
-      setPairingQualityReports({});
-      setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
-      await refresh(updated.id);
-    } catch (ex) {
-      setError(`Zurücksetzen fehlgeschlagen: ${ex instanceof Error ? ex.message : String(ex)}`);
-    }
+    setDestructiveDialog({
+      action,
+      tournamentId: selectedTournament.id,
+      tournamentName: selectedTournament.name,
+      busy: false,
+      error: null
+    });
   }
 
-  async function deleteSelectedTournament() {
-    if (!selectedTournament) {
+  function closeDestructiveDialog(): void {
+    setDestructiveDialog(current => (current && current.busy ? current : null));
+  }
+
+  async function confirmDestructiveDialog(): Promise<void> {
+    if (!canDispatchDestructiveAction(destructiveDialog)) {
       return;
     }
 
-    const target = selectedTournament;
-    const confirmed = window.confirm(
-      `Turnier "${target.name}" wirklich LÖSCHEN?\n\n` +
-      `Das gesamte Turnier inkl. Teilnehmer, Runden und Ergebnisse wird endgültig aus der lokalen Datenbank entfernt.\n` +
-      `Dies ist NICHT dasselbe wie Zurücksetzen.\n\n` +
-      `Empfehlung: Vorher unten "Jetzt Backup erstellen" nutzen.`
-    );
-    if (!confirmed) {
-      return;
-    }
-    const confirmedName = window.prompt(`Zur Sicherheit den Turniernamen exakt eingeben, um das Löschen zu bestätigen:\n\n${target.name}`);
-    if (confirmedName !== target.name) {
-      setStatus('Löschen abgebrochen: Turniername wurde nicht exakt bestätigt.');
-      return;
-    }
-
+    const pending = destructiveDialog!;
+    setDestructiveDialog({ ...pending, busy: true, error: null });
     setError(null);
+
     try {
-      await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${target.id}`, { method: 'DELETE' });
-      setStatus(`Turnier gelöscht: ${target.name}.`);
-      setSelectedId('');
+      if (pending.action === 'reset') {
+        const updated = await requestJson<Tournament>(`/api/tournaments/${pending.tournamentId}/reset`, { method: 'POST' });
+        setNextRoundPreview(null);
+        setIsNextRoundPreviewDialogOpen(false);
+        setChess960DialogRound(null);
+        setPairingQualityReports({});
+        setDestructiveDialog(null);
+        setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
+        await refresh(updated.id);
+        return;
+      }
+
+      await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${pending.tournamentId}`, { method: 'DELETE' });
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
       setChess960DialogRound(null);
       setPairingQualityReports({});
+      setDestructiveDialog(null);
+      setStatus(`Turnier gelöscht: ${pending.tournamentName}.`);
+
       const data = await loadTournaments();
-      const nextId = data.find(item => item.id !== target.id)?.id ?? data[0]?.id ?? '';
+      const nextId = selectNextTournamentId(data, pending.tournamentId);
       setSelectedId(nextId);
       await loadDerived(nextId);
     } catch (ex) {
-      setError(`Löschen fehlgeschlagen: ${ex instanceof Error ? ex.message : String(ex)}`);
+      const message = ex instanceof Error ? ex.message : String(ex);
+      const prefix = pending.action === 'reset' ? 'Zurücksetzen fehlgeschlagen' : 'Löschen fehlgeschlagen';
+      // Keep the dialog open so the operator sees the backend error in context
+      // instead of losing it behind a closed modal.
+      setDestructiveDialog({ ...pending, busy: false, error: `${prefix}: ${message}` });
     }
   }
 
@@ -2919,6 +2915,69 @@ function openRoundPrint(roundNumber: number) {
         );
       })()}
 
+      {destructiveDialog?.action === 'reset' && (
+        <ConfirmDialog
+          open
+          title={lang === 'en' ? 'Reset tournament?' : 'Turnier zurücksetzen?'}
+          description={
+            lang === 'en'
+              ? `Reset "${destructiveDialog.tournamentName}" back to its starting state?`
+              : `Turnier „${destructiveDialog.tournamentName}“ wirklich auf Start zurücksetzen?`
+          }
+          consequences={
+            lang === 'en'
+              ? [
+                  'Participants and settings are kept.',
+                  'All rounds, results and Chess960 starting positions are removed.',
+                  'Recommendation: create a backup first.'
+                ]
+              : [
+                  'Teilnehmer und Einstellungen bleiben erhalten.',
+                  'Alle Runden, Ergebnisse und Chess960-Startstellungen werden entfernt.',
+                  'Empfehlung: vorher ein Backup erstellen.'
+                ]
+          }
+          confirmLabel={lang === 'en' ? 'Reset tournament' : 'Turnier zurücksetzen'}
+          cancelLabel={lang === 'en' ? 'Cancel' : 'Abbrechen'}
+          busy={destructiveDialog.busy}
+          busyLabel={lang === 'en' ? 'Resetting…' : 'Wird zurückgesetzt…'}
+          errorMessage={destructiveDialog.error}
+          onConfirm={() => void confirmDestructiveDialog()}
+          onCancel={closeDestructiveDialog}
+        />
+      )}
+
+      {destructiveDialog?.action === 'delete' && (
+        <ConfirmDialog
+          open
+          destructive
+          title={lang === 'en' ? 'Delete tournament permanently?' : 'Turnier endgültig löschen?'}
+          description={
+            lang === 'en'
+              ? `"${destructiveDialog.tournamentName}" including all participants, rounds and results will be removed from the local database. This cannot be undone and is not the same as resetting.`
+              : `„${destructiveDialog.tournamentName}“ wird mit allen Teilnehmern, Runden und Ergebnissen endgültig aus der lokalen Datenbank entfernt. Das lässt sich nicht rückgängig machen und ist nicht dasselbe wie Zurücksetzen.`
+          }
+          consequences={
+            lang === 'en'
+              ? ['Recommendation: create a backup first.']
+              : ['Empfehlung: vorher ein Backup erstellen.']
+          }
+          requireTypedConfirmation={destructiveDialog.tournamentName}
+          typedConfirmationLabel={
+            lang === 'en'
+              ? 'Type the tournament name exactly to confirm:'
+              : 'Zur Sicherheit den Turniernamen exakt eingeben:'
+          }
+          confirmLabel={lang === 'en' ? 'Delete tournament' : 'Turnier löschen'}
+          cancelLabel={lang === 'en' ? 'Cancel' : 'Abbrechen'}
+          busy={destructiveDialog.busy}
+          busyLabel={lang === 'en' ? 'Deleting…' : 'Wird gelöscht…'}
+          errorMessage={destructiveDialog.error}
+          onConfirm={() => void confirmDestructiveDialog()}
+          onCancel={closeDestructiveDialog}
+        />
+      )}
+
       {nextRoundPreview && isNextRoundPreviewDialogOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}>
           <article className={`card preview-card preview-modal ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
@@ -3500,8 +3559,8 @@ function openRoundPrint(roundNumber: number) {
               <h3>Gefährliche Aktionen</h3>
               <p className="muted">Zurücksetzen behält Teilnehmer und Einstellungen, löscht aber alle Runden, Ergebnisse und Chess960-Startstellungen. Löschen entfernt das gesamte Turnier und verlangt die exakte Eingabe des Turniernamens.</p>
               <div className="actions">
-                <button type="button" className="secondary" onClick={() => void resetSelectedTournament()} disabled={!selectedTournament}>Turnier zurücksetzen</button>
-                <button type="button" className="danger" onClick={() => void deleteSelectedTournament()} disabled={!selectedTournament}>Turnier löschen</button>
+                <button type="button" className="secondary" onClick={() => openDestructiveDialog('reset')} disabled={!selectedTournament}>Turnier zurücksetzen</button>
+                <button type="button" className="danger" onClick={() => openDestructiveDialog('delete')} disabled={!selectedTournament}>Turnier löschen</button>
               </div>
             </article>
           )}
