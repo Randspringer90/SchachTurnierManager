@@ -95,3 +95,17 @@ small, separate Owner package that:
 5. avoids source-tree moves or frontend refactoring in the same commit.
 
 No broad cosmetic move is recommended before the submission freeze.
+
+## Status of that package (2026-07-19)
+
+Executed on `integration/final-candidate` as `[STM-DOC-002]`, in its own commit:
+
+| Item | State |
+|---|---|
+| 1 — `.codex/` adapter | **Done.** `.codex/README.md` and `.codex/config.example.toml` are tracked; the ignore rule was narrowed from `.codex/` to `.codex/*` plus two exemptions, so real local config stays ignored. |
+| 2 — provider adapters | **Done.** `docs/architecture/AI_PROVIDER_ADAPTERS.md` describes the layering, trust boundaries, model routing and per-participant attribution without restating `AGENTS.md`. |
+| 3 — secret paths | **Done (documentation only).** No file was moved. Verified that `Set-LocalSecret.ps1` writes exclusively to `.secrets/local/`, and that `Get-LocalSecret.ps1` and `Invoke-NpmSafe.ps1` read `secrets/local/` only as a compatibility fallback. Both READMEs already state the preference; `REPOSITORY_LAYOUT.md` now records it. |
+| 4 — layout and AI indexes | **Done.** `docs/architecture/REPOSITORY_LAYOUT.md` and `docs/ai/README.md` added. |
+| 5 — no mixed concerns | **Held.** The frontend modularization (`STM-FE-014`) is a separate commit; this package touches no source tree. |
+
+No repository-wide cosmetic move was performed.
