@@ -906,6 +906,34 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/print/html", (Gu
     }
 });
 
+// Tournament package: printable pack (standings, current-round result sheet,
+// operator safety hints) and the machine readable equivalent. The formatter and
+// the service layer already implemented both; only these routes were missing,
+// so Smoke-OperatorWorkflow could never reach the feature.
+app.MapGet("/api/tournaments/{id:guid}/package/print/html", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportPrintableTournamentPackageHtml(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/package/export.json", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportTournamentPackageJson(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
 if (embeddedDashboardAvailable)
 {
     app.MapFallbackToFile("index.html");
