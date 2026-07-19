@@ -1,5 +1,20 @@
 ## Unreleased (development)
 
+- STM-FACH-012 / Build Week UX: Die WebApp bietet im kurzen Anlagepfad nun eine bewusst
+  eingeklappte Auswahl zwischen Optimal V2 (weiterhin Default) und FIDE Dutch; die
+  Anfangsfarbe erscheint nur für FIDE Dutch. Bestehende Turniere werden nicht still
+  umgestellt, und nach Runde 1 bleiben die Strategie-Felder gesperrt.
+- Build Week Demo/UX: Fünf primäre Bereiche (Übersicht, Teilnehmer, Runde, Tabelle,
+  Mehr), explizites synthetisches Acht-Spieler-Demo-Turnier, Teilnehmerfilter,
+  reduzierte Standard-Tabelle, Ergebnisbestätigung mit Undo, lokaler Hell-/Dunkelmodus,
+  sichtbarer Fokus und mobile Touch-/Navigationsverbesserungen ergänzt. Deutsch und
+  Englisch sind als vollständiger Demo-Pfad ausgewiesen; weitere Sprachen als Vorschau.
+- Public-Health-Härtung: Der öffentliche Health-Endpunkt und die WebApp geben keine
+  absoluten Datenbank- oder Laufzeitlogpfade mehr aus.
+- Submission-Dokumentation: ehrliche Build-Week-Abgrenzung, Judge-Quickstart,
+  synthetische Demo-/Video-Skripte, UX-Audit, Devpost-Entwurf und manueller Windows-/
+  Galaxy-S25-Testpfad ergänzt. Keine Binaries, Releases oder Uploads.
+
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
   Richtung zu STM-IE-001s Export). `SwissManagerCsvCodec` (Domain) liest/schreibt
   das offizielle Swiss-Manager-Layout aus dem User's Guide, Anhang C, akzeptiert

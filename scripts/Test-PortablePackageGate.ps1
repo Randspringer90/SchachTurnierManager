@@ -129,8 +129,12 @@ try {
         }
     }
 
-    Write-GateStep "Baue Portable-Paket in gitignored tmp/ mit Timeout ${StepTimeoutSeconds}s pro nativen Schritt."
-    & $packScript -OutputRoot $outputRoot -LogRoot $logRoot -NoZip -StepTimeoutSeconds $StepTimeoutSeconds
+    # Nur Parameter uebergeben, die Pack-Portable.ps1 wirklich kennt. Frueher
+    # standen hier zusaetzlich -LogRoot und -StepTimeoutSeconds; die wurden
+    # stillschweigend verworfen, wodurch das Paket im echten output/ landete
+    # und die Pruefungen unterhalb von tmp/ nichts vorfanden.
+    Write-GateStep "Baue Portable-Paket in gitignored tmp/."
+    & $packScript -OutputRoot $outputRoot -NoZip
 
     Write-GateStep "Pruefe Portable-Artefakte."
     Assert-Exists (Join-Path $portableRoot 'app') 'app-Verzeichnis'

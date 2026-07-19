@@ -47,8 +47,19 @@ function Test-IsAllowedTrackedReport([string]$NormalizedPath) {
     return $NormalizedPath -match '^(?i:docs/reports/[^/]+\.md)$'
 }
 
+# .codex/ stays blocked as a directory: a real local Codex configuration
+# (config.toml, auth material, session state) must never be committed. Exactly
+# two adapter files are exempt - a README and an example config carrying only
+# placeholders. The exemption is an explicit file allowlist, not a prefix, so a
+# new file under .codex/ is blocked again by default.
+function Test-IsAllowedTrackedCodexAdapter([string]$NormalizedPath) {
+    return $NormalizedPath -in @('.codex/README.md', '.codex/config.example.toml')
+}
+
 function Test-IsAllowedBlockedPath([string]$NormalizedPath) {
-    return (Test-IsAllowedTrackedLogAnchor $NormalizedPath) -or (Test-IsAllowedTrackedReport $NormalizedPath)
+    return (Test-IsAllowedTrackedLogAnchor $NormalizedPath) `
+        -or (Test-IsAllowedTrackedReport $NormalizedPath) `
+        -or (Test-IsAllowedTrackedCodexAdapter $NormalizedPath)
 }
 
 function Test-IsPatternSource([string]$NormalizedPath, [string]$Content) {

@@ -20,9 +20,14 @@ Dependency-freies i18n-Modul (kein i18next o. Ä., bewusst gemäß AGENTS.md „
 
 ## Unterstützte Sprachen (18)
 
-Vollständig: `de`, `en`, `es`.
-Stubs (fallen auf en/de zurück, Übersetzungen offen): `fr`, `it`, `pt`, `nl`, `pl`, `cs`,
-`sv`, `da`, `hu`, `ru`, `uk`, `tr`, `ar`, `zh`, `ja`.
+Der Build-Week-Demo-Pfad (Einstieg, Hauptnavigation, Demo, Kern-Runden-/Ergebnis- und
+Tabellenaktionen) wird in `de` und `en` gepflegt. Dichte Expertenbereiche wie Audit und
+Verwaltung enthalten noch einzelne deutsche Fachtexte und werden deshalb nicht als vollständig
+übersetzte Gesamtanwendung beworben.
+
+Vorschau mit Fallback auf en/de: `es`, `fr`, `it`, `pt`, `nl`, `pl`, `cs`, `sv`, `da`, `hu`,
+`ru`, `uk`, `tr`, `ar`, `zh`, `ja`. Der Sprachumschalter kennzeichnet diese Gruppe ausdrücklich
+als Vorschau.
 
 ## Arbeitsanweisung für Folge-Läufe (Codex)
 

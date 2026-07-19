@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SchachTurnierManager.Application;
 using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Domain.Services;
@@ -22,6 +23,73 @@ public sealed class TournamentServiceTests
 
         Assert.Equal("Alice", standings[0].Name);
         Assert.Equal(1m, standings[0].Points);
+    }
+
+    [Fact]
+    public void RecordResult_WithStaleExpectedPreviousResult_RejectsOverwrite()
+    {
+        var service = new TournamentService(new InMemoryTournamentStore());
+        var tournament = service.CreateTournament("Concurrent Result Test", new TournamentSettings { Format = TournamentFormat.RoundRobin });
+        service.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 01" });
+        service.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 02" });
+        var round = service.GenerateNextRound(tournament.Id);
+
+        service.RecordResult(
+            tournament.Id,
+            round.RoundNumber,
+            boardNumber: 1,
+            GameResultKind.WhiteWin,
+            expectedPreviousResult: GameResultKind.NotPlayed);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => service.RecordResult(
+            tournament.Id,
+            round.RoundNumber,
+            boardNumber: 1,
+            GameResultKind.Draw,
+            expectedPreviousResult: GameResultKind.NotPlayed));
+
+        Assert.Contains("zwischenzeitlich geändert", exception.Message, StringComparison.OrdinalIgnoreCase);
+        var stored = service.RequireTournament(tournament.Id).Rounds.Single().Pairings.Single();
+        Assert.Equal(GameResultKind.WhiteWin, stored.Result.Kind);
+    }
+
+    [Fact]
+    public async Task RecordResult_ConcurrentSameExpectedValue_AllowsExactlyOneWriter()
+    {
+        var store = new CoordinatedTournamentStore();
+        var setup = new TournamentService(store);
+        var tournament = setup.CreateTournament("Concurrent Result Test", new TournamentSettings { Format = TournamentFormat.RoundRobin });
+        setup.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 01" });
+        setup.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 02" });
+        var round = setup.GenerateNextRound(tournament.Id);
+        var boardNumber = round.Pairings.Single().BoardNumber;
+        store.CoordinateNextTwoNonAtomicSaves();
+
+        using var start = new ManualResetEventSlim(false);
+        async Task<bool> TryWriteAsync(GameResultKind result)
+        {
+            return await Task.Run(() =>
+            {
+                var service = new TournamentService(store);
+                start.Wait();
+                try
+                {
+                    service.RecordResult(tournament.Id, round.RoundNumber, boardNumber, result, GameResultKind.NotPlayed);
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
+            });
+        }
+
+        var whiteWrite = TryWriteAsync(GameResultKind.WhiteWin);
+        var blackWrite = TryWriteAsync(GameResultKind.BlackWin);
+        start.Set();
+        var outcomes = await Task.WhenAll(whiteWrite, blackWrite);
+
+        Assert.Single(outcomes, success => success);
     }
 
     [Fact]
@@ -178,6 +246,79 @@ public sealed class TournamentServiceTests
 
         Assert.Equal(3, declaredCount);
         Assert.Equal(3, playerLineCount);
+    }
+
+    private sealed class CoordinatedTournamentStore : ITournamentStore
+    {
+        private readonly object _sync = new();
+        private readonly Dictionary<Guid, TournamentState> _tournaments = new();
+        private CountdownEvent? _saveBarrier;
+
+        public IReadOnlyList<TournamentState> List()
+        {
+            lock (_sync)
+            {
+                return _tournaments.Values.Select(Clone).ToList();
+            }
+        }
+
+        public TournamentState? Get(Guid id)
+        {
+            lock (_sync)
+            {
+                return _tournaments.TryGetValue(id, out var tournament) ? Clone(tournament) : null;
+            }
+        }
+
+        public void Save(TournamentState tournament)
+        {
+            var barrier = _saveBarrier;
+            if (barrier is not null)
+            {
+                barrier.Signal();
+                if (!barrier.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    throw new TimeoutException("The concurrency test save barrier timed out.");
+                }
+            }
+
+            lock (_sync)
+            {
+                _tournaments[tournament.Id] = Clone(tournament);
+            }
+        }
+
+        public TResult UpdateAtomically<TResult>(Guid id, Func<TournamentState, TResult> update)
+        {
+            lock (_sync)
+            {
+                if (!_tournaments.TryGetValue(id, out var stored))
+                {
+                    throw new InvalidOperationException($"Turnier {id} wurde nicht gefunden.");
+                }
+
+                var workingCopy = Clone(stored);
+                var result = update(workingCopy);
+                _tournaments[id] = workingCopy;
+                return result;
+            }
+        }
+
+        public bool Delete(Guid id)
+        {
+            lock (_sync)
+            {
+                return _tournaments.Remove(id);
+            }
+        }
+
+        public void CoordinateNextTwoNonAtomicSaves() => _saveBarrier = new CountdownEvent(2);
+
+        private static TournamentState Clone(TournamentState tournament)
+        {
+            var json = JsonSerializer.Serialize(tournament);
+            return JsonSerializer.Deserialize<TournamentState>(json)!;
+        }
     }
 
     private static void AddPlayers(TournamentService service, Guid tournamentId, int count, string prefix)
