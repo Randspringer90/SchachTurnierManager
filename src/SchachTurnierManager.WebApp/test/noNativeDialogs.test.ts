@@ -2,42 +2,68 @@
 // browser dialogs. Firefox suppresses repeated modal dialogs from the same
 // script turn ("prevent this page from creating additional dialogs"), which
 // silently aborted the delete confirmation chain.
+//
+// The scan covers the whole frontend source tree so the regression cannot
+// reappear in a newly extracted module either.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const mainSource = readFileSync(fileURLToPath(new URL('../src/main.tsx', import.meta.url)), 'utf8');
+const srcRoot = fileURLToPath(new URL('../src', import.meta.url));
 
-/** Lines that call a native modal dialog, ignoring the PWA install prompt. */
-function nativeDialogLines(source: string): string[] {
-  return source
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => /\bwindow\.(confirm|prompt|alert)\s*\(/.test(line));
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return sourceFiles(full);
+    }
+    return /\.tsx?$/.test(entry.name) ? [full] : [];
+  });
 }
 
-test('reset and delete no longer use window.confirm or window.prompt', () => {
-  const destructive = nativeDialogLines(mainSource).filter(line =>
-    /löschen|loeschen|zurücksetzen|zuruecksetzen|delete|reset/i.test(line)
+const sources = sourceFiles(srcRoot).map(path => ({ path, text: readFileSync(path, 'utf8') }));
+const appShell = sources.find(file => file.path.endsWith(join('app', 'App.tsx')));
+
+/** Lines calling a native modal dialog, with their file for a useful message. */
+function nativeDialogLines(): Array<{ path: string; line: string }> {
+  return sources.flatMap(file =>
+    file.text
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => /\bwindow\.(confirm|prompt|alert)\s*\(/.test(line))
+      .map(line => ({ path: file.path, line }))
   );
-  assert.deepEqual(destructive, [], 'destructive flows must use the in-app ConfirmDialog');
+}
+
+const DESTRUCTIVE = /löschen|loeschen|zurücksetzen|zuruecksetzen|delete|reset/i;
+
+test('the frontend sources are discoverable and the app shell is extracted', () => {
+  assert.ok(sources.length > 5, 'expected a modular source tree');
+  assert.ok(appShell, 'src/app/App.tsx must exist');
+});
+
+test('no destructive flow uses window.confirm, window.prompt or window.alert', () => {
+  const offenders = nativeDialogLines().filter(entry => DESTRUCTIVE.test(entry.line));
+  assert.deepEqual(
+    offenders,
+    [],
+    'destructive flows must use the in-app ConfirmDialog'
+  );
 });
 
 test('the in-app confirmation dialog is wired into the tournament admin area', () => {
-  assert.match(mainSource, /ConfirmDialog/, 'ConfirmDialog must be rendered');
-  assert.match(mainSource, /openDestructiveDialog\('reset'\)/, 'reset button opens the dialog');
-  assert.match(mainSource, /openDestructiveDialog\('delete'\)/, 'delete button opens the dialog');
+  const text = appShell!.text;
+  assert.match(text, /ConfirmDialog/, 'ConfirmDialog must be rendered');
+  assert.match(text, /openDestructiveDialog\('reset'\)/, 'reset button opens the dialog');
+  assert.match(text, /openDestructiveDialog\('delete'\)/, 'delete button opens the dialog');
 });
 
-test('the PWA install prompt is the only remaining browser-driven prompt', () => {
-  // `pwaInstallPrompt.prompt()` is a BeforeInstallPromptEvent API, not a modal
-  // window dialog, so it is intentionally out of scope for this guard.
-  const remaining = nativeDialogLines(mainSource);
-  for (const line of remaining) {
-    assert.ok(
-      !/löschen|loeschen|delete|zurücksetzen|zuruecksetzen|reset/i.test(line),
-      `unexpected native dialog in a destructive flow: ${line}`
-    );
-  }
+test('main.tsx is a bootstrap only and holds no application logic', () => {
+  const main = sources.find(file => file.path.endsWith(join('src', 'main.tsx')));
+  assert.ok(main, 'src/main.tsx must exist');
+  const lineCount = main!.text.split(/\r?\n/).filter(line => line.trim() !== '').length;
+  assert.ok(lineCount < 60, `main.tsx should stay a thin bootstrap, has ${lineCount} code lines`);
+  assert.doesNotMatch(main!.text, /React\.useState/, 'no component state belongs in the bootstrap');
 });

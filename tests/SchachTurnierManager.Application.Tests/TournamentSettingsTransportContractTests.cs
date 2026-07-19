@@ -112,7 +112,7 @@ public sealed class TournamentSettingsTransportContractTests
     public void ApiAndUiContracts_TransportTheSameSetting()
     {
         var contracts = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Contracts.cs"));
-        var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+        var ui = ReadWebAppSources();
         // STM-FE-013: the UI/API contract types were extracted from main.tsx into a
         // dedicated module. Type-field declarations are asserted there; the wiring
         // (form <-> settings mapping) stays asserted against main.tsx.
@@ -135,7 +135,7 @@ public sealed class TournamentSettingsTransportContractTests
     [Fact]
     public void BuildWeekDemoPreset_UsesOnlyExplicitSyntheticData()
     {
-        var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+        var ui = ReadWebAppSources();
 
         Assert.Contains("async function createDemoTournament()", ui);
         Assert.Contains("Build Week Demo Open", ui);
@@ -152,7 +152,7 @@ public sealed class TournamentSettingsTransportContractTests
     [Fact]
     public void ResultEntry_RequiresConfirmationAndOffersUndo()
     {
-        var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+        var ui = ReadWebAppSources();
 
         Assert.Contains("requestResultChange(", ui);
         Assert.Contains("confirmResultChange()", ui);
@@ -162,6 +162,44 @@ public sealed class TournamentSettingsTransportContractTests
         Assert.Contains("expectedPreviousResult", ui);
         Assert.Contains("setPendingResultChange(null)", ui);
         Assert.Contains("setLastResultChange(null)", ui);
+    }
+
+    /// <summary>
+    /// Concatenated text of every WebApp source file.
+    /// </summary>
+    /// <remarks>
+    /// STM-FE-014 split the former <c>main.tsx</c> monolith into modules
+    /// (app shell, lib helpers, feature components). These contract assertions
+    /// care that the UI still transports a setting, not which file holds it, so
+    /// they read the whole source tree and stay stable across further
+    /// extraction steps.
+    /// </remarks>
+    private static string ReadWebAppSources()
+    {
+        var root = FindRepositoryDirectory("src", "SchachTurnierManager.WebApp", "src");
+        var files = Directory
+            .EnumerateFiles(root, "*.ts*", SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(".ts", StringComparison.Ordinal) || path.EndsWith(".tsx", StringComparison.Ordinal))
+            .OrderBy(path => path, StringComparer.Ordinal);
+
+        return string.Join("\n", files.Select(File.ReadAllText));
+    }
+
+    private static string FindRepositoryDirectory(params string[] segments)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(segments).ToArray());
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"Repository-Verzeichnis nicht gefunden: {string.Join('/', segments)}");
     }
 
     private static string FindRepositoryFile(params string[] segments)
