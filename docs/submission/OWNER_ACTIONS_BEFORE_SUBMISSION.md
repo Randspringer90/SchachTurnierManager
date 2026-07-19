@@ -2,33 +2,35 @@
 
 Complete these actions in order. None is represented as already complete.
 
-## 0. State after the run of 2026-07-19 (read first)
+## 0. State after the runs of 2026-07-19 (read first)
 
-That run had **no network access at all**: `github.com:443` and
-`registry.npmjs.org:443` were both unreachable and the stored `gh` token is
-invalid. Consequently **nothing was pushed, no pull request was opened, updated
-or merged, and no CI ran.** Everything it produced exists only in the local
-clone.
+The candidate branch **was pushed** in a window where the network was briefly
+available: `origin/integration/final-candidate` exists. Every later session,
+including the one that added the Firefox browser smoke, again had **no network
+at all** — all outbound TCP 443 is blocked (`github.com`, `registry.npmjs.org`
+and even `1.1.1.1`), DNS resolves but nothing connects, and the stored `gh`
+token is invalid. Consequently **no pull request was opened, updated or merged,
+no CI ran, and no issue was touched.**
 
 | Item | State |
 |---|---|
-| Candidate branch | `integration/final-candidate` at `9fe244363e43b32feb2b5cd2f49cf1236a36a97e`, **local only** |
-| Base | `development` at `995d1a1f50fc883e8533d69eddcc8f894555cf84` |
-| PR #51 scope (Build Week UX, demo) | integrated into the candidate branch locally |
+| Candidate branch | `integration/final-candidate`, **pushed** to origin |
+| Base | `development` at `995d1a1f50fc883e8533d69eddcc8f894555cf84`, unchanged — the candidate is **not merged** |
+| PR #51 scope (Build Week UX, demo) | integrated into the candidate branch |
 | STM-FE-013/014 frontend modularization | integrated; `main.tsx` is now a 23-line bootstrap |
-| Firefox reset/delete fix | implemented and unit/guard tested; **manual browser pass still owed** |
+| Firefox reset/delete fix | implemented, unit/guard tested **and verified in a real Firefox** — see `scripts/Smoke-FirefoxDialogs.ps1`, 19/19 |
 | PR #49 (Android companion) | **not merged**, see below |
-| Windows Setup | built from the candidate: `SchachTurnierManager_Setup_0.54.1.exe`, SHA-256 `D5D9E1DFE3A20209609F0DE9AC6E9B5468FF8E7F19D8DC253534961DA2D8CAE0`, unsigned |
+| Windows Setup | built from the candidate, unsigned; path and hash in the table further below |
 | Android APK | **not produced** |
 
-**First action:** restore network/auth and push, otherwise none of the above
-reaches `origin/development`.
+**First action:** restore auth, confirm the pushed branch, open/refresh its pull
+request and let CI run. Nothing below can be judged until CI has spoken.
 
 ```powershell
 gh auth refresh -h github.com
 git fetch origin --prune
-git log --oneline origin/development..integration/final-candidate
-git push -u origin integration/final-candidate
+git log --oneline origin/development..origin/integration/final-candidate
+gh pr status
 ```
 
 ### Why PR #49 was deliberately not merged

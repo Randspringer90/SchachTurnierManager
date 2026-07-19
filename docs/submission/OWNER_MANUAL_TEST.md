@@ -60,6 +60,23 @@ suppresses repeated modal dialogs from the same script turn ("prevent this page
 from creating additional dialogs"), which silently aborted the delete and left a
 stale selection behind. Both actions now use an in-app dialog.
 
+**An automated version of this section now exists and passes.**
+`scripts/Smoke-FirefoxDialogs.ps1` drives a real headless Firefox through the
+Marionette protocol and asserts 19 checks: the in-app dialog opens for reset and
+delete, `window.confirm`/`prompt`/`alert` are never called, the typed
+confirmation gate behaves, the delete completes, the next tournament is selected,
+`Esc` cancels, and deleting the last tournament leaves a clean empty state with
+no console errors. Run it before a release candidate:
+
+```powershell
+.\scripts\Smoke-FirefoxDialogs.ps1
+```
+
+It is not part of `Invoke-ReleaseGate.ps1` because it needs a local Firefox
+installation. The manual pass below remains worthwhile for the things a driver
+cannot judge — wording, layout, focus visibility and Chromium parity — but the
+functional regression itself is no longer unverified.
+
 Open *More → Admin → Dangerous actions*.
 
 **Reset**
