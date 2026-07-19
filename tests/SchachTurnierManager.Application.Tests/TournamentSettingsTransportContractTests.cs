@@ -113,12 +113,55 @@ public sealed class TournamentSettingsTransportContractTests
     {
         var contracts = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApi", "Contracts.cs"));
         var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+        // STM-FE-013: the UI/API contract types were extracted from main.tsx into a
+        // dedicated module. Type-field declarations are asserted there; the wiring
+        // (form <-> settings mapping) stays asserted against main.tsx.
+        var uiContracts = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "api", "contracts.ts"));
 
         Assert.Contains("UpdateTournamentSettingsRequest(TournamentSettings Settings)", contracts);
-        Assert.Contains("unplayedRoundBuchholzMode: number", ui);
+        Assert.Contains("unplayedRoundBuchholzMode: number", uiContracts);
         Assert.Contains("unplayedRoundBuchholzMode: form.unplayedRoundBuchholzMode", ui);
         Assert.Contains("settings.unplayedRoundBuchholzMode ?? 0", ui);
         Assert.Contains("FIDE-Modus (Schweizer)", ui);
+        Assert.Contains("pairingStrategy: number", uiContracts);
+        Assert.Contains("swissInitialColour: number", uiContracts);
+        Assert.Contains("pairingStrategy: form.pairingStrategy", ui);
+        Assert.Contains("swissInitialColour: form.swissInitialColour", ui);
+        Assert.Contains("settings.pairingStrategy ?? 0", ui);
+        Assert.Contains("settings.swissInitialColour ?? 1", ui);
+        Assert.Contains("settingsForm.pairingStrategy === 1", ui);
+    }
+
+    [Fact]
+    public void BuildWeekDemoPreset_UsesOnlyExplicitSyntheticData()
+    {
+        var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+
+        Assert.Contains("async function createDemoTournament()", ui);
+        Assert.Contains("Build Week Demo Open", ui);
+        Assert.Contains("Demo Player ${String(index + 1).padStart(2, '0')}", ui);
+        Assert.Contains("STM_BUILD_WEEK_DEMO_V1", ui);
+        Assert.Contains("isBuildWeekDemoTournament", ui);
+        Assert.Contains("tournaments.find(isBuildWeekDemoTournament)", ui);
+        Assert.Contains("method: 'DELETE'", ui);
+        Assert.Contains("pairingStrategy: 1", ui);
+        Assert.Contains("plannedRounds: 3", ui);
+        Assert.DoesNotContain("fideId: '11", ui);
+    }
+
+    [Fact]
+    public void ResultEntry_RequiresConfirmationAndOffersUndo()
+    {
+        var ui = File.ReadAllText(FindRepositoryFile("src", "SchachTurnierManager.WebApp", "src", "main.tsx"));
+
+        Assert.Contains("requestResultChange(", ui);
+        Assert.Contains("confirmResultChange()", ui);
+        Assert.Contains("undoLastResultChange()", ui);
+        Assert.Contains("role=\"alertdialog\"", ui);
+        Assert.Contains("tournamentId: selectedTournament.id", ui);
+        Assert.Contains("expectedPreviousResult", ui);
+        Assert.Contains("setPendingResultChange(null)", ui);
+        Assert.Contains("setLastResultChange(null)", ui);
     }
 
     private static string FindRepositoryFile(params string[] segments)
