@@ -3,6 +3,12 @@
 
 Set-StrictMode -Version Latest
 
+$artifactVerificationPath = Join-Path $PSScriptRoot 'PullRequestArtifactVerification.ps1'
+if (-not (Test-Path -LiteralPath $artifactVerificationPath -PathType Leaf)) {
+    throw 'Trusted Artifact-Verification-Library fehlt.'
+}
+. $artifactVerificationPath
+
 function Get-ReviewPropertyValue {
     param([object]$Object, [string]$Name, $Default = $null)
     if ($null -eq $Object) { return $Default }
@@ -232,6 +238,7 @@ function Import-PullRequestReviewPolicies {
     param([Parameter(Mandatory)][string]$RepositoryRoot)
     $names = [ordered]@{
         review = 'config/pull-request-review-policy.json'
+        artifacts = 'config/pull-request-artifact-attestations.json'
         dependency = 'config/dependency-review-policy.json'
         suspicious = 'config/suspicious-change-patterns.json'
         adoption = 'config/pr-adoption-policy.json'
@@ -247,8 +254,10 @@ function Import-PullRequestReviewPolicies {
         if ([int](Get-ReviewPropertyValue $loaded[$entry.Key] 'schemaVersion' 0) -ne 1) { throw "Unbekannte Policy-Schemaversion: $($entry.Value)" }
         $hashes[$entry.Key] = Get-ReviewSha256 $raw
     }
+    [void](Assert-PullRequestArtifactAttestations -ReviewPolicy $loaded.review -Attestations $loaded.artifacts)
     return [pscustomobject]@{
         review = $loaded.review
+        artifacts = $loaded.artifacts
         dependency = $loaded.dependency
         suspicious = $loaded.suspicious
         adoption = $loaded.adoption
@@ -684,6 +693,9 @@ function Invoke-PullRequestStaticAnalysis {
     if (-not [bool](Get-ReviewPropertyValue $Metadata 'gitTreeMetadataComplete' $true)) {
         $findings.Add((New-ReviewFinding -Code 'GIT_TREE_METADATA_INCOMPLETE' -Category 'unverified' -Severity 'critical' -Evidence 'git-tree-truncated-or-unavailable' -Detail 'SHA-gebundene Git-Tree-Modi sind unvollstaendig; Symlinks und Gitlinks koennen nicht sicher klassifiziert werden.' -RiskClass 'UNVERIFIED'))
     }
+    foreach ($artifactError in @((Get-ReviewPropertyValue $Metadata 'artifactAttestationErrors' @()))) {
+        $findings.Add((New-ReviewFinding -Code 'ARTIFACT_ATTESTATION_MISMATCH' -Category 'binary' -Severity 'critical' -Evidence ([string]$artifactError) -Detail 'SHA-/Pfad-/Head-gebundene Artifact-Attestation stimmt nicht vollstaendig mit dem PR ueberein.' -RiskClass 'UNVERIFIED'))
+    }
     $patchBytes = [Text.Encoding]::UTF8.GetByteCount(($PatchText ?? ''))
     $scanPatch = $PatchText ?? ''
     if ($patchBytes -gt [int]$Policies.review.maxPatchBytes) {
@@ -711,6 +723,13 @@ function Invoke-PullRequestStaticAnalysis {
         $previousModeAvailable = [bool](Get-ReviewPropertyValue $file 'previousModeAvailable' (-not $previousPath -or [bool]$previousMode))
         $patchAvailable = [bool](Get-ReviewPropertyValue $file 'patchAvailable' $true)
         $patchComplete = [bool](Get-ReviewPropertyValue $file 'patchComplete' $false)
+        $artifactVerification = Get-ReviewPropertyValue $file 'artifactVerification' $null
+        $artifactStatus = [string](Get-ReviewPropertyValue $artifactVerification 'status' '')
+        $artifactKind = [string](Get-ReviewPropertyValue $artifactVerification 'kind' '')
+        $artifactVerified = $artifactStatus -ceq 'VERIFIED' -and
+            [int](Get-ReviewPropertyValue $artifactVerification 'pullRequestNumber' 0) -eq [int](Get-ReviewPropertyValue $Metadata 'number' 0) -and
+            [string](Get-ReviewPropertyValue $artifactVerification 'headSha' '') -ceq [string](Get-ReviewPropertyValue $Metadata 'headSha' (Get-ReviewPropertyValue $Metadata 'headRefOid' '')) -and
+            [string](Get-ReviewPropertyValue $artifactVerification 'path' '') -ceq $rawPath
         $modeValid = $modeAvailable -and $mode -cmatch '^(?:100644|100755|120000|160000)$'
         $previousModeValid = -not $previousPath -or ($previousModeAvailable -and $previousMode -cmatch '^(?:100644|100755|120000|160000)$')
         $safeFiles.Add([pscustomobject]@{
@@ -718,6 +737,13 @@ function Invoke-PullRequestStaticAnalysis {
             status=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $file 'status' 'unknown')) 40)
             mode=if($modeValid){$mode}else{'UNVERIFIED'}; previousMode=if($previousModeValid -and $previousPath){$previousMode}else{$null}
             patchAvailable=$patchAvailable; patchComplete=$patchComplete
+            artifactVerification=if($artifactVerification){[pscustomobject]@{
+                status=$artifactStatus; approvalId=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $artifactVerification 'approvalId' '')) 80)
+                kind=$artifactKind; mimeType=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $artifactVerification 'mimeType' '')) 80)
+                gitBlobSha=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $artifactVerification 'gitBlobSha' '')) 40)
+                size=[int64](Get-ReviewPropertyValue $artifactVerification 'size' 0); sha256=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $artifactVerification 'sha256' '')) 64)
+                errors=@((Get-ReviewPropertyValue $artifactVerification 'errors' @()) | ForEach-Object { ConvertTo-SafeReviewLabel ([string]$_) 80 })
+            }}else{$null}
         })
         if ($rawPath -match '[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]') {
             $findings.Add((New-ReviewFinding -Code 'BIDI_CONTROL' -Category 'unicode' -Severity 'high' -Path $rawPath -Evidence $rawPath -Detail 'Unicode-Bidi-Steuerzeichen im Pfad erkannt.'))
@@ -739,14 +765,25 @@ function Invoke-PullRequestStaticAnalysis {
         if ($mode -eq '120000') { $findings.Add((New-ReviewFinding -Code 'SYMLINK' -Category 'repository' -Severity 'critical' -Path $rawPath -Evidence $mode -Detail 'Symlink ist in der statischen Phase blockiert.' -RiskClass 'UNVERIFIED')) }
         if ($mode -eq '160000' -or $rawPath -eq '.gitmodules') { $findings.Add((New-ReviewFinding -Code 'SUBMODULE' -Category 'repository' -Severity 'critical' -Path $rawPath -Evidence $mode -Detail 'Submodule ist in der statischen Phase blockiert.' -RiskClass 'UNVERIFIED')) }
         $extension = [IO.Path]::GetExtension($rawPath).ToLowerInvariant()
+        if ($artifactStatus -and -not $artifactVerified) {
+            $findings.Add((New-ReviewFinding -Code 'ARTIFACT_ATTESTATION_MISMATCH' -Category 'binary' -Severity 'critical' -Path $rawPath -Evidence $artifactStatus -Detail 'Artifact-Verifikation ist fehlgeschlagen oder nicht exakt an PR, Head und Pfad gebunden.' -RiskClass 'UNVERIFIED'))
+        }
+        elseif ($artifactVerified) {
+            $verifiedCode = if ($artifactKind -ceq 'third-party-build-wrapper') { 'VERIFIED_THIRD_PARTY_BUILD_WRAPPER' } else { 'VERIFIED_ATTESTED_ARTIFACT' }
+            $findings.Add((New-ReviewFinding -Code $verifiedCode -Category 'build' -Severity 'high' -Path $rawPath -Evidence ([string](Get-ReviewPropertyValue $artifactVerification 'sha256' '')) -Detail 'Artefakt ist exakt verifiziert, bleibt aber Owner-Review-pflichtig und wird nicht ausgefuehrt.'))
+        }
         if (@($Policies.review.archiveFileTypes) -contains $extension) {
-            $findings.Add((New-ReviewFinding -Code 'BLOCKED_ARCHIVE' -Category 'binary' -Severity 'critical' -Path $rawPath -Evidence $extension -Detail 'Archivdatei kann statisch nicht sicher verifiziert werden.' -RiskClass 'UNVERIFIED'))
+            if (-not ($artifactVerified -and $artifactKind -ceq 'gradle-wrapper-jar')) {
+                $findings.Add((New-ReviewFinding -Code 'BLOCKED_ARCHIVE' -Category 'binary' -Severity 'critical' -Path $rawPath -Evidence $extension -Detail 'Archivdatei kann statisch nicht sicher verifiziert werden.' -RiskClass 'UNVERIFIED'))
+            }
         }
         elseif (@($Policies.review.blockedFileTypes) -contains $extension) {
             $findings.Add((New-ReviewFinding -Code 'BLOCKED_BINARY' -Category 'binary' -Severity 'critical' -Path $rawPath -Evidence $extension -Detail 'Binaerdatei kann statisch nicht sicher verifiziert werden.' -RiskClass 'UNVERIFIED'))
         }
         elseif (-not $patchAvailable -or -not $patchComplete -or -not $patchPaths.Contains($rawPath)) {
-            $findings.Add((New-ReviewFinding -Code 'INCOMPLETE_PATCH' -Category 'unverified' -Severity 'critical' -Path $rawPath -Evidence 'patch-unavailable' -Detail 'Patch ist fuer eine geaenderte Textdatei unvollstaendig.' -RiskClass 'UNVERIFIED'))
+            if (-not ($artifactVerified -and $artifactKind -ceq 'android-png')) {
+                $findings.Add((New-ReviewFinding -Code 'INCOMPLETE_PATCH' -Category 'unverified' -Severity 'critical' -Path $rawPath -Evidence 'patch-unavailable' -Detail 'Patch ist fuer eine geaenderte Textdatei unvollstaendig.' -RiskClass 'UNVERIFIED'))
+            }
         }
         foreach ($candidatePath in @($rawPath,$previousPath) | Where-Object { $_ }) {
             foreach ($highRisk in @($Policies.review.highRiskPaths)) {

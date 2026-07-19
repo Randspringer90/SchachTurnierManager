@@ -16,6 +16,7 @@
     "config/nightly-run.json",
     "config/nightly-execution.json",
     "config/pull-request-review-policy.json",
+    "config/pull-request-artifact-attestations.json",
     "config/dependency-review-policy.json",
     "config/suspicious-change-patterns.json",
     "config/pr-adoption-policy.json",
