@@ -8,12 +8,12 @@ fresh synthetic profile; do not modify a real tournament database.
 
 | Item | Value |
 |---|---|
-| Candidate commit | `eee20dd50e7403d4728367ce69ef6eb80d985d99` |
+| Candidate commit | `9fe244363e43b32feb2b5cd2f49cf1236a36a97e` |
 | Branch | `integration/final-candidate` — **local only, not yet pushed** |
 | App version | 0.54.1 |
 | Setup | `SchachTurnierManager_Setup_0.54.1.exe` |
-| SHA-256 | `A4E44D6D997248FC40C0943054A2CB9B5A218B333C87854A6D0438C6EB181707` |
-| Size | 38,553,710 bytes (36.77 MB) |
+| SHA-256 | `D5D9E1DFE3A20209609F0DE9AC6E9B5468FF8E7F19D8DC253534961DA2D8CAE0` |
+| Size | 38,556,523 bytes (36.77 MB) |
 | Signature | **unsigned** — SmartScreen will warn ("unknown publisher"). No production code-signing certificate exists for this project. |
 | Android APK | **not produced by this run** — see section B. |
 

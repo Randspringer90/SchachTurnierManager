@@ -3,7 +3,7 @@
 - **Date:** 2026-07-19
 - **Tool:** Claude Code (Opus 4.8), supporting role
 - **Base:** `development` at `995d1a1f50fc883e8533d69eddcc8f894555cf84`
-- **Result branch:** `integration/final-candidate` at `eee20dd50e7403d4728367ce69ef6eb80d985d99`
+- **Result branch:** `integration/final-candidate` at `9fe244363e43b32feb2b5cd2f49cf1236a36a97e`
 - **Outcome:** PARTIAL — all local work is done, committed and green; nothing
   could be pushed.
 
@@ -166,9 +166,12 @@ never by disabling a check.
 
 ## Artifacts
 
-`SchachTurnierManager_Setup_0.54.1.exe`, built from the candidate SHA,
-38,553,710 bytes, SHA-256
-`A4E44D6D997248FC40C0943054A2CB9B5A218B333C87854A6D0438C6EB181707`, **unsigned**.
+`SchachTurnierManager_Setup_0.54.1.exe`, 38,556,523 bytes, SHA-256
+`D5D9E1DFE3A20209609F0DE9AC6E9B5468FF8E7F19D8DC253534961DA2D8CAE0`, **unsigned**.
+
+It was rebuilt after the final documentation commit so the artifact is tied to
+the actual head `9fe2443`, not to an earlier commit. The first build (at
+`eee20dd`) was discarded rather than relabelled.
 
 No Android APK: PR #49 is unmerged, so no companion source exists at the
 candidate SHA.

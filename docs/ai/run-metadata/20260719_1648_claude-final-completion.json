@@ -12,7 +12,7 @@
   ],
   "baseSha": "995d1a1f50fc883e8533d69eddcc8f894555cf84",
   "resultBranch": "integration/final-candidate",
-  "resultSha": "eee20dd50e7403d4728367ce69ef6eb80d985d99",
+  "resultSha": "9fe244363e43b32feb2b5cd2f49cf1236a36a97e",
   "pushed": false,
   "outcome": "PARTIAL",
   "blockedBy": "no network access (github.com:443 and registry.npmjs.org:443 unreachable, gh token invalid)",
