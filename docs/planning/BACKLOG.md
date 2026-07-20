@@ -71,7 +71,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | owner | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43), PR [#49](https://github.com/Randspringer90/SchachTurnierManager/pull/49) (blockiert bis Owner-Review/Merge von STM-INFRA-008 und erneuter SHA-gebundener Prüfung) | post-1.0 |
+| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | In Review | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43), PR [#49](https://github.com/Randspringer90/SchachTurnierManager/pull/49); STM-INFRA-008 ist über PR [#52](https://github.com/Randspringer90/SchachTurnierManager/pull/52) gemergt, damit ist der Binär-Review-Blocker aufgehoben; signierte Test-APK gebaut+verifiziert; Gerätetest MANUAL_PENDING | post-1.0 |
 | STM-MOB-002 | F-Droid-Readiness | P3 | Blocked | mobile | owner | – (blockiert: STM-MOB-001 + Lizenzentscheidung STM-SEC-004) | post-1.0 |
 | STM-MOB-003 | Mobile Paarungsansicht | P2 | Backlog | mobile | friend | – (nach STM-MOB-001) | post-1.0 |
 | STM-MOB-004 | Mobile Ergebniseingabe (Bestätigung, Undo, Audit) | P2 | Backlog | mobile | friend | – (nach STM-MOB-003) | post-1.0 |
