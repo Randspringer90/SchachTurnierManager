@@ -284,17 +284,22 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
   (Score Groups, Floater, Farbpräferenzen, Wiederholungsschutz, Bye-Regeln, deterministische
   Entscheidungsreihenfolge, Audit-Trail). Vollständige Spezifikation im Issue.
-- **Priorität:** P1 · **Status:** Ready · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P1 · **Status:** Done · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) · **Branch:** `feature/STM-FACH-002-fide-dutch`
-- **Abhängigkeiten:** STM-FACH-001 (Done; Forfeit-/Bye-Verhalten darf nicht regressieren). Blockiert STM-FACH-003.
+- **Abhängigkeiten:** STM-FACH-001 (Done; Forfeit-/Bye-Verhalten regressiert nicht). Entsperrt STM-FACH-003
+  (noch Backlog, nicht Ready).
 - **Akzeptanzkriterien:** siehe Issue #22 (Golden-Turniere zuerst, Property-Tests für absolute
-  Kriterien, Determinismus, Audit-Trail, FIDE-C.04-Abgleich mit Artikelnummern).
-- **Tests:** Golden-/Property-/Regressionstests; Tests zuerst (fachliche Algorithmusänderung).
+  Kriterien, Determinismus, Audit-Trail, FIDE-C.04-Abgleich mit Artikelnummern) – alle erfüllt.
+- **Tests:** Golden-/Property-/Regressionstests; 497 Tests grün zum Zeitpunkt der Adoption.
 - **Security:** keine externen Daten; nur synthetische Fixtures.
-- **Doku-Bedarf:** `docs/AUDIT_JOURNAL.md`, `CHANGELOG.md`.
-- **Definition of Done:** DoD + Gates grün; **Final-Review durch unabhängigen Owner-Prozess mit
-  stärkstem Review-Profil (fachlich kritisch, kein Auto-Merge).**
-- **PR:** – · **Ziel-Release:** v1.0.0
+- **Doku-Bedarf:** `docs/AUDIT_JOURNAL.md`, `CHANGELOG.md`, `docs/FIDE_DUTCH_REFERENCE.md` – erledigt.
+- **Definition of Done:** DoD + Gates grün; Final-Review durch unabhängigen Owner-Prozess mit
+  stärkstem Review-Profil durchgeführt (FIDE C.04.3 unabhängig gegen die Primärquelle geprüft).
+- **Folgeaufgaben:** STM-FACH-011 (Setzlisten-Vergabe), STM-FACH-012 (WebApp-UI-Auswahl für
+  Pairing-Strategie/Anfangsfarbe – läuft bereits im Owner-Draft-PR #51).
+- **PR:** Original [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40) ·
+  **Sichere Adoption:** [#45](https://github.com/Randspringer90/SchachTurnierManager/pull/45),
+  Merge `7634399` · **Ziel-Release:** v1.0.0
 
 ---
 
