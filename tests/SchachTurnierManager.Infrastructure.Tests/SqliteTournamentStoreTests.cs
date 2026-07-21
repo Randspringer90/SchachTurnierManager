@@ -10,6 +10,70 @@ namespace SchachTurnierManager.Infrastructure.Tests;
 public sealed class SqliteTournamentStoreTests
 {
     [Fact]
+    public async Task RecordResult_ConcurrentSameExpectedValue_AllowsExactlyOneWriter()
+    {
+        var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testDirectory);
+        var databasePath = Path.Combine(testDirectory, "concurrent-result.sqlite");
+
+        try
+        {
+            var options = CreateOptions(databasePath);
+            Guid tournamentId;
+            int roundNumber;
+            int boardNumber;
+
+            using (var db = new TournamentDbContext(options))
+            {
+                db.Database.EnsureCreated();
+                var service = new TournamentService(new SqliteTournamentStore(db));
+                var tournament = service.CreateTournament("Concurrent Result", new TournamentSettings { Format = TournamentFormat.RoundRobin });
+                service.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 01" });
+                service.AddPlayer(tournament.Id, new Player { Name = "Synthetic Player 02" });
+                var round = service.GenerateNextRound(tournament.Id);
+                tournamentId = tournament.Id;
+                roundNumber = round.RoundNumber;
+                boardNumber = round.Pairings.Single().BoardNumber;
+            }
+
+            using var start = new ManualResetEventSlim(false);
+            async Task<bool> TryWriteAsync(GameResultKind result)
+            {
+                return await Task.Run(() =>
+                {
+                    using var db = new TournamentDbContext(CreateOptions(databasePath));
+                    var service = new TournamentService(new SqliteTournamentStore(db));
+                    start.Wait();
+                    try
+                    {
+                        service.RecordResult(tournamentId, roundNumber, boardNumber, result, GameResultKind.NotPlayed);
+                        return true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return false;
+                    }
+                });
+            }
+
+            var whiteWrite = TryWriteAsync(GameResultKind.WhiteWin);
+            var blackWrite = TryWriteAsync(GameResultKind.BlackWin);
+            start.Set();
+            var outcomes = await Task.WhenAll(whiteWrite, blackWrite);
+
+            Assert.Single(outcomes, success => success);
+            using var verifyDb = new TournamentDbContext(CreateOptions(databasePath));
+            var storedResult = new SqliteTournamentStore(verifyDb).Get(tournamentId)!
+                .Rounds.Single().Pairings.Single().Result.Kind;
+            Assert.Contains(storedResult, new[] { GameResultKind.WhiteWin, GameResultKind.BlackWin });
+        }
+        finally
+        {
+            DeleteTestDirectory(testDirectory);
+        }
+    }
+
+    [Fact]
     public void SaveAndReload_PreservesPlayersRoundsAndResults()
     {
         var testDirectory = Path.Combine(Path.GetTempPath(), $"stm-test-{Guid.NewGuid():N}");

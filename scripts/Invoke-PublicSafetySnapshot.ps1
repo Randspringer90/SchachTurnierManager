@@ -18,7 +18,11 @@ function Run-Step {
     param([string]$Name, [scriptblock]$Script)
     $path = Join-Path $outDir ("{0}.txt" -f $Name)
     try {
-        & $Script *>&1 | Tee-Object -FilePath $path
+        # Out-Null ist notwendig: Tee-Object schreibt nicht nur in die Datei,
+        # sondern reicht jede Zeile auch weiter. Ohne das liefert Run-Step
+        # saemtliche Logzeilen plus das Ergebnisobjekt zurueck, und die
+        # Auswertung unten laeuft auf Strings statt auf dem Ergebnis.
+        & $Script *>&1 | Tee-Object -FilePath $path | Out-Null
         [pscustomobject]@{ name=$Name; exitCode=$LASTEXITCODE; ok=($LASTEXITCODE -eq 0); log=$path }
     } catch {
         $_ | Out-String | Set-Content -LiteralPath $path -Encoding UTF8

@@ -92,6 +92,9 @@ try {
         } else {
             Write-Host "[ReleaseGate] npm $npmInstallCommand übersprungen."
         }
+        # STM-FE-014: the frontend test suite guards the extracted modules and the
+        # in-app confirmation dialogs, so it has to run before `npm run build`.
+        Invoke-NativeStep 'npm test' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand run -NpmScript test }
         Invoke-NativeStep 'npm run build' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
     } finally {
         Pop-Location

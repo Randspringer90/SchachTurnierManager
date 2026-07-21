@@ -1,5 +1,37 @@
 ## Unreleased (development)
 
+- STM-FACH-012 / Build Week UX: Die WebApp bietet im kurzen Anlagepfad nun eine bewusst
+  eingeklappte Auswahl zwischen Optimal V2 (weiterhin Default) und FIDE Dutch; die
+  Anfangsfarbe erscheint nur für FIDE Dutch. Bestehende Turniere werden nicht still
+  umgestellt, und nach Runde 1 bleiben die Strategie-Felder gesperrt.
+- Build Week Demo/UX: Fünf primäre Bereiche (Übersicht, Teilnehmer, Runde, Tabelle,
+  Mehr), explizites synthetisches Acht-Spieler-Demo-Turnier, Teilnehmerfilter,
+  reduzierte Standard-Tabelle, Ergebnisbestätigung mit Undo, lokaler Hell-/Dunkelmodus,
+  sichtbarer Fokus und mobile Touch-/Navigationsverbesserungen ergänzt. Deutsch und
+  Englisch sind als vollständiger Demo-Pfad ausgewiesen; weitere Sprachen als Vorschau.
+- Public-Health-Härtung: Der öffentliche Health-Endpunkt und die WebApp geben keine
+  absoluten Datenbank- oder Laufzeitlogpfade mehr aus.
+- Submission-Dokumentation: ehrliche Build-Week-Abgrenzung, Judge-Quickstart,
+  synthetische Demo-/Video-Skripte, UX-Audit, Devpost-Entwurf und manueller Windows-/
+  Galaxy-S25-Testpfad ergänzt. Keine Binaries, Releases oder Uploads.
+
+- STM-MOB-001: **Android-Begleit-App (Companion)** als Capacitor-Projekt ergänzt.
+  Application-ID `io.github.randspringer90.schachturniermanager`, nur die erlaubten
+  Capacitor-Pakete (`@capacitor/core`, `@capacitor/cli`, `@capacitor/android`, jeweils
+  7.4.3, exakt gepinnt), **keine** Firebase-/Analytics-/Tracking-SDKs. Die App bündelt
+  einen schlanken Companion-Launcher (konfigurierbare Serveradresse, Verbindungstest
+  mit 5-Sekunden-Timeout, sichere lokale Speicherung der Adresse, App-/Server-Version)
+  und lädt dann die vom PC gehostete WebApp – **keine feste IP**, keine Cloud, keine
+  Secrets in der APK (verifiziert). Nur `INTERNET`-Berechtigung. Test-Flavor mit
+  dokumentierter Network-Security-Config (Cleartext-HTTP nur im lokalen Netz für den
+  PC-Companion-Test; die Zertifikatsprüfung wird **nicht** global abgeschaltet); ein
+  Release-Flavor mit HTTPS-Zwang bleibt offen (Issue #43). Es wurden eine Debug-APK
+  und eine **signierte Test-Release-APK** gebaut und mit `apksigner verify` bestätigt
+  (Signaturschemata v1+v2+v3). Signaturschlüssel liegt außerhalb des Repos
+  (`.secrets/local/`, per `.gitignore` ausgeschlossen), das Passwort DPAPI-geschützt;
+  dokumentiert ist nur der öffentliche Zertifikats-Fingerprint
+  (`docs/operations/ANDROID_SIGNING.md`). **Kein** APK-/Keystore-Binärartefakt im
+  Repository. Gerätetest steht aus (kein Gerät angeschlossen, `DEVICE_TEST=MANUAL_PENDING`).
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
   Richtung zu STM-IE-001s Export). `SwissManagerCsvCodec` (Domain) liest/schreibt
   das offizielle Swiss-Manager-Layout aus dem User's Guide, Anhang C, akzeptiert

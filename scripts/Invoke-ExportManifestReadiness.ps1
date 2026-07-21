@@ -15,7 +15,10 @@ $sourceReportPath = Join-Path $runDirectory 'export-manifest-source-report.txt'
 $formatter = Join-Path $root 'src\SchachTurnierManager.Domain\Services\TournamentExportFormatter.cs'
 $service = Join-Path $root 'src\SchachTurnierManager.Application\TournamentService.cs'
 $program = Join-Path $root 'src\SchachTurnierManager.WebApi\Program.cs'
-$mainTsx = Join-Path $root 'src\SchachTurnierManager.WebApp\src\main.tsx'
+$webAppRootForSnapshot = Join-Path $root 'src\SchachTurnierManager.WebApp'
+. (Join-Path $PSScriptRoot 'lib\WebAppSourceSnapshot.ps1')
+# STM-FE-014: assert against the whole WebApp source tree, not a single file.
+$mainTsx = New-WebAppSourceSnapshot -WebAppRoot $webAppRootForSnapshot -Destination (Join-Path $runDirectory 'webapp-sources.snapshot.txt')
 $domainTest = Join-Path $root 'tests\SchachTurnierManager.Domain.Tests\TournamentExportFormatterTests.cs'
 
 function Add-Summary([string]$Line) {

@@ -57,6 +57,29 @@ public sealed class OperationalGuardTests
     }
 
     [Fact]
+    public void CodexAdapter_ExemptsOnlyTheTwoTrackedAdapterFiles()
+    {
+        var gitignore = File.ReadAllText(FindRepositoryFile(".gitignore"));
+        var gitSafety = File.ReadAllText(FindRepositoryFile("scripts", "Test-GitCommitSafety.ps1"));
+
+        // The directory stays ignored/blocked; a real local Codex config
+        // (config.toml, auth material, session state) must never be committable.
+        Assert.Contains(".codex/*", gitignore);
+        Assert.Contains("!.codex/README.md", gitignore);
+        Assert.Contains("!.codex/config.example.toml", gitignore);
+        Assert.DoesNotContain("!.codex/config.toml", gitignore);
+
+        // The safety gate exemption must be an explicit file allowlist, never a
+        // prefix match that would let new files slip through.
+        Assert.Contains("Test-IsAllowedTrackedCodexAdapter", gitSafety);
+        Assert.Contains("'.codex/README.md', '.codex/config.example.toml'", gitSafety);
+
+        var exampleConfig = File.ReadAllText(FindRepositoryFile(".codex", "config.example.toml"));
+        Assert.Contains("allow_no_verify = false", exampleConfig);
+        Assert.Contains("allow_force_push = false", exampleConfig);
+    }
+
+    [Fact]
     public void SecretScripts_UseWindowsDpapiPatternAndDoNotPrintSecretValuesByDefault()
     {
         var setSecret = File.ReadAllText(FindRepositoryFile("scripts", "Set-LocalSecret.ps1"));
@@ -248,7 +271,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("FindRepositoryRoot", program);
         Assert.Contains("SchachTurnierManager:LogDirectory", program);
         Assert.Contains("SchachTurnierManager:FileLogging:RetainedFileCount", program);
-        Assert.Contains("directory = runtimeLogDirectory", program);
+        Assert.Contains("storage = \"local\"", program);
+        Assert.DoesNotContain("directory = runtimeLogDirectory", program);
+        Assert.DoesNotContain("databasePath = databaseFullPath", program);
         Assert.Contains("Path.Value", program);
         Assert.DoesNotContain("QueryString", program);
 

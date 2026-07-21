@@ -125,11 +125,16 @@ export function LanguageSwitcher() {
     <label className="language-switcher">
       <span>{t('language.label')}</span>
       <select value={lang} onChange={e => setLang(e.target.value as LanguageCode)}>
-        {LANGUAGES.map(l => (
-          <option key={l.code} value={l.code}>
-            {l.nativeName}
-          </option>
-        ))}
+        <optgroup label={t('language.demoGroup')}>
+          {LANGUAGES.filter(l => l.code === 'de' || l.code === 'en').map(l => (
+            <option key={l.code} value={l.code}>{l.nativeName}</option>
+          ))}
+        </optgroup>
+        <optgroup label={t('language.previewGroup')}>
+          {LANGUAGES.filter(l => l.code !== 'de' && l.code !== 'en').map(l => (
+            <option key={l.code} value={l.code}>{l.nativeName}</option>
+          ))}
+        </optgroup>
       </select>
     </label>
   );
