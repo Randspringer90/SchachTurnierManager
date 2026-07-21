@@ -3,7 +3,7 @@
 // that board and uses the same backend endpoint.
 // Extracted from main.tsx (STM-FE-014).
 import React from 'react';
-import { requestJson } from '../../api/client';
+import { describeApiError, requestJson } from '../../api/client';
 import { BoardDiceRoller } from '../../components/chess960/BoardDiceRoller';
 import type { BoardDiceParams } from '../../lib/chess960';
 import type { Tournament } from '../../api/contracts';
@@ -18,7 +18,7 @@ export function MobileDicePage({ params }: { params: BoardDiceParams }): React.R
       setTournament(data);
       setError(null);
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex));
+      setError(describeApiError(ex));
     } finally {
       setLoading(false);
     }

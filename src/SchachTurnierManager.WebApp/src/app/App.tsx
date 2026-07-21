@@ -8,7 +8,7 @@
 // backlog (STM-FE-015..018).
 import React from 'react';
 import { LanguageSwitcher, useI18n } from '../i18n';
-import { requestJson, requestText } from '../api/client';
+import { describeApiError, requestJson, requestText } from '../api/client';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { QrPanel } from '../components/QrPanel';
 import { ChessDie } from '../components/chess960/ChessDie';
@@ -430,7 +430,7 @@ export function App() {
       setPwaStatus(choice.outcome === 'accepted' ? 'installed' : 'ready');
       setStatus(choice.outcome === 'accepted' ? 'PWA-Installation gestartet.' : 'PWA-Installation abgebrochen.');
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex));
+      setError(describeApiError(ex, lang));
       setPwaStatus('error');
     }
   }
@@ -457,7 +457,7 @@ export function App() {
       setStatus(lang === 'en' ? `Tournament created: ${created.name}` : `Turnier angelegt: ${created.name}`);
       await refresh(created.id);
     } catch (ex) {
-      setError(`${lang === 'en' ? 'Tournament could not be created' : 'Turnier konnte nicht angelegt werden'}: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(`${lang === 'en' ? 'Tournament could not be created' : 'Turnier konnte nicht angelegt werden'}: ${describeApiError(ex, lang)}`);
     }
   }
 
@@ -544,7 +544,7 @@ export function App() {
           // Keep the original failure visible. A partial demo can still be removed in Administration.
         }
       }
-      setError(`${lang === 'en' ? 'The demo could not be created completely' : 'Demo-Turnier konnte nicht vollständig angelegt werden'}: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(`${lang === 'en' ? 'The demo could not be created completely' : 'Demo-Turnier konnte nicht vollständig angelegt werden'}: ${describeApiError(ex, lang)}`);
     } finally {
       setDemoBusy(false);
     }
@@ -619,7 +619,7 @@ export function App() {
       setSelectedId(nextId);
       await loadDerived(nextId);
     } catch (ex) {
-      const message = ex instanceof Error ? ex.message : String(ex);
+      const message = describeApiError(ex, lang);
       const prefix = pending.action === 'reset' ? 'Zurücksetzen fehlgeschlagen' : 'Löschen fehlgeschlagen';
       // Keep the dialog open so the operator sees the backend error in context
       // instead of losing it behind a closed modal.
@@ -657,7 +657,7 @@ export function App() {
       setEditingPlayerId(null);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex));
+      setError(describeApiError(ex, lang));
     }
   }
 
@@ -728,7 +728,7 @@ export function App() {
       setActiveMainTab('rounds');
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex));
+      setError(describeApiError(ex, lang));
     }
   }
 
@@ -778,7 +778,7 @@ export function App() {
       setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt. Tipp: Jetzt ein lokales Backup ziehen.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex));
+      setError(describeApiError(ex, lang));
     } finally {
       setChess960Rolling(false);
     }
@@ -806,7 +806,7 @@ export function App() {
         : `✓ Ergebnis gespeichert: Runde ${roundNumber}, Brett ${boardNumber}.`);
       return true;
     } catch (ex) {
-      setError(`${lang === 'en' ? `Result for round ${roundNumber}, board ${boardNumber} could not be saved` : `Ergebnis Runde ${roundNumber}, Brett ${boardNumber} konnte NICHT gespeichert werden`}: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(`${lang === 'en' ? `Result for round ${roundNumber}, board ${boardNumber} could not be saved` : `Ergebnis Runde ${roundNumber}, Brett ${boardNumber} konnte NICHT gespeichert werden`}: ${describeApiError(ex, lang)}`);
       return false;
     }
   }
@@ -935,7 +935,7 @@ export function App() {
       setExternalDuplicateChecks({});
       setStatus(result.message);
     } catch (ex) {
-      setError(`Spielersuche fehlgeschlagen: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(`Spielersuche fehlgeschlagen: ${describeApiError(ex, lang)}`);
     } finally {
       setExternalSearching(false);
     }
@@ -1010,7 +1010,7 @@ export function App() {
       setStatus(`${result.message} Geänderte Felder: ${result.changedFields.length ? result.changedFields.join(', ') : 'keine'}.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex));
+      setError(describeApiError(ex, lang));
     }
   }
 
@@ -1251,7 +1251,7 @@ function openRoundPrint(roundNumber: number) {
       writeLocalStorage(`stm.lastBackup.${selectedTournament.id}`, iso);
       setStatus(`✓ Lokales Backup gespeichert: ${fileName}`);
     } catch (ex) {
-      setError(`Backup konnte NICHT erstellt werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(`Backup konnte NICHT erstellt werden: ${describeApiError(ex, lang)}`);
     }
   }
 

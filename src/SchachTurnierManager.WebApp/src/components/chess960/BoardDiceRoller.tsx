@@ -3,7 +3,7 @@
 // stored position number is derived by the backend domain service.
 // Extracted from main.tsx (STM-FE-014).
 import React from 'react';
-import { requestJson } from '../../api/client';
+import { describeApiError, requestJson } from '../../api/client';
 import { ChessDie } from './ChessDie';
 import { chess960BackRankFromNumber, chess960PieceFace, diceFaceGlyphs, diceFaceNames } from '../../lib/chess960';
 import type { Chess960StartPosition, Tournament, TournamentRound } from '../../api/contracts';
@@ -112,7 +112,7 @@ export function BoardDiceRoller({
       setRevealStep(0);
       onSaved(updated);
     } catch (ex) {
-      setLocalError(ex instanceof Error ? ex.message : String(ex));
+      setLocalError(describeApiError(ex));
     } finally {
       setSaving(false);
     }
