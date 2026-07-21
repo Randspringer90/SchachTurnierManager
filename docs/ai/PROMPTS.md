@@ -79,3 +79,5 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 ## 2026-07-09 RUN-53 Klick-Installation
 
 Kollegenpaket nach RUN-52 um einen Doppelklick-Installationspfad, Uninstall, Shortcut-Erzeugung, Frischinstallations-Smoke-Test, Doku, Skill und Guard-Test erweitern. Keine Secrets oder externen Projektabhaengigkeiten in das Paket aufnehmen.
+
+| 20260720_0000 | STM-FINAL-SUBMISSION-FREEZE | Codex | BLOCKED: Remote-/Toolchain-Gates |

@@ -83,3 +83,9 @@ keine Voraussetzung.
 - Kontext: Stabilisierung, Public-Gate und Runtime-Logging.
 - Lesson: Auch alte Offline-Fixtures, Handoff-Texte und KI-Promptlogs koennen personenbezogene oder lokale Details in den aktuellen Arbeitsstand tragen.
 - Konsequenz: Public-nahe Repos verwenden synthetische Fixtures; echte Live-IDs werden nur bewusst per Parameter oder Environment gesetzt. KI-Laufprotokolle werden vor dem Commit bereinigt.
+
+## 2026-07-20 — Final Submission Freeze: Umgebungs- und Remote-Gates sind echte Blocker
+
+- **Beobachtung:** Der Candidate und die Android-Adoption waren lokal bereits vollständig rekonstruiert; der Abschluss scheiterte nicht an fehlender Featurearbeit, sondern an externem HTTPS-/GitHub-Zugriff, geschützter gh-Konfiguration, fehlendem PowerShell 7 und einer echten BAT-Fleet-Registrierungslücke für `android/gradlew.bat`.
+- **Konsequenz:** Keine lokalen Ersatz-Merges, keine erfundenen CI-/PR-Zustände und keine Gate-Abschwächung. Artefakte bleiben an ihre tatsächlichen SHAs gebunden und werden ohne finalen Remote-Merge nicht als final ausgegeben.
+- **Quelle:** Lokaler Preflight und `docs/ai/reports/2026-07-20-final-remote-closeout.md`; Trust T3/T4, nur als Daten behandelt.
