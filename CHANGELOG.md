@@ -2,6 +2,20 @@
 
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 
+- STM-STAB-001 / Bedienbarkeit: Jede scheiternde Bedienaktion endet jetzt in einer
+  sichtbaren Meldung. Ursache des Berichts „viele Buttons funktionieren nicht" war ein
+  `fetch` gegen das lokale Backend, der in Firefox weder erfüllt noch abgelehnt wird,
+  sobald der Serverprozess beendet ist – der Handler erreichte seinen `catch`-Block nie.
+  Alle Anfragen haben nun einen Zeitausfall (`ApiTimeoutError`), elf `async`-Handler ohne
+  `catch` melden Fehler statt sie als unbehandelte Promise-Ablehnung zu verlieren, der
+  Backend-Chip behauptet nach einem Transportfehler nicht weiter „online", der Start
+  bekommt einen begrenzten Bereitschafts-Retry mit Banner und „Erneut versuchen", ein
+  Doppelklick auf „Jetzt anlegen" erzeugt kein zweites Turnier mehr, und die drei
+  verbliebenen nativen `window.confirm`-Aufrufe laufen über den In-App-Dialog (Firefox
+  darf wiederholte native Dialoge unterdrücken und verschluckt den Klick sonst still).
+  Tests: Frontend 24 → 52, .NET 523 → 539, plus `scripts/Smoke-FirefoxTournamentFlow.ps1`
+  mit 52 Prüfungen im echten Firefox inklusive Button-Crawl über 199 Bedienelemente.
+  Details: `docs/reports/2026-07-22-local-stabilization.md`.
 - STM-FACH-012 / Build Week UX: Die WebApp bietet im kurzen Anlagepfad nun eine bewusst
   eingeklappte Auswahl zwischen Optimal V2 (weiterhin Default) und FIDE Dutch; die
   Anfangsfarbe erscheint nur für FIDE Dutch. Bestehende Turniere werden nicht still
