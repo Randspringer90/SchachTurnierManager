@@ -162,6 +162,38 @@ function Send-MarionetteEscape {
     } | Out-Null
 }
 
+function Save-MarionetteScreenshot {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $result = Invoke-MarionetteCommand -Command 'WebDriver:TakeScreenshot' -Parameters @{
+        full = $true; hash = $false
+    }
+    $directory = Split-Path -Parent $Path
+    if ($directory -and -not (Test-Path $directory)) {
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    }
+    [System.IO.File]::WriteAllBytes($Path, [Convert]::FromBase64String($result.value))
+    return $Path
+}
+
+# Fuehrt ein Skript im Seitenkontext aus (nicht in der Marionette-Sandbox).
+# Noetig fuer Instrumentierung: eine Zuweisung an window.fetch in der Sandbox
+# erreicht das echte fetch der Seite nicht.
+function Invoke-MarionettePageScript {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Script)
+
+    $encoded = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($Script))
+    Invoke-MarionetteScript @"
+const element = document.createElement('script');
+element.textContent = decodeURIComponent(escape(window.atob('$encoded')));
+document.documentElement.appendChild(element);
+element.remove();
+return true;
+"@ | Out-Null
+}
+
 function Disconnect-Marionette {
     [CmdletBinding()]
     param()
@@ -171,5 +203,6 @@ function Disconnect-Marionette {
 }
 
 Export-ModuleMember -Function Connect-Marionette, Start-MarionetteSession, Open-MarionetteUrl,
-    Invoke-MarionetteScript, Find-MarionetteElement, Test-MarionetteElement, Invoke-MarionetteClick,
-    Send-MarionetteKeys, Send-MarionetteEscape, Invoke-MarionetteCommand, Disconnect-Marionette
+    Invoke-MarionetteScript, Invoke-MarionettePageScript, Find-MarionetteElement, Test-MarionetteElement,
+    Invoke-MarionetteClick, Send-MarionetteKeys, Send-MarionetteEscape, Save-MarionetteScreenshot,
+    Invoke-MarionetteCommand, Disconnect-Marionette

@@ -53,6 +53,30 @@ test('no destructive flow uses window.confirm, window.prompt or window.alert', (
   );
 });
 
+// The destructive-word filter above was too narrow. It let three native
+// confirmations survive that Firefox can suppress just as happily: pairing a
+// round despite critical findings, and overwriting Chess960 starting positions
+// (round dialog and single board). Suppressed there means the click silently
+// does nothing - the exact "button does not work" symptom from the manual run.
+test('no flow at all falls back to a native browser dialog', () => {
+  const offenders = nativeDialogLines().map(entry => `${entry.path}: ${entry.line}`);
+  assert.deepEqual(
+    offenders,
+    [],
+    'Firefox may suppress repeated native dialogs; every confirmation belongs in the in-app ConfirmDialog'
+  );
+});
+
+test('the confirmations that replaced the native dialogs are wired to the in-app dialog', () => {
+  const text = appShell!.text;
+  assert.match(text, /setActionConfirm\(\{/, 'the shared confirmation state must exist');
+  assert.match(text, /run: pairNextRound/, 'pairing despite critical findings asks through the dialog');
+  assert.match(text, /run: \(\) => rollChess960\(round, true\)/, 'overwriting Chess960 positions asks through the dialog');
+
+  const roller = sources.find(file => file.path.endsWith(join('chess960', 'BoardDiceRoller.tsx')))!;
+  assert.match(roller.text, /ConfirmDialog/, 'the single board overwrite also uses the in-app dialog');
+});
+
 test('the in-app confirmation dialog is wired into the tournament admin area', () => {
   const text = appShell!.text;
   assert.match(text, /ConfirmDialog/, 'ConfirmDialog must be rendered');

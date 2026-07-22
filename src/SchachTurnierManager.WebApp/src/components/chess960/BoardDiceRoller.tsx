@@ -4,6 +4,7 @@
 // Extracted from main.tsx (STM-FE-014).
 import React from 'react';
 import { describeApiError, requestJson } from '../../api/client';
+import { ConfirmDialog } from '../dialogs/ConfirmDialog';
 import { ChessDie } from './ChessDie';
 import { chess960BackRankFromNumber, chess960PieceFace, diceFaceGlyphs, diceFaceNames } from '../../lib/chess960';
 import type { Chess960StartPosition, Tournament, TournamentRound } from '../../api/contracts';
@@ -36,6 +37,7 @@ export function BoardDiceRoller({
   const [saving, setSaving] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
   const [localStatus, setLocalStatus] = React.useState<string | null>(null);
+  const [overwriteConfirmOpen, setOverwriteConfirmOpen] = React.useState(false);
   const timers = React.useRef<number[]>([]);
 
   React.useEffect(() => () => {
@@ -85,16 +87,24 @@ export function BoardDiceRoller({
     }, 1100);
   }
 
+  function requestSave(): void {
+    if (previewNumber === null || saving) {
+      return;
+    }
+    // Kein window.confirm: Firefox unterdrueckt wiederholte native Dialoge aus
+    // demselben Skriptdurchlauf, dann wuerde "Speichern" still nichts tun.
+    if (currentPosition) {
+      setOverwriteConfirmOpen(true);
+      return;
+    }
+    void save();
+  }
+
   async function save(): Promise<void> {
     if (previewNumber === null || saving) {
       return;
     }
-    if (currentPosition) {
-      const confirmed = window.confirm(`Brett ${boardNumber}: vorhandene Startstellung (SP ${currentPosition.positionNumber}) überschreiben?`);
-      if (!confirmed) {
-        return;
-      }
-    }
+    setOverwriteConfirmOpen(false);
     setSaving(true);
     setLocalError(null);
     try {
@@ -155,7 +165,7 @@ export function BoardDiceRoller({
         )}
         {phase === 'revealed' && (
           <>
-            <button type="button" onClick={() => void save()} disabled={saving || disabled}>
+            <button type="button" onClick={requestSave} disabled={saving || disabled}>
               {saving ? 'Speichert …' : '💾 Für Brett speichern'}
             </button>
             <button type="button" className="secondary" onClick={startRoll} disabled={saving}>🎲 Nochmal würfeln</button>
@@ -165,6 +175,22 @@ export function BoardDiceRoller({
       </div>
       {localStatus && <p className="board-dice-ok">{localStatus}</p>}
       {localError && <p className="board-dice-error">⚠ {localError}</p>}
+      <ConfirmDialog
+        open={overwriteConfirmOpen && currentPosition !== null}
+        title={`Brett ${boardNumber}: Startstellung überschreiben?`}
+        description={`Für dieses Brett ist bereits SP ${currentPosition?.positionNumber ?? '—'} gespeichert.`}
+        consequences={[
+          `Bisher: ${currentPosition?.whiteBackRank ?? '—'} · SP ${currentPosition?.positionNumber ?? '—'}`,
+          `Neu: ${previewBackRank || '—'} · SP ${previewNumber ?? '—'}`
+        ]}
+        confirmLabel="Überschreiben"
+        cancelLabel="Abbrechen"
+        destructive
+        busy={saving}
+        busyLabel="Speichert …"
+        onConfirm={() => void save()}
+        onCancel={() => setOverwriteConfirmOpen(false)}
+      />
     </div>
   );
 }

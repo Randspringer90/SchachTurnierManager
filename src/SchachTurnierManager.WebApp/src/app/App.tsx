@@ -8,7 +8,15 @@
 // backlog (STM-FE-015..018).
 import React from 'react';
 import { LanguageSwitcher, useI18n } from '../i18n';
-import { describeApiError, requestJson, requestText } from '../api/client';
+import { describeApiError, healthProbeTimeoutMs, isApiTransportError, requestJson, requestText } from '../api/client';
+import {
+  canOperate,
+  describeReadiness,
+  nextProbeDelayMs,
+  readinessAfterProbe,
+  steadyProbeIntervalMs,
+  type BackendReadiness,
+} from '../lib/backendReadiness';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { QrPanel } from '../components/QrPanel';
 import { ChessDie } from '../components/chess960/ChessDie';
@@ -131,9 +139,24 @@ import type {
   KnowledgeBase,
 } from '../api/contracts';
 
+/** Nicht zerstoerende Rueckfrage vor einer Bedienaktion, als In-App-Dialog. */
+type ActionConfirmState = {
+  title: string;
+  description: string;
+  consequences?: string[];
+  confirmLabel: string;
+  cancelLabel: string;
+  destructive?: boolean;
+  run: () => Promise<void>;
+};
+
 export function App() {
   const { t, lang } = useI18n();
   const [health, setHealth] = React.useState<Health | null>(null);
+  const [backendReadiness, setBackendReadiness] = React.useState<BackendReadiness>('starting');
+  // Zaehlt nur die Neustarts der Bereitschaftspruefung ("Erneut versuchen"),
+  // damit der Effekt wieder anlaeuft, ohne den Zustand selbst zu beobachten.
+  const [readinessProbeGeneration, setReadinessProbeGeneration] = React.useState(0);
   const [pwaStatus, setPwaStatus] = React.useState<PwaStatus>(() => isStandaloneDisplayMode() ? 'installed' : 'checking');
   const [pwaInstallPrompt, setPwaInstallPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
@@ -154,6 +177,11 @@ export function App() {
   const [diceFace, setDiceFace] = React.useState(0);
   const [boardDiceModal, setBoardDiceModal] = React.useState<{ roundNumber: number; boardNumber: number } | null>(null);
   const [destructiveDialog, setDestructiveDialog] = React.useState<DestructiveDialogState | null>(null);
+  // Rueckfragen, die frueher window.confirm waren (Auslosung trotz kritischer
+  // Hinweise, Chess960 ueberschreiben). Firefox darf native Dialoge desselben
+  // Skriptdurchlaufs unterdruecken - dann bliebe die Aktion wirkungslos.
+  const [actionConfirm, setActionConfirm] = React.useState<ActionConfirmState | null>(null);
+  const [actionConfirmBusy, setActionConfirmBusy] = React.useState(false);
   const [boardDiceTab, setBoardDiceTab] = React.useState<'browser' | 'qr'>('browser');
   const [laptopIp, setLaptopIp] = React.useState<string>(() => readLocalStorage('stm.laptopIp') ?? defaultLanHost());
   const [diceUrlCopied, setDiceUrlCopied] = React.useState(false);
@@ -162,6 +190,9 @@ export function App() {
   const [pairingStrategy, setPairingStrategy] = React.useState(0);
   const [swissInitialColour, setSwissInitialColour] = React.useState(1);
   const [isCreateTournamentOpen, setIsCreateTournamentOpen] = React.useState(false);
+  // Blockiert das zweite Absenden. Ohne das erzeugte ein Doppelklick auf
+  // "Jetzt anlegen" zwei identische Turniere - im Firefox-Smoke reproduziert.
+  const [creatingTournament, setCreatingTournament] = React.useState(false);
   const [demoBusy, setDemoBusy] = React.useState(false);
   const [participantSearch, setParticipantSearch] = React.useState('');
   const [showAdvancedStandings, setShowAdvancedStandings] = React.useState(false);
@@ -190,6 +221,7 @@ export function App() {
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [pendingResultChange, setPendingResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
   const [lastResultChange, setLastResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
+  const createTournamentInFlight = React.useRef(false);
   const resultConfirmButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const resultReturnFocusRef = React.useRef<HTMLElement | null>(null);
   const [status, setStatus] = React.useState('Bereit.');
@@ -266,12 +298,99 @@ export function App() {
     }
   }, [loadDerived, loadTournaments, selectedId, selectedTournament?.id]);
 
+  // Startbereitschaft: begrenzter Retry mit wachsender Wartezeit, danach ein
+  // ruhiger Takt. Kein Dauerpolling und keine Endlosschleife - die Wartezeiten
+  // kommen aus `backendReadiness`, damit die Abfolge ohne Browser testbar ist.
   React.useEffect(() => {
-    requestJson<Health>('/api/health')
-      .then(setHealth)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-    loadTournaments().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  }, [loadTournaments]);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failedAttempts = 0;
+
+    async function probe(): Promise<void> {
+      let succeeded = false;
+      try {
+        const current = await requestJson<Health>('/api/health', { timeoutMs: healthProbeTimeoutMs });
+        if (cancelled) {
+          return;
+        }
+        succeeded = true;
+        setHealth(current);
+      } catch (ex) {
+        if (cancelled) {
+          return;
+        }
+        // Technische Ursache bleibt in der Konsole, die Oberflaeche bekommt den
+        // Bereitschaftshinweis - dort steht kein Host und kein Port.
+        console.warn('Bereitschaftspruefung des lokalen Backends fehlgeschlagen.', ex);
+        setHealth(null);
+      }
+
+      failedAttempts = succeeded ? 0 : failedAttempts + 1;
+      const readiness = readinessAfterProbe(succeeded, failedAttempts);
+      setBackendReadiness(readiness);
+
+      if (succeeded) {
+        try {
+          await loadTournaments();
+        } catch (ex) {
+          if (!cancelled) {
+            setError(describeApiError(ex, lang));
+          }
+        }
+      }
+
+      if (!cancelled) {
+        timer = setTimeout(() => { void probe(); }, succeeded ? steadyProbeIntervalMs : nextProbeDelayMs(failedAttempts));
+      }
+    }
+
+    void probe();
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [loadTournaments, lang, readinessProbeGeneration]);
+
+  /** "Erneut versuchen" - neuer Startversuch ohne Browserneustart. */
+  function retryBackendReadiness(): void {
+    setBackendReadiness('starting');
+    setError(null);
+    setReadinessProbeGeneration(previous => previous + 1);
+  }
+
+  /**
+   * Einheitlicher Fehlerausgang fuer jede Bedienaktion.
+   *
+   * Jede scheiternde Aktion muss sichtbar werden. Vorher endeten mehrere
+   * `async`-Handler ohne `catch`: der Fehler wurde zu einer unbehandelten
+   * Promise-Ablehnung, die Oberflaeche blieb unveraendert und die Schaltflaeche
+   * wirkte tot. Bei einem Transportfehler wird zusaetzlich der Backend-Chip
+   * ehrlich gemacht, statt weiter "online" zu behaupten.
+   */
+  async function confirmActionDialog(): Promise<void> {
+    if (!actionConfirm || actionConfirmBusy) {
+      return;
+    }
+
+    const pending = actionConfirm;
+    setActionConfirmBusy(true);
+    try {
+      await pending.run();
+    } finally {
+      setActionConfirmBusy(false);
+      setActionConfirm(null);
+    }
+  }
+
+  function reportActionFailure(label: string, ex: unknown): void {
+    setError(`${label}: ${describeApiError(ex, lang)}`);
+    if (isApiTransportError(ex)) {
+      setHealth(null);
+      setBackendReadiness('unreachable');
+    }
+  }
 
   React.useEffect(() => {
     if (!('serviceWorker' in navigator)) {
@@ -330,7 +449,7 @@ export function App() {
 
   React.useEffect(() => {
     if (selectedTournament?.id) {
-      loadDerived(selectedTournament.id).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+      loadDerived(selectedTournament.id).catch((err: unknown) => setError(describeApiError(err, lang)));
     }
   }, [loadDerived, selectedTournament?.id]);
 
@@ -437,6 +556,13 @@ export function App() {
 
   async function createTournament(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Der Zustandswert alleine reicht nicht: React verarbeitet zwei Submits aus
+    // demselben Ereigniszyklus, bevor das Re-Render die Schaltflaeche sperrt.
+    if (creatingTournament || createTournamentInFlight.current) {
+      return;
+    }
+    createTournamentInFlight.current = true;
+    setCreatingTournament(true);
     setError(null);
     try {
       const created = await requestJson<Tournament>('/api/tournaments', {
@@ -457,7 +583,10 @@ export function App() {
       setStatus(lang === 'en' ? `Tournament created: ${created.name}` : `Turnier angelegt: ${created.name}`);
       await refresh(created.id);
     } catch (ex) {
-      setError(`${lang === 'en' ? 'Tournament could not be created' : 'Turnier konnte nicht angelegt werden'}: ${describeApiError(ex, lang)}`);
+      reportActionFailure(lang === 'en' ? 'Tournament could not be created' : 'Turnier konnte nicht angelegt werden', ex);
+    } finally {
+      createTournamentInFlight.current = false;
+      setCreatingTournament(false);
     }
   }
 
@@ -557,13 +686,17 @@ export function App() {
     }
 
     setError(null);
-    const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/settings`, {
-      method: 'PUT',
-      body: JSON.stringify({ settings: formToSettings(settingsForm) })
-    });
-    setSelectedId(updated.id);
-    setStatus('Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
-    await refresh(updated.id);
+    try {
+      const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify({ settings: formToSettings(settingsForm) })
+      });
+      setSelectedId(updated.id);
+      setStatus('Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
+      await refresh(updated.id);
+    } catch (ex) {
+      reportActionFailure('Turniereinstellungen konnten nicht gespeichert werden', ex);
+    }
   }
 
   function openDestructiveDialog(action: DestructiveAction): void {
@@ -667,13 +800,17 @@ export function App() {
     }
 
     setError(null);
-    await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}`, { method: 'DELETE' });
-    setStatus('Teilnehmer gelöscht oder zurückgezogen.');
-    if (editingPlayerId === player.id) {
-      setEditingPlayerId(null);
-      setPlayerForm(emptyPlayerForm);
+    try {
+      await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}`, { method: 'DELETE' });
+      setStatus('Teilnehmer gelöscht oder zurückgezogen.');
+      if (editingPlayerId === player.id) {
+        setEditingPlayerId(null);
+        setPlayerForm(emptyPlayerForm);
+      }
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure(`Teilnehmer ${player.name} konnte nicht entfernt werden`, ex);
     }
-    await refresh(selectedTournament.id);
   }
 
   async function setPlayerStatus(player: Player, newStatus: number) {
@@ -682,12 +819,16 @@ export function App() {
     }
 
     setError(null);
-    await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: newStatus })
-    });
-    setStatus(`Status für ${player.name} geändert.`);
-    await refresh(selectedTournament.id);
+    try {
+      await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus })
+      });
+      setStatus(`Status für ${player.name} geändert.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure(`Status für ${player.name} konnte nicht geändert werden`, ex);
+    }
   }
 
   async function previewNextRound() {
@@ -696,25 +837,45 @@ export function App() {
     }
 
     setError(null);
-    const preview = await requestJson<NextRoundPreview>(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round`);
-    setNextRoundPreview(preview);
-    setIsNextRoundPreviewDialogOpen(true);
-    setStatus(lang === 'en'
-      ? `Pairing preview for round ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity, true)}.`
-      : `Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
+    try {
+      const preview = await requestJson<NextRoundPreview>(`/api/tournaments/${selectedTournament.id}/pairings/preview-next-round`);
+      setNextRoundPreview(preview);
+      setIsNextRoundPreviewDialogOpen(true);
+      setStatus(lang === 'en'
+        ? `Pairing preview for round ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity, true)}.`
+        : `Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
+    } catch (ex) {
+      reportActionFailure(lang === 'en' ? 'Pairing preview failed' : 'Auslosungsvorschau fehlgeschlagen', ex);
+    }
   }
-  async function generateRound() {
+  function generateRound(): void {
     if (!selectedTournament) {
       return;
     }
 
+    // Kein window.confirm: Firefox darf wiederholte native Dialoge desselben
+    // Skriptdurchlaufs unterdruecken - dann loest "Runde auslosen" still nichts
+    // aus. Die Rueckfrage laeuft darum ueber den In-App-Dialog.
     if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      const confirmed = window.confirm(lang === 'en'
-        ? 'The preview contains critical findings. In small tournaments, rematches or score-group deviations may be unavoidable. Pair this round anyway?'
-        : 'Die Vorschau enthält kritische Hinweise. Bei kleinen Turnieren können Rematches/Scoregruppen-Abweichungen unvermeidbar sein. Trotzdem Runde auslosen?');
-      if (!confirmed) {
-        return;
-      }
+      setActionConfirm({
+        title: lang === 'en' ? 'Pair the round despite critical findings?' : 'Runde trotz kritischer Hinweise auslosen?',
+        description: lang === 'en'
+          ? 'The preview contains critical findings. In small tournaments, rematches or score-group deviations may be unavoidable.'
+          : 'Die Vorschau enthält kritische Hinweise. Bei kleinen Turnieren können Rematches/Scoregruppen-Abweichungen unvermeidbar sein.',
+        consequences: nextRoundPreview.pairingQuality.findings.slice(0, 5),
+        confirmLabel: lang === 'en' ? 'Pair anyway' : 'Trotzdem auslosen',
+        cancelLabel: lang === 'en' ? 'Cancel' : 'Abbrechen',
+        run: pairNextRound
+      });
+      return;
+    }
+
+    void pairNextRound();
+  }
+
+  async function pairNextRound(): Promise<void> {
+    if (!selectedTournament) {
+      return;
     }
 
     setError(null);
@@ -746,17 +907,31 @@ export function App() {
     setChess960HasRolled(false);
   }
 
-  async function performChess960Roll(round: TournamentRound) {
+  function performChess960Roll(round: TournamentRound): void {
     if (!selectedTournament || chess960Rolling) {
       return;
     }
 
-    const hasExistingPositions = round.pairings.some(pairing => pairing.chess960StartPosition);
-    if (hasExistingPositions) {
-      const confirmed = window.confirm('Vorhandene Startstellungen überschreiben?');
-      if (!confirmed) {
-        return;
-      }
+    const existingCount = round.pairings.filter(pairing => pairing.chess960StartPosition).length;
+    if (existingCount > 0) {
+      setActionConfirm({
+        title: 'Vorhandene Startstellungen überschreiben?',
+        description: `Für Runde ${round.roundNumber} sind bereits ${existingCount} Startstellung(en) gespeichert.`,
+        consequences: ['Alle bisherigen Chess960-Startstellungen dieser Runde werden ersetzt.'],
+        confirmLabel: 'Überschreiben',
+        cancelLabel: 'Abbrechen',
+        destructive: true,
+        run: () => rollChess960(round, true)
+      });
+      return;
+    }
+
+    void rollChess960(round, false);
+  }
+
+  async function rollChess960(round: TournamentRound, hasExistingPositions: boolean): Promise<void> {
+    if (!selectedTournament || chess960Rolling) {
+      return;
     }
 
     setError(null);
@@ -876,21 +1051,25 @@ export function App() {
     }
     const edit = pairingEdit(round, pairing);
     setError(null);
-    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/boards/${pairing.boardNumber}/pairing`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        whitePlayerId: edit.whitePlayerId || null,
-        blackPlayerId: edit.blackPlayerId || null,
-        notes: edit.notes || null
-      })
-    });
-    setStatus(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} manuell gespeichert.`);
-    setPairingEdits(previous => {
-      const copy = { ...previous };
-      delete copy[editKey(round.roundNumber, pairing.boardNumber)];
-      return copy;
-    });
-    await refresh(selectedTournament.id);
+    try {
+      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/boards/${pairing.boardNumber}/pairing`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          whitePlayerId: edit.whitePlayerId || null,
+          blackPlayerId: edit.blackPlayerId || null,
+          notes: edit.notes || null
+        })
+      });
+      setStatus(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} manuell gespeichert.`);
+      setPairingEdits(previous => {
+        const copy = { ...previous };
+        delete copy[editKey(round.roundNumber, pairing.boardNumber)];
+        return copy;
+      });
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} konnte nicht gespeichert werden`, ex);
+    }
   }
 
   async function setRoundLock(round: TournamentRound, isLocked: boolean) {
@@ -898,12 +1077,16 @@ export function App() {
       return;
     }
     setError(null);
-    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/lock`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isLocked })
-    });
-    setStatus(isLocked ? `Runde ${round.roundNumber} gesperrt.` : `Runde ${round.roundNumber} entsperrt.`);
-    await refresh(selectedTournament.id);
+    try {
+      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/lock`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isLocked })
+      });
+      setStatus(isLocked ? `Runde ${round.roundNumber} gesperrt.` : `Runde ${round.roundNumber} entsperrt.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure(`Runde ${round.roundNumber} konnte nicht ${isLocked ? 'gesperrt' : 'entsperrt'} werden`, ex);
+    }
   }
 
   async function setRoundVerified(round: TournamentRound, isVerified: boolean) {
@@ -911,12 +1094,16 @@ export function App() {
       return;
     }
     setError(null);
-    await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/verify`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isVerified })
-    });
-    setStatus(isVerified ? `Runde ${round.roundNumber} geprüft.` : `Runde ${round.roundNumber} wieder geöffnet.`);
-    await refresh(selectedTournament.id);
+    try {
+      await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/verify`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isVerified })
+      });
+      setStatus(isVerified ? `Runde ${round.roundNumber} geprüft.` : `Runde ${round.roundNumber} wieder geöffnet.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure(`Prüfstatus für Runde ${round.roundNumber} konnte nicht geändert werden`, ex);
+    }
   }
 
   async function searchExternalPlayers(event?: React.FormEvent<HTMLFormElement>) {
@@ -976,15 +1163,20 @@ export function App() {
     }
 
     setError(null);
-    const duplicateCheck = await requestJson<ExternalPlayerDuplicateCheck>(`/api/tournaments/${selectedTournament.id}/external-players/check-duplicates`, {
-      method: 'POST',
-      body: JSON.stringify({ profile })
-    });
-    setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: duplicateCheck }));
-    setStatus(duplicateCheck.hasLikelyDuplicate
-      ? `${duplicateCheck.matches.length} mögliche Dublette(n) für ${profile.name} gefunden.`
-      : `Keine sichere Dublette für ${profile.name} gefunden.`);
-    return duplicateCheck;
+    try {
+      const duplicateCheck = await requestJson<ExternalPlayerDuplicateCheck>(`/api/tournaments/${selectedTournament.id}/external-players/check-duplicates`, {
+        method: 'POST',
+        body: JSON.stringify({ profile })
+      });
+      setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: duplicateCheck }));
+      setStatus(duplicateCheck.hasLikelyDuplicate
+        ? `${duplicateCheck.matches.length} mögliche Dublette(n) für ${profile.name} gefunden.`
+        : `Keine sichere Dublette für ${profile.name} gefunden.`);
+      return duplicateCheck;
+    } catch (ex) {
+      reportActionFailure(`Dublettenprüfung für ${profile.name} fehlgeschlagen`, ex);
+      return null;
+    }
   }
 
   async function applyExternalProfile(profile: ExternalPlayerProfile, targetPlayerId?: string, overwriteExistingValues = false): Promise<void> {
@@ -1029,14 +1221,18 @@ export function App() {
     }
 
     setError(null);
-    const preview = await requestJson<PlayerImportPreview>(`/api/tournaments/${selectedTournament.id}/players/preview-import.csv`, {
-      method: 'POST',
-      body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
-    });
-    setImportPreview(preview);
-    setConfirmWarningImport(false);
-    const blockerText = preview.hasBlockingIssues ? ' Blockierende Probleme müssen vor dem Import behoben werden.' : '';
-    setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
+    try {
+      const preview = await requestJson<PlayerImportPreview>(`/api/tournaments/${selectedTournament.id}/players/preview-import.csv`, {
+        method: 'POST',
+        body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
+      });
+      setImportPreview(preview);
+      setConfirmWarningImport(false);
+      const blockerText = preview.hasBlockingIssues ? ' Blockierende Probleme müssen vor dem Import behoben werden.' : '';
+      setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
+    } catch (ex) {
+      reportActionFailure('CSV konnte nicht geprüft werden', ex);
+    }
   }
 
   function pairingQualityFor(roundNumber: number): PairingQualityReport | undefined {
@@ -1050,11 +1246,15 @@ export function App() {
     }
 
     setError(null);
-    const report = await requestJson<PairingQualityReport>(`/api/tournaments/${selectedTournament.id}/rounds/${roundNumber}/pairing-quality`);
-    setPairingQualityReports(previous => ({ ...previous, [roundNumber]: report }));
-    setStatus(lang === 'en'
-      ? `Pairing quality for round ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity, true)}.`
-      : `Pairing-Qualität Runde ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity)}.`);
+    try {
+      const report = await requestJson<PairingQualityReport>(`/api/tournaments/${selectedTournament.id}/rounds/${roundNumber}/pairing-quality`);
+      setPairingQualityReports(previous => ({ ...previous, [roundNumber]: report }));
+      setStatus(lang === 'en'
+        ? `Pairing quality for round ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity, true)}.`
+        : `Pairing-Qualität Runde ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity)}.`);
+    } catch (ex) {
+      reportActionFailure(`Pairing-Qualität für Runde ${roundNumber} konnte nicht geladen werden`, ex);
+    }
   }
   async function importPlayers() {
     if (!selectedTournament) {
@@ -1082,14 +1282,18 @@ export function App() {
     }
 
     setError(null);
-    const imported = await requestJson<Player[]>(`/api/tournaments/${selectedTournament.id}/players/import.csv`, {
-      method: 'POST',
-      body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
-    });
-    setImportPreview(null);
-    setConfirmWarningImport(false);
-    setStatus(`${imported.length} Teilnehmer importiert.`);
-    await refresh(selectedTournament.id);
+    try {
+      const imported = await requestJson<Player[]>(`/api/tournaments/${selectedTournament.id}/players/import.csv`, {
+        method: 'POST',
+        body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
+      });
+      setImportPreview(null);
+      setConfirmWarningImport(false);
+      setStatus(`${imported.length} Teilnehmer importiert.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure('Teilnehmerimport fehlgeschlagen', ex);
+    }
   }
 
   async function exportPlayers() {
@@ -1097,8 +1301,14 @@ export function App() {
       return;
     }
 
-    const csv = await requestText(`/api/tournaments/${selectedTournament.id}/players/export.csv`);
-    downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
+    setError(null);
+    try {
+      const csv = await requestText(`/api/tournaments/${selectedTournament.id}/players/export.csv`);
+      downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
+      setStatus('Teilnehmerliste als CSV exportiert.');
+    } catch (ex) {
+      reportActionFailure('Teilnehmerexport fehlgeschlagen', ex);
+    }
   }
 
   // STM-IE-002: Datei als Bytes lesen (nicht als Text), damit der Server echte
@@ -1108,22 +1318,26 @@ export function App() {
       return;
     }
 
-    const buffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-
     setError(null);
-    const outcome = await requestJson<{ added: Player[]; formatErrors: string[] }>(
-      `/api/tournaments/${selectedTournament.id}/${endpoint}`,
-      { method: 'POST', body: JSON.stringify({ fileBytes: base64, replaceExisting: replacePlayers }) }
-    );
-    setFormatImportResult({ added: outcome.added.length, errors: outcome.formatErrors });
-    setStatus(`${outcome.added.length} Teilnehmer importiert${outcome.formatErrors.length > 0 ? ` · ${outcome.formatErrors.length} Hinweis(e)` : ''}.`);
-    await refresh(selectedTournament.id);
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      const outcome = await requestJson<{ added: Player[]; formatErrors: string[] }>(
+        `/api/tournaments/${selectedTournament.id}/${endpoint}`,
+        { method: 'POST', body: JSON.stringify({ fileBytes: base64, replaceExisting: replacePlayers }) }
+      );
+      setFormatImportResult({ added: outcome.added.length, errors: outcome.formatErrors });
+      setStatus(`${outcome.added.length} Teilnehmer importiert${outcome.formatErrors.length > 0 ? ` · ${outcome.formatErrors.length} Hinweis(e)` : ''}.`);
+      await refresh(selectedTournament.id);
+    } catch (ex) {
+      reportActionFailure(`Datei ${file.name} konnte nicht importiert werden`, ex);
+    }
   }
 
   function openNextRoundPreviewCsv() {
@@ -1256,14 +1470,28 @@ function openRoundPrint(roundNumber: number) {
   }
 
   async function importTournamentJson() {
-    const parsed = JSON.parse(backupJson) as Tournament;
-    const imported = await requestJson<Tournament>('/api/tournaments/import', {
-      method: 'POST',
-      body: JSON.stringify({ tournament: parsed, overwriteExisting: true })
-    });
-    setSelectedId(imported.id);
-    setStatus(`Turnier importiert: ${imported.name}`);
-    await refresh(imported.id);
+    setError(null);
+    let parsed: Tournament;
+    try {
+      parsed = JSON.parse(backupJson) as Tournament;
+    } catch (ex) {
+      // Ein defektes Backup ist kein Backendfehler - der Bediener soll die
+      // Datei pruefen, nicht den Server.
+      setError(`Backup konnte nicht gelesen werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+      return;
+    }
+
+    try {
+      const imported = await requestJson<Tournament>('/api/tournaments/import', {
+        method: 'POST',
+        body: JSON.stringify({ tournament: parsed, overwriteExisting: true })
+      });
+      setSelectedId(imported.id);
+      setStatus(`Turnier importiert: ${imported.name}`);
+      await refresh(imported.id);
+    } catch (ex) {
+      reportActionFailure('Turnier konnte nicht importiert werden', ex);
+    }
   }
 
   function playerNameById(id?: string | null): string {
@@ -1785,6 +2013,11 @@ function openRoundPrint(roundNumber: number) {
         ? 'prüfen'
         : 'unauffällig';
 
+  const readinessNotice = describeReadiness(backendReadiness, lang);
+  // Waehrend der Startphase bleiben schreibende Aktionen gesperrt: ein Klick in
+  // diesem Fenster landet garantiert in einem halb geladenen Zustand.
+  const backendReady = canOperate(backendReadiness);
+
   return (
     <main className={`shell theme-${theme}${outdoorMode ? ' outdoor' : ''}`}>
       <header className="hero">
@@ -1796,7 +2029,8 @@ function openRoundPrint(roundNumber: number) {
         <div className="status-card">
           <strong>{t('backend.title')}</strong>
           {health && <span className="ok">{health.app} {health.version}: {health.status}</span>}
-          {!health && !error && <span>{t('backend.checking')}</span>}
+          {!health && backendReadiness === 'starting' && <span>{t('backend.checking')}</span>}
+          {!health && backendReadiness === 'unreachable' && <span className="error">{t('backend.offline')}</span>}
           {health?.database && <small>Lokale Datenbank: {health.database}</small>}
           <LanguageSwitcher />
           <button type="button" className="small secondary theme-toggle" onClick={() => setTheme(previous => previous === 'dark' ? 'light' : 'dark')} aria-pressed={theme === 'light'}>
@@ -1808,6 +2042,18 @@ function openRoundPrint(roundNumber: number) {
           </div>
         </div>
       </header>
+
+      {readinessNotice && (
+        <section className={`readiness-banner tone-${readinessNotice.tone}`} role="status" aria-live="polite" data-readiness={backendReadiness}>
+          <div>
+            <strong>{readinessNotice.title}</strong>
+            <p>{readinessNotice.detail}</p>
+          </div>
+          {readinessNotice.retryLabel && (
+            <button type="button" onClick={retryBackendReadiness}>{readinessNotice.retryLabel}</button>
+          )}
+        </section>
+      )}
 
       <section className="status-line" role="status" aria-live="polite" aria-atomic="true">
         <span>{status}</span>
@@ -1928,6 +2174,22 @@ function openRoundPrint(roundNumber: number) {
           errorMessage={destructiveDialog.error}
           onConfirm={() => void confirmDestructiveDialog()}
           onCancel={closeDestructiveDialog}
+        />
+      )}
+
+      {actionConfirm && (
+        <ConfirmDialog
+          open
+          destructive={actionConfirm.destructive}
+          title={actionConfirm.title}
+          description={actionConfirm.description}
+          consequences={actionConfirm.consequences}
+          confirmLabel={actionConfirm.confirmLabel}
+          cancelLabel={actionConfirm.cancelLabel}
+          busy={actionConfirmBusy}
+          busyLabel={lang === 'en' ? 'Working…' : 'Wird ausgeführt…'}
+          onConfirm={() => void confirmActionDialog()}
+          onCancel={() => { if (!actionConfirmBusy) { setActionConfirm(null); } }}
         />
       )}
 
@@ -2133,7 +2395,7 @@ function openRoundPrint(roundNumber: number) {
             <button type="button" onClick={() => setIsCreateTournamentOpen(previous => !previous)} aria-expanded={isCreateTournamentOpen}>
               {isCreateTournamentOpen ? t('tournaments.closeCreate') : t('tournaments.create')}
             </button>
-            <button type="button" className="secondary" onClick={() => void createDemoTournament()} disabled={demoBusy}>
+            <button type="button" className="secondary" onClick={() => void createDemoTournament()} disabled={demoBusy || !backendReady}>
               {demoBusy ? t('tournaments.demoPreparing') : t('tournaments.openDemo')}
             </button>
           </div>
@@ -2172,7 +2434,11 @@ function openRoundPrint(roundNumber: number) {
                 <span>{newTournamentName.trim() || (lang === 'en' ? 'Untitled' : 'Unbenannt')} · {lang === 'en' ? (format === 1 ? 'Swiss system' : 'Round robin') : formatOptions.find(option => option.value === format)?.label}</span>
                 {format === 1 && <span>{lang === 'en' && pairingStrategy === 0 ? 'Optimal V2 (recommended)' : pairingStrategyOptions.find(option => option.value === pairingStrategy)?.label}</span>}
               </div>
-              <button type="submit" disabled={!newTournamentName.trim()}>{t('tournaments.createNow')}</button>
+              <button type="submit" disabled={!newTournamentName.trim() || creatingTournament || !backendReady}>
+                {creatingTournament
+                  ? (lang === 'en' ? 'Creating …' : 'Wird angelegt …')
+                  : t('tournaments.createNow')}
+              </button>
             </form>
           )}
           <div className="list">
@@ -2227,7 +2493,7 @@ function openRoundPrint(roundNumber: number) {
                   <p>{t('overview.readyText')}</p>
                   <div className="actions">
                     <button type="button" onClick={() => setIsCreateTournamentOpen(true)}>{t('tournaments.create')}</button>
-                    <button type="button" className="secondary" onClick={() => void createDemoTournament()} disabled={demoBusy}>{demoBusy ? t('tournaments.demoPreparing') : t('tournaments.openDemo')}</button>
+                    <button type="button" className="secondary" onClick={() => void createDemoTournament()} disabled={demoBusy || !backendReady}>{demoBusy ? t('tournaments.demoPreparing') : t('tournaments.openDemo')}</button>
                   </div>
                   <small>{t('overview.demoPrivacy')}</small>
                 </div>
