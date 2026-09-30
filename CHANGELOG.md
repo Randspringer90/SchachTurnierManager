@@ -2,7 +2,7 @@
 
 - STM-REL-002: Release-Trust-Pipeline fuer Windows vorbereitet. Desktop-/Portable-Apphost
   und Inno-Setup-EXE koennen nur nach expliziter Freigabe mit einem lokalen
-  Code-Signing-Zertifikat aus `Cert:\\CurrentUser\\My` Authenticode/SHA256-signiert werden;
+  Windows-Code-Signing-Zertifikat per Thumbprint/SignTool Authenticode/SHA256-signiert werden;
   PFX/Passwoerter werden nicht automatisiert. Neues `manual-only`-Update-Manifest mit
   Version, Kanal, Dateigroesse, SHA256 und Signaturstatus plus fail-closed Validator fuer
   Hash-Tampering, Traversal und optionale Signaturpflicht. Der Release-Candidate-Flow kann
