@@ -62,6 +62,12 @@ Describe 'Manifeste gueltig und konsistent' {
             $content | Should -Match '(?s)\A---\r?\nname:\s*[^\r\n]+\r?\ndescription:\s*[^\r\n]+\r?\n---'
         }
     }
+    It 'globale Publishing-Ausweichwege sind verboten' {
+        foreach ($tool in 'github-repository-create','github-gist-create','external-artifact-upload','public-artifact-hosting','cross-repository-artifact-publish') {
+            @($Permissions.globalForbidden) | Should -Contain $tool
+        }
+    }
+
     It 'Agentenrechte sind Teilmenge ihres Permission-Profils' {
         foreach ($a in $AgentMan.agents) {
             $profileProperty = $Permissions.profiles.PSObject.Properties[$a.permissionProfile]
