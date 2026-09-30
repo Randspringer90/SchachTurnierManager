@@ -198,6 +198,7 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
     {
         var tier = new List<RankedCandidate>();
         var currentCount = -1;
+        var theoreticalMinimumYielded = false;
 
         foreach (var candidate in context.Generator.Generate(bracket))
         {
@@ -207,18 +208,41 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
                 continue;
             }
 
-            if (candidate.Downfloaters.Count != currentCount && tier.Count > 0)
+            if (candidate.Downfloaters.Count != currentCount)
             {
-                yield return Rank(tier);
+                if (tier.Count > 0)
+                {
+                    yield return Rank(tier);
+                }
+
                 tier = new List<RankedCandidate>();
+                currentCount = candidate.Downfloaters.Count;
+                theoreticalMinimumYielded = false;
             }
 
-            currentCount = candidate.Downfloaters.Count;
             var bye = ByeAssigneeFor(candidate, isLastGroup);
-            tier.Add(new RankedCandidate(
-                candidate,
-                bye,
-                context.Evaluator.Evaluate(candidate, bracket, bye, context.RoundsPlayed)));
+            var score = context.Evaluator.Evaluate(candidate, bracket, bye, context.RoundsPlayed);
+            var entry = new RankedCandidate(candidate, bye, score);
+
+            // STM-FACH-003: Erreicht ein Kandidat bereits die mathematische Untergrenze aller
+            // Kriterien dieser Downfloater-Stufe, kann kein spaeterer Kandidat besser sein.
+            // Wegen Art. 3.8 gewinnt bei Gleichstand der zuerst erzeugte. Wir duerfen ihn daher
+            // sofort anbieten, ohne den restlichen (bei 200 Spielern enormen) Kandidatenraum
+            // vorab zu materialisieren. Falls [C4]/[C8] im naechsten Bracket dennoch scheitert,
+            // wird der Iterator fortgesetzt und der komplette Rest dieser Stufe normal gerankt.
+            if (!theoreticalMinimumYielded &&
+                context.Evaluator.IsTheoreticalMinimum(
+                    score,
+                    bracket,
+                    candidate.Downfloaters.Count,
+                    hasBye: bye is not null))
+            {
+                theoreticalMinimumYielded = true;
+                yield return new List<RankedCandidate> { entry };
+                continue;
+            }
+
+            tier.Add(entry);
         }
 
         if (tier.Count > 0)
