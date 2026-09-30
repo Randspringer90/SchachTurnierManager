@@ -35,5 +35,5 @@
       "canBlock": true
     }
   },
-  "globalForbidden": ["force-push", "reset-hard", "clean-fd", "history-rewrite", "auto-merge-foreign-pr", "commit-secrets-or-pii"]
+  "globalForbidden": ["force-push", "reset-hard", "clean-fd", "history-rewrite", "auto-merge-foreign-pr", "commit-secrets-or-pii", "github-repository-create", "github-gist-create", "external-artifact-upload", "public-artifact-hosting", "cross-repository-artifact-publish"]
 }

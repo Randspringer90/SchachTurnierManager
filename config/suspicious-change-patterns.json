@@ -23,6 +23,8 @@
     {"id":"git-hook","category":"persistence","severity":"critical","appliesTo":["path","patch"],"pattern":"(?i)(?:^|[\\\\/])\\.git[\\\\/]hooks|core\\.hookspath"},
     {"id":"large-base64","category":"obfuscation","severity":"high","appliesTo":["patch"],"pattern":"[A-Za-z0-9+/]{800,}={0,2}"},
     {"id":"submodule-mode","category":"repository","severity":"critical","appliesTo":["patch"],"pattern":"(?m)^(?:new |old )?file mode 160000|^Subproject commit [0-9a-f]{40}$"},
-    {"id":"symlink-mode","category":"repository","severity":"critical","appliesTo":["patch"],"pattern":"(?m)^(?:new |old )?file mode 120000"}
+    {"id":"symlink-mode","category":"repository","severity":"critical","appliesTo":["patch"],"pattern":"(?m)^(?:new |old )?file mode 120000"},
+    {"id":"external-artifact-publish","category":"exfiltration","severity":"critical","appliesTo":["metadata","patch"],"pattern":"(?i)\\bgh\\s+(?:repo|gist)\\s+create\\b"},
+    {"id":"github-user-image-host","category":"exfiltration","severity":"critical","appliesTo":["metadata","patch"],"pattern":"(?i)(?:private-)?user-images\\.githubusercontent\\.com|uploads\\.github\\.com"}
   ]
 }

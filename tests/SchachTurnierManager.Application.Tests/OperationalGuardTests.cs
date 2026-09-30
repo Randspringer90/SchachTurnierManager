@@ -54,6 +54,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("NEXT_PROMPT.md", gitignore);
         Assert.Contains("NEXT_PROMPT", gitSafety);
         Assert.Contains("contentPattern", gitSafety);
+        Assert.Contains("publicationPattern", gitSafety);
+        Assert.Contains("png|jpe?g|gif|webp|bmp|tiff?", gitSafety);
+        Assert.Contains("external-publication-pattern", gitSafety);
     }
 
     [Fact]

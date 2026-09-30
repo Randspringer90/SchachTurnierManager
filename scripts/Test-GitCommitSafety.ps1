@@ -14,7 +14,7 @@ function Normalize-GitPath([string]$Path) { return (($Path ?? '').Trim().Trim('"
 # Hinweis: generische reports/-Ordner (z. B. output-Reports) bleiben blockiert; die KI-Lauf-
 # Berichte unter docs/ai/reports/ sind laut AGENTS.md KI-Lauf-Standard bewusst commitfaehig.
 # Dauerhafte Gate-Reports unter docs/reports/*.md sind ebenfalls erlaubt.
-$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp)(/|$)|(^|/)(\.secrets|secrets)/local(/|$)|(?<!docs/ai)(^|/)reports(/|$)|(^|/)NEXT_PROMPT\.md$|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
+$blockedPathRegex = '(?i)(^|/)(\.codex|\.vs|security-audit|\.local-audits|\.local-backups|output|bin|obj|dist|node_modules|logs|tmp)(/|$)|(^|/)(\.secrets|secrets)/local(/|$)|(?<!docs/ai)(^|/)reports(/|$)|(^|/)NEXT_PROMPT\.md$|\.(zip|7z|rar|exe|dll|pdb|nupkg|db|sqlite|sqlite3|log|dmp|dump|key|pem|pfx|p12|png|jpe?g|gif|webp|bmp|tiff?)$|(^|/)\.env(\.|$)|(^|/)\.npmrc$|backup_before_|before-v[0-9].*\.json$|package-lock\.json\.backup'
 $internalPattern = @((('tfs') + '\.fwdev'), (('eckd') + 'service'), ('_' + 'packaging'), (('ITM') + '_KFM')) -join '|'
 $knownPersonalFixturePattern = @((('Mar') + 'co'), (('Gei') + 'sshirt'), (('Geiß') + 'hirt'), (('461') + '0563'), (('Ilme') + 'nauer')) -join '|'
 $contentPattern = @(
@@ -29,6 +29,12 @@ $contentPattern = @(
     (('access' + '[_-]?' + 'token') + '\s*[:=]\s*[''\"][^''\"]{8,}'),
     (('refresh' + '[_-]?' + 'token') + '\s*[:=]\s*[''\"][^''\"]{8,}'),
     ('(_auth' + 'Token|npm[_-]?token)' + '\s*=\s*[^\s]+')
+) -join '|'
+$publicationPattern = @(
+    ('\bgh\s+(repo|gist)\s+create\b'),
+    (('private-' + 'user-images') + '\.githubusercontent\.com'),
+    (('user-images') + '\.githubusercontent\.com'),
+    (('uploads') + '\.github\.com')
 ) -join '|'
 # SECURITY-PATTERN-FILE: Diese Datei enthaelt bewusst Detection-/Blocklist-Regexe, keine echten Secrets.
 # Bekannte Security-/Detection-Quellen, die Blocklist-/Credential-Regexe dokumentieren duerfen.
@@ -107,6 +113,7 @@ function Test-ContentText([string]$Text, [string]$Context) {
     if ($Text -match $internalPattern) { Stop-GitSafety "Interne URL/Registry-/Projekt-Referenz gefunden: $Context" }
     if ($Text -match $knownPersonalFixturePattern) { Stop-GitSafety "Bekannter personenbezogener Test-/Doku-Anker gefunden: $Context" }
     if ($Text -match $contentPattern) { Stop-GitSafety "Kritisches Zugangsdaten-Muster gefunden: $Context" }
+    if ($Text -match $publicationPattern) { Stop-GitSafety "Unerlaubtes externes Artefakt-/Repository-Publishing-Muster gefunden: $Context" }
 }
 
 function Get-AddedLinesForFile([string]$NormalizedPath) {
@@ -137,6 +144,9 @@ function Test-StagedAddedContent([string[]]$Files) {
             }
             if ($line -match $contentPattern) {
                 Stop-GitSafety "Kritisches Zugangsdaten-Muster gefunden: $normalized (added line $index)"
+            }
+            if ($line -match $publicationPattern) {
+                Stop-GitSafety "Unerlaubtes externes Artefakt-/Repository-Publishing-Muster gefunden: $normalized (added line $index)"
             }
         }
     }
@@ -187,6 +197,7 @@ foreach ($file in $trackedFiles) {
     if ($content -match $internalPattern) { $hits.Add("internal:$normalized") }
     if ($content -match $knownPersonalFixturePattern) { $hits.Add("known-personal-fixture:$normalized") }
     if ($content -match $contentPattern) { $hits.Add("credential-pattern:$normalized") }
+    if ($content -match $publicationPattern) { $hits.Add("external-publication-pattern:$normalized") }
 }
 if ($hits.Count -gt 0) { Stop-GitSafety ("Treffer in getrackten Dateien: " + ($hits -join ', ')) }
 Info 'OK: Aktueller Arbeitsbaum ist frei von verbotenen getrackten Pfaden, internen Referenzen und kritischen Zugangsdaten-Mustern.'
@@ -195,7 +206,7 @@ if ($AllHistory) {
     New-Item -ItemType Directory -Force $ReportDir | Out-Null
     git rev-list --objects --all | Set-Content (Join-Path $ReportDir 'git-objects-all.txt') -Encoding UTF8
     $artifactHits = Select-String -Path (Join-Path $ReportDir 'git-objects-all.txt') -Pattern $blockedPathRegex -ErrorAction SilentlyContinue
-    $historyPattern = "($internalPattern)|($contentPattern)"
+    $historyPattern = "($internalPattern)|($contentPattern)|($publicationPattern)"
     $historyPath = Join-Path $ReportDir 'history-sensitive-patches.txt'
     git log --all -p --regexp-ignore-case -G $historyPattern -- . ":(exclude)$ReportDir/**" ':(exclude)scripts/Test-GitCommitSafety.ps1' ':(exclude)scripts/Test-RepositoryOpenSourceSafety.ps1' | Set-Content $historyPath -Encoding UTF8
     if ($artifactHits) { $artifactHits | Set-Content (Join-Path $ReportDir 'history-artifact-paths.txt') -Encoding UTF8 }

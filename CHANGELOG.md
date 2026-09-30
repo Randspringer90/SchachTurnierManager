@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
+
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
   Richtung zu STM-IE-001s Export). `SwissManagerCsvCodec` (Domain) liest/schreibt
   das offizielle Swiss-Manager-Layout aus dem User's Guide, Anhang C, akzeptiert

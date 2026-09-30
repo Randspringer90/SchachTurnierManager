@@ -128,6 +128,8 @@ function Set-SyntheticArtifactVerification($File, [string]$Kind, [string]$Status
 $encodedMarker = 'Encoded' + 'Command'
 $downloadMarker = 'Download' + 'File'
 $invokeMarker = 'Invoke' + '-Expression'
+$repoCreateMarker = ('g' + 'h') + ' repo ' + 'create'
+$imageHostMarker = ('user-' + 'images') + '.githubusercontent.com'
 $bidi = [string][char]0x202E
 $bidiAlm = [string][char]0x061C
 $bidiLrm = [string][char]0x200E
@@ -152,6 +154,8 @@ $fixtures = @(
     @{ id='workflow-secret'; metadata=(New-Metadata); files=@(New-File '.github/workflows/unsafe.yml'); patch='+permissions: write-all`n+secrets: inherit'; expected='BLOCKED_UNVERIFIED'; code='WORKFLOW_PRIVILEGE_EXPANSION' },
     @{ id='target-trigger'; metadata=(New-Metadata); files=@(New-File '.github/workflows/unsafe.yml'); patch='+pull_request' + '_target:'; expected='BLOCKED_UNVERIFIED'; code='PULL_REQUEST_TARGET' },
     @{ id='download-execute'; metadata=(New-Metadata); files=@(New-File 'scripts/fixture.ps1'); patch=('+' + $downloadMarker + ' from invalid.example; Process.Start fixture'); expected='BLOCKED_UNVERIFIED'; code='DOWNLOAD_AND_EXECUTE' },
+    @{ id='external-artifact-publish'; metadata=(New-Metadata); files=@(New-File 'docs/fixture.md'); patch=('+' + $repoCreateMarker + ' synthetic-public-host'); expected='BLOCKED_UNVERIFIED'; code='EXTERNAL_ARTIFACT_PUBLISH' },
+    @{ id='github-user-image-host'; metadata=(New-Metadata); files=@(New-File 'docs/fixture.md'); patch=('+https://' + $imageHostMarker + '/synthetic/fixture.png'); expected='BLOCKED_UNVERIFIED'; code='GITHUB_USER_IMAGE_HOST' },
     @{ id='encoded'; metadata=(New-Metadata); files=@(New-File 'scripts/fixture.ps1'); patch=('+' + $encodedMarker + ' synthetic-data'); expected='BLOCKED_UNVERIFIED'; code='ENCODED_EXECUTION' },
     @{ id='bidi'; metadata=(New-Metadata); files=@(New-File ("docs/fi${bidi}xture.md")); patch='+Text'; expected='BLOCKED_UNVERIFIED'; code='BIDI_CONTROL' },
     @{ id='bidi-content'; metadata=(New-Metadata); files=@(New-File 'docs/fixture.md'); patch=("+synthetic${bidi}content"); expected='BLOCKED_UNVERIFIED'; code='BIDI_CONTROL' },
