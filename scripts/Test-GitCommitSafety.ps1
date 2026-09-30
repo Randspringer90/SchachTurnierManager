@@ -31,10 +31,10 @@ $contentPattern = @(
     ('(_auth' + 'Token|npm[_-]?token)' + '\s*=\s*[^\s]+')
 ) -join '|'
 $publicationPattern = @(
-    ('\\bgh\\s+(repo|gist)\\s+create\\b'),
-    (('private-' + 'user-images') + '\\.githubusercontent\\.com'),
-    (('user-images') + '\\.githubusercontent\\.com'),
-    (('uploads') + '\\.github\\.com')
+    ('\bgh\s+(repo|gist)\s+create\b'),
+    (('private-' + 'user-images') + '\.githubusercontent\.com'),
+    (('user-images') + '\.githubusercontent\.com'),
+    (('uploads') + '\.github\.com')
 ) -join '|'
 # SECURITY-PATTERN-FILE: Diese Datei enthaelt bewusst Detection-/Blocklist-Regexe, keine echten Secrets.
 # Bekannte Security-/Detection-Quellen, die Blocklist-/Credential-Regexe dokumentieren duerfen.
