@@ -111,6 +111,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("Invoke-SecretSafetyReadiness.ps1", releaseScript);
         Assert.Contains("Publish-DesktopApp.ps1", releaseScript);
         Assert.Contains("Pack-Portable.ps1 -SelfContained", releaseScript);
+        Assert.Contains("Invoke-ReleaseTrustReadiness.ps1", releaseScript);
+        Assert.Contains("RequireSignedArtifacts", releaseScript);
+        Assert.Contains("SignArtifacts", releaseScript);
         Assert.Contains("release-artifacts-manifest.txt", releaseScript);
         Assert.Contains("UPLOAD_ZIP=", releaseScript);
         Assert.Contains("New-ReleaseRunDirectory", releaseScript);
@@ -119,6 +122,53 @@ public sealed class OperationalGuardTests
         Assert.Contains("Test-Path -LiteralPath $zipPath", releaseScript);
         Assert.DoesNotContain("UPLOAD_ZIP=$zip\"", releaseScript);
         Assert.DoesNotContain("$runDirectory = & $bundleScript -RunName $RunName -CreateOnly", releaseScript);
+    }
+
+    [Fact]
+    public void ReleaseTrustScripts_AreManualFailClosedAndKeepPrivateKeysOutOfRepository()
+    {
+        var signScript = File.ReadAllText(FindRepositoryFile("scripts", "Sign-ReleaseArtifacts.ps1"));
+        var newManifest = File.ReadAllText(FindRepositoryFile("scripts", "New-ReleaseUpdateManifest.ps1"));
+        var testManifest = File.ReadAllText(FindRepositoryFile("scripts", "Test-ReleaseUpdateManifest.ps1"));
+        var trustReadiness = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseTrustReadiness.ps1"));
+        var trustContract = File.ReadAllText(FindRepositoryFile("scripts", "Test-ReleaseTrustReadiness.ps1"));
+        var releaseGate = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseGate.ps1"));
+        var docs = File.ReadAllText(FindRepositoryFile("docs", "release", "SIGNING_AND_UPDATES.md"));
+        var schema = File.ReadAllText(FindRepositoryFile("docs", "release", "release-update-manifest.schema.json"));
+
+        Assert.Contains("ApproveSigning", signScript);
+        Assert.Contains(@"Cert:\CurrentUser\My", signScript);
+        Assert.Contains("HasPrivateKey", signScript);
+        Assert.Contains("1.3.6.1.5.5.7.3.3", signScript);
+        Assert.Contains("HashAlgorithm = 'SHA256'", signScript);
+        Assert.Contains("Signierung ausserhalb von output/ ist blockiert", signScript);
+        Assert.DoesNotContain(".pfx", signScript, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("password", signScript, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("manual-only", newManifest);
+        Assert.Contains("Get-FileHash", newManifest);
+        Assert.Contains("Get-AuthenticodeSignature", newManifest);
+        Assert.Contains("Path-Traversal", testManifest);
+        Assert.Contains("RequireSignedArtifacts", testManifest);
+        Assert.Contains("Get-AuthenticodeSignature", testManifest);
+        Assert.Contains("SHA256 stimmt nicht", testManifest);
+        Assert.DoesNotContain("Invoke-WebRequest", newManifest);
+        Assert.DoesNotContain("Invoke-RestMethod", newManifest);
+        Assert.DoesNotContain("Invoke-WebRequest", testManifest);
+        Assert.DoesNotContain("Invoke-RestMethod", testManifest);
+
+        Assert.Contains("RequireCompleteSet", trustReadiness);
+        Assert.Contains("Assert-ValidAuthenticode", trustReadiness);
+        Assert.Contains("RELEASE_TRUST_READINESS=OK", trustReadiness);
+        Assert.Contains("RELEASE_TRUST_READINESS=OK", trustContract);
+        Assert.Contains("Path-Traversal", trustContract);
+        Assert.Contains("Invoke-ReleaseTrustReadiness.ps1", releaseGate);
+
+        Assert.Contains("\"updateMode\"", schema);
+        Assert.Contains("\"manual-only\"", schema);
+        Assert.Contains("keine automatischen Downloads", docs, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Private Keys", docs);
+        Assert.Contains("kein automatischer Installer-Start", docs, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
