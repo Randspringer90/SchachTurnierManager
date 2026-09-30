@@ -28,8 +28,9 @@ oder Release-Artefakt wird erst nach lokaler Validierung verwendet.
 
 Private Keys, PFX-Dateien und Passwörter gehören **nicht** ins Repository.
 
-`Sign-ReleaseArtifacts.ps1` akzeptiert nur ein explizit ausgewähltes Zertifikat aus
-`Cert:\CurrentUser\My`. Es muss:
+`Sign-ReleaseArtifacts.ps1` verwendet Windows SignTool und wählt das Zertifikat ausschließlich
+über einen explizit angegebenen Thumbprint aus dem lokalen Benutzer-Zertifikatsspeicher bzw.
+einem angebundenen Hardwaretoken. Der private Schlüssel wird dabei nie exportiert. Das Zertifikat muss:
 
 - einen privaten Schlüssel besitzen,
 - die Code-Signing-EKU `1.3.6.1.5.5.7.3.3` enthalten,
