@@ -3,6 +3,63 @@ using SchachTurnierManager.Domain.Models;
 namespace SchachTurnierManager.Domain.Services;
 
 /// <summary>
+/// Laufzeitpolicy fuer die FIDE-Dutch-Suche in grossen Feldern (STM-FACH-003).
+/// Die Budgets begrenzen nur die Suche; sie lockern keine fachliche Regel.
+/// </summary>
+public sealed record FideDutchSearchOptions
+{
+    public bool EnforceTimeout { get; init; } = true;
+    public TimeSpan UpTo50Players { get; init; } = TimeSpan.FromSeconds(2);
+    public TimeSpan UpTo100Players { get; init; } = TimeSpan.FromSeconds(10);
+    public TimeSpan UpTo200Players { get; init; } = TimeSpan.FromSeconds(60);
+    public TimeSpan Above200Players { get; init; } = TimeSpan.FromSeconds(120);
+    public TimeSpan? TimeoutOverride { get; init; }
+
+    public static FideDutchSearchOptions Exhaustive { get; } = new() { EnforceTimeout = false };
+
+    internal TimeSpan ResolveTimeout(int playerCount)
+    {
+        if (TimeoutOverride is { } configured)
+        {
+            if (configured < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(TimeoutOverride), "Das Suchbudget darf nicht negativ sein.");
+            }
+
+            return configured;
+        }
+
+        return playerCount switch
+        {
+            <= 50 => UpTo50Players,
+            <= 100 => UpTo100Players,
+            <= 200 => UpTo200Players,
+            _ => Above200Players
+        };
+    }
+}
+
+/// <summary>
+/// Wird geworfen, wenn die regelkonforme Suche ihr Zeitbudget verbraucht hat.
+/// Es wird bewusst kein Teilresultat zurueckgegeben.
+/// </summary>
+public sealed class FideDutchPairingTimeoutException : InvalidOperationException
+{
+    public FideDutchPairingTimeoutException(int playerCount, TimeSpan budget)
+        : base(
+            $"FIDE-Dutch: Das Suchbudget von {budget.TotalSeconds:0.###} s fuer {playerCount} Spieler wurde ueberschritten. " +
+            "Die Auslosung wurde ohne Teilergebnis abgebrochen; es wurden keine Paarungsregeln gelockert. " +
+            "Fuer eine erschöpfende Suche kann die Timeout-Policy explizit deaktiviert werden.")
+    {
+        PlayerCount = playerCount;
+        Budget = budget;
+    }
+
+    public int PlayerCount { get; }
+    public TimeSpan Budget { get; }
+}
+
+/// <summary>
 /// FIDE (Dutch) System nach C.04.3, Fassung gültig ab 01.02.2026 (STM-FACH-002).
 /// Regelbelege mit Artikelnummern: <c>docs/FIDE_DUTCH_REFERENCE.md</c>.
 /// </summary>
@@ -22,16 +79,28 @@ namespace SchachTurnierManager.Domain.Services;
 public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
 {
     private readonly FideDutchProfileBuilder _profiles = new();
+    private readonly FideDutchSearchOptions _searchOptions;
+
+    public FideDutchPairingStrategy()
+        : this(new FideDutchSearchOptions())
+    {
+    }
+
+    public FideDutchPairingStrategy(FideDutchSearchOptions searchOptions)
+    {
+        _searchOptions = searchOptions ?? throw new ArgumentNullException(nameof(searchOptions));
+    }
 
     public SwissPairingStrategyKind Kind => SwissPairingStrategyKind.FideDutch;
 
     public TournamentRound GenerateNextRound(TournamentState tournament)
     {
         var profiles = _profiles.Build(tournament);
+        var search = PairingSearchBudget.Start(_searchOptions, profiles.Count);
         var criteria = FideDutchAbsoluteCriteria.ForRound(tournament, profiles);
         var colours = new FideDutchColourAllocator();
         var evaluator = new FideDutchCandidateEvaluator(criteria, colours, tournament.Settings.SwissInitialColour);
-        var generator = new FideDutchCandidateGenerator(criteria);
+        var generator = new FideDutchCandidateGenerator(criteria, search.ThrowIfExceeded);
 
         var groups = FideDutchScoreGroups.Build(profiles);
         var messages = new List<string>();
@@ -41,7 +110,7 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
         WarnIfSeedingIsNotFideOrdered(profiles, messages);
 
         var context = new PairingContext(
-            groups, criteria, evaluator, generator, tournament.Rounds.Count, floaters);
+            groups, criteria, evaluator, generator, tournament.Rounds.Count, floaters, search);
 
         var solution = PairFrom(context, groupIndex: 0, movedDown: Array.Empty<FideDutchPlayerProfile>());
 
@@ -66,6 +135,8 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
         int groupIndex,
         IReadOnlyList<FideDutchPlayerProfile> movedDown)
     {
+        context.Search.ThrowIfExceeded();
+
         if (groupIndex >= context.Groups.Count)
         {
             // Keine Punktgruppe mehr da. Uebrig gebliebene Absteiger koennen nicht mehr gepaart
@@ -88,8 +159,10 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
         // die naechste Stufe erst erzeugt, wenn die aktuelle vollstaendig gescheitert ist.
         foreach (var tier in TiersByDownfloatCount(context, bracket, isLastGroup))
         {
+            context.Search.ThrowIfExceeded();
             foreach (var entry in tier)
             {
+                context.Search.ThrowIfExceeded();
                 // Im letzten Bracket gibt es kein "weiter unten" - der uebrig gebliebene Spieler
                 // bekommt das Freilos.
                 if (isLastGroup)
@@ -128,6 +201,7 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
 
         foreach (var candidate in context.Generator.Generate(bracket))
         {
+            context.Search.ThrowIfExceeded();
             if (!IsLocallyViable(candidate, isLastGroup))
             {
                 continue;
@@ -291,7 +365,35 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
         FideDutchCandidateEvaluator Evaluator,
         FideDutchCandidateGenerator Generator,
         int RoundsPlayed,
-        List<string> Floaters);
+        List<string> Floaters,
+        PairingSearchBudget Search);
+
+    private sealed class PairingSearchBudget
+    {
+        private readonly FideDutchSearchOptions _options;
+        private readonly int _playerCount;
+        private readonly TimeSpan _budget;
+        private readonly System.Diagnostics.Stopwatch _stopwatch;
+
+        private PairingSearchBudget(FideDutchSearchOptions options, int playerCount)
+        {
+            _options = options;
+            _playerCount = playerCount;
+            _budget = options.ResolveTimeout(playerCount);
+            _stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        }
+
+        public static PairingSearchBudget Start(FideDutchSearchOptions options, int playerCount) =>
+            new(options, playerCount);
+
+        public void ThrowIfExceeded()
+        {
+            if (_options.EnforceTimeout && _stopwatch.Elapsed >= _budget)
+            {
+                throw new FideDutchPairingTimeoutException(_playerCount, _budget);
+            }
+        }
+    }
 
     /// <summary>Das Ergebnis einer (Teil-)Auslosung: Paare plus höchstens ein Freilos.</summary>
     private sealed record Solution(
