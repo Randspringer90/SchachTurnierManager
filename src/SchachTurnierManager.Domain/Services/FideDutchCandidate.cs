@@ -124,6 +124,90 @@ public sealed class FideDutchCandidateEvaluator(FideDutchAbsoluteCriteria criter
     }
 
     /// <summary>
+    /// Prüft, ob ein bereits bewerteter Kandidat die theoretische Untergrenze aller
+    /// Qualitätskriterien dieses Brackets erreicht. Trifft das zu, kann kein später erzeugter
+    /// Kandidat derselben Downfloater-Stufe besser sein; Art. 3.8 macht den ersten solchen
+    /// Kandidaten zum eindeutigen Sieger. Das erlaubt STM-FACH-003, große Felder faul zu paaren,
+    /// ohne fachliche Kriterien abzuschneiden.
+    /// </summary>
+    public bool IsTheoreticalMinimum(
+        IReadOnlyList<decimal> score,
+        FideDutchBracket bracket,
+        int downfloatCount,
+        bool hasBye)
+    {
+        var lowerBound = new List<decimal>();
+
+        if (hasBye)
+        {
+            var eligibleByePoints = bracket.Players
+                .Where(FideDutchAbsoluteCriteria.MayReceiveBye)
+                .Select(profile => profile.Points)
+                .ToList();
+
+            if (eligibleByePoints.Count == 0)
+            {
+                return false;
+            }
+
+            lowerBound.Add(eligibleByePoints.Min());
+        }
+        else
+        {
+            lowerBound.Add(decimal.MinValue);
+        }
+
+        lowerBound.Add(downfloatCount);
+
+        foreach (var points in bracket.Players
+                     .Select(profile => profile.Points)
+                     .OrderBy(points => points)
+                     .Take(downfloatCount)
+                     .OrderByDescending(points => points))
+        {
+            lowerBound.Add(points);
+        }
+
+        for (var index = downfloatCount; index < bracket.Players.Count; index++)
+        {
+            lowerBound.Add(decimal.MinValue);
+        }
+
+        // [C9]: Bei einem Freilos sind null ungespielte Vorrunden die theoretische Untergrenze.
+        lowerBound.Add(hasBye ? 0m : decimal.MinValue);
+
+        // [C10]–[C17] sind Zählwerte; weniger als null ist unmöglich.
+        for (var criterion = 0; criterion < 8; criterion++)
+        {
+            lowerBound.Add(0m);
+        }
+
+        AddRepeatedFloatLowerBound(lowerBound, bracket, twoRoundsBack: false);
+        AddRepeatedFloatLowerBound(lowerBound, bracket, twoRoundsBack: true);
+
+        return Compare(score, lowerBound) == 0;
+    }
+
+    private static void AddRepeatedFloatLowerBound(
+        List<decimal> vector,
+        FideDutchBracket bracket,
+        bool twoRoundsBack)
+    {
+        var repeatedCount = bracket.Mdps.Count(profile =>
+            (twoRoundsBack ? profile.FloatTwoRoundsBack : profile.FloatLastRound) == FideFloat.Down);
+
+        for (var index = 0; index < repeatedCount; index++)
+        {
+            vector.Add(0m);
+        }
+
+        for (var index = repeatedCount; index < bracket.Mdps.Count; index++)
+        {
+            vector.Add(decimal.MinValue);
+        }
+    }
+
+    /// <summary>
     /// Lexikografischer Vergleich zweier Bewertungsvektoren. Negativ = <paramref name="a"/> ist besser.
     /// </summary>
     public static int Compare(IReadOnlyList<decimal> a, IReadOnlyList<decimal> b)
