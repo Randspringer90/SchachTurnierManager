@@ -197,6 +197,7 @@ foreach ($file in $trackedFiles) {
     if ($content -match $internalPattern) { $hits.Add("internal:$normalized") }
     if ($content -match $knownPersonalFixturePattern) { $hits.Add("known-personal-fixture:$normalized") }
     if ($content -match $contentPattern) { $hits.Add("credential-pattern:$normalized") }
+    if ($content -match $publicationPattern) { $hits.Add("external-publication-pattern:$normalized") }
 }
 if ($hits.Count -gt 0) { Stop-GitSafety ("Treffer in getrackten Dateien: " + ($hits -join ', ')) }
 Info 'OK: Aktueller Arbeitsbaum ist frei von verbotenen getrackten Pfaden, internen Referenzen und kritischen Zugangsdaten-Mustern.'
@@ -205,7 +206,7 @@ if ($AllHistory) {
     New-Item -ItemType Directory -Force $ReportDir | Out-Null
     git rev-list --objects --all | Set-Content (Join-Path $ReportDir 'git-objects-all.txt') -Encoding UTF8
     $artifactHits = Select-String -Path (Join-Path $ReportDir 'git-objects-all.txt') -Pattern $blockedPathRegex -ErrorAction SilentlyContinue
-    $historyPattern = "($internalPattern)|($contentPattern)"
+    $historyPattern = "($internalPattern)|($contentPattern)|($publicationPattern)"
     $historyPath = Join-Path $ReportDir 'history-sensitive-patches.txt'
     git log --all -p --regexp-ignore-case -G $historyPattern -- . ":(exclude)$ReportDir/**" ':(exclude)scripts/Test-GitCommitSafety.ps1' ':(exclude)scripts/Test-RepositoryOpenSourceSafety.ps1' | Set-Content $historyPath -Encoding UTF8
     if ($artifactHits) { $artifactHits | Set-Content (Join-Path $ReportDir 'history-artifact-paths.txt') -Encoding UTF8 }
