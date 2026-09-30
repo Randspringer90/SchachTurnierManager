@@ -5,7 +5,10 @@ param(
     [switch]$SkipPublish,
     [switch]$BuildInstaller,
     [switch]$AllowMissingInnoSetup,
-    [string]$InnoSetupCompiler
+    [string]$InnoSetupCompiler,
+    [switch]$SignArtifacts,
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer
 )
 
 Set-StrictMode -Version Latest
@@ -146,6 +149,8 @@ $inno = Find-InnoSetupCompiler
     "SkipReleaseGate: $($SkipReleaseGate.IsPresent)",
     "SkipPublish: $($SkipPublish.IsPresent)",
     "InnoSetupCompiler: $(if ($inno) { $inno } else { 'NICHT GEFUNDEN' })",
+    "SignArtifacts: $($SignArtifacts.IsPresent)",
+    "Timestamping: $(if ([string]::IsNullOrWhiteSpace($TimestampServer)) { 'nein' } else { 'explizit konfiguriert' })",
     ''
 ) | Set-Content -Encoding UTF8 -LiteralPath $summaryPath
 
@@ -179,7 +184,18 @@ if ($BuildInstaller) {
         }
     }
     else {
-        Invoke-Logged 'build-installer-skippublish' 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -SkipPublish'
+        $buildInstallerCommand = 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -SkipPublish'
+        if ($SignArtifacts) {
+            if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+                throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+            }
+            $buildInstallerCommand += " -SignArtifacts -SigningCertificateThumbprint '$SigningCertificateThumbprint'"
+            if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+                $buildInstallerCommand += " -TimestampServer '$TimestampServer'"
+            }
+        }
+
+        Invoke-Logged 'build-installer-skippublish' $buildInstallerCommand
         $count = Write-InstallerManifest
         if ($count -lt 1) { throw 'Installer-Build meldete OK, aber keine Setup-EXE wurde gefunden.' }
         Add-Summary "Installer-Build: OK ($count Setup-Datei(en))"
