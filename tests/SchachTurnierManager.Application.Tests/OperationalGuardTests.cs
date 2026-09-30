@@ -137,10 +137,12 @@ public sealed class OperationalGuardTests
         var schema = File.ReadAllText(FindRepositoryFile("docs", "release", "release-update-manifest.schema.json"));
 
         Assert.Contains("ApproveSigning", signScript);
-        Assert.Contains(@"Cert:\CurrentUser\My", signScript);
-        Assert.Contains("HasPrivateKey", signScript);
+        Assert.Contains("signtool.exe", signScript, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/sha1", signScript);
+        Assert.Contains("/fd", signScript);
+        Assert.Contains("SHA256", signScript);
+        Assert.Contains("Get-AuthenticodeSignature", signScript);
         Assert.Contains("1.3.6.1.5.5.7.3.3", signScript);
-        Assert.Contains("HashAlgorithm = 'SHA256'", signScript);
         Assert.Contains("Signierung ausserhalb von output/ ist blockiert", signScript);
         Assert.DoesNotContain(".pfx", signScript, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("password", signScript, StringComparison.OrdinalIgnoreCase);
