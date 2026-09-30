@@ -1,5 +1,18 @@
 ## Unreleased (development)
 
+- STM-FACH-003: FIDE-Dutch-Kandidatensuche fuer grosse Felder gehaertet. Exchange-Varianten
+  werden nicht mehr ueber alle Austauschgroessen vorab materialisiert, sondern streng nach
+  Austauschgroesse faul erzeugt; zulaessige Paarungen werden pro Runde gecacht. Kandidaten,
+  die nachweislich bereits die theoretische Untergrenze aller Kriterien ihrer Downfloater-Stufe
+  erreichen, koennen nach Art. 3.8 sofort weitergeprueft werden, ohne den restlichen
+  Kandidatenraum vorab zu materialisieren. Adaptive fail-closed Suchbudgets (2 s bis 50,
+  10 s bis 100, 60 s bis 200 Spieler; expliziter Exhaustive-Modus ohne Timeout) verhindern
+  stille Regelkompromisse oder Teilresultate.
+  Neue synthetische Tests decken fixe Erstrunden-Paarungen fuer 21/50 Spieler,
+  Laufzeit-/Allokationsbudgets fuer 50/100/200, absolute Kriterien ueber mehrere Runden,
+  Determinismus sowie erzwungenes Timeout-Verhalten ab.
+
+
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
