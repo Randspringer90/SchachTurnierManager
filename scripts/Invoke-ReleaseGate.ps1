@@ -97,6 +97,10 @@ try {
         Pop-Location
     }
 
+    Invoke-NativeStep 'Release-Trust-Readiness' {
+        pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Test-ReleaseTrustReadiness.ps1') -Root $Root
+    }
+
     if (-not $SkipPack) {
         Invoke-NativeStep 'Pack-Portable' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Pack-Portable.ps1') }
     } else {
