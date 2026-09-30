@@ -300,7 +300,8 @@ function Get-ReviewPatternCode {
         'workflow-secret-reference'='WORKFLOW_SECRET_REFERENCE'; 'workflow-write-permission'='WORKFLOW_WRITE_PERMISSION';
         'msbuild-execution-hook'='MSBUILD_EXECUTION_HOOK'; 'package-lifecycle'='PACKAGE_LIFECYCLE_SCRIPT';
         'git-hook'='GIT_HOOK'; 'large-base64'='OBFUSCATED_CONTENT';
-        'submodule-mode'='SUBMODULE'; 'symlink-mode'='SYMLINK'
+        'submodule-mode'='SUBMODULE'; 'symlink-mode'='SYMLINK';
+        'external-artifact-publish'='EXTERNAL_ARTIFACT_PUBLISH'; 'github-user-image-host'='GITHUB_USER_IMAGE_HOST'
     }
     if ($map.ContainsKey($Id)) { return $map[$Id] }
     return 'SUSPICIOUS_CHANGE'
