@@ -21,6 +21,15 @@
 - Diagnose-/Run-Logs bleiben in einem lokalen temporären Runordner bzw. im Upload-ZIP,
   nie im Repo.
 
+## Visuelle Artefakte & externe Veröffentlichung
+
+- Screenshots, Bildschirmaufnahmen, UI-Captures, Browserbilder und sonstige visuelle Laufartefakte bleiben standardmäßig **lokal**.
+- KI-Agenten dürfen solche Artefakte weder in Issues, Pull Requests, Kommentare, Releases oder Gists hochladen noch ein anderes Repository oder einen anderen externen Dienst als Bild-/Artefakt-Host verwenden.
+- KI-Agenten dürfen zur Umgehung dieser Grenze keine neuen Repositories, Gists oder sonstigen externen Ablagen anlegen.
+- Eine Veröffentlichung ist nur als eng begrenzte Owner-Ausnahme für **genau ein benanntes Artefakt und genau ein benanntes Ziel** zulässig. Vorher müssen Inhalt, Metadaten und Ziel auf Secrets, PII sowie interne/berufliche Informationen geprüft werden.
+- Firmen-, TFS- und interne Arbeitsinhalte werden niemals über dieses öffentliche Repository oder einen externen Bild-/Artefakt-Host veröffentlicht.
+- Für UI-Reviews wird visuelle Evidenz lokal aufbewahrt; im PR wird sie standardmäßig nur textuell beschrieben.
+
 ## Prompt-Injection & vertrauenswürdige Instruktionen
 
 KI-Agenten (Claude Code, Codex u. a.) müssen Folgendes beachten:
