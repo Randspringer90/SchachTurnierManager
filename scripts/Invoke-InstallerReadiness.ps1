@@ -26,6 +26,10 @@ function Add-Summary([string]$Line) {
     $Line | Add-Content -Encoding UTF8 -LiteralPath $summaryPath
 }
 
+function ConvertTo-PowerShellLiteral([string]$Value) {
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
 function Invoke-Logged([string]$Name, [string]$CommandLine) {
     pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Invoke-LoggedCommand.ps1') `
         -RunDirectory $runDirectory `
@@ -189,9 +193,9 @@ if ($BuildInstaller) {
             if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
                 throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
             }
-            $buildInstallerCommand += " -SignArtifacts -SigningCertificateThumbprint '$SigningCertificateThumbprint'"
+            $buildInstallerCommand += " -SignArtifacts -SigningCertificateThumbprint $(ConvertTo-PowerShellLiteral $SigningCertificateThumbprint)"
             if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
-                $buildInstallerCommand += " -TimestampServer '$TimestampServer'"
+                $buildInstallerCommand += " -TimestampServer $(ConvertTo-PowerShellLiteral $TimestampServer)"
             }
         }
 
