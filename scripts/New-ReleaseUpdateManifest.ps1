@@ -111,7 +111,7 @@ $artifacts = foreach ($item in $selected) {
     }
 
     $relative = [System.IO.Path]::GetRelativePath($artifactRootFull, $fullPath).Replace('\', '/')
-    if ([System.IO.Path]::IsPathRooted($relative) -or $relative -split '/' | Where-Object { $_ -eq '..' }) {
+    if ([System.IO.Path]::IsPathRooted($relative) -or (@($relative -split '/') -contains '..')) {
         throw "Unsicherer relativer Artefaktpfad: $relative"
     }
 
