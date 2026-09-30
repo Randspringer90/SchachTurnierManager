@@ -32,14 +32,22 @@ public sealed class FideDutchLargeFieldTests
     {
         var tournament = CreateTournament(playerCount);
         var strategy = new FideDutchPairingStrategy();
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
         var stopwatch = Stopwatch.StartNew();
 
         var round = strategy.GenerateNextRound(tournament);
 
         stopwatch.Stop();
+        var allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Console.WriteLine(
+            $"STM-FACH-003 performance: players={playerCount}; elapsedMs={stopwatch.Elapsed.TotalMilliseconds:0.0}; allocatedMiB={allocatedBytes / 1024d / 1024d:0.0}");
+
         Assert.True(
             stopwatch.Elapsed < TimeSpan.FromSeconds(budgetSeconds),
             $"{playerCount} Spieler: {stopwatch.Elapsed.TotalSeconds:0.000}s >= Budget {budgetSeconds}s.");
+        Assert.True(
+            allocatedBytes < 256L * 1024 * 1024,
+            $"{playerCount} Spieler: {allocatedBytes / 1024d / 1024d:0.0} MiB Allokationen sind fuer eine Erstrundenpaarung zu hoch.");
         AssertEveryPlayerPlacedExactlyOnce(tournament, round);
     }
 
