@@ -69,7 +69,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-UX-003 | Backup/Restore-UX | P2 | Backlog | ui | either | – | v1.0.0 |
 | STM-UX-004 | BYOK-KI-Provider | P3 | Backlog | ai | owner | – | post-1.0 |
 | STM-REL-001 | Setup-EXE (Klick-Installation) | P1 | Done | release | friend | Original-PR [#33](https://github.com/Randspringer90/SchachTurnierManager/pull/33) (Marcel), sichere Adoption [#34](https://github.com/Randspringer90/SchachTurnierManager/pull/34), Merge `b263925` | v1.0.0 |
-| STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
+| STM-REL-002 | Signierung & Update-Konzept | P1 | In Progress | release | owner | [#58](https://github.com/Randspringer90/SchachTurnierManager/issues/58) (Branch `integration/pr-58-safe-adoption`; Authenticode + `manual-only`-Update-Manifest + Trust-Gate) | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
 | STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43) (blockiert: Android SDK fehlt auf der Workstation) | post-1.0 |
