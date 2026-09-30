@@ -9,6 +9,8 @@ param(
 
     [string]$TimestampServer,
 
+    [string]$SignToolPath,
+
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
 
     [switch]$ApproveSigning
@@ -24,30 +26,48 @@ if (-not $ApproveSigning) {
     throw 'Signierung ist eine mutierende Release-Aktion. Explizite Freigabe mit -ApproveSigning ist erforderlich.'
 }
 
+function Resolve-SignTool {
+    if (-not [string]::IsNullOrWhiteSpace($SignToolPath)) {
+        if (-not (Test-Path -LiteralPath $SignToolPath -PathType Leaf)) {
+            throw "Angegebenes signtool.exe wurde nicht gefunden: $SignToolPath"
+        }
+        return (Resolve-Path -LiteralPath $SignToolPath).Path
+    }
+
+    $command = Get-Command 'signtool.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($command) {
+        return $command.Source
+    }
+
+    $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+    if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+        $kitsRoot = Join-Path $programFilesX86 'Windows Kits\10\bin'
+        if (Test-Path -LiteralPath $kitsRoot -PathType Container) {
+            $candidates = @(Get-ChildItem -LiteralPath $kitsRoot -Directory -ErrorAction SilentlyContinue |
+                Sort-Object Name -Descending |
+                ForEach-Object { Join-Path $_.FullName 'x64\signtool.exe' } |
+                Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+            if ($candidates.Count -gt 0) {
+                return $candidates[0]
+            }
+        }
+    }
+
+    throw 'signtool.exe wurde nicht gefunden. Windows SDK/SignTool installieren oder -SignToolPath angeben.'
+}
+
 $normalizedThumbprint = ($CertificateThumbprint -replace '\s+', '').ToUpperInvariant()
-$certificate = Get-ChildItem -Path Cert:\CurrentUser\My |
-    Where-Object { ($_.Thumbprint -replace '\s+', '').ToUpperInvariant() -eq $normalizedThumbprint } |
-    Select-Object -First 1
+$signTool = Resolve-SignTool
 
-if (-not $certificate) {
-    throw "Code-Signing-Zertifikat wurde in Cert:\CurrentUser\My nicht gefunden: $normalizedThumbprint"
-}
-if (-not $certificate.HasPrivateKey) {
-    throw 'Das ausgewaehlte Zertifikat besitzt keinen privaten Schluessel.'
-}
-
-$codeSigningOid = '1.3.6.1.5.5.7.3.3'
-$ekuOids = @($certificate.Extensions |
-    Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] } |
-    ForEach-Object { $_.EnhancedKeyUsages | ForEach-Object { $_.Value } })
-if ($ekuOids -notcontains $codeSigningOid) {
-    throw 'Das ausgewaehlte Zertifikat ist nicht fuer Code Signing (EKU 1.3.6.1.5.5.7.3.3) freigegeben.'
-}
-if ($certificate.NotAfter -le (Get-Date)) {
-    throw 'Das ausgewaehlte Code-Signing-Zertifikat ist abgelaufen.'
+if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+    $uri = $null
+    if (-not [Uri]::TryCreate($TimestampServer, [UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -ne 'https') {
+        throw 'TimestampServer muss eine absolute HTTPS-URL sein.'
+    }
+    $TimestampServer = $uri.AbsoluteUri
 }
 
-$outputRoot = (Join-Path $Root 'output')
+$outputRoot = Join-Path $Root 'output'
 $outputRootFull = [System.IO.Path]::GetFullPath($outputRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
     [System.IO.Path]::DirectorySeparatorChar
 
@@ -73,22 +93,33 @@ foreach ($artifact in $resolvedArtifacts | Select-Object -Unique) {
         continue
     }
 
-    $parameters = @{
-        FilePath      = $artifact
-        Certificate   = $certificate
-        HashAlgorithm = 'SHA256'
-    }
+    $arguments = @('sign','/sha1',$normalizedThumbprint,'/fd','SHA256','/v')
     if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
-        $uri = $null
-        if (-not [Uri]::TryCreate($TimestampServer, [UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -ne 'https') {
-            throw 'TimestampServer muss eine absolute HTTPS-URL sein.'
-        }
-        $parameters.TimestampServer = $uri.AbsoluteUri
+        $arguments += @('/tr',$TimestampServer,'/td','SHA256')
+    }
+    $arguments += $artifact
+
+    & $signTool @arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "signtool.exe fehlgeschlagen (ExitCode=$LASTEXITCODE): $artifact"
     }
 
-    $signature = Set-AuthenticodeSignature @parameters
-    if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
-        throw "Authenticode-Signierung ist nicht gueltig: $artifact ($($signature.Status): $($signature.StatusMessage))"
+    $signature = Get-AuthenticodeSignature -FilePath $artifact
+    if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -or -not $signature.SignerCertificate) {
+        throw "Authenticode-Signatur ist nach dem Signieren nicht gueltig: $artifact ($($signature.Status))"
+    }
+
+    $actualThumbprint = ($signature.SignerCertificate.Thumbprint -replace '\s+','').ToUpperInvariant()
+    if ($actualThumbprint -cne $normalizedThumbprint) {
+        throw "Unerwarteter Signer nach Signierung: $artifact"
+    }
+
+    $codeSigningOid = '1.3.6.1.5.5.7.3.3'
+    $ekuOids = @($signature.SignerCertificate.Extensions |
+        Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] } |
+        ForEach-Object { $_.EnhancedKeyUsages | ForEach-Object { $_.Value } })
+    if ($ekuOids -notcontains $codeSigningOid) {
+        throw "Signer-Zertifikat besitzt keine Code-Signing-EKU: $artifact"
     }
 
     $hash = Get-FileHash -LiteralPath $artifact -Algorithm SHA256
