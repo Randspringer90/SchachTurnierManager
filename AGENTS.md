@@ -7,6 +7,8 @@ Diese Datei ist die zentrale, providerneutrale Regeldatei für alle KI-Agenten (
 - Qualität vor Geschwindigkeit.
 - Erst Ist-Zustand, Build, Tests und Struktur verstehen.
 - Keine Pushes, Releases, Deployments, Uploads oder Kostenaktionen ohne ausdrückliche Freigabe.
+- KI-Agenten duerfen keine neuen GitHub-Repositories, Gists oder sonstigen externen Ablagen als Ausweichziel fuer Artefakte anlegen oder verwenden. Screenshots, Bildschirmaufnahmen, UI-Captures, Browserbilder und andere visuelle Laufartefakte duerfen nicht eigenstaendig extern veroeffentlicht werden.
+- Visuelle Artefakte bleiben standardmaessig lokal. Eine Ausnahme erfordert eine aktuelle ausdrueckliche Owner-Freigabe fuer genau das einzelne Artefakt und genau das Ziel; Firmen-/TFS-/interne Inhalte duerfen nicht ueber dieses Public-Repository oder andere externe Bild-/Artefakt-Hosts publiziert werden.
 - Keine Secrets, Tokens, `.npmrc`, privaten Datenbanken oder Logs committen; lokale Authentifizierung nur über `.secrets/local/` oder Prozess-Environment.
 - Lokale Commits sind erwünscht, wenn Build und Tests sauber sind.
 - `.git`, `logs`, `output`, `tmp`, Datenbanken, `.env`, `.npmrc`, `.secrets/local/` und `secrets/local/` bleiben außerhalb von Austausch-ZIPs.
