@@ -17,6 +17,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-Installer
 ## Grenzen
 
 - `output/installer` wird nicht committet.
-- Die EXE ist aktuell unsigniert; SmartScreen-Warnungen sind erwartbar.
-- Code-Signing/Zertifikatskauf ist eine spätere Entscheidung und darf nicht automatisch ausgelöst werden.
+- Ein normaler Build bleibt unsigniert; SmartScreen-Warnungen sind dabei erwartbar.
+- Für Release-Kandidaten kann die Setup-EXE explizit per Authenticode signiert werden (`Build-Installer.ps1 -SignArtifacts ...`). Private Keys/PFX-Dateien gehören nie ins Repository.
+- Zertifikatskauf oder andere Kostenaktionen werden durch kein Skript automatisch ausgelöst. Produktionssignierung benötigt eine ausdrückliche Owner-Freigabe; Details: `docs/release/SIGNING_AND_UPDATES.md`.
 - Turnierdaten unter `%LocalAppData%\SchachTurnierManager` bleiben bei Deinstallation erhalten.

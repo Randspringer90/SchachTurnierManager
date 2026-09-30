@@ -28,12 +28,14 @@ Der Lauf erstellt einen Ordner unter `D:\Temp\STM_RUN05_InstallerReadiness_<Zeit
 7. Deinstallieren.
 8. Prüfen: `%LocalAppData%\SchachTurnierManager` bleibt erhalten.
 9. Testdaten manuell löschen, wenn nicht mehr gebraucht.
-10. SmartScreen-Hinweis dokumentieren: unsignierte EXE kann warnen; Code-Signing ist eine spätere Entscheidung und keine Kostenaktion ohne Freigabe.
+10. Bei einem Entwicklungsbuild SmartScreen-Hinweis dokumentieren. Bei einem Produktionskandidaten `Get-AuthenticodeSignature` prüfen: Status `Valid`, erwarteter Signer-Thumbprint.
+11. Update-Manifest unter `output\release` mit `Test-ReleaseUpdateManifest.ps1` gegen die gebauten Artefakte validieren.
 
 ## Abnahmekriterien
 
 - Desktop-Paket vollständig: BAT, README, WebApi-EXE und `wwwroot/index.html` vorhanden.
 - Installer-EXE vorhanden, falls Inno Setup installiert ist.
 - SHA256/Größe der Setup-EXE im Run-ZIP dokumentiert.
+- Produktionskandidat: Setup-EXE sowie Desktop-/Portable-Apphost gültig Authenticode-signiert; Update-Manifest `manual-only` und Hashprüfung grün.
 - Datenpersistenz nach Neustart nachgewiesen.
 - Deinstallation löscht keine Turnierdaten.

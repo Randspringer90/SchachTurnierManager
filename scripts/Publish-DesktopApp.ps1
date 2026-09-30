@@ -1,7 +1,10 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [switch]$NoZip
+    [switch]$NoZip,
+    [switch]$SignArtifacts,
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer
 )
 
 # Erzeugt die Desktop-Variante: self-contained Backend (kein .NET beim Endnutzer noetig),
@@ -95,6 +98,28 @@ Hinweise:
 - Backups im Dashboard ueber den JSON-Export erstellen.
 - Keine Dateien in app\ manuell bearbeiten.
 "@ | Set-Content -Encoding UTF8 (Join-Path $desktopRoot "README-Desktop.md")
+
+if ($SignArtifacts) {
+    if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+        throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+    }
+
+    $signArgs = @(
+        '-NoLogo','-NoProfile','-ExecutionPolicy','Bypass',
+        '-File',(Join-Path $PSScriptRoot 'Sign-ReleaseArtifacts.ps1'),
+        '-ArtifactPath',(Join-Path $appOutput 'SchachTurnierManager.WebApi.exe'),
+        '-CertificateThumbprint',$SigningCertificateThumbprint,
+        '-ApproveSigning'
+    )
+    if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+        $signArgs += @('-TimestampServer',$TimestampServer)
+    }
+
+    & pwsh.exe @signArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Sign-ReleaseArtifacts.ps1 fehlgeschlagen (ExitCode=$LASTEXITCODE)."
+    }
+}
 
 if (-not $NoZip) {
     $zipPath = Join-Path $outputRoot "SchachTurnierManager_Desktop_$version.zip"

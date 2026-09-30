@@ -1,5 +1,16 @@
 ## Unreleased (development)
 
+- STM-REL-002: Release-Trust-Pipeline fuer Windows vorbereitet. Desktop-/Portable-Apphost
+  und Inno-Setup-EXE koennen nur nach expliziter Freigabe mit einem lokalen
+  Windows-Code-Signing-Zertifikat per Thumbprint/SignTool Authenticode/SHA256-signiert werden;
+  PFX/Passwoerter werden nicht automatisiert. Neues `manual-only`-Update-Manifest mit
+  Version, Kanal, Dateigroesse, SHA256 und Signaturstatus plus fail-closed Validator fuer
+  Hash-Tampering, Traversal und optionale Signaturpflicht. Der Release-Candidate-Flow kann
+  fuer Produktionsabnahmen Installer + gueltige Signaturen erzwingen; ein synthetischer
+  Offline-Vertragstest ist Teil des ReleaseGate. Kein Auto-Download, kein Auto-Execute,
+  kein Zertifikatskauf und kein Release/Deployment durch dieses Paket.
+
+
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-

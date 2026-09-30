@@ -2,7 +2,10 @@ param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [switch]$SelfContained,
-    [switch]$NoZip
+    [switch]$NoZip,
+    [switch]$SignArtifacts,
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer
 )
 
 $ErrorActionPreference = "Stop"
@@ -97,6 +100,28 @@ Hinweise:
 - Keine Dateien aus app\ manuell bearbeiten.
 - Für Backups im Dashboard JSON-Export verwenden.
 "@ | Set-Content -Encoding UTF8 (Join-Path $portableRoot "README-Portable.md")
+
+if ($SignArtifacts) {
+    if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+        throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+    }
+
+    $signArgs = @(
+        '-NoLogo','-NoProfile','-ExecutionPolicy','Bypass',
+        '-File',(Join-Path $PSScriptRoot 'Sign-ReleaseArtifacts.ps1'),
+        '-ArtifactPath',(Join-Path $appOutput 'SchachTurnierManager.WebApi.exe'),
+        '-CertificateThumbprint',$SigningCertificateThumbprint,
+        '-ApproveSigning'
+    )
+    if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+        $signArgs += @('-TimestampServer',$TimestampServer)
+    }
+
+    & pwsh.exe @signArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Sign-ReleaseArtifacts.ps1 fehlgeschlagen (ExitCode=$LASTEXITCODE)."
+    }
+}
 
 if (-not $NoZip) {
     $zipPath = Join-Path $outputRoot "SchachTurnierManager_Portable_$version.zip"
