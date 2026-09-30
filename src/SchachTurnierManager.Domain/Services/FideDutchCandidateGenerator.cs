@@ -15,8 +15,12 @@ namespace SchachTurnierManager.Domain.Services;
 /// Das hält die Zahl der Möglichkeiten klein: Ohne diese Beschneidung müsste ein Bracket mit zehn
 /// Residents alle Permutationen durchlaufen.
 /// </remarks>
-public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criteria)
+public sealed class FideDutchCandidateGenerator(
+    FideDutchAbsoluteCriteria criteria,
+    Action? checkBudget = null)
 {
+    private readonly Dictionary<(Guid Left, Guid Right), bool> _pairingCache = new();
+    private readonly Action _checkBudget = checkBudget ?? (() => { });
     /// <summary>
     /// Alle Kandidaten des Brackets, in Erzeugungsreihenfolge. Der <c>GenerationIndex</c> zählt dabei
     /// hoch — Art. 3.8 vergleicht ihn bei Gleichstand.
@@ -37,8 +41,10 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
         // erzwingt - das entscheidet aber erst das Backtracking, nicht diese Erzeugung.
         for (var pairCount = bracket.MaxPairsUpperBound; pairCount >= 0; pairCount--)
         {
+            CheckBudget();
             foreach (var candidate in GenerateWithPairCount(bracket, pairCount))
             {
+                CheckBudget();
                 if (seen.Add(KeyOf(candidate)))
                 {
                     yield return candidate with { GenerationIndex = index++ };
@@ -122,6 +128,7 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
         {
             foreach (var mdpSet in EnumerateMdpSets(bracket.Mdps, m1))
             {
+                CheckBudget();
                 var limbo = bracket.Mdps.Where(mdp => !mdpSet.Contains(mdp)).ToList();
                 var residents = bracket.Residents;
 
@@ -234,6 +241,7 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
 
         IEnumerable<List<FideDutchPlayerProfile>> Extend(int depth)
         {
+            CheckBudget();
             if (depth == s1.Count)
             {
                 yield return new List<FideDutchPlayerProfile>(chosen);
@@ -242,7 +250,7 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
 
             for (var index = 0; index < s2.Count; index++)
             {
-                if (used[index] || !criteria.MayBePaired(s1[depth], s2[index]))
+                if (used[index] || !MayBePairedCached(s1[depth], s2[index]))
                 {
                     continue;
                 }
@@ -268,7 +276,7 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
     /// Der identische „Tausch" (nichts getauscht) kommt zuerst — Art. 3.6 probiert erst alle
     /// Transpositionen der ursprünglichen Aufteilung.
     /// </summary>
-    private static IEnumerable<(List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)> EnumerateExchanges(
+    private IEnumerable<(List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)> EnumerateExchanges(
         IReadOnlyList<FideDutchPlayerProfile> originalS1,
         IReadOnlyList<FideDutchPlayerProfile> originalS2,
         IReadOnlyList<FideDutchPlayerProfile> bracketOrder)
@@ -277,40 +285,91 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
             .Select((profile, index) => (profile.Player.Id, Bsn: index + 1))
             .ToDictionary(entry => entry.Id, entry => entry.Bsn);
 
-        var exchanges = new List<(int Size, int SumDifference, int LargestOut, int SmallestIn, List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)>();
-
+        // STM-FACH-003: Bislang wurde die VOLLSTAENDIGE Exchange-Menge fuer ALLE Groessen
+        // materialisiert, bevor der erste Kandidat sichtbar wurde. Bei 100/200 Spielern ist diese
+        // Menge kombinatorisch riesig, obwohl Art. 3.6 zuerst den unveraenderten Split prueft und
+        // dieser in der Praxis sehr haeufig sofort funktioniert. Wir erzeugen deshalb streng
+        // stufenweise: Groesse 0 wird sofort geliefert; Groesse n wird erst materialisiert, wenn
+        // alle kleineren Groessen wirklich gescheitert sind. Die Sortierung INNERHALB einer
+        // Groesse bleibt bytegleich zur bisherigen Implementierung, also auch Art. 3.8.
         var maxSize = Math.Min(originalS1.Count, originalS2.Count);
         for (var size = 0; size <= maxSize; size++)
         {
+            CheckBudget();
+
+            if (size == 0)
+            {
+                yield return (originalS1.ToList(), originalS2.ToList());
+                continue;
+            }
+
+            var exchanges = new List<(int SumDifference, int LargestOut, int SmallestIn, int Sequence, List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)>();
+            var sequence = 0;
+
             foreach (var fromS1 in Combinations(originalS1.Count, size))
             {
+                CheckBudget();
                 foreach (var fromS2 in Combinations(originalS2.Count, size))
                 {
+                    CheckBudget();
+
                     var outgoing = fromS1.Select(index => originalS1[index]).ToList();
                     var incoming = fromS2.Select(index => originalS2[index]).ToList();
+                    var outgoingIds = outgoing.Select(profile => profile.Player.Id).ToHashSet();
+                    var incomingIds = incoming.Select(profile => profile.Player.Id).ToHashSet();
 
-                    var newS1 = originalS1.Except(outgoing).Concat(incoming).OrderBy(p => bsn[p.Player.Id]).ToList();
-                    var newS2 = originalS2.Except(incoming).Concat(outgoing).OrderBy(p => bsn[p.Player.Id]).ToList();
+                    var newS1 = originalS1
+                        .Where(profile => !outgoingIds.Contains(profile.Player.Id))
+                        .Concat(incoming)
+                        .OrderBy(profile => bsn[profile.Player.Id])
+                        .ToList();
+                    var newS2 = originalS2
+                        .Where(profile => !incomingIds.Contains(profile.Player.Id))
+                        .Concat(outgoing)
+                        .OrderBy(profile => bsn[profile.Player.Id])
+                        .ToList();
 
-                    var sumOut = outgoing.Sum(p => bsn[p.Player.Id]);
-                    var sumIn = incoming.Sum(p => bsn[p.Player.Id]);
+                    var sumOut = outgoing.Sum(profile => bsn[profile.Player.Id]);
+                    var sumIn = incoming.Sum(profile => bsn[profile.Player.Id]);
 
                     exchanges.Add((
-                        Size: size,
                         SumDifference: Math.Abs(sumOut - sumIn),
-                        LargestOut: outgoing.Count == 0 ? 0 : -outgoing.Max(p => bsn[p.Player.Id]),
-                        SmallestIn: incoming.Count == 0 ? 0 : incoming.Min(p => bsn[p.Player.Id]),
+                        LargestOut: -outgoing.Max(profile => bsn[profile.Player.Id]),
+                        SmallestIn: incoming.Min(profile => bsn[profile.Player.Id]),
+                        Sequence: sequence++,
                         S1: newS1,
                         S2: newS2));
                 }
             }
+
+            foreach (var exchange in exchanges
+                         .OrderBy(entry => entry.SumDifference)
+                         .ThenBy(entry => entry.LargestOut)
+                         .ThenBy(entry => entry.SmallestIn)
+                         .ThenBy(entry => entry.Sequence))
+            {
+                CheckBudget();
+                yield return (exchange.S1, exchange.S2);
+            }
+        }
+    }
+
+    private bool MayBePairedCached(FideDutchPlayerProfile a, FideDutchPlayerProfile b)
+    {
+        var key = a.Player.Id.CompareTo(b.Player.Id) <= 0
+            ? (a.Player.Id, b.Player.Id)
+            : (b.Player.Id, a.Player.Id);
+
+        if (_pairingCache.TryGetValue(key, out var allowed))
+        {
+            return allowed;
         }
 
-        return exchanges
-            .OrderBy(entry => entry.Size)
-            .ThenBy(entry => entry.SumDifference)
-            .ThenBy(entry => entry.LargestOut)      // negiert -> groesste zuerst
-            .ThenBy(entry => entry.SmallestIn)
-            .Select(entry => (entry.S1, entry.S2));
+        allowed = criteria.MayBePaired(a, b);
+        _pairingCache[key] = allowed;
+        return allowed;
     }
+
+    private void CheckBudget() => _checkBudget();
+
 }
