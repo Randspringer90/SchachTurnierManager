@@ -73,7 +73,10 @@ try {
     # explizite Freigabe und CurrentUser-Zertifikatsspeicher sind Pflicht.
     $signingScript = Get-Content -Raw -LiteralPath (Join-Path $Root 'scripts/Sign-ReleaseArtifacts.ps1')
     if ($signingScript -notmatch 'ApproveSigning') { throw 'Signierfreigabe fehlt.' }
-    if ($signingScript -notmatch 'Cert:\\CurrentUser\\My') { throw 'Zertifikatsspeicher-Vertrag fehlt.' }
+    if ($signingScript -notmatch 'signtool\.exe') { throw 'SignTool-Vertrag fehlt.' }
+    if ($signingScript -notmatch '/sha1') { throw 'Thumbprint-Auswahl fuer SignTool fehlt.' }
+    if ($signingScript -notmatch 'Get-AuthenticodeSignature') { throw 'Signatur-Nachpruefung fehlt.' }
+    if ($signingScript -notmatch '1\.3\.6\.1\.5\.5\.7\.3\.3') { throw 'Code-Signing-EKU-Pruefung fehlt.' }
     if ($signingScript -match '(?i)\.pfx|password|securestring.*password') {
         throw 'PFX-/Passwort-basierte Signierautomation ist nicht freigegeben.'
     }
