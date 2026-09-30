@@ -39,8 +39,10 @@ Keine Secrets, Logs, PII, Datenbanken oder Artefakte im PR.
 - [ ] Ja  <!-- falls ja: Migration/Abwärtskompatibilität beschreiben -->
 - [ ] Nein
 
-## Screenshots (bei UI-Änderungen)
-<!-- Vorher/Nachher -->
+## UI-Evidenz (keine Agenten-Uploads)
+<!-- Screenshots/Bilder nicht in den PR hochladen. Visuelle Evidenz bleibt lokal und wird hier textuell beschrieben. Eine Ausnahme braucht eine aktuelle Owner-Freigabe fuer genau dieses Artefakt und Ziel. -->
+
+- **Lokale UI-Prüfung:** <!-- kurz beschreiben; keine lokalen Pfade/PII -->
 
 ## Bestätigung
 - [ ] Ich bestätige, dass **keine Secrets, Logs, PII, Datenbanken oder generierten Artefakte**
