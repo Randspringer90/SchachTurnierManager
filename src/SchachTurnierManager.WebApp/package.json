@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "build": "tsc --noEmit && vite build --configLoader native --outDir ../../tmp/webapp-dist --emptyOutDir false",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+    "build": "npm run test:catalogs && npm run audit:i18n && tsc --noEmit && vite build --configLoader native --outDir ../../tmp/webapp-dist --emptyOutDir false",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "test:catalogs": "node --test ../../tests/scripts/i18n-catalogs.test.mjs ../../tests/scripts/i18n-entrypoint.test.mjs",
+    "audit:i18n": "node ../../scripts/Test-I18nCatalogs.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.2",
