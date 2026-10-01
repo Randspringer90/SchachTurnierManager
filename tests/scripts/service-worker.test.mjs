@@ -5,7 +5,10 @@ import { runInNewContext } from 'node:vm';
 
 const source = readFileSync(new URL('../../src/SchachTurnierManager.WebApp/public/service-worker.js', import.meta.url), 'utf8');
 const origin = 'https://synthetic.invalid';
-const current = 'schach-turnier-manager-public-shell';
+// Two exact slots; without a recorded state slot "a" is active.
+const current = 'schach-turnier-manager-public-shell-a';
+const otherSlot = 'schach-turnier-manager-public-shell-b';
+const stateCache = 'schach-turnier-manager-public-shell-state';
 const legacy = 'schach-turnier-manager-shell-v0.45.0';
 const key = value => new URL(typeof value === 'string' ? value : value.url, origin).href;
 function response(body = 'synthetic', { status = 200, type = 'basic', redirected = false, headers = {} } = {}) {
@@ -115,7 +118,7 @@ for (const failure of ['failOpen', 'failRead']) {
 test('activation deletes only exact legacy cache and claims clients', async () => {
   const app = harness(); for (const name of [legacy, current, 'other-app', `${legacy}-foreign`]) await app.seed(name, '/assets/app.js', response());
   await app.lifecycle('activate'); assert.deepEqual(app.state.deleted, [legacy]); assert.equal(app.state.claims, 1);
-  assert.deepEqual([...app.stores.keys()].sort(), [current, 'other-app', `${legacy}-foreign`].sort());
+  assert.deepEqual([...app.stores.keys()].sort(), [current, 'other-app', `${legacy}-foreign`, stateCache].sort());
 });
 test('activation survives denied cache storage', async () => {
   const app = harness(); app.state.failDelete = true; await app.lifecycle('activate'); assert.equal(app.state.claims, 1);
@@ -123,8 +126,49 @@ test('activation survives denied cache storage', async () => {
 const shellResponse = req => response('shell', { headers: { 'Content-Type': req.url.endsWith('.svg') ? 'image/svg+xml' : req.url.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html' } });
 test('installation pre-caches validated shell without credentials or redirects', async () => {
   const app = harness({ fetch: shellResponse }); await app.lifecycle('install');
-  assert.equal(app.calls.length, 5); assert.equal(app.state.puts.length, 5); assert.equal(app.state.skips, 1);
+  assert.equal(app.calls.length, 5); assert.equal(app.state.skips, 1);
+  // Five shell files go into the inactive slot, then its completion marker and the pending state.
+  assert.equal(app.stores.get(otherSlot).size, 6); assert.equal(app.state.puts.length, 7);
+  assert.equal(app.stores.has(current), false);
   assert.ok(app.calls.every(req => req.credentials === 'omit' && req.redirect === 'error'));
+});
+// PR #71 review (MAJOR): an update must never mix old and new shell files.
+const versioned = version => req => response(version, { headers: { 'Content-Type': req.url.endsWith('.svg') ? 'image/svg+xml' : req.url.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html' } });
+async function offlineShell(app) {
+  const saved = app.fetchImpl; app.fetchImpl = offline;
+  try { return await (await app.dispatch(request('/', { mode: 'navigate' })).result).text(); } finally { app.fetchImpl = saved; }
+}
+test('successful update switches to the new shell only at activation', async () => {
+  const app = harness({ fetch: req => app.fetchImpl(req) });
+  app.fetchImpl = versioned('v1'); await app.lifecycle('install'); await app.lifecycle('activate');
+  assert.equal(await offlineShell(app), 'v1');
+  app.fetchImpl = versioned('v2'); await app.lifecycle('install');
+  assert.equal(await offlineShell(app), 'v1'); // still the active, complete v1 slot
+  await app.lifecycle('activate');
+  assert.equal(await offlineShell(app), 'v2');
+  assert.equal(app.stores.has(otherSlot), false, 'the replaced exact slot is removed');
+});
+test('failed update keeps the previously active shell intact', async () => {
+  const app = harness({ fetch: req => app.fetchImpl(req) });
+  app.fetchImpl = versioned('v1'); await app.lifecycle('install'); await app.lifecycle('activate');
+  app.fetchImpl = versioned('v2'); app.state.failPut = true;
+  await assert.rejects(app.lifecycle('install')); app.state.failPut = false;
+  await app.lifecycle('activate');
+  assert.equal(await offlineShell(app), 'v1');
+  assert.equal(app.stores.has(current), false, 'the incomplete staging slot is discarded');
+});
+// PR #71 review (MINOR): QR links like /?dice=...&round=...&board=... are navigations with a query.
+test('offline QR navigation with query gets a controlled no-store 503 and is never cached', async () => {
+  const app = harness({ fetch: offline });
+  const result = await app.dispatch(request('/?dice=4&round=2&board=7', { mode: 'navigate' })).result;
+  assert.equal(result.status, 503); assert.equal(result.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(app.state.puts, []);
+});
+test('online QR navigation passes through without cache writes', async () => {
+  const app = harness({ fetch: () => response('page', { headers: { 'Content-Type': 'text/html' } }) });
+  const event = app.dispatch(request('/?dice=4&round=2&board=7', { mode: 'navigate' }));
+  assert.equal(await (await event.result).text(), 'page'); await Promise.all(event.waits);
+  assert.deepEqual(app.state.puts, []);
 });
 for (const metadata of [ { status: 500 }, { redirected: true }, { headers: { 'Cache-Control': 'private', 'Content-Type': 'text/html' } }, { headers: { 'Content-Type': 'application/json' } } ]) {
   test(`installation fails before writes on unsafe shell ${JSON.stringify(metadata)}`, async () => {
