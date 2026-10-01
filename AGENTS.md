@@ -79,6 +79,17 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
   mittleren Risikos. Qualitaet hat Vorrang vor Kosten; kritische Aufgaben werden nie
   automatisch herabgestuft. Die Runtime muss Profilverfuegbarkeit bestaetigen; ein
   stiller Modell- oder Profilwechsel ist verboten.
+- **Neueste Modelle**: Die vorgeschaltete Runtime (z. B. CORE-KI) loest jedes logische
+  Profil auf das neueste im autorisierten Konto tatsaechlich verfuegbare stabile Modell
+  der passenden Klasse auf, mit der hoechsten fuer die Aufgabe geeigneten Reasoning-Stufe.
+  Konkrete Modell-IDs stehen nicht in diesem Repository; sie werden je Lauf belegt und
+  dokumentiert. Fehlt das neueste Modell technisch, wird das gemeldet (HOLD) statt still
+  auf ein aelteres auszuweichen; kein Konto-, Provider- oder Kostenwechsel dafuer.
+- **Providerunabhaengigkeit**: Es gibt keine provider-spezifischen Regeln. Alle Regeln,
+  Freigaben und Grenzen dieser Datei gelten fuer Codex, Claude und jeden weiteren Provider
+  gleichermassen; eine Owner-Freigabe fuer einen Provider gilt ebenso fuer die anderen.
+  Ein Provider-Wechsel aendert weder Rechte noch Pflichten. Unabhaengige Reviews laufen
+  read-only und nie durch den Ersteller desselben Stands.
 - **Internet-Recherche**: fuer zeitkritische Fakten Skill `internet-research` nutzen
   (Websuche des Tools, Proxy beachten, Quellen + Datum dokumentieren).
 - **Wissensmanagement**: projektspezifisches Wissen gehoert **in dieses Repo**
