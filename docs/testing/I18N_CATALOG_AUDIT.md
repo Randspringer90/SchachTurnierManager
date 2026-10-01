@@ -28,7 +28,7 @@ semantic compiler replacement.
 
 ## Evidence and limits (2026-10-01)
 
-65/65 Node tests passed, 0 failures/skips; actual npm test command also passed.
+69/69 Node tests passed, 0 failures/skips; actual npm test command also passed.
 An actual CLI run against byte-verified current de.ts/en.ts found 33 base keys,
 two complete catalogues and zero errors. Only those two repository catalogues were
 available for that local sample, not the entire multilingual tree. Compiler used
@@ -36,6 +36,10 @@ here: locally installed TypeScript 5.8.3; Node 22.16.0. The project's pinned
 TypeScript 6.0.3, all locales, full Vite/.NET/PowerShell gates and browser behaviour
 remain NOT_RUN here and are required at integration. No linguistic accuracy,
 complete UI translation or independent code review is claimed.
+
+The CLI resolves its entrypoint physically so a symlink/junction does not turn
+a requested audit into a silent zero-exit no-op. A real symlink invocation was
+reproduced before the fix (empty output) and returned the expected audit after it.
 
 ## Integration
 

@@ -1,7 +1,7 @@
-import { readdirSync, lstatSync, openSync, readSync, closeSync } from 'node:fs';
+import { readdirSync, lstatSync, openSync, readSync, closeSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { resolve, join } from 'node:path';
+import { join } from 'node:path';
 import { parseCatalog, auditCatalogs, CatalogError } from './lib/I18nCatalogAudit.mjs';
 
 export function readCatalogs(directory, ts) {
@@ -43,7 +43,11 @@ export function runAudit(args, { load, output, error }) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+export function isMainModule(argument, moduleUrl, canonicalPath = realpathSync) {
+  return Boolean(argument) && canonicalPath(argument) === canonicalPath(fileURLToPath(moduleUrl));
+}
+
+if (isMainModule(process.argv[1], import.meta.url)) {
   process.exitCode = runAudit(process.argv.slice(2), {
     load: () => {
       const require = createRequire(new URL('../src/SchachTurnierManager.WebApp/package.json', import.meta.url));
