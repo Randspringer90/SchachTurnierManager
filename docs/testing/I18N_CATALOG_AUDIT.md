@@ -8,7 +8,10 @@ satisfies wrappers are supported; computed fields, spreads, expressions, calls,
 getters and executable statements are rejected rather than silently ignored.
 
 The German catalogue defines the key set. Duplicate or unknown keys, empty values
-and changed placeholder-name sets fail. Placeholder order and repetitions may
+and changed placeholder-name sets fail. Placeholder syntax is exact: any brace
+outside a `{identifier}` placeholder (e.g. `{{name}}`, `{name`, `name}`, `{ name }`)
+fails as `placeholderSyntaxErrors` in every catalogue including German, because the
+runtime would render the stray braces. Placeholder order and repetitions may
 vary with language grammar. Missing translations remain visible as PARTIAL by
 default, preserving the existing Partial<Messages>/fallback design. Passing
 --require-complete makes missing translations fail too. An empty/missing German

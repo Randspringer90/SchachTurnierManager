@@ -86,6 +86,15 @@ for (const translated of ['Hello', 'Hello {wrong}', 'Hello {name} {extra}']) {
   });
 }
 test('placeholder order and count may differ between languages', () => assert.equal(auditCatalogs(collection({ de: { a: '{first} {last} {first}' }, en: { a: '{last} {first}' } })).status, 'PASS'));
+// PR #72 review: the runtime renders "{{name}}" as "{value}"; brace structure must be exact.
+for (const translated of ['Hello {{name}}', 'Hello {name', 'Hello name}', 'Hello {name}}', 'Hello {}', 'Hello { name }']) {
+  test(`malformed placeholder syntax ${JSON.stringify(translated)}`, () => {
+    const result = auditCatalogs(collection({ de: { a: 'Hallo {name}' }, en: { a: translated } }));
+    assert.equal(result.valid, false);
+    assert.deepEqual(result.catalogs.find(row => row.locale === 'en').placeholderSyntaxErrors, ['a']);
+  });
+}
+test('malformed base placeholder syntax also fails', () => assert.equal(auditCatalogs(collection({ de: { a: 'Hallo {{name}}' } })).valid, false));
 test('no base catalogue never yields a vacuous pass', () => assert.throws(() => auditCatalogs(collection({ en: { a: 'A' } })), error => error.code === 'MISSING_BASE_CATALOG'));
 test('empty base catalogue never yields a vacuous pass', () => assert.throws(() => auditCatalogs(collection({ de: {} })), error => error.code === 'MISSING_BASE_CATALOG'));
 test('report independent of insertion order', () => {
@@ -101,6 +110,20 @@ test('filesystem corpus parsed without executing modules', () => fixture(directo
   writeFileSync(join(directory, 'en.ts'), "import type { Messages } from './de'; export const en: Partial<Messages> = { 'key': 'B' };");
   const values = readCatalogs(directory, ts); assert.equal(values.size, 2); assert.equal(auditCatalogs(values).status, 'PASS');
 }));
+test('every catalogue file beyond de/en is read and audited', () => fixture(directory => {
+  writeFileSync(join(directory, 'de.ts'), "export const de = { 'key': 'Hallo {name}' };");
+  writeFileSync(join(directory, 'en.ts'), "export const en = { 'key': 'Hello {name}' };");
+  writeFileSync(join(directory, 'es.ts'), "export const es = { 'key': 'Hola {{name}}' };");
+  const values = readCatalogs(directory, ts); assert.equal(values.size, 3);
+  const result = auditCatalogs(values);
+  assert.equal(result.valid, false); assert.deepEqual(result.catalogs.find(row => row.locale === 'es').placeholderSyntaxErrors, ['key']);
+}));
+test('the real WebApp catalogue set (18 languages) is read and has no structural errors', () => {
+  const values = readCatalogs(new URL('../../src/SchachTurnierManager.WebApp/src/i18n/locales/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), ts);
+  assert.equal(values.size, 18);
+  const result = auditCatalogs(values);
+  assert.equal(result.catalogCount, 18); assert.equal(result.errors, 0, JSON.stringify(result.catalogs.filter(row => row.placeholderErrors.length || row.placeholderSyntaxErrors?.length || row.unknownKeys.length || row.emptyKeys.length)));
+});
 test('invalid catalogue filename rejected', () => fixture(directory => {
   writeFileSync(join(directory, 'unknown.ts'), ''); assert.throws(() => readCatalogs(directory, ts), error => error.code === 'INVALID_CATALOG_FILENAME');
 }));

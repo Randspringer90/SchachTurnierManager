@@ -41,6 +41,13 @@ export function placeholders(text) {
   return [...new Set([...text.matchAll(/\{([^{}]+)\}/g)].map(match => match[1]))].sort();
 }
 
+// The runtime replaces {name} literally and leaves any other brace visible, so
+// "{{name}}", "{name" or "{ name }" would render broken text. Only {identifier}
+// placeholders may contain braces.
+export function hasMalformedPlaceholders(text) {
+  return /[{}]/.test(text.replace(/\{[A-Za-z][A-Za-z0-9_.-]*\}/g, ''));
+}
+
 export function auditCatalogs(catalogs, { requireComplete = false } = {}) {
   const base = catalogs.get('de');
   if (!(base instanceof Map) || base.size === 0) fail('MISSING_BASE_CATALOG');
@@ -52,15 +59,16 @@ export function auditCatalogs(catalogs, { requireComplete = false } = {}) {
     const unknownKeys = [...values.keys()].filter(key => !base.has(key)).sort();
     const emptyKeys = [...values].filter(([, text]) => !text.trim()).map(([key]) => key).sort();
     const placeholderErrors = [];
+    const placeholderSyntaxErrors = [...values].filter(([, text]) => hasMalformedPlaceholders(text)).map(([key]) => key).sort();
     for (const key of keys) {
       if (!values.has(key) || !values.get(key).trim()) continue;
       const expected = placeholders(base.get(key)); const actual = placeholders(values.get(key));
       if (JSON.stringify(expected) !== JSON.stringify(actual)) placeholderErrors.push({ key, expected, actual });
     }
-    errors += unknownKeys.length + emptyKeys.length + placeholderErrors.length;
+    errors += unknownKeys.length + emptyKeys.length + placeholderErrors.length + placeholderSyntaxErrors.length;
     missing += missingKeys.length;
     rows.push({ locale, translated: keys.length - missingKeys.length - emptyKeys.filter(key => base.has(key)).length,
-      missingKeys, unknownKeys, emptyKeys, placeholderErrors });
+      missingKeys, unknownKeys, emptyKeys, placeholderErrors, placeholderSyntaxErrors });
   }
   const status = errors || (requireComplete && missing) ? 'FAIL' : missing ? 'PARTIAL' : 'PASS';
   return { schemaVersion: 1, status, valid: status !== 'FAIL', baseKeys: keys.length, catalogCount: rows.length,
