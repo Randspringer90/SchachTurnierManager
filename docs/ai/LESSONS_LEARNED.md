@@ -78,6 +78,15 @@ keine Voraussetzung.
   als erlaubter Integrationsscope übernommen; Artefakte sind SHA-/Policy-/Hash-gebunden und
   WhatIf/StaticOnly werden durch Negativtests gegen Mutationen abgesichert.
 
+## 2026-07-15 - KFM-FLEET-CORRECTION-CODEX-SOL-FINALIZE-20260715
+
+- Kontext: Codex-Lauf zum BAT-/CMD-Gate; der Arbeitsbaum war sauber, eine Public-History-
+  Entscheidung des Owners war aber noch offen (main-only Commit `53dba48`, 2026-10-01 nach
+  development übernommen).
+- Lesson: Ein grüner Arbeitsbaumscan ersetzt keine offene Public-History-Entscheidung.
+- Konsequenz: History-Befunde werden als eigener Owner-Blocker geführt und nicht durch einen
+  sauberen Arbeitsstand als erledigt gemeldet.
+
 ## 2026-07-10 — Public-nahe Testdaten und KI-Laufprotokolle
 
 - Kontext: Stabilisierung, Public-Gate und Runtime-Logging.
