@@ -1,5 +1,9 @@
 # Build Week final readiness report
 
+> **Historical snapshot (July 2026).** Superseded for current status by the consolidated
+> integration STM-INT-002 (2026-10-01) and `docs/planning/BACKLOG.md`; the SHAs and PR states
+> below are those of the Build Week run.
+
 Status: **PARTIAL — not yet a submission candidate**
 
 Primary run: `STM_BUILD_WEEK_2026_20260718_181524`

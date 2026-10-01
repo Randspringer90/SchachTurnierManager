@@ -86,7 +86,7 @@ export function inspectBackup(input) {
     else if (data[field].length > MAX_ITEMS) add('TOO_MANY_ITEMS', `$.${field}`);
   }
   if (report.issueCount) return report;
-  const playerIds = new Set(); const names = new Set();
+  const playerIds = new Set(); const names = new Set(); const fideIds = new Set(); const nationalIds = new Set();
   for (const [index, player] of data.players.entries()) {
     const where = `$.players[${index}]`;
     if (!object(player)) { add('INVALID_PLAYER', where); continue; }
@@ -102,6 +102,15 @@ export function inspectBackup(input) {
       // EnsureUniquePlayerNames rejects the whole import, so this is an error, not a warning.
       if (names.has(normalized)) add('DUPLICATE_PLAYER_NAME', `${where}.name`);
       names.add(normalized);
+    }
+    // ValidateImportedPlayers: FIDE and DSB IDs must be unique after keeping only letters and
+    // digits in upper case (NormalizeExternalId); empty results are ignored like in the backend.
+    for (const [field, seen, code] of [['fideId', fideIds, 'DUPLICATE_FIDE_ID'], ['nationalId', nationalIds, 'DUPLICATE_NATIONAL_ID']]) {
+      if (typeof player[field] !== 'string') continue;
+      const key = (player[field].match(/[\p{L}\p{Nd}]/gu) ?? []).join('').toUpperCase();
+      if (!key) continue;
+      if (seen.has(key)) add(code, `${where}.${field}`);
+      seen.add(key);
     }
   }
   const roundNumbers = new Set(); let boards = 0;

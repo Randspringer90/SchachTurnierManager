@@ -72,6 +72,20 @@ test('bye with a null black reference is valid', () => {
 test('the same player may appear again in a later round', () => {
   const data = make(); data.rounds.push({ ...structuredClone(data.rounds[0]), roundNumber: 2 }); assert.equal(inspect(data).status, 'STRUCTURE_OK');
 });
+// Final review: external IDs are unique after the backend normalization (letters/digits, upper case).
+for (const [field, code, first, second] of [
+  ['fideId', 'DUPLICATE_FIDE_ID', ' 123-456 ', '123456'],
+  ['nationalId', 'DUPLICATE_NATIONAL_ID', 'ab12', 'AB 12'],
+]) {
+  test(`normalized duplicate ${field} is an error like in the backend import`, () => {
+    const data = make(); data.players[0][field] = first; data.players[1][field] = second; const report = inspect(data);
+    assert.equal(report.status, 'INVALID'); assert.ok(has(report, code));
+  });
+  test(`distinct or empty ${field} values are no duplicates`, () => {
+    const data = make(); data.players[0][field] = first; data.players[1][field] = '999'; assert.equal(inspect(data).status, 'STRUCTURE_OK');
+    data.players[0][field] = ' - '; data.players[1][field] = null; assert.equal(inspect(data).status, 'STRUCTURE_OK');
+  });
+}
 // PR #77 review: the preview must not report STRUCTURE_OK for files the backend import rejects
 // or silently changes (EnsureUniquePlayerNames, ValidateImportedRounds, CreatedOn default).
 test('duplicate display names are errors because the backend import rejects them', () => {

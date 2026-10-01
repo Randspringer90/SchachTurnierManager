@@ -1,6 +1,11 @@
 # Final Known Limitations
 
-This list describes the current prepared packages, not a public release.
+> **Historical snapshot (Build Week, July 2026).** This list reflects the state before the
+> consolidated integration STM-INT-002 (2026-10-01). Since then PR #50 landed as PR #52, and the
+> Build Week part of PR #51 is integrated via PR #53. The Android companion (PR #49/#55) is still
+> not integrated; see `docs/planning/BACKLOG.md` (STM-MOB-001) for the current state.
+
+This list describes the prepared packages at that time, not a public release.
 
 ## Submission blockers
 
