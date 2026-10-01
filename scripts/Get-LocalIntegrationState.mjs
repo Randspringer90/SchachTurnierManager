@@ -47,18 +47,18 @@ export function inspectLocalState(directory = process.cwd()) {
     schema: 'stm.local-integration-state.v1', repository: EXPECTED_REPOSITORY,
     status: 'UNVERIFIED', complete: false, mergeAuthorized: false,
     remoteObservation: 'LOCAL_TRACKING_REFS_ONLY', activeWriters: 'NOT_DETERMINED',
-    contentChangesDuringRead: 'NOT_DETERMINED', errors: [],
+    contentChangesDuringRead: 'NOT_DETERMINED', submoduleWorkingTrees: 'NOT_INSPECTED', errors: [],
   };
   try {
     const requestedRoot = realpathSync(directory);
     // Ignore inherited Git routing/config overrides, not repository policies.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
     Object.assign(env, { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C' });
-    const git = (args, optional = false) => {
+    const git = (args, optional = false, input = null) => {
       try {
         const bytes = execFileSync('git', ['-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false', ...args], {
           cwd: requestedRoot, env, timeout: 15000, maxBuffer: MAX_OUTPUT,
-          windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true, input: input ?? undefined, stdio: [input === null ? 'ignore' : 'pipe', 'pipe', 'pipe'],
         });
         return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
       } catch (error) {
@@ -80,7 +80,27 @@ export function inspectLocalState(directory = process.cwd()) {
       if (value !== null && !SHA.test(value)) throw Error('INVALID_HEAD');
       return value;
     };
-    const status = () => git(['status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=none']);
+    // Even status can run an external clean/process filter while hashing tracked
+    // files. Resolve attributes without running filters; do not override policy.
+    const filterKeys = (git(['config', '--name-only', '--get-regexp', '^filter\\..*\\.(clean|process)$'], true) ?? '').split(/\r?\n/).filter(Boolean);
+    if (filterKeys.length) {
+      const tracked = git(['ls-files', '-z']);
+      if (tracked) {
+        const rawAttributes = git(['check-attr', '--stdin', '-z', 'filter'], false, tracked);
+        if (!rawAttributes.endsWith('\0')) throw Error('INVALID_ATTRIBUTES');
+        const attributes = rawAttributes.slice(0, -1).split('\0');
+        if (attributes.length % 3 !== 0) throw Error('INVALID_ATTRIBUTES');
+        for (let index = 0; index < attributes.length; index += 3) {
+          if (attributes[index + 1] !== 'filter') throw Error('INVALID_ATTRIBUTES');
+          const filter = attributes[index + 2];
+          if (filterKeys.some(key => key === `filter.${filter}.clean` || key === `filter.${filter}.process`)) {
+            throw Error('GIT_FILTER_REQUIRES_REVIEW');
+          }
+        }
+      }
+    }
+    // Nested repositories have their own unreviewed configuration.
+    const status = () => git(['status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=all']);
     output.head = head();
     const before = status();
     output.changes = summarizeStatus(before);
@@ -115,7 +135,7 @@ export function inspectLocalState(directory = process.cwd()) {
       output.changes.conflicts || Object.values(output.operations).some(Boolean) ? 'INTEGRATION_IN_PROGRESS' :
       output.changes.entries ? 'LOCAL_CHANGES_PRESENT' : 'NO_VISIBLE_CHANGES';
   } catch (error) {
-    const allowed = new Set(['INVALID_STATUS', 'GIT_QUERY_FAILED', 'NOT_A_WORKTREE', 'ROOT_REQUIRED', 'REPOSITORY_IDENTITY_MISMATCH', 'INVALID_HEAD', 'INVALID_REFERENCE', 'INVALID_COUNTS', 'INVALID_WORKTREE_LIST']);
+    const allowed = new Set(['GIT_FILTER_REQUIRES_REVIEW', 'INVALID_ATTRIBUTES', 'INVALID_STATUS', 'GIT_QUERY_FAILED', 'NOT_A_WORKTREE', 'ROOT_REQUIRED', 'REPOSITORY_IDENTITY_MISMATCH', 'INVALID_HEAD', 'INVALID_REFERENCE', 'INVALID_COUNTS', 'INVALID_WORKTREE_LIST']);
     output.status = 'UNVERIFIED'; output.complete = false;
     output.errors.push(allowed.has(error?.message) ? error.message : 'LOCAL_INSPECTION_FAILED');
   }

@@ -166,3 +166,17 @@ test('index lock is observed without removal', () => fixture(root => {
   assert.equal(report.operations.indexLock, true); assert.equal(report.status, 'INTEGRATION_IN_PROGRESS');
   assert.equal(readFileSync(join(root, '.git/index.lock'), 'utf8'), 'fixture-owned-lock');
 }));
+
+test('active clean filter is identified without executing or disabling it', () => fixture(root => {
+  writeFileSync(join(root, '.gitattributes'), '*.txt filter=synthetic\n');
+  git(root, 'config', 'filter.synthetic.clean', 'nonexistent-synthetic-filter');
+  writeFileSync(join(root, 'source.txt'), 'newvalue\n');
+  const report = inspectLocalState(root);
+  assert.equal(report.complete, false); assert.deepEqual(report.errors, ['GIT_FILTER_REQUIRES_REVIEW']);
+  assert.equal(git(root, 'config', 'filter.synthetic.clean'), 'nonexistent-synthetic-filter');
+}));
+test('unused configured filters do not block a normal metadata inspection', () => fixture(root => {
+  git(root, 'config', 'filter.unused.process', 'nonexistent-synthetic-filter');
+  const report = inspectLocalState(root);
+  assert.equal(report.complete, true); assert.equal(report.submoduleWorkingTrees, 'NOT_INSPECTED');
+}));

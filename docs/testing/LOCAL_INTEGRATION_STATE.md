@@ -1,7 +1,7 @@
 # STM-INFRA-010: local integration state
 
 Issue #74. This read-only CLI complements the remote PR report from STM-INFRA-009;
-it does not merge, fetch, inspect source contents or repair Git configuration.
+it does not merge, fetch, expose source contents or repair Git configuration.
 
 ## Use
 
@@ -37,11 +37,20 @@ Effective fetch and push URLs include Git URL rewrites. A noncanonical push targ
 is reported, never removed. Per-process fsmonitor/untracked-cache disabling and
 GIT_OPTIONAL_LOCKS=0 prevent optional metadata-query index writes. Repository and
 global configuration are not changed; inherited GIT_* routing overrides are not
-used. Normal filesystem/Git permissions still apply. This is not a secret scanner.
+used. Normal filesystem/Git permissions still apply. Git may internally read
+working files to determine status; the report never exposes their contents.
+
+An end-review reproduction confirmed that git status can invoke a clean filter.
+Before status, configured clean/process filters are matched against tracked-file
+attributes using non-executing Git metadata queries. An active external filter
+returns GIT_FILTER_REQUIRES_REVIEW without execution or changing its configuration.
+Unused configured filters do not block the inspection. Submodule working trees
+are not inspected because they have independent configuration. Configuration drift
+or concurrent writers are not sandboxed by this tool. This is not a secret scanner.
 
 ## Evidence and integration
 
-46/46 Node tests passed on the Linux execution environment with Node 22.16.0.
+48/48 Node tests passed on the Linux execution environment with Node 22.16.0.
 Tests include actual temporary repos, index byte/mtime invariance, renamed paths,
 linked worktrees, staged plus unstaged changes, real merge conflicts, index locks,
 Git URL rewrites, unchanged push blocks and sanitized error output.
