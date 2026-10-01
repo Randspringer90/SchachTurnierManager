@@ -1,0 +1,25 @@
+{
+  "runId": "STM_FINAL_BUILD_WEEK_20260719_112153",
+  "provider": "OpenAI",
+  "tool": "Codex CLI",
+  "model": "GPT-5.6 Sol",
+  "toolVersion": "0.144.5",
+  "startedAt": "2026-07-19T11:21:54.0356259+02:00",
+  "finishedAt": null,
+  "purpose": "Final Build Week integration, architecture, UX, candidate builds and Git completion",
+  "primaryPromptPath": "docs/ai/prompts/20260719_1122_codex-final-build-week-integration.md",
+  "reportPath": "docs/ai/reports/20260719_1122_codex-final-build-week-integration_REPORT.md",
+  "initialSha": "a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518",
+  "finalSha": null,
+  "buildWeekCommitRange": null,
+  "contributors": ["Repository owner", "Marcel-Mente", "Codex", "prior Claude-assisted work"],
+  "ownerDecisions": [
+    "Owner authorized exact PR #50 hardening patch execution",
+    "Owner authorized scoped central hook fixes, Owner PR merges and candidate builds"
+  ],
+  "tests": [],
+  "artifactManifest": null,
+  "feedbackSessionIdStatus": "pending_user_command",
+  "feedbackSessionIdSha256": null,
+  "actualSessionIdCommitted": false
+}

@@ -1,0 +1,44 @@
+{
+  "runId": "STM_BUILD_WEEK_INTEGRATION_2026_20260718_230927",
+  "provider": "OpenAI",
+  "tool": "Codex CLI",
+  "model": "GPT-5.6 Sol",
+  "toolVersion": "0.144.5",
+  "startedAt": "2026-07-18T23:09:27+02:00",
+  "finishedAt": null,
+  "purpose": "OpenAI Build Week integration, repository hygiene, and jury readiness",
+  "primaryPromptPath": "docs/ai/prompts/20260718_2309_codex-build-week-integration.md",
+  "reportPath": "docs/ai/reports/20260718_2309_codex-build-week-integration_REPORT.md",
+  "initialSha": "a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518",
+  "finalSha": null,
+  "buildWeekCommitRange": null,
+  "contributors": [
+    {
+      "name": "Repository owner",
+      "role": "Owner and product decision maker"
+    },
+    {
+      "name": "OpenAI Codex / GPT-5.6 Sol",
+      "role": "Primary Build Week implementation, audit, and integration assistant"
+    },
+    {
+      "name": "Marcel Mente",
+      "role": "Trusted co-developer; prior contributions remain separately attributed"
+    },
+    {
+      "name": "Claude",
+      "role": "Earlier project assistance only; not used for core work in this run"
+    }
+  ],
+  "ownerDecisions": [],
+  "tests": {
+    "preflight": "pass",
+    "repositoryInventory": "pass",
+    "pr50StaticReview": "pending",
+    "candidateBuild": "blocked_on_owner_merge_order"
+  },
+  "artifactManifest": null,
+  "feedbackSessionIdStatus": "pending_user_command",
+  "feedbackSessionIdSha256": null,
+  "actualSessionIdCommitted": false
+}

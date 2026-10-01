@@ -1,15 +1,23 @@
+# CmdletBinding ist Absicht: ohne das nimmt PowerShell unbekannte benannte
+# Argumente stillschweigend entgegen. Test-PortablePackageGate.ps1 hat darum
+# lange in das echte output/ gebaut statt in seinen tmp-Ordner, ohne Fehler.
+[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [switch]$SelfContained,
-    [switch]$NoZip
+    [switch]$NoZip,
+
+    # Zielwurzel fuer das portable Paket. Standard ist output/ im Repo; Gates
+    # bauen damit hermetisch nach tmp/, ohne das echte Paket zu ueberschreiben.
+    [string]$OutputRoot
 )
 
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
 $root = Resolve-Path "$PSScriptRoot\.."
-$outputRoot = Join-Path $root "output"
+$outputRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) { Join-Path $root "output" } else { $OutputRoot }
 $portableRoot = Join-Path $outputRoot "portable"
 $appOutput = Join-Path $portableRoot "app"
 $dataDir = Join-Path $portableRoot "data"

@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,33 @@ public sealed class SqliteTournamentStore(TournamentDbContext dbContext) : ITour
         }
 
         _dbContext.SaveChanges();
+    }
+
+    public TResult UpdateAtomically<TResult>(Guid id, Func<TournamentState, TResult> update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        using var transaction = _dbContext.Database.BeginTransaction(IsolationLevel.Serializable);
+        try
+        {
+            _dbContext.ChangeTracker.Clear();
+            var snapshot = _dbContext.TournamentSnapshots.SingleOrDefault(x => x.Id == id)
+                ?? throw new InvalidOperationException($"Turnier {id} wurde nicht gefunden.");
+            var tournament = Deserialize(snapshot);
+            var result = update(tournament);
+
+            snapshot.Name = tournament.Name;
+            snapshot.CreatedOn = tournament.CreatedOn.ToString("yyyy-MM-dd");
+            snapshot.UpdatedAt = DateTimeOffset.UtcNow;
+            snapshot.Json = JsonSerializer.Serialize(tournament, JsonOptions);
+            _dbContext.SaveChanges();
+            transaction.Commit();
+            return result;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
 

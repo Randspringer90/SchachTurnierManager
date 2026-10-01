@@ -54,7 +54,7 @@
         "fide",
         "audit"
       ],
-      "answer": "Die App zeigt vor der Veröffentlichung eine Auslosungsvorschau mit Qualitätsbericht. Bei Schweizer System werden Rematches vermieden und Farb-/Score-Hinweise im Audit dokumentiert. Für große Open bleibt FIDE-Dutch ein eigener Roadmap-Punkt; deshalb bei mehr als 20 Spielern die Vorschau besonders prüfen.",
+      "answer": "Die App zeigt vor der Veröffentlichung eine Auslosungsvorschau mit Qualitätsbericht. Beim Schweizer System kann zwischen Optimal V2 und FIDE Dutch gewählt werden. Rematches sowie Farb- und Score-Hinweise werden im Audit dokumentiert. Bei großen Feldern die Vorschau und den Auditbericht besonders sorgfältig prüfen; die Software beansprucht keine FIDE-Zertifizierung.",
       "steps": [
         "Vorschau für nächste Runde öffnen.",
         "Pairing-Qualität und Warnungen prüfen.",

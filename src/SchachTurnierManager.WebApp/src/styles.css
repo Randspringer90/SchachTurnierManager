@@ -424,6 +424,18 @@ th {
   min-width: 620px;
 }
 
+.manual-pairing-disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.manual-pairing-disclosure[open] summary {
+  margin-bottom: 0.35rem;
+}
+
 .manual-pairing input,
 .manual-pairing select {
   min-width: 0;
@@ -434,6 +446,10 @@ th {
   .manual-pairing {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .manual-pairing {
+    min-width: 0;
   }
 }
 
@@ -1633,8 +1649,14 @@ th {
 .dice-stage.compact .dice-face-5 { transform: rotateX(-90deg) translateZ(39px); }
 
 @media (prefers-reduced-motion: reduce) {
-  .dice-cube.rolling { animation-duration: 0.2s; }
-  .dice-cube.rolling-quick { animation-duration: 0.12s; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .dice-result-line {
@@ -2450,4 +2472,393 @@ th {
   margin-top: 0.35rem;
   color: #93c5fd;
   font-size: 0.78rem;
+}
+
+/* Build Week UX: klare Einstiege, progressive Offenlegung und sichere Schreibaktionen. */
+button,
+.tab-button,
+input,
+select {
+  min-height: 44px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+
+.theme-toggle {
+  align-self: flex-start;
+}
+
+.tournament-start-actions,
+.create-tournament-form,
+.advanced-settings,
+.create-summary {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.tournament-start-actions {
+  grid-template-columns: 1fr;
+}
+
+.create-tournament-form {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.create-tournament-form label,
+.advanced-settings label,
+.participant-search {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 650;
+}
+
+.advanced-settings {
+  padding: 0.75rem;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 0.8rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.advanced-settings summary {
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.create-summary {
+  padding: 0.7rem;
+  border-radius: 0.7rem;
+  background: rgba(30, 41, 59, 0.72);
+  color: #cbd5e1;
+}
+
+.empty-state {
+  max-width: 720px;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  border: 1px dashed rgba(96, 165, 250, 0.55);
+  border-radius: 1rem;
+  background: rgba(30, 64, 175, 0.12);
+}
+
+.empty-state h4 {
+  margin: 0.35rem 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.empty-state small {
+  display: block;
+  margin-top: 0.85rem;
+  color: #94a3b8;
+}
+
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.more-link {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.35rem;
+  text-align: left;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.more-link span {
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.privacy-note,
+.undo-bar,
+.result-confirm {
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 0.85rem;
+  background: rgba(22, 101, 52, 0.18);
+}
+
+.privacy-note {
+  padding: 0.85rem;
+}
+
+.result-confirm,
+.undo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.result-confirm h3,
+.result-confirm p {
+  margin: 0.2rem 0;
+}
+
+.undo-bar {
+  padding: 0.7rem 0.85rem;
+}
+
+.participant-heading,
+.standings-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.participant-heading h3,
+.standings-heading h3 {
+  margin-bottom: 0.2rem;
+}
+
+.participant-search {
+  width: min(100%, 320px);
+}
+
+.field-help {
+  color: #94a3b8;
+  font-weight: 450;
+  line-height: 1.4;
+}
+
+/* Optionaler heller Modus; Auswahl bleibt ausschließlich lokal im Browser. */
+.shell.theme-light {
+  min-height: 100vh;
+  color: #172033;
+  background: radial-gradient(circle at top left, rgba(219, 234, 254, 0.9), transparent 32rem), #f8fafc;
+}
+
+.theme-light .hero,
+.theme-light .panel,
+.theme-light .card,
+.theme-light .status-card,
+.theme-light .operator-bar,
+.theme-light .operator-chip,
+.theme-light .operator-next,
+.theme-light .overview-grid > div,
+.theme-light .overview-next,
+.theme-light .advanced-settings,
+.theme-light .create-summary,
+.theme-light .more-link {
+  color: #172033;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.theme-light input,
+.theme-light select,
+.theme-light textarea,
+.theme-light .tab-button,
+.theme-light .list button {
+  color: #172033;
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+
+.theme-light .muted,
+.theme-light small,
+.theme-light .field-help,
+.theme-light .more-link span,
+.theme-light .hero p,
+.theme-light .overview-next p,
+.theme-light .overview-grid span {
+  color: #475569;
+}
+
+.theme-light .eyebrow,
+.theme-light .operator-next-eyebrow {
+  color: #1d4ed8 !important;
+}
+
+.theme-light .ok,
+.theme-light .result-review-status.ok,
+.theme-light .bye-forfeit-status.ok,
+.theme-light .pairing-readiness-status.ok {
+  color: #166534;
+}
+
+.theme-light .language-switcher {
+  color: #475569;
+}
+
+.theme-light .tab-button.active,
+.theme-light .list button.selected {
+  color: #ffffff;
+  background: #1d4ed8;
+}
+
+.theme-light th {
+  color: #172033;
+  background: #e2e8f0;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 0.75rem 0.75rem 5.5rem;
+  }
+
+  .tab-bar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.2rem;
+    margin: 0;
+    padding: 0.45rem max(0.4rem, env(safe-area-inset-right)) max(0.45rem, env(safe-area-inset-bottom)) max(0.4rem, env(safe-area-inset-left));
+    overflow: visible;
+    background: rgba(2, 6, 23, 0.96);
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+    border-bottom: 0;
+  }
+
+  .theme-light .tab-bar {
+    background: rgba(248, 250, 252, 0.98);
+  }
+
+  .tab-button {
+    min-width: 0;
+    min-height: 52px;
+    padding: 0.35rem 0.15rem;
+    white-space: normal;
+    font-size: 0.75rem;
+    line-height: 1.1;
+  }
+
+  .panel-header,
+  .participant-heading,
+  .standings-heading,
+  .result-confirm,
+  .undo-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .participant-search {
+    width: 100%;
+  }
+
+  button.small {
+    min-height: 44px;
+  }
+}
+
+/* STM-FE-013: top-level error boundary fallback */
+.app-error-boundary {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 2rem;
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 0.75rem;
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+  text-align: center;
+}
+.app-error-boundary h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+.app-error-boundary p { margin: 0.5rem 0; line-height: 1.5; }
+.app-error-boundary__detail {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  text-align: left;
+  font-size: 0.85rem;
+  background: rgba(127, 127, 127, 0.12);
+  border-radius: 0.5rem;
+}
+.app-error-boundary__reload {
+  margin-top: 1rem;
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
+
+/* Accessible in-app confirmation dialog (replaces window.confirm/prompt). */
+.confirm-dialog {
+  width: min(560px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.confirm-dialog h3 {
+  margin-top: 0;
+}
+
+.confirm-dialog-destructive {
+  border: 1px solid rgba(248, 113, 113, 0.55);
+}
+
+.confirm-dialog-consequences {
+  margin: 0.75rem 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.confirm-dialog-typed {
+  margin: 1rem 0 0.5rem;
+}
+
+.confirm-dialog-typed label {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.confirm-dialog-typed-target {
+  margin: 0 0 0.4rem;
+}
+
+.confirm-dialog-typed-target code {
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgba(127, 127, 127, 0.18);
+  word-break: break-word;
+}
+
+.confirm-dialog-typed input {
+  width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.confirm-dialog-error {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.confirm-dialog-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.confirm-dialog-actions button {
+  min-height: 2.75rem;
+}
+
+.confirm-dialog-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

@@ -1,0 +1,34 @@
+# Safe example configuration for the local Codex CLI.
+#
+# Copy to .codex/config.toml and adjust locally. The copy is gitignored.
+# This file must never contain tokens, keys, internal host names or customer data.
+# Real secrets belong in .secrets/local/ (see .secrets/README.md).
+
+# Working directory the agent is allowed to touch. Keep it at the repo root.
+cwd = "."
+
+# Approval policy. Destructive or outward-facing actions stay owner-gated:
+# no force push, no history rewrite, no release, no store upload.
+approval_policy = "on-request"
+
+# Sandbox: local file edits are fine, network access is not implied.
+sandbox_mode = "workspace-write"
+
+[model]
+# No hard version pinning as a general rule. Routing follows
+# docs/planning/MODEL_ROUTING.md:
+#   - routine work            -> current strong default model
+#   - review / security / git / release / migration / architecture
+#                             -> strongest available reasoning model
+#   - low-risk read-only docs -> small/cheap model, escalate when unsure
+name = "<model-id>"
+
+[project]
+# AGENTS.md is the single binding rule source; this adapter adds nothing.
+instructions_file = "AGENTS.md"
+
+[commits]
+# Commits go through the project guard only. Never bypass hooks.
+command = "pwsh -NoLogo -NoProfile -File ./scripts/Commit-If-Green.ps1"
+allow_no_verify = false
+allow_force_push = false

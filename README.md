@@ -1,384 +1,206 @@
 # SchachTurnierManager
 
-Lokaler Turniermanager für Schweizer-System-Turniere im Vereins- und Open-Kontext.
+**A local-first tournament workstation for chess clubs: install on Windows, run pairings,
+capture results from the tournament desk or a phone, and export compatible tournament data
+without requiring a cloud account.**
 
-## Aktueller Stand bis 0.54.x
+> OpenAI Build Week candidate · Work & Productivity · version line `0.54.1`
 
-- Turniere lokal anlegen, speichern und als portable Version starten.
-- Teilnehmer erfassen, importieren, bearbeiten, zurückziehen und löschen.
-- Externe Spielerdaten per FIDE-ID suchen und übernehmen.
-- Schweizer-System-Paarungen mit global optimaler Rematch-Vermeidung bis 20 Spieler,
-  Audit, Bye-/kampflos-Prüfungen und Regressionstests.
-- Ergebnisse, Tabellen, Kategorien, Kreuztabelle, Rundenblätter und Exporte.
-- Persistentes Audit-Journal mit Dashboard, Exporten und Query-API.
-- Operator-Readiness-Smoke für lokale synthetische Turniertagsprüfung.
-- Lokaler Turnierassistent für Format-, Runden-, Zeit-, Brett- und Turniertagsempfehlungen ohne externe KI-API.
-- Release-Gate für Restore, Build, Tests, Frontend-Build und Portable-Paket.
-- Commit-Guard mit Open-Source-Sicherheitsprüfungen gegen Artefakte, lokale Audits, Backups, interne Registry-URLs und typische Secret-Muster.
-- Base-SHA-gebundene, statische Pull-Request-Prüfung vor Restore, Build oder Test fremder Beiträge; kontrollierte Übernahme mit Attribution statt Blindmerge.
+SchachTurnierManager is built for volunteer tournament directors, chess clubs and organisers of
+small and medium-sized opens. The project predates Build Week; the submission evaluates only the
+documented additions made during the submission period. It is not an official FIDE product or a
+FIDE-certified pairing program.
 
-## Projektstruktur
+## What it solves
 
-- `src/`, `tests/`: .NET-Solution (Domain, Application, Infrastructure, WebApi) und React/TypeScript-WebApp; Architektur in `docs/architecture/ARCHITECTURE.md`.
-- `docs/architecture/`: dauerhafte Architektur- und Fachkonzepte, inkl. `AI_AGENT_ARCHITECTURE.md`.
-- `docs/planning/`: Roadmaps, Tickets und Abläufe, inkl. `PROJECT_ORCHESTRATION.md` (welche Aufgabe über welches Skript läuft).
-- `docs/handoffs/`: historisches Handoff-Archiv (nicht mehr gepflegt, nicht im Public Snapshot).
-- `scripts/`: aktive Skripte mit Übersicht in `scripts/README.md`; historische After-Apply-Skripte unter `scripts/archive/after-apply/`.
-- `AGENTS.md`: verbindliche, providerneutrale Regeln für KI-Agenten; `.agents/skills/` enthält wiederverwendbare Skills, `.claude/` nur einen Adapter.
+A club tournament often spans registration lists, pairings, handwritten results, standings and
+several exchange formats. Existing workflows can require specialist knowledge or hosted services.
+SchachTurnierManager keeps that operational loop on the tournament computer:
 
-### Sichere Pull-Request-Prüfung
+1. create a tournament or open the synthetic demo;
+2. add/import participants;
+3. preview and generate a round;
+4. enter confirmed results on the PC or a local-Wi-Fi companion;
+5. review standings and export the event.
 
-Pull-Request-Inhalte gelten zunächst vollständig als nicht vertrauenswürdige Daten. Der Check
-`pr-static-security` verwendet die geprüften Skripte aus dem aktuellen Base-SHA und liest nur
-Metadaten, Dateiliste und Patch. Er checkt keinen fremden Head aus, führt keinen PR-Code aus
-und erhält keine Secrets. Lokal erzeugt `scripts/Invoke-SafePullRequestReview.ps1` neun
-redigierte, SHA-/Policy-gebundene Reviewartefakte. Notwendige Anpassungen erfolgen auf einem
-Owner-Integrationsbranch vom aktuellen `origin/development`; Originalbeitrag und Contributor
-bleiben nachvollziehbar. Details:
-[`SAFE_PULL_REQUEST_REVIEW.md`](docs/security/SAFE_PULL_REQUEST_REVIEW.md) und
-[`PULL_REQUEST_ADOPTION_WORKFLOW.md`](docs/planning/PULL_REQUEST_ADOPTION_WORKFLOW.md).
+The primary interface exposes only **Overview, Participants, Round, Standings and More**. Advanced
+pairing, audit, backup and compatibility tools remain available through progressive disclosure.
 
+## Main capabilities
 
-### Release/Ops, Logging und lokale Secrets
+- Round robin and Swiss tournaments with persistent SQLite storage.
+- Optimal V2 Swiss pairing as the default, plus opt-in **FIDE Dutch** pairing with an auditable
+  initial-colour setting.
+- Pairing preview, quality findings, round locks, manual overrides and a persistent audit journal.
+- Confirmed result entry with a visible undo path.
+- Standings, cross table, categories, tie-breaks, performance and printable round sheets.
+- Swiss-Manager CSV player-master-data exchange, TRF16 tournament export/player-data import, plus JSON backup and CSV exports.
+- German and English demo path; additional registered languages are explicitly marked preview.
+- Self-contained Windows desktop/portable packaging and an Inno Setup per-user installer path.
+- Android companion candidate for same-Wi-Fi use; see the status boundary below.
+- No ads and no tracking. Core tournament operation has no cloud requirement. Optional external
+  player lookup is a separate network action and is not needed for the demo.
 
-Seit 0.50.x enthaelt das Projekt einen eigenen Release-/Betriebsunterbau:
+## Two-minute quick start
 
-- WebApi-Logging mit konfigurierbaren LogLeveln, Single-Line-Konsole und lokalem File-Logger.
-- Projektanker `logs/` fuer Entwicklungslaeufe; installierte Versionen schreiben nach `%LocalAppData%\SchachTurnierManager\logs`, portable Pakete nach `logs\` neben dem Starter.
-- HTTP-Request-Logging ohne Querystrings, damit keine Tokens oder API-Keys in Logs landen.
-- `.secrets/local/` und `secrets/local/` bleiben lokale, gitignored Ablagen fuer DPAPI-verschluesselte Werte.
-- `scripts/Set-LocalSecret.ps1` und `scripts/Get-LocalSecret.ps1` bilden den lokalen DPAPI-Roundtrip ab.
-- `scripts/Invoke-ReleaseCandidateReadiness.ps1` sammelt ReleaseGate, SecretSafety, Desktop, Portable und optional Installer in einem lokalen temporären Run-ZIP.
-- Agentenregeln und Skills liegen im Projekt selbst unter `AGENTS.md` und `.agents/skills/`, damit Codex, Claude Code und lokale KI-Workflows ohne externe Projektabhaengigkeiten arbeiten koennen.
+For a judge or first-time user, follow [Judge Quickstart](docs/submission/JUDGE_QUICKSTART.md).
+The intended packaged path is:
 
+1. install the per-user Windows setup (no administrator account required);
+2. launch **SchachTurnierManager**;
+3. choose **Open demo tournament**;
+4. inspect the eight synthetic players and completed first round;
+5. preview/generate the next FIDE-Dutch round;
+6. confirm a result and review the updated standings;
+7. open **More → Print, export & backup** and generate TRF16/Swiss-Manager output.
 
+No real players, clubs or FIDE records are included in the demo.
 
-### Kollegenpaket / einfache Installation
+## Windows setup
 
-Seit 0.51.1 erzeugt `scripts/Invoke-ColleagueInstallReadiness.ps1` ein eigenstaendiges Kollegenpaket unter `output\SchachTurnierManager_Kollegenpaket_<Version>.zip`. Das Paket enthaelt Desktop-ZIP, Portable-ZIP, optional die Setup-EXE, ein `README_START_HIER.txt`, ein Manifest und SHA256-Pruefsummen.
+The repository contains the self-contained desktop and installer build paths. Final Build Week
+binaries are deliberately **not committed**. Build the current source locally:
 
 ```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ColleagueInstallReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
+pwsh -NoLogo -NoProfile -File .\scripts\Invoke-ClickInstallReadiness.ps1
 ```
 
-Beim Kollegen gilt: Setup-EXE per Doppelklick verwenden, falls vorhanden; sonst Desktop-ZIP entpacken und `SchachTurnierManager.bat` per Doppelklick starten. Es wird kein .NET, Node oder npm auf dem Zielrechner benoetigt.
+The readiness flow validates packaging, checksums, a fresh per-user installation, shortcut,
+isolated app smoke test and uninstall. Installed tournament data is stored separately below the
+current user's local application-data directory, so uninstall behaviour can preserve user data.
+See [Colleague installation](docs/release/COLLEAGUE_INSTALLATION.md) for the operational details.
 
-
-
-### Kollegenpaket-Frischlauf testen
-
-Seit 0.52.0 kann das erzeugte Kollegenpaket in einem frischen Testordner automatisch geprueft werden. Der Test entpackt das Paket, validiert SHA256-Pruefsummen, entpackt das Desktop-ZIP, startet die WebApi auf einem freien Loopback-Port und prueft Health, Dashboard, Turnierliste und isolierten SQLite-Datenpfad.
+For a self-contained desktop folder without an installer:
 
 ```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ColleagueFreshRunTest.ps1" -BuildPackage -BuildInstaller -AllowMissingInnoSetup
+pwsh -NoLogo -NoProfile -File .\scripts\Publish-DesktopApp.ps1
 ```
 
-Am Ende wird ein lokales temporäres Run-ZIP ausgegeben. Ein echter Test auf einem Kollegenrechner bleibt fuer die finale Freigabe sinnvoll, aber der Frischlauf schliesst die haeufigsten Paketierungsfehler bereits lokal aus.
+The target computer does not need Node.js or a separate .NET runtime.
 
+## Android companion status
 
-### Laufzeitlogs pruefen
+The Android/Capacitor companion is currently an **owner PR candidate (#49)**, not a published
+release and not yet part of `development`. It is designed to connect only to a private IPv4 or
+`.local` address on the same Wi-Fi/hotspot, verify the SchachTurnierManager health identity and
+submit synthetic or real tournament results to the local PC.
 
-Seit 0.54.0 besitzt die WebApi einen lokalen File-Logger mit Rotation. Entwicklungslaeufe schreiben nach `logs\` im Projekt, Desktop-/Kollegeninstallationen nach `%LocalAppData%\SchachTurnierManager\logs` und portable Pakete nach `logs\` neben dem Starter.
+Before the candidate can be accepted, owner PR #50 must land the exact-path/hash/provenance gate
+for the required Gradle wrapper and Android resources; PR #49 then requires a new SHA-bound static
+review, green CI and a real Galaxy S25 test. There is no Play Store or F-Droid build, and the
+companion is not claimed to operate as a standalone offline tournament manager.
 
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-LoggingReadiness.ps1" -BuildDesktop
-```
+## Demo data
 
-Der Test startet eine isolierte App-Instanz, prueft Health/Dashboard/API, verifiziert erzeugte Logdateien und stellt sicher, dass Querystrings nicht geloggt werden.
+The WebApp's explicit **Open demo tournament** action creates a versioned local preset:
 
+- `Build Week Demo Open`;
+- eight `Demo Player NN` records with fictional clubs and ratings;
+- Swiss format, three planned rounds, FIDE Dutch selected and initial colour White;
+- one completed round, ready to preview/pair the next round.
 
-## Bewusste Grenzen
+The preset is created only after a user action. Choosing it again opens the existing demo instead
+of silently adding duplicates. Details and reset behaviour are documented in
+[Demo Data](docs/submission/DEMO_DATA.md).
 
-- Schweizer-System ist noch kein vollständiges FIDE-Dutch.
-- Felder mit mehr als 20 aktiven Spielern nutzen den dokumentierten Greedy-Fallback.
-- QR/Handy funktioniert nur im gleichen WLAN/Hotspot und muss vor Ort mit echter Laptop-IP
-  getestet werden; Browser-Würfeln am Laptop bleibt der Fallback.
+## Run from source
 
-
-### Lokale Turnierhilfe / Wissensbasis
-
-Der Reiter **Assistent** enthält eine lokale Chat-Hilfe. Seit 0.48.0 werden die Schnellfragen und Wissensartikel unter `src/SchachTurnierManager.WebApp/src/knowledge/localKnowledgeBase.json` gepflegt. Die Hilfe ist lokal-only: Es werden keine Turnierdaten, Logs, Personendaten oder Secrets an externe KI-Anbieter gesendet.
-### Exportmanifest fuer Turnierleiter
-
-Seit 0.49.0 erzeugt der Turniermanager ein lokales Exportmanifest unter `exports/manifest.json`. Es listet die wichtigsten Downloadpfade fuer Teilnehmer-CSV, Tabelle, Paarungen, Druckansicht und Audit-Bundles, nennt offene Bretter/Byes/kampflose Ergebnisse und enthaelt einen empfohlenen Veroeffentlichungs-Workflow. Das Manifest ist local-only und fuehrt keine Uploads aus.
-
-
-### Lokale Secrets und DPAPI
-
-Lokale Secrets liegen bevorzugt unter `.secrets/local/*.dpapi.txt` und werden nicht eingecheckt. `scripts/Set-LocalSecret.ps1` speichert Werte per Windows-DPAPI fuer den aktuellen Benutzer und Rechner; `scripts/Get-LocalSecret.ps1` liest sie wieder aus. Die Dateien sind dadurch nicht portabel und muessen pro Rechner/Benutzer neu gesetzt werden. Der Release-Check `scripts/Invoke-SecretSafetyReadiness.ps1` prueft GitSafety, DPAPI-Roundtrip und Gitignore-Schutz.
-
-
-## Desktop-Version für Endnutzer (self-contained)
-
-Für Rechner **ohne** Entwicklerwerkzeuge (kein .NET, kein Node nötig):
+Prerequisites: current .NET SDK and Node.js/npm. From the repository root:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Publish-DesktopApp.ps1"
-```
-
-Ergebnis unter `output\desktop`: Doppelklick auf **`SchachTurnierManager.bat`** startet das
-Backend (minimiert) und öffnet das Dashboard unter `http://127.0.0.1:5088/`. Turnierdaten
-liegen unter `%LocalAppData%\SchachTurnierManager`.
-
-Eine Installer-EXE (Inno Setup, Desktop-Verknüpfung, Startmenü, Uninstaller) ist unter
-`installer/` vorbereitet und wird mit `scripts\Build-Installer.ps1` gebaut (benötigt
-lokal installiertes Inno Setup 6). Der empfohlene Prüflauf ist:
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-InstallerReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
-```
-
-Der Prüflauf erzeugt ein lokales temporäres ZIP mit Logs, Manifesten und manueller Testcheckliste.
-
-
-## Portable-ZIP-Frischordner-Test
-
-Für eine Endnutzer-nahe Prüfung des Portable-Pakets ohne manuelle Logflut:
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-PortableFreshFolderTest.ps1"
-```
-
-Der Lauf baut standardmäßig ein self-contained Portable-ZIP, entpackt es in einen frischen
-temporären Ordner, startet die App auf einem Testport, prüft Healthcheck, eingebettetes
-Dashboard, Turnierlisten-API und den isolierten SQLite-Datenpfad. Am Ende wird ein
-`UPLOAD_ZIP=...` ausgegeben.
-
-Der Paketmanifest-Teil toleriert leere ZIP-Ordner wie `data` und listet die
-erkannten Portable-Dateien robust bis Tiefe 3 auf.
-
-
-## Turnierassistent
-
-Der Reiter **Assistent** hilft Turnierleitern bei der Vorbereitung: Teilnehmerzahl, Zeitfenster,
-Bretter und Szenario erfassen; die App empfiehlt Format, Rundenzahl, Zeitbedarf, Setup-Schritte,
-Turniertag-Checkliste und Exportplan. Der Assistent ist rein lokal und regelbasiert. Es werden
-keine Turnierdaten, Logs, Secrets oder personenbezogenen Daten an externe KI-Dienste gesendet.
-
-Prüflauf:
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-TournamentAssistantReadiness.ps1"
-```
-
-Der Lauf gibt den lokalen temporären Pfad als `UPLOAD_ZIP=...` aus.
-
-## Mehrsprachigkeit
-
-Die WebApp hat ein dependency-freies i18n-Fundament mit Sprachumschalter im Kopfbereich
-(18 Sprachen registriert; Deutsch/Englisch/Spanisch mit Kernübersetzungen, weitere folgen).
-Details und Mitmach-Anleitung: `src/SchachTurnierManager.WebApp/src/i18n/README.md`.
-
-
-### Lokale Chat-Hilfe
-
-Der Reiter **Assistent** enthaelt eine lokale, regelbasierte Chat-Hilfe. Sie beantwortet Fragen zu Turnierstart, Auslosung, Wertungen, Backup, QR/Handy, Import/Export und KI-Datenschutz. Es werden keine Daten an Claude, OpenAI oder andere externe Anbieter gesendet. Die spaetere echte KI-Anbindung ist als BYOK-/Provider-Adapter geplant und bleibt ein eigener Roadmap-Schritt.
-
-## Schnellstart (empfohlen)
-
-Zum Starten doppelklicken: **`RUN_TURNIERMANAGER.bat`** (im Repo-Root).
-
-Die Datei startet Backend und Frontend in getrennten Fenstern und öffnet den Browser
-auf `http://localhost:5173`. Sie nutzt PowerShell 7 (`pwsh`), falls vorhanden, sonst
-Windows PowerShell, jeweils mit `-ExecutionPolicy Bypass` nur für diesen Prozess – die
-globale ExecutionPolicy wird **nicht** verändert und es werden **keine** Adminrechte benötigt.
-
-> Hinweis: Wenn PowerShell `.\scripts\Start-Dev.ps1` direkt mit der Meldung
-> „cannot be loaded … is not digitally signed" blockiert, einfach `RUN_TURNIERMANAGER.bat`
-> verwenden – die BAT umgeht die Signaturprüfung prozesslokal.
-
-## Start (manuell)
-
-Alle manuellen Befehle werden aus dem Repo-Root ausgeführt.
-
-Backend:
-
-```powershell
+dotnet restore SchachTurnierManager.sln
 dotnet run --project .\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj
 ```
 
-Frontend:
+In a second terminal:
 
 ```powershell
-Push-Location .\src\SchachTurnierManager.WebApp; npm install; npm run dev; Pop-Location
+Push-Location .\src\SchachTurnierManager.WebApp
+npm ci
+npm run dev
+Pop-Location
 ```
 
-Dashboard:
+Open `http://localhost:5173`. Development data and logs must stay local and are excluded from
+commits. The packaged desktop serves the embedded WebApp from the local API process instead.
 
-```text
-http://localhost:5173
-```
+## Architecture
 
-Healthcheck:
+- `Domain`: tournament rules, pairings, standings and rating calculations.
+- `Application`: use cases and orchestration.
+- `Infrastructure`: SQLite persistence and external adapters.
+- `WebApi`: local HTTP surface and embedded packaged dashboard.
+- `WebApp`: React/TypeScript/Vite operator interface; no pairing algorithm lives here.
+- Android candidate: Capacitor shell around the deliberately narrow companion workflow.
 
-```text
-http://localhost:5088/api/health
-```
+Pairing decisions remain auditable. Manual interventions do not silently replace the algorithmic
+record.
 
-## Chess960-Würfeln pro Brett (Desktop + QR/Handy)
+## Local-first, privacy and security
 
-Im Rundenbereich hat jedes reguläre Brett neben der Chess960-Spalte einen
-**„🎲 Würfeln"**-Button. Er öffnet ein Popup für genau dieses Turnier, diese Runde und
-dieses Brett – mit zwei internen Reitern:
+- Tournament state is local SQLite data; backup and exports are explicit user actions.
+- The public health response does not expose absolute database or log paths.
+- No analytics SDK, ad SDK or tracking service is required for the core workflow.
+- Local phone access is limited to the same private network; no tunnel or cloud relay is supplied.
+- Pull requests are treated as untrusted data and statically reviewed against their exact base/head
+  SHA before any foreign code is executed.
+- Required Android binary resources are accepted only through exact path, type, hash, size,
+  provenance and owner-review attestations; there is no blanket binary allowlist.
+- Secrets, signing material, APKs and installer EXEs are excluded from the repository.
 
-- **Browser würfeln:** Der Würfel arbeitet sich Feld für Feld von links nach rechts durch
-  die acht Felder der Grundreihe und zeigt die Figuren. Anschließend
-  „💾 Für Brett speichern" (oder „🎲 Nochmal würfeln" / „Abbrechen"). Eine bereits
-  gespeicherte Stellung wird nur nach Rückfrage überschrieben. Die Stellung bleibt nach
-  Reload/Backup erhalten und erscheint weiter auf dem Rundenblatt/Druck.
-- **QR / Handy (nur lokal):** Zeigt einen QR-Code und eine LAN-URL, mit der
-  Teilnehmer/Schiedsrichter dieses Brett am Handy auswürfeln. Funktioniert **nur im
-  gleichen WLAN/Hotspot** wie der Laptop. Kein Cloud-Dienst, kein Tunnel.
+Security details: [Safe PR Review](docs/security/SAFE_PULL_REQUEST_REVIEW.md) and
+[Contributor Security](docs/security/CONTRIBUTOR_SECURITY.md).
 
-Hinweise zur QR/Handy-Nutzung:
+## How Codex and GPT-5.6 were used
 
-- **`localhost` funktioniert am Handy nicht** – es zeigt auf das Handy selbst. Im QR-Reiter
-  die **LAN-IP des Laptops** eintragen (Windows: `ipconfig` → IPv4-Adresse). Beim Start über
-  `RUN_TURNIERMANAGER.bat` werden die möglichen Laptop-Adressen im Startfenster angezeigt.
-- Der Dev-Server ist für das LAN erreichbar (`vite --host 0.0.0.0`); `http://localhost:5173`
-  am Laptop funktioniert weiterhin.
-- Eine **Windows-Firewall** kann den Zugriff auf Port `5173` blockieren. Dann am Laptop
-  würfeln – die Browser-Würfelfunktion ist davon unabhängig und immer verfügbar.
-- Würfeln Laptop und Handy gleichzeitig dasselbe Brett, gilt die zuletzt gespeicherte
-  Stellung; vorhandene Stellungen werden nur nach Rückfrage überschrieben.
+The primary Build Week finalisation uses Codex CLI with the owner-selected GPT-5.6 Sol profile for
+repository audit, UX implementation, tests, exact-SHA security-gate design, documentation and
+candidate preparation. The main work remains in one traceable Codex thread, which will provide the
+submission `/feedback` session ID directly to the owner; the raw ID is never committed.
 
-Der bestehende Button „🎲 Schachwürfel öffnen" (alle Bretter einer Runde auf einmal) bleibt
-unverändert erhalten.
+This is an existing project. Earlier work includes owner decisions and contributions prepared with
+other tools and by trusted co-developer Marcel. Those contributions are not relabelled as Codex
+work. [Build Week Changelog](docs/submission/BUILD_WEEK_CHANGELOG.md) and
+[Codex Collaboration](docs/submission/CODEX_COLLABORATION.md) separate the baseline, submission
+period and human/agent roles.
 
-## Nach jeder Runde: Audit sichern
+## Build Week additions since 13 July 2026
 
-Jede Turnierleiter-Aktion landet im Audit-Journal (DB **und** append-only Datei-Spiegel unter
-`%LocalAppData%\SchachTurnierManager\audit\`). Zur Forensik nach **jeder Runde** und am
-**Turnierende** ein Bundle exportieren und lokal sichern:
+The dated, commit-backed scope includes FIDE-Dutch implementation and validation, Swiss-Manager /
+TRF16 compatibility, safer release/runtime foundations, the Android companion candidate and this
+finalisation's progressive UX, synthetic demo, public-safe health contract and submission package.
+Only merged commits in the final documented range count as the candidate. See
+[Build Week Changelog](docs/submission/BUILD_WEEK_CHANGELOG.md) for the exact boundary and status.
 
-- **WebApp:** Audit-Journal-Karte → **„Audit-Bundle (JSONL)"** oder **„(JSON)"**.
-- **Skript:** `pwsh -File .\scripts\Export-TournamentAudit.ps1` (Datei landet in `output\audit\`,
-  kein Upload, keine Cloud).
+## Tests and quality
 
-Das Bundle ist in sich geschlossen (Manifest, Turnier-Snapshot, Pairing-Forensik je Runde, alle
-Ereignisse) und macht spätere Nachfragen nachvollziehbar. Details: `docs/AUDIT_JOURNAL.md`.
-
-## Release-Gate
-
-Für lokale Build-/Test-Prüfung ohne Portable-Paket:
+Run the repository gate:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1" -SkipPack
+pwsh -NoLogo -NoProfile -File .\scripts\ReleaseGate.ps1
 ```
 
-Das vollständige Gate ohne `-SkipPack` erstellt zusätzlich ein lokales Portable-Paket
-unter `output\` und gehört in einen explizit freigegebenen Release-Lauf.
+The gate restores and builds .NET, runs the automated tests, compiles TypeScript/Vite and creates a
+portable package. Additional installer, security, Android and manual-device gates are listed in
+[Submission Checklist](docs/submission/SUBMISSION_CHECKLIST.md). A green source gate does not
+substitute for the final exact-SHA installer/APK build or Galaxy S25 test.
 
-```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseGate.ps1"
-```
+## Known limitations and roadmap
 
-## Operator-Readiness-Smoke
+- FIDE Dutch is implemented and tested but is not represented as FIDE certification or approval.
+- Large Swiss fields and edge cases still require the documented audit review; scaling work remains
+  on the roadmap.
+- The Android companion and exact artifact gate are pending owner PR review and real-device proof.
+- Full standalone Android/offline operation, F-Droid, Play Store and public binary distribution are
+  future options only.
+- Visual breakpoint/device acceptance is manual until captured on the final candidate.
 
-Nach einem Build kann der lokale Turniertag mit rein synthetischen Daten geprüft werden:
+See [Known Limitations](docs/submission/KNOWN_LIMITATIONS.md) and the final readiness report for the
+submission-specific state.
 
-```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Smoke-OperatorWorkflow.ps1"
-```
+## Licence
 
-Der Smoke startet isolierte lokale API-Prozesse, prüft Health, Swiss 12/5, Round-Robin,
-Manual-Pairing-Guards, Backup/Restore und Chess960/QR-URL-Form. Artefakte liegen unter
-`output\operator-readiness-smoke\` und werden nicht committet.
-
-## Sicher committen
-
-```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Commit-If-Green.ps1" -Message "Commit message"
-```
-
-`-Push` nur mit ausdrücklicher Freigabe verwenden. **Dieses Repository ist bereits PUBLIC** (Stand 2026-07-12). Aktuelle Dateien sind forward-redacted; die **alte Git-Historie** bleibt der dokumentierte Public-History-Blocker (mögliche historische interne Registry-URLs / lokale Auditdateien). Ein späterer *history-freier* Neustart erfolgt nur über einen geprüften Clean Snapshot – die Sichtbarkeit selbst wird nicht erneut geändert. Details: `docs/security/CONTRIBUTOR_SECURITY.md`.
-## Zusammenarbeit (development / main)
-
-Aktive Entwicklung läuft auf dem Standardbranch **`development`**; **`main`** hält nur den
-letzten freigegebenen Release-Stand. Mitwirkende arbeiten über Feature-Branches und Pull
-Requests. Einstieg: [`CONTRIBUTING.md`](CONTRIBUTING.md); Aufgaben:
-[`docs/planning/BACKLOG.md`](docs/planning/BACKLOG.md) (kanonisch). Branch-/Release-Regeln:
-[`docs/planning/BRANCHING_STRATEGY.md`](docs/planning/BRANCHING_STRATEGY.md).
-
-## Commit-Sicherheitscheck
-
-Commits laufen ueber `scripts/Commit-If-Green.ps1`. Der Guard prueft Build, Tests, Frontend, Paketierung und blockiert lokale Audit-/Backup-Dateien, Artefakte, `.npmrc`, interne Registry-Referenzen und kritische Zugangsdaten-Muster. Er verwendet kein blindes `git add --all`, sondern zeigt die geaenderten Dateien an und staged nur explizit gepruefte Pfade. Fuer eine spaetere Open-Source-Veröffentlichung wird ein Clean Snapshot ohne private Historie verwendet.
-
-## Open-Source-Clean-Snapshot
-
-Das Repository ist bereits öffentlich; die **alte Git-Historie** ist der offene Punkt. Für einen history-freien Public-Neustart kann ein geprüfter Snapshot ohne Git-Historie erzeugt werden (siehe Backlog-Aufgabe „Public Snapshot / History-Abnahme"):
-
-```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\New-OpenSourceSnapshot.ps1"
-```
-
-Der Snapshot liegt unter `output\open-source-snapshot`, enthält einen Report und schließt lokale Artefakte, historische Handoffs/After-Apply-Skripte, `.codex`, `.vs`, Build-Ausgaben, Logs, Dumps, Datenbanken und Zugangsdaten-Muster aus.
-
-### RUN-03 Frischordner-Smoke
-
-Der Portable-Frischordner-Test liegt unter `scripts\Invoke-PortableFreshFolderTest.ps1`.
-Er baut das Portable-ZIP, entpackt es in einen isolierten temporären Ordner, startet
-die WebApi auf einem Testport und prueft Health, eingebettetes Dashboard, Turnierlisten-API
-und SQLite-Datenpfad. Leere Paketordner wie `data` werden im Manifest als optional
-behandelt, weil ZIP-Werkzeuge leere Ordner nicht immer erhalten.
-
-### RUN-08 PWA-/Handy-Basis
-
-Die WebApp ist als Progressive Web App vorbereitet: `manifest.webmanifest`, SVG-Icons,
-Theme-Farbe und Service Worker werden beim Frontend-Build in die eingebettete WebApp
-uebernommen. Der Service Worker cached nur App-Shell und statische Assets. API-Aufrufe
-unter `/api/*` bleiben bewusst network-only, damit Turnierdaten nicht unkontrolliert im
-Browser-Cache landen.
-
-Readiness-Test:
-
-```powershell
-pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-PwaReadiness.ps1"
-```
-
-Am Ende wird der lokale temporäre Pfad als `UPLOAD_ZIP=...` ausgegeben.
-
-## Release- und Kollegeninstallation
-
-Für eine weitergebbare Windows-Version gibt es ab 0.50.0 einen gebündelten Release-Check:
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseCandidateReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup
-```
-
-Der Lauf erzeugt ein `UPLOAD_ZIP=...` mit Logs und Manifest. Für normale Nutzer ist aktuell die Desktop-Variante relevant:
-
-```text
-output\desktop\SchachTurnierManager.bat
-```
-
-Diese Variante ist self-contained und benötigt beim Nutzer keine separate .NET-Installation. Die echte Setup-EXE wird gebaut, sobald Inno Setup 6 lokal verfügbar ist.
-
-Lokale Secrets für spätere KI-/Provider-Anbindungen werden innerhalb des Projekts unter `.secrets/local/` DPAPI-verschlüsselt abgelegt und nicht committed.
-
-## Release-/Betriebspruefung
-
-Der Release-Candidate-Lauf sammelt alle Detailausgaben in einem eigenen lokalen temporären Ordner und erzeugt am Ende genau ein `UPLOAD_ZIP=...` fuer die Uebergabe an den naechsten KI-/Review-Lauf:
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Invoke-ReleaseCandidateReadiness.ps1" -BuildInstaller -AllowMissingInnoSetup
-```
-
-Der Lauf prueft ReleaseGate, DPAPI-/Secret-Safety, Desktop-Publish, Portable-ZIP, optional Installer-Readiness und GitSafety. Lokale Secrets liegen ausschliesslich unter `.secrets/local/` beziehungsweise `secrets/local/`, werden per Windows-DPAPI verschluesselt und sind gitignored.
-
-
-## Kollegeninstallation ab 0.53.0
-
-Das Release-/Kollegenpaket enthaelt neben Desktop-/Portable-ZIP auch einen einfachen Klickpfad:
-
-1. `Install-SchachTurnierManager.cmd` per Doppelklick starten.
-2. Danach ueber den Startmenue-Shortcut **SchachTurnierManager** starten.
-3. Bei Bedarf `Uninstall-SchachTurnierManager.cmd` aus dem Paket nutzen.
-
-Die Installation liegt standardmaessig unter `%LocalAppData%\Programs\SchachTurnierManager`. Turnierdaten bleiben getrennt unter `%LocalAppData%\SchachTurnierManager`. Lokale DPAPI-Secrets werden nicht ausgeliefert und muessen je Benutzer/Rechner neu gesetzt werden.
-
-Pruefung fuer Maintainer:
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ClickInstallReadiness.ps1 -BuildPackage -BuildInstaller -AllowMissingInnoSetup
-```
+No repository-wide licence has yet been approved. Public source visibility does not by itself grant
+reuse rights. The owner must choose a licence only after contributor rights/consent are confirmed,
+or arrange explicit private jury access if the competition permits it. No silent relicensing is
+performed; see [Licence Decision](docs/submission/LICENSE_DECISION.md).
