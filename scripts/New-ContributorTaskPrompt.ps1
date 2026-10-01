@@ -215,8 +215,18 @@ $defaultForbiddenPath = @(
     '`scripts/*Security*`, `scripts/*Git*`, `scripts/*Commit*`, `scripts/Configure-*`',
     '`installer/**`, `Directory.Build.props`, `Directory.Packages.props`, `global.json`'
 )
-$allowedPaths = ConvertTo-TrustedBullets $(if ($AllowedPath) { $AllowedPath } else { $defaultAllowedPath }) 'AllowedPath'
-$forbiddenPaths = ConvertTo-TrustedBullets $(if ($ForbiddenPath) { $ForbiddenPath } else { $defaultForbiddenPath }) 'ForbiddenPath'
+# The default prohibitions are binding and can only be extended, never replaced: the prompt
+# presents them as trusted project rules. Additional allowed paths must not name any
+# protected area (instruction sources, CI, config, security/architecture docs, security/Git
+# scripts, installer and central build files).
+$protectedPathPattern = '(?i)(\.github|\.agents|(^|[^.\w])agents/|\.claude|agents\.md|config/|docs/security|docs/architecture|scripts/\S*(security|git|commit|configure)|installer/|directory\.build\.props|directory\.packages\.props|global\.json)'
+foreach ($extra in @($AllowedPath)) {
+    if ($extra -and $extra -match $protectedPathPattern) {
+        throw "AllowedPath darf keinen geschuetzten Bereich freigeben: $extra"
+    }
+}
+$allowedPaths = ConvertTo-TrustedBullets @($defaultAllowedPath + @($AllowedPath | Where-Object { $_ })) 'AllowedPath'
+$forbiddenPaths = ConvertTo-TrustedBullets @($defaultForbiddenPath + @($ForbiddenPath | Where-Object { $_ })) 'ForbiddenPath'
 $dependencies = ConvertTo-TrustedBullets $Dependency 'Dependency'
 $competitionImpactSafe = Get-SafeTrustedLine $CompetitionImpact 'CompetitionImpact'
 $documentationRequirementSafe = Get-SafeTrustedLine $DocumentationRequirement 'DocumentationRequirement'

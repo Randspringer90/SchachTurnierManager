@@ -109,6 +109,18 @@ Check (($planningOut -join "`n") -match [regex]::Escape($planningSha)) 'Planning
 $noIssueOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-REL-003' -Offline -PlanningOnly -BaseSha $planningSha -BranchName 'docs/STM-REL-003-fresh-install-evidence' -WhatIf 2>&1
 Check (($noIssueOut -join "`n") -match 'Issue: #0') 'Issue-Erkennung bleibt auf die exakte Backlog-Zeile beziehungsweise den Detailblock begrenzt'
 
+# Final review (MAJOR): CLI paths must never replace the binding prohibitions.
+foreach ($protected in @('`.github/workflows/**`', '`AGENTS.md`', '`config/**`', '`scripts/Test-GitCommitSafety.ps1`', '`Directory.Packages.props`')) {
+    & pwsh -NoProfile -File $gen -BacklogId 'STM-UX-011' -Offline -PlanningOnly -BaseSha $planningSha -BranchName 'fix/STM-UX-011-accessibility-polish' -AllowedPath $protected -WhatIf *> $null
+    Check ($LASTEXITCODE -ne 0) "Zusaetzlicher erlaubter Pfad $protected wird abgelehnt"
+}
+$extOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-UX-011' -Offline -PlanningOnly -BaseSha $planningSha -BranchName 'fix/STM-UX-011-accessibility-polish' -ForbiddenPath '`src/SchachTurnierManager.WebApi/**`' -AllowedPath '`src/SchachTurnierManager.WebApp/src/**`' 2>&1
+Check ($LASTEXITCODE -eq 0) 'Zusaetzliche unkritische Pfade sind erlaubt'
+$extPrompt = ($extOut | Select-String '^PROMPT_FILE=(.+)$').Matches.Groups[1].Value
+$extText = if ($extPrompt -and (Test-Path -LiteralPath $extPrompt)) { Get-Content -Raw -LiteralPath $extPrompt } else { '' }
+Check ($extText.Contains('.github/workflows/**') -and $extText.Contains('src/SchachTurnierManager.WebApi/**')) 'Eigene Verbote ergaenzen die Standardverbote, ersetzen sie aber nicht'
+Check ($extText.Contains('src/SchachTurnierManager.Domain/**') -and $extText.Contains('src/SchachTurnierManager.WebApp/src/**')) 'Eigene erlaubte Pfade ergaenzen die Standardpfade'
+
 $before = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
 $wOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-006' -BaseSha $readyBaseSha -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
 $after = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
