@@ -18,6 +18,14 @@ $PSNativeCommandUseErrorActionPreference = $true
 
 $root = Resolve-Path "$PSScriptRoot\.."
 $outputRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) { Join-Path $root "output" } else { $OutputRoot }
+# The package folder below is deleted recursively, so the target must resolve to the
+# repository's own output\ or tmp\ tree (Test-PortablePackageGate uses tmp\).
+$outputRoot = [System.IO.Path]::GetFullPath([string]$outputRoot)
+$allowedRoots = @('output', 'tmp') | ForEach-Object { [System.IO.Path]::GetFullPath((Join-Path ([string]$root) $_)).TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar }
+$candidate = $outputRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+if (-not ($allowedRoots | Where-Object { $candidate.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) })) {
+    throw "OutputRoot muss innerhalb von output\ oder tmp\ des Repositorys liegen: $outputRoot"
+}
 $portableRoot = Join-Path $outputRoot "portable"
 $appOutput = Join-Path $portableRoot "app"
 $dataDir = Join-Path $portableRoot "data"
@@ -47,7 +55,12 @@ function Invoke-Checked {
 }
 
 Write-Host "[Pack-Portable] Ziel: $portableRoot"
-Remove-Item -Recurse -Force $portableRoot -ErrorAction SilentlyContinue
+if (Test-Path -LiteralPath $portableRoot) {
+    if ((Get-Item -LiteralPath $portableRoot -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+        throw "Paketziel ist ein Link/Reparse-Point und wird nicht geloescht: $portableRoot"
+    }
+    Remove-Item -LiteralPath $portableRoot -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path $appOutput, $dataDir | Out-Null
 
 Push-Location $webApp

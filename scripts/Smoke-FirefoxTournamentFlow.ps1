@@ -421,18 +421,26 @@ return true;
         # Ergebnisse und Rundenfortschritt ueber die API pruefen: die Auslosung der
         # naechsten Runde ist der Schritt, der bei unvollstaendigen Ergebnissen
         # blockieren muss.
-        $round = $demo.rounds[$demo.rounds.Count - 1]
-        $openBoards = @($round.pairings | Where-Object { -not $_.isBye -and $_.result -eq 0 })
-        Write-Result 'Rundenzustand ist auswertbar' ($null -ne $round) ("Runde $($round.roundNumber), offene Bretter: " + $openBoards.Count)
+        # The demo already completes round 1, so pair a new round to get open boards.
+        # Pairing.result is an object { kind }; GameResultKind 0 means "not played yet".
+        $round = Invoke-RestMethod "$script:BaseUrl/api/tournaments/$($demo.id)/pairings/next-round" -Method Post
+        $openBoards = @($round.pairings | Where-Object { -not $_.isBye -and $_.result.kind -eq 0 })
+        Write-Result 'Eine neue Runde mit offenen Brettern ist ausgelost' ($openBoards.Count -gt 0) ("Runde $($round.roundNumber), offene Bretter: " + $openBoards.Count)
 
+        $posted = 0
         foreach ($pairing in $openBoards) {
-            $body = @{ roundNumber = $round.roundNumber; boardNumber = $pairing.boardNumber; result = 1; expectedPreviousResult = $pairing.result } | ConvertTo-Json
+            $body = @{ roundNumber = $round.roundNumber; boardNumber = $pairing.boardNumber; result = 1; expectedPreviousResult = $pairing.result.kind } | ConvertTo-Json
             Invoke-RestMethod "$script:BaseUrl/api/tournaments/$($demo.id)/results" -Method Post -ContentType 'application/json' -Body $body | Out-Null
+            $posted++
         }
+        Write-Result 'Mindestens ein Ergebnis wurde per POST eingetragen' ($posted -gt 0) ("POSTs: $posted")
 
         $afterResults = Invoke-RestMethod "$script:BaseUrl/api/tournaments/$($demo.id)"
-        $stillOpen = @($afterResults.rounds[$afterResults.rounds.Count - 1].pairings | Where-Object { -not $_.isBye -and $_.result -eq 0 })
+        $storedRound = @($afterResults.rounds | Where-Object { $_.roundNumber -eq $round.roundNumber })[0]
+        $stillOpen = @($storedRound.pairings | Where-Object { -not $_.isBye -and $_.result.kind -eq 0 })
+        $storedAsSent = @($storedRound.pairings | Where-Object { -not $_.isBye -and $_.result.kind -eq 1 })
         Write-Result 'Alle Ergebnisse der Runde sind eingetragen' ($stillOpen.Count -eq 0) ("offen: " + $stillOpen.Count)
+        Write-Result 'Gespeicherte Ergebnisse entsprechen den gesendeten' ($storedAsSent.Count -eq $posted) ("gespeichert mit kind=1: $($storedAsSent.Count) von $posted")
 
         $nextRound = Invoke-RestMethod "$script:BaseUrl/api/tournaments/$($demo.id)/pairings/next-round" -Method Post
         Write-Result 'Naechste Runde laesst sich nach vollstaendigen Ergebnissen auslosen' ($nextRound.roundNumber -gt $round.roundNumber) ("neue Runde: " + $nextRound.roundNumber)

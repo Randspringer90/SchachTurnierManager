@@ -85,10 +85,12 @@ release and not yet part of `development`. It is designed to connect only to a p
 `.local` address on the same Wi-Fi/hotspot, verify the SchachTurnierManager health identity and
 submit synthetic or real tournament results to the local PC.
 
-Before the candidate can be accepted, owner PR #50 must land the exact-path/hash/provenance gate
-for the required Gradle wrapper and Android resources; PR #49 then requires a new SHA-bound static
-review, green CI and a real Galaxy S25 test. There is no Play Store or F-Droid build, and the
-companion is not claimed to operate as a standalone offline tournament manager.
+The exact-path/hash/provenance gate for the Gradle wrapper and Android resources is already part
+of `development` (STM-INFRA-008, PR #52). Its attestation is bound to PR #49 and head `5aecee91`;
+before the companion can be integrated (PR #49 / PR #55), the owner has to re-attest the 30 binary
+artifacts for the final PR head, followed by a new SHA-bound static review, green CI and a real
+Galaxy S25 test. There is no Play Store or F-Droid build, and the companion is not claimed to
+operate as a standalone offline tournament manager.
 
 ## Demo data
 
