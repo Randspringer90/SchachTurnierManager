@@ -1,7 +1,8 @@
 #Requires -Version 7.0
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
-    [switch]$RequireCompleteProvenance
+    [switch]$RequireCompleteProvenance,
+    [switch]$RequireExactNuGetPins
 )
 
 Set-StrictMode -Version Latest
@@ -12,8 +13,11 @@ function Fail([string]$Code) {
 }
 
 function Assert-ExactVersion([object]$Version, [switch]$NuGet) {
+    # NuGet reads a bare "1.2.3" as the inclusive minimum ">= 1.2.3" (resolved to the
+    # lowest available match); only the bracketed range "[1.2.3]" pins exactly one
+    # version. Both single-version forms are accepted; the caller reports which one.
     $pattern = if ($NuGet) {
-        '\A[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?\z'
+        '\A(?:\[(?<v>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)\]|[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)\z'
     } else {
         '\A(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?\z'
     }
@@ -59,12 +63,14 @@ $management = @($centralPackages.SelectNodes('/Project/PropertyGroup/ManagePacka
 if ($management.Count -ne 1 -or $management[0].InnerText.Trim() -cne 'true' -or
     $management[0].HasAttribute('Condition') -or $management[0].ParentNode.HasAttribute('Condition')) { Fail 'CPM_NOT_UNCONDITIONALLY_ENABLED' }
 $versionMap = @{}
+$minimumOnlyNuGet = 0
 foreach ($node in $centralPackages.SelectNodes('/Project/ItemGroup/PackageVersion')) {
     $name = $node.GetAttribute('Include')
     if ([string]::IsNullOrWhiteSpace($name) -or $node.HasAttribute('Update') -or
         $node.HasAttribute('Condition') -or $node.ParentNode.HasAttribute('Condition')) { Fail 'UNSUPPORTED_CENTRAL_DECLARATION' }
     $version = $node.GetAttribute('Version')
     Assert-ExactVersion $version -NuGet
+    if (-not $version.StartsWith('[')) { $minimumOnlyNuGet++ }
     if ($versionMap.ContainsKey($name)) { Fail 'DUPLICATE_CENTRAL_PACKAGE' }
     $versionMap[$name] = $version
 }
@@ -109,7 +115,8 @@ foreach ($field in @('name', 'version')) {
 foreach ($manifest in @($packageJson, $rootPackage)) {
     if ($manifest.Contains('scripts')) {
         Assert-Map $manifest['scripts']
-        foreach ($hook in @('preinstall', 'install', 'postinstall', 'prepare', 'prepublish', 'preprepare', 'postprepare')) {
+        # `dependencies` runs after any change to node_modules, so it is an install hook too.
+        foreach ($hook in @('preinstall', 'install', 'postinstall', 'prepare', 'prepublish', 'preprepare', 'postprepare', 'dependencies')) {
             if ($manifest['scripts'].Contains($hook)) { Fail 'ROOT_LIFECYCLE_SCRIPT' }
         }
     }
@@ -169,6 +176,11 @@ foreach ($path in ($packages.Keys | Sort-Object -CaseSensitive)) {
         if ($uri.Scheme -cne 'https' -or $uri.Host -cne 'registry.npmjs.org' -or -not $uri.IsDefaultPort -or
             $uri.UserInfo -ne '' -or $uri.Query -ne '' -or $uri.Fragment -ne '' -or
             $uri.AbsolutePath -notlike '*/-/*.tgz' -or $resolved.Contains('\')) { Fail 'UNTRUSTED_REGISTRY_URI' }
+        # The tarball must belong to exactly this lockfile entry (alias entries carry their real name).
+        $identity = if ($metadata.Contains('name')) { $metadata['name'] } else { $path.Substring($path.LastIndexOf('node_modules/') + 13) }
+        if ($identity -isnot [string] -or $identity -cnotmatch '\A(?:@[a-z0-9._-]+/)?[a-z0-9._-]+\z') { Fail 'INVALID_PACKAGE_NAME' }
+        $tarballBase = $identity.Substring($identity.LastIndexOf('/') + 1)
+        if ($uri.AbsolutePath -cne "/$identity/-/$tarballBase-$($metadata['version']).tgz") { Fail 'RESOLVED_IDENTITY_MISMATCH' }
         Assert-Sri $metadata['integrity']
     }
     if ($metadata['hasInstallScript'] -eq $true) {
@@ -182,7 +194,37 @@ foreach ($path in ($packages.Keys | Sort-Object -CaseSensitive)) {
     }
 }
 
+# Every transitive edge must resolve to a lockfile entry via Node's lookup order
+# (own node_modules first, then each ancestor, then the root). Optional edges may
+# be absent. Version ranges are not evaluated here; npm ci enforces them.
+$edgeCount = 0
+foreach ($path in ($packages.Keys | Sort-Object -CaseSensitive)) {
+    if ($path -ceq '') { continue }
+    $segments = @($path.Substring(13) -split '/node_modules/')
+    foreach ($section in @('dependencies', 'optionalDependencies')) {
+        if (-not $packages[$path].Contains($section)) { continue }
+        $edges = $packages[$path][$section]
+        Assert-Map $edges
+        foreach ($dependency in $edges.Keys) {
+            if ($dependency -cnotmatch '\A(?:@[a-z0-9._-]+/)?[a-z0-9._-]+\z') { Fail 'INVALID_PACKAGE_NAME' }
+            $found = $false
+            for ($depth = $segments.Count; $depth -ge 0 -and -not $found; $depth--) {
+                $candidate = if ($depth -eq 0) { "node_modules/$dependency" } else { 'node_modules/' + ($segments[0..($depth - 1)] -join '/node_modules/') + "/node_modules/$dependency" }
+                $found = $packages.Contains($candidate)
+            }
+            if (-not $found -and $section -eq 'dependencies') { Fail 'UNRESOLVED_TRANSITIVE_DEPENDENCY' }
+            $edgeCount++
+        }
+    }
+}
+
 Write-Host "DEPENDENCY_NUGET_CENTRAL_COUNT=$($versionMap.Count)"
+if ($minimumOnlyNuGet -gt 0) {
+    Write-Host "DEPENDENCY_NUGET_PINNING=MINIMUM_ONLY; COUNT=$minimumOnlyNuGet"
+    if ($RequireExactNuGetPins) { Fail 'NUGET_EXACT_PIN_REQUIRED' }
+    Write-Warning 'Zentrale NuGet-Versionen ohne [x.y.z] sind Mindestversionen, keine exakten Pins.'
+} else { Write-Host 'DEPENDENCY_NUGET_PINNING=EXACT' }
+Write-Host "DEPENDENCY_NPM_EDGE_COUNT=$edgeCount"
 Write-Host "DEPENDENCY_NPM_PACKAGE_COUNT=$($packages.Count - 1)"
 Write-Host "DEPENDENCY_MISSING_PROVENANCE_COUNT=$missingProvenance"
 if ($missingProvenance -gt 0) {
