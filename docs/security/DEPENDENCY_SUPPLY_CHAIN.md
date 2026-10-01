@@ -6,9 +6,13 @@ STM-SEC-002 / Issue #60 / PR #61. Dies ist ein struktureller Offline-Check, kein
 
 `scripts/Test-DependencySupplyChainSafety.ps1` liest `Directory.Packages.props`, die csproj-Dateien unter `src/` und `tests/` (ohne generierte bin/obj/node_modules) sowie package.json und package-lock.json der WebApp. XML wird ohne DTD und ohne externen Resolver gelesen. Fehlende optionale XML-Attribute oder JSON-Abschnitte werden StrictMode-sicher behandelt.
 
-Geprueft werden feste NuGet-Versionen und CPM-Zuordnung, Attribut-/Element-VersionOverride, feste direkte npm-Versionen einschliesslich optionalDependencies/peerDependencies, Root-Identitaet, installierte Direktversionen, Lockfile-Pfade, Typen, Lizenzmetadaten und Lifecycle-Skripte. npm-shrinkwrap.json wird abgewiesen, da es sonst package-lock.json uebersteuern wuerde.
+Geprueft werden zentrale NuGet-Versionen und CPM-Zuordnung, Attribut-/Element-VersionOverride, feste direkte npm-Versionen einschliesslich optionalDependencies/peerDependencies, Root-Identitaet, installierte Direktversionen, Lockfile-Pfade, Typen, Lizenzmetadaten und Lifecycle-Skripte (inklusive des Root-Ereignisses `dependencies`, das npm nach jeder Aenderung an node_modules ausfuehrt). npm-shrinkwrap.json wird abgewiesen, da es sonst package-lock.json uebersteuern wuerde.
 
-Registry-URLs werden als URI geprueft: HTTPS, tatsaechlicher Host registry.npmjs.org, Standardport, kein Userinfo/Query/Fragment. Vorhandene Integrity-Werte muessen kanonische SHA-512-SRI-Werte mit einem 64-Byte-Digest sein. Dies validiert Metadaten; heruntergeladene Pakete werden NICHT gehasht oder ausgefuehrt.
+NuGet: Nur `[x.y.z]` bindet genau eine Version; ein nacktes `x.y.z` ist eine inklusive Mindestversion. Der Check akzeptiert beide Einzelversionsformen, meldet aber `DEPENDENCY_NUGET_PINNING=EXACT` oder `MINIMUM_ONLY; COUNT=n`; mit `-RequireExactNuGetPins` ist `MINIMUM_ONLY` ein Fehler. Sieben der acht zentralen Pakete sind exakt gebunden (Restore-Vergleich: identischer aufgeloester Graph). `System.Text.Encoding.CodePages` bleibt bewusst eine Mindestversion: .NET 10 liefert es mit und kuerzt das Paket (NU1510); eine exakte Range beendet dieses Kuerzen und fuegt das Paket sieben weiteren Projekten hinzu.
+
+Registry-URLs werden als URI geprueft: HTTPS, tatsaechlicher Host registry.npmjs.org, Standardport, kein Userinfo/Query/Fragment, und der Tarball-Pfad muss exakt zu Paketname (bzw. Alias-`name`) und Version des Lockfile-Eintrags passen. Vorhandene Integrity-Werte muessen kanonische SHA-512-SRI-Werte mit einem 64-Byte-Digest sein. Jede transitive `dependencies`-Kante muss nach Nodes Suchreihenfolge auf einen Lockfile-Eintrag aufloesen (`optionalDependencies` duerfen fehlen); Versionsbereiche selbst wertet erst `npm ci` aus. Dies validiert Metadaten; heruntergeladene Pakete werden NICHT gehasht oder ausgefuehrt.
+
+Reihenfolge: In CI laeuft der Check nach der statischen PR-Freigabe und vor `dotnet restore` (Job build-test) bzw. vor `npm ci` (Job frontend). Das ReleaseGate ruft ihn vor `dotnet restore` auf, installiert die WebApp mit `npm ci` statt `npm install`, bricht bei jeder Aenderung von package-lock.json ab und nennt PARTIAL/MINIMUM_ONLY ausdruecklich in seiner Abschlussmeldung.
 
 ## Vollstaendigkeit wird nicht erfunden
 
@@ -24,9 +28,11 @@ Akzeptierte Lizenz-Bezeichner sind 0BSD, Apache-2.0, BSD-3-Clause, ISC, MIT und 
 
 ## Tests und Grenzen
 
-`Test-DependencySupplyChainReadiness.ps1` fuehrt 32 synthetische Positiv-/Negativfaelle gegen den echten Gate-Prozess aus. Die Fixtures werden vorher/nachher gehasht; keine Paketinstallation und kein Netzwerk. Ein xUnit-Test bindet den Lauf in das vorhandene Application-Testprojekt ein. Die synthetischen Testdateien werden nur im betriebssystemeigenen Tempverzeichnis erzeugt und wieder entfernt; der Gate selbst bleibt read-only.
+`Test-DependencySupplyChainReadiness.ps1` fuehrt 43 synthetische Positiv-/Negativfaelle gegen den echten Gate-Prozess aus (u. a. NuGet-Mindestversion sichtbar/strikt, Root-Ereignis `dependencies`, fremde Paket-/Versions-URL, unaufloesbare transitive Kante, verschachtelte/scoped/optionale Kanten). Die Fixtures werden vorher/nachher gehasht; keine Paketinstallation und kein Netzwerk. Zwei xUnit-Tests binden den synthetischen Lauf (anzahlunabhaengig) und einen Lauf gegen den echten Checkout in das Application-Testprojekt ein.
 
-Am 2026-10-01 wurden Quelltext und Testvertrag nachgeprueft. In der Chat-Ausfuehrungsumgebung fehlen PowerShell und .NET; deshalb sind Parser-, PowerShell- und xUnit-Ausfuehrung hier NOT_RUN, nicht PASS. PR bleibt Draft bis zur echten CI-/Owner-Verifikation.
+Lokal am 2026-10-01 ausgefuehrt: 43/43 synthetische Faelle PASS; echter Checkout `DEPENDENCY_STRUCTURE=PASS`, `DEPENDENCY_PROVENANCE=PARTIAL` (16 Lockfile-Eintraege ohne resolved/integrity), `DEPENDENCY_NUGET_PINNING=MINIMUM_ONLY; COUNT=1` (CodePages, siehe oben).
+
+Lizenz-Hinweis fuer das Android-Paket (PR #49/#55): Dessen Capacitor-CLI bringt Pakete unter BlueOak-1.0.0 (glob, lru-cache, minimatch, minipass, package-json-from-dist, path-scurry, rimraf) und Unlicense (big-integer) mit. Diese Bezeichner sind nicht in der Liste oben; der Check meldet dann `UNKNOWN_LICENSE`. Ob sie zugelassen werden, ist eine Owner-Lizenzentscheidung und wird hier bewusst nicht vorweggenommen.
 
 Weiter offen: aktuelle Advisory-Pruefung, NuGet-Lizenzinventar, vollstaendige Registry-/Integrity-Metadaten sowie MSBuild-Auswertung importierter/nachgelagerter props/targets. Diese strukturelle Pruefung behauptet keine vollstaendige MSBuild-Sandbox.
 

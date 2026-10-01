@@ -76,7 +76,15 @@ try {
     Assert-NoKnownBadFiles
     Write-NodeEngineHint
 
-    Invoke-NativeStep 'Dependency supply-chain safety' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Test-DependencySupplyChainSafety.ps1') -Root $Root }
+    $dependencyReport = @()
+    Invoke-NativeStep 'Dependency supply-chain safety' {
+        $script:dependencyReport = @(pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Test-DependencySupplyChainSafety.ps1') -Root $Root 2>&1)
+        $script:dependencyReport | ForEach-Object { Write-Host $_ }
+    }
+    # PARTIAL provenance or minimum-only NuGet pins are allowed but must stay visible in the verdict.
+    $dependencyLimits = @($dependencyReport | ForEach-Object { [string]$_ } | Where-Object { $_ -match '^DEPENDENCY_(PROVENANCE=PARTIAL|NUGET_PINNING=MINIMUM_ONLY)' })
+    $lockPath = Join-Path $webApp 'package-lock.json'
+    $lockHashBefore = (Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash
 
     Invoke-NativeStep 'dotnet restore' { dotnet restore }
     Invoke-NativeStep 'dotnet build' { dotnet build }
@@ -88,7 +96,8 @@ try {
 
     Push-Location $webApp
     try {
-        $npmInstallCommand = 'install'
+        # npm ci installs exactly the checked lockfile; npm install could rewrite it.
+        $npmInstallCommand = 'ci'
         if (-not $NoNpmInstall) {
             Invoke-NativeStep "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
         } else {
@@ -109,10 +118,14 @@ try {
     }
 
     Assert-NoKnownBadFiles
+    if ((Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash -ne $lockHashBefore) {
+        throw 'package-lock.json wurde waehrend des ReleaseGates veraendert; von der geprueften Lockfile darf nicht abgewichen werden.'
+    }
+    $limitNote = if ($dependencyLimits.Count) { ' Einschraenkung: ' + ($dependencyLimits -join '; ') + ' (keine vollstaendige Herkunftsfreigabe).' } else { '' }
     if ($SkipPack) {
-        Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests und Frontend-Build erfolgreich; Paketierung uebersprungen.'
+        Write-Host "[ReleaseGate] Gruen: Restore, Build, Tests und Frontend-Build erfolgreich; Paketierung uebersprungen.$limitNote"
     } else {
-        Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests, Frontend-Build und Paketierung erfolgreich.'
+        Write-Host "[ReleaseGate] Gruen: Restore, Build, Tests, Frontend-Build und Paketierung erfolgreich.$limitNote"
     }
     git status --short
 } finally {

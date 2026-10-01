@@ -169,6 +169,11 @@ jobs:
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           global-json-file: global.json
+      # STM-SEC-002: offline, read-only manifest/lockfile check after the static
+      # approval (needs) and before any package is restored.
+      - name: Dependency supply-chain gate (before restore)
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File scripts/Test-DependencySupplyChainSafety.ps1
       - name: Restore
         run: dotnet restore SchachTurnierManager.sln
       - name: Build
@@ -194,9 +199,16 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: src/SchachTurnierManager.WebApp/package-lock.json
+      - name: Dependency supply-chain gate (before npm ci)
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ../../scripts/Test-DependencySupplyChainSafety.ps1
       - name: Install (npm ci)
         run: npm ci
-      - name: Typecheck & Build
+      # One chained line: in the Windows pwsh shell a failing first line of a
+      # multi-line block would otherwise be masked by later successful commands.
+      - name: Frontend tests (app, i18n runtime, backup preview)
+        run: npm test && npm run test:i18n && npm run test:backup
+      - name: Typecheck & Build (PWA tests, catalog tests and i18n audit run first)
         run: npm run build
 
   diff-check:
