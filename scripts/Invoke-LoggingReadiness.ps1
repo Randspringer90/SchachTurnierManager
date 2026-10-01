@@ -112,7 +112,14 @@ try {
         $healthResponse = Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/health" -TimeoutSeconds 45
         $health = $healthResponse.Content | ConvertFrom-Json
         if ($health.logging.file -ne 'enabled') { throw "File-Logging ist laut Health nicht aktiv: $($health.logging.file)" }
-        if ([string]$health.logging.directory -ne $logDirectory) { throw "Health meldet falschen Logordner: $($health.logging.directory)" }
+        # The public health endpoint no longer exposes absolute paths (Public-Health-Haertung).
+        # The configured log folder is proven below by the log file actually written there.
+        if ([string]$health.logging.storage -ne 'local') { throw "Health meldet keine lokale Logablage: $($health.logging.storage)" }
+        foreach ($privatePath in @($logDirectory, $dataDirectory)) {
+            if ($healthResponse.Content -match [regex]::Escape($privatePath) -or $healthResponse.Content -match [regex]::Escape($privatePath.Replace('\', '\\'))) {
+                throw 'Health gibt einen absoluten lokalen Pfad preis.'
+            }
+        }
 
         Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/" -TimeoutSeconds 10 | Out-Null
         Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/tournaments" -TimeoutSeconds 10 | Out-Null
