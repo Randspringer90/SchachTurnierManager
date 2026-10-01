@@ -10,7 +10,7 @@
 | Branch          | Zweck                                         | Direkter Push | Merge-Quelle                     |
 |-----------------|-----------------------------------------------|---------------|----------------------------------|
 | `main`          | Nur der jeweils neueste **freigegebene Release-Stand** | Gesperrt (nur Admin-Notfall) | `release/*`, `hotfix/*` (per PR) |
-| `development`   | **Standardbranch**, aktueller Entwicklungsstand | Nur Owner (der Owner, Admin-Bypass) | `feature/* fix/* security/* docs/* refactor/*` sowie `integration/pr-<nr>-safe-adoption` (per PR) |
+| `development`   | **Standardbranch**, aktueller Entwicklungsstand | Nur Owner (der Owner, Admin-Bypass) | `feature/* fix/* security/* docs/* refactor/*`, `owner/STM-<BEREICH>-<NNN>-<slug>` (nur Owner) sowie `integration/pr-<nr>-safe-adoption` (per PR) |
 | `feature/*` u.a.| Einzelne Backlog-Aufgabe                       | Ersteller     | –                                |
 | `release/*`     | Release-Stabilisierung                        | Gesperrt (PR) | `development`, `release-fix/*`   |
 | `hotfix/*`      | Dringende Korrektur am Release                | Gesperrt (PR) | von `main` abgezweigt            |
@@ -58,6 +58,15 @@ Regeln:
   oder Rebase, kein Force-Push auf geschützte Branches).
 - Nach dem Merge wird der Feature-Branch automatisch gelöscht (Repo-Einstellung).
 - Keine Secrets, Logs, Datenbanken, ZIPs, Dumps oder lokale Konfiguration committen.
+
+## Owner-Paketbranches
+
+`owner/STM-<BEREICH>-<NNN>-<slug>` (z. B. `owner/STM-INFRA-007-branch-policy`) ist der einzige
+Owner-Paketpfad nach `development`. Die Branch-Policy akzeptiert ihn nur mit OWNER-Autor und
+Head im kanonischen Repository. Der Name allein gibt nichts frei: Die Gate-Workflows verlangen
+weiterhin den SHA-gebundenen Owner-Review des exakten Heads. `feature/`, `fix/`, `security/`,
+`docs/` und `refactor/` sind kein Owner-Ausführungspfad. Details und Tests:
+[`OWNER_BRANCH_POLICY.md`](OWNER_BRANCH_POLICY.md).
 
 ## Sichere PR-Integrationsbranches
 
