@@ -16,7 +16,7 @@ export function createGhReader(run = execFileSync) {
   };
 }
 
-export function main(argv, { get = createGhReader(), write = text => process.stdout.write(text) } = {}) {
+export function main(argv, { get = createGhReader(), write = text => process.stdout.write(text), progress = text => process.stderr.write(text) } = {}) {
   if (argv.length === 1 && argv[0] === '--help') {
     write('Usage: node scripts/Get-PrReadiness.mjs --repo OWNER/REPO [--snapshot FILE]\nRead-only GET observation, never merge authorization.\n');
     return 0;
@@ -31,7 +31,9 @@ export function main(argv, { get = createGhReader(), write = text => process.std
       if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) throw new Error('INVALID_SNAPSHOT_FILE');
       snapshot = JSON.parse(readFileSync(argv[3], 'utf8'));
       if (snapshot.repository !== repository) throw new Error('SNAPSHOT_REPOSITORY_MISMATCH');
-    } else snapshot = collectSnapshot(repository, get);
+    } else snapshot = collectSnapshot(repository, get, {
+      onProgress: ({ phase, current, total }) => progress(`[PrReadiness] ${phase} ${current}/${total}\n`)
+    });
     const report = { ...analyzeSnapshot(snapshot), source: offline ? 'OFFLINE_UNVERIFIED_INPUT' : 'GITHUB_GET_OBSERVATION' };
     write(JSON.stringify(report, null, 2) + '\n');
     return ['OBSERVED_REMOTE_CHECKS_CLEAR', 'NO_OPEN_PRS'].includes(report.state) ? 0 : 2;

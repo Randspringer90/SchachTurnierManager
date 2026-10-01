@@ -26,6 +26,7 @@ public sealed class PrReadinessTests
         start.ArgumentList.Add("--test");
         start.ArgumentList.Add("--test-reporter=tap");
         start.ArgumentList.Add(Path.Combine(directory.FullName, "tests", "scripts", "pr-readiness.test.mjs"));
+        start.ArgumentList.Add(Path.Combine(directory.FullName, "tests", "scripts", "pr-readiness-progress.test.mjs"));
         using var process = Process.Start(start);
         Assert.NotNull(process);
         var stdout = process.StandardOutput.ReadToEndAsync();
@@ -47,7 +48,7 @@ public sealed class PrReadinessTests
         var output = await stdout;
         var errors = await stderr;
         Assert.True(process.ExitCode == 0, output + Environment.NewLine + errors);
-        Assert.Contains("# tests 67", output);
+        Assert.Contains("# tests 70", output);
         Assert.Contains("# fail 0", output);
     }
 }

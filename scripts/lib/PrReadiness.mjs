@@ -153,10 +153,12 @@ export function analyzeSnapshot(snapshot) {
 }
 
 /** All requests are relative, fixed GET routes. The injected transport enables offline tests. */
-export function collectSnapshot(repository, get, { pageSize = 100, maxPages = 10, maxPullRequests = 50, maxRequests = 300 } = {}) {
+export function collectSnapshot(repository, get, { pageSize = 100, maxPages = 10, maxPullRequests = 50, maxRequests = 300, onProgress = () => {} } = {}) {
   validateRepository(repository);
   for (const value of [pageSize, maxPages, maxPullRequests, maxRequests]) if (!positive(value)) throw new Error('INVALID_LIMIT');
   if (pageSize > 100 || maxPages > 10 || maxPullRequests > 50 || maxRequests > 300) throw new Error('INVALID_LIMIT');
+  if (typeof onProgress !== 'function') throw new Error('INVALID_PROGRESS_CALLBACK');
+  onProgress({ phase: 'discovery', current: 0, total: 0 });
   let requestCount = 0;
   const request = route => {
     if (++requestCount > maxRequests) throw new Error('REQUEST_BUDGET_EXHAUSTED');
@@ -187,6 +189,7 @@ export function collectSnapshot(repository, get, { pageSize = 100, maxPages = 10
   for (const summary of discovery.items.slice(0, maxPullRequests)) {
     if (!positive(summary?.number) || seen.has(summary.number)) { result.discoveryComplete = false; continue; }
     seen.add(summary.number);
+    onProgress({ phase: 'pull-request', current: result.items.length + 1, total: Math.min(discovery.items.length, maxPullRequests) });
     const item = { number: summary.number };
     try {
       item.before = request(`pulls/${summary.number}`);
@@ -200,5 +203,6 @@ export function collectSnapshot(repository, get, { pageSize = 100, maxPages = 10
     result.items.push(item);
   }
   try { result.developmentAfter = request('git/ref/heads/development')?.object?.sha; } catch { /* Unknown, not green. */ }
+  onProgress({ phase: 'complete', current: result.items.length, total: result.items.length });
   return result;
 }

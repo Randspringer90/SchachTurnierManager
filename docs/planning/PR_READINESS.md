@@ -1,53 +1,44 @@
 # STM-INFRA-009 - Read-only PR-Sammelpruefung
 
-Issue #64. Dieses Werkzeug liefert Beobachtungen zu offenen GitHub-PRs, keine Merge- oder DoD-Freigabe.
+Issue #64 / PR #65. Beobachtung offener PRs, niemals Merge- oder DoD-Freigabe.
 
-## Aufruf
+## Aufruf und Grenzen
 
-Voraussetzung: Node 22 oder neuer; fuer Online-Beobachtung vorhandene GitHub CLI mit bereits eingerichteter Anmeldung und Leserechten. Es wird keine Anmeldung angelegt und kein Token ausgegeben.
+Voraussetzung: Node 22+, vorhandene GitHub CLI mit eingerichteter Anmeldung und Leserechten.
 
 ```sh
 node scripts/Get-PrReadiness.mjs --repo Randspringer90/SchachTurnierManager
 ```
 
-Der Befehl liest alle offenen PRs bis zu den dokumentierten Sicherheitsgrenzen, Check-Runs, Commit-Statuses und Reviews. Ausgabe: redigiertes JSON auf stdout. Keine Datei-/Git-/PR-Schreibaktion, kein Checkout und keine Ausfuehrung von PR-Code. Keine Freigaben, Kommentare, CI-Reruns oder Merges. Jeder gh-Aufruf ist explizit GET gegen github.com mit Argumentliste statt Shell-String.
+Nur feste GitHub-GET-Endpunkte ueber gh mit Argumentliste statt Shell-String. Keine Datei-/Git-/PR-Schreibaktionen, keine Anmeldung/Tokenausgabe, kein Checkout und keine Ausfuehrung fremden PR-Codes. Phasen-/Zaehlerfortschritt auf stderr; redigierter JSON-Bericht separat auf stdout.
 
-## Aussagen des Berichts
+Beobachtet werden offene PRs, Check-Runs, Commit-Statuses und Reviews. Maximal 50 PRs, 100 Datensaetze/Seite, 10 Seiten/Sammlung, 300 Requests, 20 Sekunden und 4 MiB je Antwort. Begrenzungen und Fehler werden sichtbar, nie als leere/gruene Daten interpretiert.
 
-- `BLOCKED`: beobachteter Draft, Konflikt, geschlossener PR, fehlgeschlagener Check oder aktiver Aenderungswunsch.
-- `INCOMPLETE`: fehlende/unklare/mehrdeutige Daten, nicht vollstaendige Pagination, unbekannte Mergeability, nicht erfolgreiche Checks oder bewegte Referenzen.
-- `OBSERVED_REMOTE_CHECKS_CLEAR`: nur die hier beobachteten Checks und erfassten Review-Blocker sind unauffaellig. Das ist ausdruecklich NICHT Done oder mergebereit.
-- `NO_OPEN_PRS`: vollstaendig gelesene leere PR-Liste, keine Aussage zur Produktreife.
+## Semantik
 
-`definitionOfDone=NOT_EVALUATED` und `mergeAuthorized=false` gelten IMMER, auch beim gruenen Remote-Teilbild. Lokale Gates, Codequalitaet, CODEOWNERS, aufgeloeste Review-Threads und effektive Branchschutzregeln bleiben gesondert zu pruefen.
+`BLOCKED` bedeutet beobachtete Blocker wie Draft/Konflikt/rote Checks/Aenderungswuensche. `INCOMPLETE` steht fuer fehlende/mehrdeutige/ungeklaerte Daten, Pagination oder Ref-Drift. `OBSERVED_REMOTE_CHECKS_CLEAR` bedeutet nur, dass das beobachtete Remote-Teilbild unauffaellig ist. `NO_OPEN_PRS` ist lediglich eine vollstaendig gelesene leere Liste.
 
-Die acht erwarteten Check-Namen stammen aus der gelesenen Projektbaseline `cc47f1101983d3f3272a893dbf54bd66fa2355b4`. Ein gleichnamiger Commit-Status oder eine fremde App ersetzt keinen erwarteten GitHub-Actions-Check. Mehrdeutige gleiche Check-Namen werden nicht willkuerlich aufgeloest. Auch zusaetzliche rote Checks/Statuses werden beruecksichtigt.
+`definitionOfDone=NOT_EVALUATED` und `mergeAuthorized=false` gelten IMMER. Lokale Gates, Codequalitaet, CODEOWNERS, Review-Thread-Aufloesung und effektive Branchschutzregeln bleiben gesondert zu pruefen. Exit 0 bedeutet klares Remote-Teilbild/keine offenen PRs, Exit 2 Blocker/unvollstaendige Beobachtung, Exit 1 Eingabe-/Dateifehler; keiner autorisiert einen Merge.
 
-Die vorhandene Owner-Ausfuehrungsfreigabe wird exakt nach dem bestehenden Marker-/Head-/Owner-Vertrag als vorhanden oder nicht gefunden berichtet. Ihr Fehlen ist NICHT pauschal ein Blocker: SAFE_FOR_ISOLATED_BUILD benoetigt keinen solchen Marker. Ein roter Check allein beweist auch nicht, dass der Marker die Fehlerursache ist; dafuer muessen die Logs separat geprueft werden.
+Die acht erwarteten Check-Namen stammen aus Baseline cc47f1101983d3f3272a893dbf54bd66fa2355b4. Gleichnamige Commit-Statuses oder fremde Apps ersetzen keine erwarteten Actions-Checks; Mehrdeutigkeit wird nicht geraten. Zusaetzliche rote Checks/Statuses bleiben sichtbar. skipped/neutral/pending/missing sind nie PASS.
 
-## Snapshot-Sicherheit
+Ein vorhandener SHA-gebundener Owner-Marker wird exakt erkannt. Sein Fehlen allein ist KEIN Blocker, denn SAFE_FOR_ISOLATED_BUILD braucht ihn nicht. Die Ursache eines roten Gates muss separat aus dessen Logs ermittelt werden. Dieses Werkzeug schreibt niemals einen Marker.
 
-PR-Metadaten werden vor und nach den Unterabfragen gelesen; bewegte Head-/Base-Refs werden gemeldet. development wird am Anfang und Ende gelesen. Dies erkennt Drift waehrend des Laufs, verhindert aber keine Aenderung nach der letzten Abfrage. Vor einer spaeteren Entscheidung immer frisch lesen.
+PR-Head/Base werden vor und nach Unterabfragen, development am Anfang und Ende gelesen. Drift wird sichtbar; spaetere Aenderungen nach Abschluss des Laufs sind damit nicht ausgeschlossen. Vor Entscheidungen frisch lesen.
 
-Es werden keine PR-Titel, Review-Bodies, Logauszuege, Benutzernamen, E-Mails oder rohe gh-Fehler ausgegeben. Berichtet werden IDs, bekannte Check-Namen, Statuscodes und kanonische PR-URLs.
+## Datenminimierung und Tests
 
-Limits: maximal 50 PRs, 100 Datensaetze pro Seite, 10 Seiten pro Sammlung, 300 GET-Requests, 20 Sekunden/4 MiB je gh-Antwort. Begrenzte oder fehlerhafte Abfragen ergeben INCOMPLETE; sie werden nicht als leer/gruen ausgegeben. Exitcodes: 0 fuer ein klares Remote-Teilbild/keine offenen PRs, 2 fuer Blocker/unvollstaendige Beobachtung, 1 fuer Eingabe-/Dateifehler. Kein Exitcode autorisiert einen Merge.
-
-## Offline-Tests
+Keine PR-Titel, Review-Bodies, Benutzernamen, E-Mails, Logauszuege oder rohe gh-Fehler im Bericht. Nur bekannte Check-Namen, IDs, Statuscodes und kanonische PR-URLs.
 
 ```sh
-node --test tests/scripts/pr-readiness.test.mjs
+node --test tests/scripts/pr-readiness.test.mjs tests/scripts/pr-readiness-progress.test.mjs
 ```
 
-67 deterministische Tests: Analyzer, Check-Quellen, neutrale/uebersprungene/pending Ergebnisse, Statushistorie, Review-Status, Drift, Pagination, Limits, partielle Fehler, gh-GET-Vertrag und CLI. Die Tests starten keine echte gh-Anfrage und lesen keine Kontodaten. Ein neuer xUnit-Wrapper bindet sie in das Application-Testprojekt ein; dort muss Node im PATH verfuegbar sein.
+70/70 Tests mit Node 22.16.0 am 2026-10-01 PASS: Analyzer, Check-Quellen, Status-/Review-Historie, Drift, Pagination, Limits, Fehler, gh-GET-Vertrag, Offline-/Live-Adapterpfad mit injiziertem Transport sowie Fortschritt. Ein neuer xUnit-Wrapper ruft beide Testdateien auf; Node muss im PATH verfuegbar sein. Echter gh-Netzwerklauf und .NET-Wrapper hier NOT_RUN.
 
-Optional akzeptiert die CLI `--snapshot FILE`. Das Eingabeschema ist `stm.pr-readiness.snapshot.v1` (Beispiele in den Tests). Solche Berichte sind immer `source=OFFLINE_UNVERIFIED_INPUT`; ein Snapshot ist kein Echtheitsnachweis.
+Optional: `--snapshot FILE` liest das synthetisch testbare Schema stm.pr-readiness.snapshot.v1. Ausgabe bleibt OFFLINE_UNVERIFIED_INPUT, niemals Echtheitsnachweis. Vollstaendige Projekt-Gates, unabhaengiger Review und kanonische Backlog-/Changelog-Synchronisierung sind noch offen.
 
-## Verifikation und offene DoD
-
-Node-Syntax und alle 67 Tests wurden am 2026-10-01 mit Node 22.16.0 ausgefuehrt: PASS. Der echte gh-Live-Lauf und der .NET-Wrapper wurden hier nicht ausgefuehrt: NOT_RUN. Vollstaendige Projekt-Gates, unabhaengiger Review und kanonische Backlog-/Changelog-Synchronisierung bleiben vor Merge offen. Neue Runtime-Dependencies wurden nicht hinzugefuegt.
-
-API-Referenzen, geprueft 2026-10-01:
+API-Referenzen (2026-10-01):
 - https://docs.github.com/en/rest/checks/runs
 - https://docs.github.com/en/rest/commits/statuses
 - https://docs.github.com/en/rest/pulls/reviews
