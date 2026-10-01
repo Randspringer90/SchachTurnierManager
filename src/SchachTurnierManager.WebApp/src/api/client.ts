@@ -86,7 +86,12 @@ export function isApiTransportError(error: unknown): boolean {
   return error instanceof ApiUnreachableError || error instanceof ApiTimeoutError;
 }
 
-async function fetchOrThrow(url: string, init?: ApiRequestInit): Promise<Response> {
+/**
+ * Fuehrt die Anfrage aus und liest die Antwort unter DERSELBEN Frist: Ein Server, der
+ * die Header schickt und dann mitten im Koerper stockt, darf eine Bedienaktion nicht
+ * unbegrenzt haengen lassen. Der Abbruch des Signals bricht auch das Lesen ab.
+ */
+async function fetchAndRead<T>(url: string, init: ApiRequestInit | undefined, read: (response: Response) => Promise<T>): Promise<T> {
   const { timeoutMs = defaultRequestTimeoutMs, ...requestInit } = init ?? {};
   const controller = new AbortController();
   // Bewusst AbortController + setTimeout statt AbortSignal.timeout/any: die
@@ -103,17 +108,28 @@ async function fetchOrThrow(url: string, init?: ApiRequestInit): Promise<Respons
   callerSignal?.addEventListener('abort', forwardAbort);
 
   try {
-    return await fetch(url, { ...requestInit, signal: controller.signal });
-  } catch (cause) {
-    if (timedOut) {
-      throw new ApiTimeoutError(url, timeoutMs, cause);
+    let response: Response;
+    try {
+      response = await fetch(url, { ...requestInit, signal: controller.signal });
+    } catch (cause) {
+      if (timedOut) {
+        throw new ApiTimeoutError(url, timeoutMs, cause);
+      }
+      if (callerSignal?.aborted) {
+        // Der Aufrufer hat selbst abgebrochen - das ist kein Backendproblem.
+        throw cause;
+      }
+      // fetch lehnt nur bei Transportfehlern ab; HTTP-Fehlerstatus kommen als Response.
+      throw new ApiUnreachableError(url, cause);
     }
-    if (callerSignal?.aborted) {
-      // Der Aufrufer hat selbst abgebrochen - das ist kein Backendproblem.
+    try {
+      return await read(response);
+    } catch (cause) {
+      if (timedOut) {
+        throw new ApiTimeoutError(url, timeoutMs, cause);
+      }
       throw cause;
     }
-    // fetch lehnt nur bei Transportfehlern ab; HTTP-Fehlerstatus kommen als Response.
-    throw new ApiUnreachableError(url, cause);
   } finally {
     clearTimeout(timer);
     callerSignal?.removeEventListener('abort', forwardAbort);
@@ -123,27 +139,32 @@ async function fetchOrThrow(url: string, init?: ApiRequestInit): Promise<Respons
 export async function requestJson<T>(url: string, init?: ApiRequestInit): Promise<T> {
   // Reihenfolge beachten: `...init` zuerst, sonst wuerde ein eigenes `headers`
   // des Aufrufers die zusammengefuehrten Header wieder komplett ersetzen.
-  const response = await fetchOrThrow(url, {
+  return fetchAndRead(url, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) }
-  });
-  if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const body = await response.json() as { error?: string };
-      message = body.error ?? message;
-    } catch {
-      // ignore non-json error body
+  }, async response => {
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try {
+        const body = await response.json() as { error?: string };
+        message = body.error ?? message;
+      } catch (cause) {
+        // A non-JSON error body is ignored, but a deadline hit while reading it is not.
+        if (cause instanceof DOMException && cause.name === 'AbortError') {
+          throw cause;
+        }
+      }
+      throw new Error(message);
     }
-    throw new Error(message);
-  }
-  return await response.json() as T;
+    return await response.json() as T;
+  });
 }
 
 export async function requestText(url: string, init?: ApiRequestInit): Promise<string> {
-  const response = await fetchOrThrow(url, init);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  return await response.text();
+  return fetchAndRead(url, init, async response => {
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.text();
+  });
 }

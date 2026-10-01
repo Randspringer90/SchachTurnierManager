@@ -599,17 +599,24 @@ export function App() {
 
   async function createDemoTournament(): Promise<void> {
     const existing = tournaments.find(isBuildWeekDemoTournament);
+    if (existing) {
+      // Never delete silently: rounds and results entered into the demo stay intact.
+      // Resetting is the separate, confirmed delete action followed by a new demo.
+      setError(null);
+      setSelectedId(existing.id);
+      setIsCreateTournamentOpen(false);
+      setActiveMainTab('overview');
+      setStatus(lang === 'en'
+        ? 'The existing synthetic demo was opened unchanged. To start over, delete it (with confirmation) and create the demo again.'
+        : 'Das vorhandene synthetische Demo-Turnier wurde unverändert geöffnet. Für einen Neustart es zuerst (mit Bestätigung) löschen und das Demo erneut anlegen.');
+      return;
+    }
 
     setDemoBusy(true);
     setError(null);
-    setStatus(lang === 'en'
-      ? (existing ? 'Resetting the synthetic demo locally …' : 'Creating the synthetic demo locally …')
-      : (existing ? 'Synthetisches Demo-Turnier wird lokal zurückgesetzt …' : 'Synthetisches Demo-Turnier wird lokal angelegt …'));
+    setStatus(lang === 'en' ? 'Creating the synthetic demo locally …' : 'Synthetisches Demo-Turnier wird lokal angelegt …');
     let createdDemoId: string | null = null;
     try {
-      if (existing) {
-        await requestJson<{ deleted: boolean }>(`/api/tournaments/${existing.id}`, { method: 'DELETE' });
-      }
       const created = await requestJson<Tournament>('/api/tournaments', {
         method: 'POST',
         body: JSON.stringify({

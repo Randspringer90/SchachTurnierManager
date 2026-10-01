@@ -143,6 +143,36 @@ test('the internal timeout option never reaches fetch as a request field', async
   assert.ok(seen && !('timeoutMs' in seen), 'timeoutMs is a client option, not part of the HTTP request');
 });
 
+/**
+ * Headers arrive at once, but the body stalls until the request signal aborts - like a
+ * server that stops mid-response. Real fetch aborts the body stream with the signal.
+ */
+function stalledBodyFetch(contentType: string): typeof globalThis.fetch {
+  return ((_url: string, init?: RequestInit) => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(contentType === 'application/json' ? '{"partial":' : 'partial'));
+        init?.signal?.addEventListener('abort', () => controller.error(new DOMException('The operation was aborted.', 'AbortError')));
+      },
+    });
+    return Promise.resolve(new Response(body, { status: 200, headers: { 'Content-Type': contentType } }));
+  }) as typeof globalThis.fetch;
+}
+
+test('requestJson keeps the deadline while the response body is read (PR #55 review)', async () => {
+  await withFetch(stalledBodyFetch('application/json'), async () => {
+    const error = await requestJson('/api/tournaments', { timeoutMs: 40 }).then(() => null, (ex: unknown) => ex);
+    assert.ok(error instanceof ApiTimeoutError, 'a stalled body must end in a typed timeout');
+  });
+});
+
+test('requestText keeps the deadline while the response body is read (PR #55 review)', async () => {
+  await withFetch(stalledBodyFetch('text/plain'), async () => {
+    const error = await requestText('/api/tournaments/x/export/json', { timeoutMs: 40 }).then(() => null, (ex: unknown) => ex);
+    assert.ok(error instanceof ApiTimeoutError, 'a stalled body must end in a typed timeout');
+  });
+});
+
 test('the default budget is finite, generous enough for a pairing run and stricter for health probes', () => {
   assert.ok(defaultRequestTimeoutMs >= 5000, 'a weak tournament laptop needs air for pairing and import');
   assert.ok(defaultRequestTimeoutMs <= 60000, 'but nobody waits a minute at a wrong-looking button');
