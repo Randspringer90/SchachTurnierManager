@@ -1,14 +1,45 @@
 ## Unreleased (development)
 
+- STM-INT-002 / Konsolidierte PR-Integration (2026-10-01): Die offenen PRs wurden je Paket
+  unabhängig und read-only reviewt, Befunde behoben und gemeinsam getestet. Integriert:
+  #63 (STM-INFRA-007: Owner-Paketpfad nur `owner/STM-…`; die Gate-Funktionen
+  `Test-ShaBoundOwnerReview`/`Assert-OwnerExecutionApproval` laufen in Tests real mit
+  Positiv-/Negativfällen), #65 (STM-INFRA-009: read-only PR-Sammelprüfung), #75
+  (STM-INFRA-010: lokaler Integrationsstand ohne Git-Schreibzugriffe, ohne Lazy-Fetch, kein
+  Clean-Urteil bei Gitlinks), #61 (STM-SEC-002, s. u.), #67 (STM-SEC-006: Formelschutz für
+  Teilnehmer- und Swiss-Manager-CSV, Hinweis auf die verlustbehaftete CSV-Rückübernahme in
+  beiden Importbereichen), #79 (STM-IE-009: mehrzeilige Felder und BOM), #80 (STM-IE-010:
+  ungültige Geburtsdaten werden nicht als Jahr übernommen; gültige Daten ohne führende Null
+  bleiben akzeptiert), #69/#72 (STM-UX-001: wörtliche Übersetzungsparameter, BCP-47-
+  Erweiterungen, Katalogaudit vor dem Build mit exakter Platzhaltersyntax), #71 (STM-UX-002:
+  Zwei-Slot-Shell-Cache, kontrollierte Offline-Fehler auch für QR-Links), #77 (STM-UX-003:
+  Backup-Vorschau nach dem Backend-Importvertrag), #53/#51 (Build Week ohne Android-Paket)
+  mit den lokalen Stabilisierungs-Commits (STM-STAB-001; Anfrage-Frist jetzt bis zum
+  gelesenen Antwortkörper, „Demo öffnen“ löscht kein vorhandenes Demo mehr), #54 (Backlog-
+  Status) und die Laufdoku aus dem main-only Commit `53dba48` (STM-DOC-003).
+  `Pack-Portable.ps1 -OutputRoot` ist auf `output\`/`tmp\` des Repositorys begrenzt.
+  Nicht integriert (BLOCKED, Gründe im Backlog): #49/#55 (Owner-Neuattestierung der
+  Android-Binärdateien, Lizenzentscheidung), #57 (Speicher/Timeout-Garantie bei großen
+  Feldern), #59 (Trust-Anker des Update-Manifests).
+
+- STM-AI-003 / Harness: Regeln gelten providerunabhängig für Codex, Claude und weitere
+  Provider; die vorgeschaltete Runtime löst jedes logische Profil auf das neueste verfügbare
+  stabile Modell seiner Klasse auf (`newestStableModelPerProfile`, `providerNeutralRules`
+  in `config/model-routing.json`, von `Test-ModelRoutingReadiness` geprüft).
+
 - STM-SEC-002: Reproduzierbare Dependency-/Lizenz-/Supply-Chain-Baseline ergänzt. Das neue
-  Offline-Gate prüft zentrale und exakt gepinnte NuGet-Versionen, vollständige
+  Offline-Gate prüft zentrale NuGet-Versionen (sieben von acht jetzt exakt als `[x.y.z]`
+  gebunden, ohne Änderung des aufgelösten Graphen; `System.Text.Encoding.CodePages` bleibt
+  wegen des .NET-10-Pruning eine sichtbar gemeldete Mindestversion), vollständige
   Central-Package-Management-Abdeckung, exakt gepinnte direkte npm-Abhängigkeiten,
-  Lockfile-Konsistenz, Registry-Herkunft und SHA-512-Integrity sowie bekannte
-  Lizenzwerte. Lifecycle-Skripte sind fail-closed; die bestehende optionale
-  `fsevents@2.3.3`-Ausnahme ist an Version, Lizenz und Optionalität gebunden.
-  `Invoke-ReleaseGate.ps1` führt den Check vor `dotnet restore` aus. Keine
-  Dependency-Version wurde geändert und der neue Check führt selbst keinen
-  Netzwerkzugriff aus.
+  Lockfile-Konsistenz einschließlich Paketidentität/Version der Tarball-URLs und
+  auflösbarer transitiver Kanten, Registry-Herkunft und SHA-512-Integrity sowie bekannte
+  Lizenzwerte. Lifecycle-Skripte (inkl. `dependencies`) sind fail-closed; die bestehende
+  optionale `fsevents@2.3.3`-Ausnahme ist an Version, Lizenz und Optionalität gebunden.
+  CI führt den Check nach der statischen Freigabe und vor `dotnet restore`/`npm ci` aus;
+  `Invoke-ReleaseGate.ps1` nutzt `npm ci`, bricht bei Lockfile-Änderungen ab und weist
+  PARTIAL-Provenienz aus. Keine Dependency-Version wurde geändert und der Check führt
+  selbst keinen Netzwerkzugriff aus.
 
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 

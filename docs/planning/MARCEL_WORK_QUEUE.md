@@ -25,7 +25,7 @@ Stand: 2026-07-18.
 | – | STM-IE-002 | [#24](https://github.com/Randspringer90/SchachTurnierManager/issues/24) | Done | STM-IE-001 (Done) | Swiss-Manager/TRF16-Import; PR #44 → Adoption #48, Merge `8f6ce32` |
 | 1 | STM-FACH-003 | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) | Backlog (entsperrt, noch nicht Ready) | STM-FACH-002 (Done) | große Felder 21–200; auf Owner-Freigabe wartend |
 | 2 | STM-FACH-011 | – | Backlog | STM-FACH-002 (Done) | Setzlisten-Vergabe nach C.04.2 Art. 2.2; post-1.0 |
-| – | STM-FACH-012 | – | läuft im Owner-Draft-PR [#51](https://github.com/Randspringer90/SchachTurnierManager/pull/51) | – | UI-Auswahl Pairing-Strategie/Anfangsfarbe – **nicht parallel bearbeiten** |
+| – | STM-FACH-012 | – | Done | – | UI-Auswahl Pairing-Strategie/Anfangsfarbe; Owner-PR [#51](https://github.com/Randspringer90/SchachTurnierManager/pull/51), integriert über [#53](https://github.com/Randspringer90/SchachTurnierManager/pull/53) (STM-INT-002) – kanonischer Stand siehe BACKLOG.md |
 | 3 | STM-IE-004 | [#25](https://github.com/Randspringer90/SchachTurnierManager/issues/25) | Backlog | – | FIDE-Namenssuche |
 
 ## Rolle
