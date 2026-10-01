@@ -48,7 +48,17 @@ public sealed class PrReadinessTests
         var output = await stdout;
         var errors = await stderr;
         Assert.True(process.ExitCode == 0, output + Environment.NewLine + errors);
-        Assert.Contains("# tests 70", output);
-        Assert.Contains("# fail 0", output);
+        // Count-independent: adding a passing test must not break this wrapper.
+        var total = TapCounter(output, "tests");
+        Assert.True(total > 0, output);
+        Assert.Equal(total, TapCounter(output, "pass"));
+        Assert.Equal(0, TapCounter(output, "fail"));
+    }
+
+    private static int TapCounter(string output, string name)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(output, $@"(?m)^# {name} (\d+)\r?$");
+        Assert.True(match.Success, $"TAP summary '# {name}' missing.");
+        return int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
     }
 }

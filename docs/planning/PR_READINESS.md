@@ -20,6 +20,10 @@ Beobachtet werden offene PRs, Check-Runs, Commit-Statuses und Reviews. Maximal 5
 
 `definitionOfDone=NOT_EVALUATED` und `mergeAuthorized=false` gelten IMMER. Lokale Gates, Codequalitaet, CODEOWNERS, Review-Thread-Aufloesung und effektive Branchschutzregeln bleiben gesondert zu pruefen. Exit 0 bedeutet klares Remote-Teilbild/keine offenen PRs, Exit 2 Blocker/unvollstaendige Beobachtung, Exit 1 Eingabe-/Dateifehler; keiner autorisiert einen Merge.
 
+Checks und Statuses werden am PR-Head-SHA gelesen, nicht am Test-Merge-Commit: GitHub Actions haengt die `pull_request`-Laeufe dieses Repositorys an den Head-Commit (am 2026-10-01 fuer PR #63 belegt: alle acht Workflow-Checks am Head `0ca7538`). Ein Review-Einwand, die Checks muessten am `merge_commit_sha` gelesen werden, wurde mit dieser Evidenz zurueckgewiesen; sollte GitHub das Verhalten aendern, faellt das als `MISSING` auf, nie als PASS.
+
+DoD-Punkte werden NICHT bewertet: Die Liste `unverified` (lokale Gates, CODEOWNERS, Thread-Aufloesung, Branchschutz, unabhaengiger Review) benennt, was dieses Werkzeug ausdruecklich nicht beobachtet. Der Titel "DoD-Blocker" bezieht sich auf diese sichtbare Abgrenzung, nicht auf eine DoD-Pruefung.
+
 Die acht erwarteten Check-Namen stammen aus Baseline cc47f1101983d3f3272a893dbf54bd66fa2355b4. Gleichnamige Commit-Statuses oder fremde Apps ersetzen keine erwarteten Actions-Checks; Mehrdeutigkeit wird nicht geraten. Zusaetzliche rote Checks/Statuses bleiben sichtbar. skipped/neutral/pending/missing sind nie PASS.
 
 Ein vorhandener SHA-gebundener Owner-Marker wird exakt erkannt. Sein Fehlen allein ist KEIN Blocker, denn SAFE_FOR_ISOLATED_BUILD braucht ihn nicht. Die Ursache eines roten Gates muss separat aus dessen Logs ermittelt werden. Dieses Werkzeug schreibt niemals einen Marker.
@@ -34,9 +38,9 @@ Keine PR-Titel, Review-Bodies, Benutzernamen, E-Mails, Logauszuege oder rohe gh-
 node --test tests/scripts/pr-readiness.test.mjs tests/scripts/pr-readiness-progress.test.mjs
 ```
 
-70/70 Tests mit Node 22.16.0 am 2026-10-01 PASS: Analyzer, Check-Quellen, Status-/Review-Historie, Drift, Pagination, Limits, Fehler, gh-GET-Vertrag, Offline-/Live-Adapterpfad mit injiziertem Transport sowie Fortschritt. Ein neuer xUnit-Wrapper ruft beide Testdateien auf; Node muss im PATH verfuegbar sein. Echter gh-Netzwerklauf und .NET-Wrapper hier NOT_RUN.
+70/70 Tests mit Node 22.16.0 am 2026-10-01 PASS: Analyzer, Check-Quellen, Status-/Review-Historie, Drift, Pagination, Limits, Fehler, gh-GET-Vertrag, Offline-/Live-Adapterpfad mit injiziertem Transport sowie Fortschritt. Ein xUnit-Wrapper ruft beide Testdateien mit TAP-Reporter auf und prueft anzahlunabhaengig "mindestens ein Test, alle bestanden, 0 Fehler" (lokal am 2026-10-01 PASS); Node muss im PATH verfuegbar sein. Echter gh-Netzwerklauf NOT_RUN (auf dem Integrationsrechner ist keine gh CLI installiert).
 
-Optional: `--snapshot FILE` liest das synthetisch testbare Schema stm.pr-readiness.snapshot.v1. Ausgabe bleibt OFFLINE_UNVERIFIED_INPUT, niemals Echtheitsnachweis. Vollstaendige Projekt-Gates, unabhaengiger Review und kanonische Backlog-/Changelog-Synchronisierung sind noch offen.
+Optional: `--snapshot FILE` liest das synthetisch testbare Schema stm.pr-readiness.snapshot.v1. Ausgabe bleibt OFFLINE_UNVERIFIED_INPUT, niemals Echtheitsnachweis.
 
 API-Referenzen (2026-10-01):
 - https://docs.github.com/en/rest/checks/runs
