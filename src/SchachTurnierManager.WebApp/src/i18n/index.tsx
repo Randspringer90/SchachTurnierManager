@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { detectLanguage, translateText } from './core';
 import { de, type Messages } from './locales/de';
 import { en } from './locales/en';
 import { es } from './locales/es';
@@ -54,16 +55,13 @@ export const LANGUAGES: readonly LanguageInfo[] = [
 const STORAGE_KEY = 'stm.language';
 
 function detectInitialLanguage(): LanguageCode {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored && LANGUAGES.some(l => l.code === stored)) {
-      return stored as LanguageCode;
-    }
-  } catch {
-    // localStorage kann in Sonderfällen (z. B. blockierte Cookies) fehlen.
-  }
-  const browser = (navigator.language || 'de').slice(0, 2).toLowerCase();
-  return LANGUAGES.some(l => l.code === browser) ? (browser as LanguageCode) : 'de';
+  return detectLanguage(
+    LANGUAGES.map(l => l.code),
+    'de',
+    () => typeof window === 'undefined' ? null : window.localStorage.getItem(STORAGE_KEY),
+    () => typeof navigator === 'undefined' ? [] :
+      (navigator.languages?.length ? navigator.languages : [navigator.language]),
+  );
 }
 
 export type TranslateFn = (key: keyof Messages, params?: Record<string, string | number>) => string;
@@ -80,6 +78,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<LanguageCode>(detectInitialLanguage);
 
   const setLang = (next: LanguageCode) => {
+    if (!LANGUAGES.some(l => l.code === next)) return;
     setLangState(next);
     try {
       window.localStorage.setItem(STORAGE_KEY, next);
@@ -96,15 +95,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<I18nContextValue>(() => {
     const dictionary = LANGUAGES.find(l => l.code === lang)?.dictionary ?? de;
-    const t: TranslateFn = (key, params) => {
-      let text = dictionary[key] ?? en[key] ?? de[key];
-      if (params) {
-        for (const [name, replacement] of Object.entries(params)) {
-          text = text.replaceAll(`{${name}}`, String(replacement));
-        }
-      }
-      return text;
-    };
+    const t: TranslateFn = (key, params) => translateText(key, [dictionary, en, de], params);
     return { lang, setLang, t };
   }, [lang]);
 
