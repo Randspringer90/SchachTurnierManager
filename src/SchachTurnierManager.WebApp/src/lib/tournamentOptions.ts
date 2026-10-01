@@ -165,4 +165,3 @@ export const emptySettingsForm: SettingsForm = {
   heroCupMinimumRatedGames: '1',
   tiebreaks: defaultTiebreaks
 };
-

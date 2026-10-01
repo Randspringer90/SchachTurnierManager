@@ -115,4 +115,3 @@ export function buildTournamentAssistantRecommendation(form: TournamentAssistant
     handoffPrompt
   };
 }
-

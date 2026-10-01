@@ -42,4 +42,3 @@ export function QrPanel({ url }: { url: string }): React.ReactElement {
 
 // Eigenständige, schlanke Würfelseite für das Handy (Aufruf per QR / LAN-URL ?dice=...&round=...&board=...).
 // Lädt nur das eine Turnier, zeigt nur dieses Brett und nutzt denselben Backend-Endpunkt.
-

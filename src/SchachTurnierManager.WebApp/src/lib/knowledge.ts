@@ -82,4 +82,3 @@ export function buildLocalKnowledgeAnswer(question: string, tournament: Tourname
     sources: best.sources
   };
 }
-

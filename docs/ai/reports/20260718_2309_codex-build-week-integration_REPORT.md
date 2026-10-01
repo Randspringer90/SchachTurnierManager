@@ -1,8 +1,8 @@
 # Build Week integration, repository hygiene, and jury readiness
 
-Run ID: `STM_BUILD_WEEK_INTEGRATION_2026_20260718_230927`  
-Tool: Codex CLI `0.144.5`  
-Model: GPT-5.6 Sol  
+Run ID: `STM_BUILD_WEEK_INTEGRATION_2026_20260718_230927`\
+Tool: Codex CLI `0.144.5`\
+Model: GPT-5.6 Sol\
 Status: IN PROGRESS
 
 ## Current outcome

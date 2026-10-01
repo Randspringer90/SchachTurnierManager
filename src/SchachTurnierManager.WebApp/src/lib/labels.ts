@@ -210,5 +210,3 @@ export function auditCsvCell(value: unknown): string {
 export function tiebreakLabel(value: number): string {
   return tiebreakOptions.find(option => option.value === value)?.label ?? String(value);
 }
-
-

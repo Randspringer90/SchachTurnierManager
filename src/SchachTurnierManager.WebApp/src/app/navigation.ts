@@ -17,5 +17,3 @@ export type MainTab = typeof mainTabs[number]['id'];
 export function isMainTab(value: string | null): value is MainTab {
   return value !== null && mainTabs.some(tab => tab.id === value);
 }
-
-

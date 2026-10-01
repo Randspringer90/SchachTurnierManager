@@ -41,5 +41,3 @@ export function downloadText(filename: string, content: string, type: string): v
   link.remove();
   URL.revokeObjectURL(url);
 }
-
-

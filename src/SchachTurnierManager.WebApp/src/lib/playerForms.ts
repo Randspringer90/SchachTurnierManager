@@ -147,5 +147,3 @@ export function moveTiebreak(list: number[], index: number, direction: -1 | 1): 
   copy.splice(target, 0, item);
   return copy;
 }
-
-

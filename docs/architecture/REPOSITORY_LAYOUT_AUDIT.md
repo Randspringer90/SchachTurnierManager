@@ -1,7 +1,7 @@
 # Repository layout audit
 
-Audit date: 2026-07-18  
-Audited worktree head: `6988a4e846ef378bfa5d4e54f67dfb80af62255e`  
+Audit date: 2026-07-18\
+Audited worktree head: `6988a4e846ef378bfa5d4e54f67dfb80af62255e`\
 Reference branch: `origin/development` at `a6f68e8f8e31201f0b9ce2ea77a13c37a50b9518`
 
 ## Result

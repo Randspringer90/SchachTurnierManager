@@ -72,5 +72,3 @@ export function MobileDicePage({ params }: { params: BoardDiceParams }): React.R
     </div>
   );
 }
-
-
