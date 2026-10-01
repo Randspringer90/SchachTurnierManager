@@ -58,18 +58,17 @@ public static class PlayerCsvCodec
             return Array.Empty<Player>();
         }
 
-        var lines = csv.Replace("\r\n", "\n").Replace('\r', '\n')
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (lines.Length == 0)
+        var records = CsvRecordReader.Read(csv, ';');
+        if (records.Count == 0)
         {
             return Array.Empty<Player>();
         }
 
-        var startIndex = LooksLikeHeader(ParseLine(lines[0])) ? 1 : 0;
+        var startIndex = LooksLikeHeader(records[0].Fields) ? 1 : 0;
         var players = new List<Player>();
-        for (var i = startIndex; i < lines.Length; i++)
+        for (var i = startIndex; i < records.Count; i++)
         {
-            var values = ParseLine(lines[i]);
+            var values = records[i].Fields;
             if (values.Count == 0 || string.IsNullOrWhiteSpace(Get(values, 0)))
             {
                 continue;
@@ -101,7 +100,7 @@ public static class PlayerCsvCodec
 
     private static bool LooksLikeHeader(IReadOnlyList<string> values)
     {
-        return values.Count > 0 && string.Equals(values[0], "Name", StringComparison.OrdinalIgnoreCase);
+        return values.Count > 0 && string.Equals(values[0].Trim(), "Name", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string Get(IReadOnlyList<string> values, int index) => index < values.Count ? values[index] : string.Empty;
@@ -146,39 +145,4 @@ public static class PlayerCsvCodec
         return mustQuote ? $"\"{escaped}\"" : escaped;
     }
 
-    private static IReadOnlyList<string> ParseLine(string line)
-    {
-        var values = new List<string>();
-        var current = new StringBuilder();
-        var inQuotes = false;
-
-        for (var i = 0; i < line.Length; i++)
-        {
-            var ch = line[i];
-            if (ch == '"')
-            {
-                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
-                {
-                    current.Append('"');
-                    i++;
-                }
-                else
-                {
-                    inQuotes = !inQuotes;
-                }
-            }
-            else if (ch == ';' && !inQuotes)
-            {
-                values.Add(current.ToString());
-                current.Clear();
-            }
-            else
-            {
-                current.Append(ch);
-            }
-        }
-
-        values.Add(current.ToString());
-        return values;
-    }
 }

@@ -65,14 +65,21 @@ public static class SwissManagerCsvCodec
             return new SwissManagerImportResult(Array.Empty<Player>(), Array.Empty<string>());
         }
 
-        var lines = csv.Replace("\r\n", "\n").Replace('\r', '\n')
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (lines.Length == 0)
+        IReadOnlyList<CsvRecord> records;
+        try
+        {
+            records = CsvRecordReader.Read(csv, Separator);
+        }
+        catch (ArgumentException ex)
+        {
+            return new SwissManagerImportResult(Array.Empty<Player>(), new[] { ex.Message });
+        }
+        if (records.Count == 0)
         {
             return new SwissManagerImportResult(Array.Empty<Player>(), Array.Empty<string>());
         }
 
-        var header = ParseLine(lines[0]);
+        var header = records[0].Fields;
         var columns = BuildColumnMap(header);
         var errors = new List<string>();
         if (!columns.ContainsKey("name") && !columns.ContainsKey("surname"))
@@ -82,10 +89,10 @@ public static class SwissManagerCsvCodec
         }
 
         var players = new List<Player>();
-        for (var lineIndex = 1; lineIndex < lines.Length; lineIndex++)
+        for (var lineIndex = 1; lineIndex < records.Count; lineIndex++)
         {
-            var oneBasedLineNumber = lineIndex + 1;
-            var values = ParseLine(lines[lineIndex]);
+            var oneBasedLineNumber = records[lineIndex].LineNumber;
+            var values = records[lineIndex].Fields;
 
             var name = ResolveName(values, columns);
             if (string.IsNullOrWhiteSpace(name))
@@ -245,41 +252,6 @@ public static class SwissManagerCsvCodec
         return mustQuote ? $"\"{escaped}\"" : escaped;
     }
 
-    private static IReadOnlyList<string> ParseLine(string line)
-    {
-        var values = new List<string>();
-        var current = new StringBuilder();
-        var inQuotes = false;
-
-        for (var i = 0; i < line.Length; i++)
-        {
-            var ch = line[i];
-            if (ch == '"')
-            {
-                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
-                {
-                    current.Append('"');
-                    i++;
-                }
-                else
-                {
-                    inQuotes = !inQuotes;
-                }
-            }
-            else if (ch == Separator && !inQuotes)
-            {
-                values.Add(current.ToString());
-                current.Clear();
-            }
-            else
-            {
-                current.Append(ch);
-            }
-        }
-
-        values.Add(current.ToString());
-        return values;
-    }
 }
 
 public sealed record SwissManagerImportResult(IReadOnlyList<Player> Players, IReadOnlyList<string> Errors);
