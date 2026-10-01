@@ -150,8 +150,31 @@ public sealed class AuditForensicExportBuilder
 
     private static string SafeFileName(string value)
     {
-        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
-        var safe = new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
-        return string.IsNullOrWhiteSpace(safe) ? "Turnier" : safe.Replace(' ', '_');
+        // Downloads may be saved on Windows even when the server runs on Unix.
+        // Bound the stem in UTF-8 bytes, leaving space for the fixed audit suffix.
+        const int maximumStemBytes = 120;
+        var builder = new StringBuilder(maximumStemBytes);
+        var byteCount = 0;
+        foreach (var rune in value.Trim().Trim('.').EnumerateRunes())
+        {
+            var category = Rune.GetUnicodeCategory(rune);
+            var replace = rune.Value is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*'
+                || category is UnicodeCategory.Control or UnicodeCategory.Format
+                || Rune.IsWhiteSpace(rune);
+            var text = replace ? "_" : rune.ToString();
+            var length = replace ? 1 : rune.Utf8SequenceLength;
+            if (byteCount + length > maximumStemBytes)
+            {
+                break;
+            }
+
+            builder.Append(text);
+            byteCount += length;
+        }
+
+        var safe = builder.ToString().TrimEnd('.');
+        // A device-like stem such as CON is safe here because _round... is
+        // always appended; this helper must not be used as a complete filename.
+        return safe.Length == 0 ? "Turnier" : safe;
     }
 }
