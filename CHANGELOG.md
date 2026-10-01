@@ -1,5 +1,15 @@
 ## Unreleased (development)
 
+- STM-SEC-002: Reproduzierbare Dependency-/Lizenz-/Supply-Chain-Baseline ergänzt. Das neue
+  Offline-Gate prüft zentrale und exakt gepinnte NuGet-Versionen, vollständige
+  Central-Package-Management-Abdeckung, exakt gepinnte direkte npm-Abhängigkeiten,
+  Lockfile-Konsistenz, Registry-Herkunft und SHA-512-Integrity sowie bekannte
+  Lizenzwerte. Lifecycle-Skripte sind fail-closed; die bestehende optionale
+  `fsevents@2.3.3`-Ausnahme ist an Version, Lizenz und Optionalität gebunden.
+  `Invoke-ReleaseGate.ps1` führt den Check vor `dotnet restore` aus. Keine
+  Dependency-Version wurde geändert und der neue Check führt selbst keinen
+  Netzwerkzugriff aus.
+
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-

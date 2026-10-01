@@ -33,7 +33,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 |----|-------|------|--------|-----------|-------------|-------|---------|
 | STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | Done | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) (geschlossen; PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6), Merge `ecfb473`) | v1.0.0 |
 | STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | In Progress | security | owner | via [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) | v1.0.0 |
-| STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |
+| STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | In Review | security | owner | [#60](https://github.com/Randspringer90/SchachTurnierManager/issues/60) (PR [#61](https://github.com/Randspringer90/SchachTurnierManager/pull/61)) | v1.0.0 |
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-004 | Public Snapshot & Git-History-Abnahme | P0 | Blocked | security | owner | – | v1.0.0 |
 | STM-SEC-005 | Sichere Pull-Request-Prüfung und kontrollierte Übernahme | P1 | Done | security | owner | [#11](https://github.com/Randspringer90/SchachTurnierManager/issues/11) (PR [#12](https://github.com/Randspringer90/SchachTurnierManager/pull/12)) | v1.0.0 |
