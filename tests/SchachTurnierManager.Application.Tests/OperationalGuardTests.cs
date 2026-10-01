@@ -103,6 +103,27 @@ public sealed class OperationalGuardTests
     }
 
     [Fact]
+    public void ReleaseGate_RunsDependencySupplyChainSafetyBeforeRestore()
+    {
+        var releaseGate = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseGate.ps1"));
+        var dependencyGate = File.ReadAllText(FindRepositoryFile("scripts", "Test-DependencySupplyChainSafety.ps1"));
+
+        var dependencyGateIndex = releaseGate.IndexOf("Test-DependencySupplyChainSafety.ps1", StringComparison.Ordinal);
+        var restoreIndex = releaseGate.IndexOf("dotnet restore", StringComparison.Ordinal);
+
+        Assert.True(dependencyGateIndex >= 0, "Dependency-Safety-Gate fehlt im ReleaseGate.");
+        Assert.True(restoreIndex > dependencyGateIndex, "Dependency-Safety-Gate muss vor dotnet restore laufen.");
+        Assert.Contains("Directory.Packages.props", dependencyGate);
+        Assert.Contains("package-lock.json", dependencyGate);
+        Assert.Contains("registry\\.npmjs\\.org", dependencyGate);
+        Assert.Contains("allowedLicenses", dependencyGate);
+        Assert.Contains("reviewedLifecyclePackages", dependencyGate);
+        Assert.Contains("Offline/read-only", dependencyGate);
+        Assert.DoesNotContain("npm audit", dependencyGate, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dotnet restore", dependencyGate, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ReleaseCandidateReadiness_BundlesBuildInstallAndSafetyChecks()
     {
         var releaseScript = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseCandidateReadiness.ps1"));
