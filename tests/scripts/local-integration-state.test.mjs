@@ -178,5 +178,21 @@ test('active clean filter is identified without executing or disabling it', () =
 test('unused configured filters do not block a normal metadata inspection', () => fixture(root => {
   git(root, 'config', 'filter.unused.process', 'nonexistent-synthetic-filter');
   const report = inspectLocalState(root);
-  assert.equal(report.complete, true); assert.equal(report.submoduleWorkingTrees, 'NOT_INSPECTED');
+  assert.equal(report.complete, true); assert.equal(report.submoduleWorkingTrees, 'NONE_PRESENT');
+}));
+// PR #75 review: submodule changes are hidden by --ignore-submodules=all, so a
+// checkout with gitlinks must never be reported as clean.
+test('gitlinks prevent a clean verdict', () => fixture(root => {
+  const head = git(root, 'rev-parse', 'HEAD');
+  git(root, 'update-index', '--add', '--cacheinfo', `160000,${head},vendored`);
+  git(root, 'commit', '-m', 'gitlink'); git(root, 'update-ref', 'refs/remotes/origin/development', 'HEAD');
+  const report = inspectLocalState(root);
+  assert.equal(report.submoduleWorkingTrees, 'PRESENT_NOT_INSPECTED');
+  assert.equal(report.status, 'SUBMODULES_NOT_INSPECTED'); assert.equal(report.complete, false);
+}));
+test('no status-derived fingerprint is published', () => fixture(root => {
+  writeFileSync(join(root, 'source.txt'), 'changed\n');
+  const report = inspectLocalState(root);
+  assert.equal(report.status, 'LOCAL_CHANGES_PRESENT');
+  assert.ok(!('statusFingerprint' in report));
 }));

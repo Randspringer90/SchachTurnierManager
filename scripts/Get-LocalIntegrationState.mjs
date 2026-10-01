@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { existsSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +7,6 @@ const EXPECTED_REPOSITORY = 'Randspringer90/SchachTurnierManager';
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_OUTPUT = 4 * 1024 * 1024;
 const identity = value => typeof value === 'string' && !/[\s\x00-\x1f\x7f]/.test(value) && /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)Randspringer90\/SchachTurnierManager(?:\.git)?\/?$/.test(value);
-const digest = value => createHash('sha256').update(value).digest('hex');
 
 // -z records preserve filenames containing whitespace/newlines; rename source is
 // a separate record, not a second changed file. Never include filenames in output.
@@ -53,7 +51,8 @@ export function inspectLocalState(directory = process.cwd()) {
     const requestedRoot = realpathSync(directory);
     // Ignore inherited Git routing/config overrides, not repository policies.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
-    Object.assign(env, { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C' });
+    // GIT_NO_LAZY_FETCH stops partial clones from fetching missing objects (network + object writes).
+    Object.assign(env, { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', GIT_NO_LAZY_FETCH: '1', LC_ALL: 'C' });
     const git = (args, optional = false, input = null) => {
       try {
         const bytes = execFileSync('git', ['-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false', ...args], {
@@ -104,7 +103,11 @@ export function inspectLocalState(directory = process.cwd()) {
     output.head = head();
     const before = status();
     output.changes = summarizeStatus(before);
-    output.statusFingerprint = digest(before);
+    // The raw status is compared internally only; a published hash of it would let
+    // common file names be confirmed by guessing. Gitlinks are hidden by
+    // --ignore-submodules=all, so their presence forbids a clean verdict.
+    const gitlinks = git(['ls-files', '--stage', '-z']).split('\0').filter(entry => entry.startsWith('160000 ')).length;
+    output.submoduleWorkingTrees = gitlinks ? 'PRESENT_NOT_INSPECTED' : 'NONE_PRESENT';
     const branch = git(['symbolic-ref', '--quiet', '--short', 'HEAD'], true)?.trim() ?? null;
     output.branchState = branch === null ? 'DETACHED' : branch === 'development' ? 'DEVELOPMENT' : 'OTHER_BRANCH';
     const reference = git(['rev-parse', '--verify', '--quiet', 'refs/remotes/origin/development'], true)?.trim() ?? null;
@@ -130,10 +133,11 @@ export function inspectLocalState(directory = process.cwd()) {
     output.metadataChangedDuringRead = output.head !== head() || reference !== referenceAfter || before !== status() ||
       JSON.stringify(origins) !== JSON.stringify(remoteValues(['remote', 'get-url', '--all', 'origin'])) ||
       JSON.stringify(pushUrls) !== JSON.stringify(remoteValues(['remote', 'get-url', '--push', '--all', 'origin']));
-    output.complete = !output.metadataChangedDuringRead;
+    output.complete = !output.metadataChangedDuringRead && gitlinks === 0;
     output.status = output.metadataChangedDuringRead ? 'METADATA_CHANGED' :
       output.changes.conflicts || Object.values(output.operations).some(Boolean) ? 'INTEGRATION_IN_PROGRESS' :
-      output.changes.entries ? 'LOCAL_CHANGES_PRESENT' : 'NO_VISIBLE_CHANGES';
+      output.changes.entries ? 'LOCAL_CHANGES_PRESENT' :
+      gitlinks ? 'SUBMODULES_NOT_INSPECTED' : 'NO_VISIBLE_CHANGES';
   } catch (error) {
     const allowed = new Set(['GIT_FILTER_REQUIRES_REVIEW', 'INVALID_ATTRIBUTES', 'INVALID_STATUS', 'GIT_QUERY_FAILED', 'NOT_A_WORKTREE', 'ROOT_REQUIRED', 'REPOSITORY_IDENTITY_MISMATCH', 'INVALID_HEAD', 'INVALID_REFERENCE', 'INVALID_COUNTS', 'INVALID_WORKTREE_LIST']);
     output.status = 'UNVERIFIED'; output.complete = false;

@@ -21,7 +21,9 @@ and never contact their configured remote.
 ## Report semantics
 
 The JSON on stdout includes counts, HEAD, the locally stored development ref,
-ahead/behind, operation markers, worktree count and a status-metadata fingerprint.
+ahead/behind, operation markers, worktree count and whether gitlinks exist. No
+hash of the raw status is published (it could confirm guessed file names); the
+raw status is only compared internally to detect changes during the read.
 Progress goes to stderr. No filenames, file contents, full paths, raw remote URLs,
 authentication values or raw Git errors are included.
 
@@ -29,13 +31,14 @@ Exit 0 means observation completed, not clean source, current remote state or
 merge approval. Exit 2 means usage/observation incomplete. mergeAuthorized is
 always false. LOCAL_CHANGES_PRESENT and INTEGRATION_IN_PROGRESS require review.
 NO_VISIBLE_CHANGES does not inspect ignored files or prove absence of active writers.
-The fingerprint hashes status metadata, NOT source content. Branch/HEAD/status/ref
-and URL checks cannot detect every concurrent content edit. Worktree count does
+Branch/HEAD/status/ref and URL checks cannot detect every concurrent content edit. Worktree count does
 not inspect other worktrees. Tracking refs may be stale: there is no fetch.
 
 Effective fetch and push URLs include Git URL rewrites. A noncanonical push target
 is reported, never removed. Per-process fsmonitor/untracked-cache disabling and
-GIT_OPTIONAL_LOCKS=0 prevent optional metadata-query index writes. Repository and
+GIT_OPTIONAL_LOCKS=0 prevent optional metadata-query index writes; GIT_NO_LAZY_FETCH=1
+stops partial clones from fetching missing objects (a missing object fails the
+query and the report stays incomplete). Repository and
 global configuration are not changed; inherited GIT_* routing overrides are not
 used. Normal filesystem/Git permissions still apply. Git may internally read
 working files to determine status; the report never exposes their contents.
@@ -45,7 +48,9 @@ Before status, configured clean/process filters are matched against tracked-file
 attributes using non-executing Git metadata queries. An active external filter
 returns GIT_FILTER_REQUIRES_REVIEW without execution or changing its configuration.
 Unused configured filters do not block the inspection. Submodule working trees
-are not inspected because they have independent configuration. Configuration drift
+are not inspected because they have independent configuration; when gitlinks are
+present the report says SUBMODULES_NOT_INSPECTED (incomplete, exit 2) instead of
+NO_VISIBLE_CHANGES. Configuration drift
 or concurrent writers are not sandboxed by this tool. This is not a secret scanner.
 
 ## Evidence and integration
