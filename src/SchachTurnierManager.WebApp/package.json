@@ -10,7 +10,9 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "test:i18n": "node --experimental-strip-types --test ../../tests/scripts/i18n-core.test.mjs",
     "test:catalogs": "node --test ../../tests/scripts/i18n-catalogs.test.mjs ../../tests/scripts/i18n-entrypoint.test.mjs",
-    "audit:i18n": "node ../../scripts/Test-I18nCatalogs.mjs"
+    "audit:i18n": "node ../../scripts/Test-I18nCatalogs.mjs",
+    "test:pwa": "node --test ../../tests/scripts/service-worker.test.mjs",
+    "prebuild": "npm run test:pwa"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.2",
