@@ -233,17 +233,7 @@ public static class SwissManagerCsvCodec
 
     private static string? NullIfWhiteSpace(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static string Escape(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var mustQuote = value.Contains(Separator) || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
-        var escaped = value.Replace("\"", "\"\"");
-        return mustQuote ? $"\"{escaped}\"" : escaped;
-    }
+    private static string Escape(string? value) => CsvFieldEncoder.Encode(value, Separator);
 
     private static IReadOnlyList<string> ParseLine(string line)
     {
