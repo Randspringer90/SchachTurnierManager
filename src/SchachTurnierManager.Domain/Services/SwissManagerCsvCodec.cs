@@ -112,7 +112,7 @@ public static class SwissManagerCsvCodec
                 Federation = NullIfWhiteSpace(Field(values, columns, "fed")),
                 Club = NullIfWhiteSpace(Field(values, columns, "club")),
                 Gender = ParseSex(Field(values, columns, "sex")),
-                BirthYear = ParseBirthYear(Field(values, columns, "birth")),
+                BirthYear = ParseBirthYear(Field(values, columns, "birth"), oneBasedLineNumber, errors),
                 Rating = new RatingProfile
                 {
                     Dwz = ParseNullableInt(Field(values, columns, "rating nat"), oneBasedLineNumber, "Rating nat", errors),
@@ -177,37 +177,29 @@ public static class SwissManagerCsvCodec
     /// Akzeptiert reines Jahr (JJJJ), TRF-Datum (JJJJ/MM/TT) und deutsches Datum (TT.MM.JJJJ);
     /// reduziert in jedem Fall auf das Jahr (PII-Minimierung, siehe Klassenkommentar).
     /// </summary>
-    private static int? ParseBirthYear(string value)
+    private static int? ParseBirthYear(string value, int lineNumber, List<string> errors)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        if (value.Length == 4 && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var bareYear))
+        if (value.Length == 4 && value.All(ch => ch is >= '0' and <= '9')
+            && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var year)
+            && IsPlausibleYear(year))
         {
-            return IsPlausibleYear(bareYear) ? bareYear : null;
+            return year;
         }
 
-        if (value.Contains('/'))
+        if (DateOnly.TryParseExact(value, new[] { "yyyy/MM/dd", "dd.MM.yyyy" },
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            && IsPlausibleYear(date.Year))
         {
-            var part = value.Split('/')[0];
-            if (int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var trfYear) && IsPlausibleYear(trfYear))
-            {
-                return trfYear;
-            }
+            return date.Year;
         }
 
-        if (value.Contains('.'))
-        {
-            var segments = value.Split('.');
-            var part = segments[^1];
-            if (int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var germanYear) && IsPlausibleYear(germanYear))
-            {
-                return germanYear;
-            }
-        }
-
+        // Birth dates are personal data: report the location, never echo the value.
+        errors.Add($"Zeile {lineNumber}: 'Birth' ist kein gueltiges Jahr (1900-2100) oder Datum (JJJJ/MM/TT, TT.MM.JJJJ); Geburtsjahr wird ignoriert.");
         return null;
     }
 
