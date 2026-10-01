@@ -43,7 +43,7 @@ Independent source review, current PR/CI checks and real DoD evidence are still
 required. Updating or splitting tasks changes the denominator; compare a stable
 milestone scope instead of treating every new PR as completed functionality.
 
-51/51 Node 22.16.0 tests passed, including actual CLI child processes, real
+52/52 Node 22.16.0 tests passed, including actual CLI child processes, real
 files, nonmutation and symbolic-path entry. npm prebuild ran the same suite;
 repeat executions are not additional tests. Full application/.NET/PowerShell
 and Windows runs, independent review and remote CI remain integration gates.
@@ -56,3 +56,7 @@ never replace those with this branch's older base scripts. Keep the default
 build command and dependency versions. Add STM-INFRA-011 as an In Review
 infrastructure helper (target development) to canonical BACKLOG and record the
 new command in CHANGELOG before merge. This is not a new v1.0 product mandate.
+
+Final self-review reproduced a FIFO open hang; non-file precheck added.
+The POSIX FIFO regression runs on Unix and is explicitly inapplicable on Windows.
+No claim of race-proof reads from an adversarially changing filesystem.

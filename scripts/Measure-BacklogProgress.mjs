@@ -1,4 +1,4 @@
-import { openSync, readSync, closeSync, fstatSync, realpathSync } from 'node:fs';
+import { openSync, readSync, closeSync, fstatSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { BacklogFormatError, MAX_BACKLOG_BYTES, measureBacklog } from './lib/BacklogProgress.mjs';
 
@@ -12,6 +12,8 @@ export function main(args, output = process.stdout, error = process.stderr) {
       else throw new BacklogFormatError('INVALID_ARGUMENTS');
     }
     let bytes;
+    // Reject known non-file inputs before open; opening a FIFO can block.
+    if (!statSync(path).isFile()) throw new BacklogFormatError('NOT_A_REGULAR_FILE');
     const file = openSync(path, 'r');
     try {
       const stat = fstatSync(file);
