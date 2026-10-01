@@ -157,6 +157,39 @@ test('failed update keeps the previously active shell intact', async () => {
   assert.equal(await offlineShell(app), 'v1');
   assert.equal(app.stores.has(current), false, 'the incomplete staging slot is discarded');
 });
+// Final review (MAJOR): the new slot must also hold the bundles its index.html references,
+// otherwise an offline reload after an update gets the new HTML but 503 for its bundles.
+const builtApp = version => req => {
+  const path = new URL(req.url).pathname;
+  if (path === '/' || path === '/index.html') {
+    return response(`<script type="module" src="/assets/index-${version}.js"></script><link rel="stylesheet" href="/assets/index-${version}.css">`, { headers: { 'Content-Type': 'text/html' } });
+  }
+  if (path.endsWith('.js')) return response(`js-${version}`, { headers: { 'Content-Type': 'text/javascript' } });
+  if (path.endsWith('.css')) return response(`css-${version}`, { headers: { 'Content-Type': 'text/css' } });
+  return shellResponse(req);
+};
+async function offlineAsset(app, path) {
+  const saved = app.fetchImpl; app.fetchImpl = offline;
+  try { const result = await app.dispatch(request(path)).result; return [result.status, await result.text()]; } finally { app.fetchImpl = saved; }
+}
+test('an update precaches the bundles of the new index.html before switching slots', async () => {
+  const app = harness({ fetch: req => app.fetchImpl(req) });
+  app.fetchImpl = builtApp('v1'); await app.lifecycle('install'); await app.lifecycle('activate');
+  app.fetchImpl = builtApp('v2'); await app.lifecycle('install'); await app.lifecycle('activate');
+  assert.match(await offlineShell(app), /index-v2\.js/);
+  assert.deepEqual(await offlineAsset(app, '/assets/index-v2.js'), [200, 'js-v2']);
+  assert.deepEqual(await offlineAsset(app, '/assets/index-v2.css'), [200, 'css-v2']);
+});
+test('an update fails without switching when a referenced bundle is not public', async () => {
+  const app = harness({ fetch: req => app.fetchImpl(req) });
+  app.fetchImpl = builtApp('v1'); await app.lifecycle('install'); await app.lifecycle('activate');
+  app.fetchImpl = req => new URL(req.url).pathname === '/assets/index-v2.js'
+    ? response('private', { headers: { 'Content-Type': 'text/javascript', 'Cache-Control': 'private' } }) : builtApp('v2')(req);
+  await assert.rejects(app.lifecycle('install'));
+  await app.lifecycle('activate');
+  assert.match(await offlineShell(app), /index-v1\.js/);
+  assert.deepEqual(await offlineAsset(app, '/assets/index-v1.js'), [200, 'js-v1']);
+});
 // PR #71 review (MINOR): QR links like /?dice=...&round=...&board=... are navigations with a query.
 test('offline QR navigation with query gets a controlled no-store 503 and is never cached', async () => {
   const app = harness({ fetch: offline });

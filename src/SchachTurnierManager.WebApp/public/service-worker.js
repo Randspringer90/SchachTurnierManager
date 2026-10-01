@@ -101,13 +101,21 @@ async function networkOnlyNavigation(request) {
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     // Validate all responses before writing. Never pre-cache a login redirect or private response.
-    const entries = await Promise.all(APP_SHELL.map(async path => {
+    const fetchPublic = async path => {
       const url = new URL(path, self.location.origin);
       const request = new Request(url.href, { credentials: 'omit', redirect: 'error', cache: 'no-cache' });
       const response = await fetch(request);
       if (!publicResponse(response, resourceKind(url))) throw new Error('Public app shell unavailable.');
       return [request, response];
-    }));
+    };
+    const shellEntries = await Promise.all(APP_SHELL.map(fetchPublic));
+    // The new slot must also hold the build bundles its index.html references; the old slot
+    // (with the previous bundles) is removed at activation. Only allowlisted /assets/*.js|css.
+    const [, indexResponse] = shellEntries.find(([request]) => new URL(request.url).pathname === '/index.html');
+    const html = await indexResponse.clone().text();
+    const bundles = [...new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]))]
+      .filter(path => ['js', 'css'].includes(resourceKind(new URL(path, self.location.origin))));
+    const entries = [...shellEntries, ...await Promise.all(bundles.map(fetchPublic))];
     // Fill the inactive slot from empty; the active slot keeps serving until activation.
     const staging = (await readSlot('active')) === 'b' ? 'a' : 'b';
     await caches.delete(SLOTS[staging]);
