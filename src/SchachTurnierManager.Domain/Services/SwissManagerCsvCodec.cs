@@ -198,7 +198,9 @@ public static class SwissManagerCsvCodec
             return year;
         }
 
-        if (DateOnly.TryParseExact(value, new[] { "yyyy/MM/dd", "dd.MM.yyyy" },
+        // "M"/"d" accept one or two digits, so 1990/6/15 and 15.6.1990 (accepted
+        // before STM-IE-010) stay valid while the calendar check still applies.
+        if (DateOnly.TryParseExact(value, new[] { "yyyy/M/d", "d.M.yyyy" },
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
             && IsPlausibleYear(date.Year))
         {

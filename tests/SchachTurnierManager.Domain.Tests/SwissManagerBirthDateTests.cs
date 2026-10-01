@@ -18,6 +18,12 @@ public sealed class SwissManagerBirthDateTests
     [InlineData("31.12.2100", 2100)]
     [InlineData(" 15.06.1990 ", 1990)]
     [InlineData(" 1990 ", 1990)]
+    // Calendar-valid dates without leading zeros were accepted before STM-IE-010 and must stay so.
+    [InlineData("1990/6/15", 1990)]
+    [InlineData("15.6.1990", 1990)]
+    [InlineData("1990/12/1", 1990)]
+    [InlineData("1.1.2000", 2000)]
+    [InlineData("29.2.2000", 2000)]
     public void ValidYearsAndDates_AreReducedToYear(string birth, int expected)
     {
         var result = SwissManagerCsvCodec.ImportPlayers($"Name,Birth\nSynthetic Alpha,{birth}\n");
@@ -40,8 +46,9 @@ public sealed class SwissManagerBirthDateTests
     [InlineData("1899")]
     [InlineData("2101")]
     [InlineData("0000")]
-    [InlineData("1990/6/15")]
-    [InlineData("15.6.1990")]
+    [InlineData("29.2.1900")]
+    [InlineData("31.4.1990")]
+    [InlineData("1990/2/30")]
     [InlineData("1990-06-15")]
     [InlineData("1990/06/15 trailing")]
     [InlineData("1990/06/15/extra")]

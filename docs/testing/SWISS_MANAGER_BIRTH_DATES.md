@@ -8,8 +8,10 @@ birth years. Validate the complete input before reducing it to a year.
 
 ## Contract
 
-Accept a four-digit ASCII year or an exact calendar date in yyyy/MM/dd or
-dd.MM.yyyy using invariant DateOnly.TryParseExact. Keep the existing inclusive
+Accept a four-digit ASCII year or an exact calendar date in yyyy/M/d or
+d.M.yyyy (month and day with one or two digits, e.g. 1990/6/15 and 15.6.1990,
+which were accepted before this change) using invariant DateOnly.TryParseExact.
+Keep the existing inclusive
 1900-2100 range; do not silently introduce a new age or current-year policy.
 Field-level whitespace trimming is unchanged.
 
