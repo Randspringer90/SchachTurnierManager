@@ -150,6 +150,13 @@ type ActionConfirmState = {
   run: () => Promise<void>;
 };
 
+/** STM-SEC-006: CSV exports prefix formula-like text with an apostrophe; a CSV re-import keeps it. */
+function csvReimportNote(lang: string): string {
+  return lang === 'en'
+    ? 'Note: CSV exports prefix text starting with =, +, -, @ (or a control character) with an apostrophe to block spreadsheet formulas. Re-importing such a CSV keeps that apostrophe as part of the value. Use the JSON backup for a lossless transfer.'
+    : 'Hinweis: CSV-Exporte stellen Texten, die mit =, +, -, @ (oder einem Steuerzeichen) beginnen, ein Apostroph voran, damit Tabellenprogramme keine Formeln ausführen. Ein erneuter CSV-Import übernimmt dieses Apostroph als Teil des Werts. Für eine verlustfreie Übernahme die JSON-Sicherung verwenden.';
+}
+
 export function App() {
   const { t, lang } = useI18n();
   const [health, setHealth] = React.useState<Health | null>(null);
@@ -3643,6 +3650,7 @@ function openRoundPrint(roundNumber: number) {
             <div className="grid two">
               <section>
                 <h4>Teilnehmer-CSV</h4>
+                <p className="muted csv-reimport-note">{csvReimportNote(lang)}</p>
                 <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => { setCsvContent(event.target.value); setImportPreview(null); setConfirmWarningImport(false); }} rows={7} />
                 <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setReplacePlayers(event.target.checked); setImportPreview(null); setConfirmWarningImport(false); }} /> vorhandene Teilnehmer ersetzen</label>
                 <div className="actions">
@@ -3695,6 +3703,7 @@ function openRoundPrint(roundNumber: number) {
                   <button type="button" className="secondary" onClick={() => openTournamentExport('players/export-swissmanager.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Export Swiss-Manager CSV' : 'Swiss-Manager CSV exportieren'}</button>
                   <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>{lang === 'en' ? 'Export TRF16' : 'TRF16 exportieren'}</button>
                 </div>
+                <p className="muted csv-reimport-note">{csvReimportNote(lang)}</p>
                 <div className="actions">
                   <label className="file-import-label">
                     {lang === 'en' ? 'Import Swiss-Manager CSV' : 'Swiss-Manager CSV importieren'}
