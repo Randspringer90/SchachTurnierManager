@@ -72,3 +72,23 @@ for (const name of ['ci.yml', 'security-gate.yml', 'pr-static-security-review.ym
     assert.doesNotMatch(source, /^\s+(?:contents|pull-requests): write$/m);
   });
 }
+
+for (const name of ['ci.yml', 'security-gate.yml', 'pr-static-security-review.yml']) {
+  test(`${name}: canonical existing owner feature branches remain compatible`, () => {
+    const source = readFileSync(new URL(name, workflows), 'utf8');
+    const pattern = source.match(/\$isOwnerPackage = \$env:HEAD_REF -cmatch '([^']+)'/)?.[1];
+    const regex = new RegExp(pattern.replace(/^\\A/, '^').replace(/\\z$/, '$'));
+    for (const prefix of ['owner', 'feature', 'fix', 'security', 'docs', 'refactor']) {
+      const branch = `${prefix}/STM-INFRA-009-pr-readiness`;
+      assert.equal(regex.exec(branch)?.[0], branch);
+    }
+    for (const branch of ['feature/free-form', 'feature/STM-INFRA-9-short', 'feature/STM-INFRA-009-nested/path', 'feature/STM-INFRA-009-trailing\n']) {
+      const match = regex.exec(branch);
+      assert.ok(!match || match[0] !== branch);
+    }
+    // Pattern acceptance alone must not bypass identity or current-head approval.
+    const ownerCheck = source.indexOf("$env:AUTHOR_ASSOCIATION -ne 'OWNER'");
+    assert.ok(ownerCheck >= 0 && ownerCheck < source.indexOf('$isOwnerPackage ='));
+    assert.ok(source.indexOf('if (-not (Test-ShaBoundOwnerReview))') > source.indexOf('$isOwnerPackage ='));
+  });
+}

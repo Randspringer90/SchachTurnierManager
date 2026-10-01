@@ -2,7 +2,9 @@
 
 Ausgangsbasis: development cc47f1101983d3f3272a893dbf54bd66fa2355b4. Drei gelesene Gate-YAML-Dateien wurden vor der Bearbeitung byteidentisch rekonstruiert und gegen ihre Git-Blob-SHAs geprueft. Deltas: Owner-Paketpattern, weiterhin zwingende Identitaets-/SHA-Barrieren, Branch-Policy und CI-Testaufruf.
 
-Lokal ausgefuehrt: Node 22.16.0, 27/27 Tests PASS (24 echte Bash-Branch-Pruefungen und drei statische Workflow-/Regex-Vertraege). Vier YAML-Dateien erfolgreich geparst. Kein Netzwerk und keine fremden PR-Skripte in den synthetischen Tests. PowerShell-End-to-End und vollstaendiger Repository-Build: NOT_RUN.
+Lokal ausgefuehrt: Node 22.16.0, 30/30 Tests PASS (24 echte Bash-Branch-Pruefungen und sechs statische Workflow-/Regex-Vertraege). Vier YAML-Dateien erfolgreich geparst. Kein Netzwerk und keine fremden PR-Skripte in den synthetischen Tests. PowerShell-End-to-End und vollstaendiger Repository-Build: NOT_RUN.
+
+Nach der Live-Beobachtung von PR #65 wurde der Owner-Ausfuehrungspfad auch fuer bestehende exakt normgerechte feature/fix/security/docs/refactor-Branches kompatibel gemacht. Owner-Identitaet, kanonisches Repository und SHA-gebundener Review bleiben zwingend. Die Ablehnung nicht normgerechter/fremder Pfade wird mitgeprueft.
 
 Keine Approval-Marker erzeugt, keine Review-/Branchschutzrechte geaendert, kein Merge/Release/Deployment, keine Dependency- oder Produktversionsaenderung. API-Commit ersetzt nicht Commit-If-Green. Unabhaengiger Owner-Review und volle DoD bleiben offen.
 

@@ -74,7 +74,7 @@ jobs:
               throw 'Ausführungsfreigabe ist ausschließlich für einen Owner-Branch im kanonischen Repository zulässig.'
             }
             $isIntegration = $env:HEAD_REF -cmatch '^integration/pr-[1-9][0-9]*-safe-adoption$'
-            $isOwnerPackage = $env:HEAD_REF -cmatch '\Aowner/STM-[A-Z]+-[0-9]{3}-[a-z0-9]+(?:-[a-z0-9]+)*\z'
+            $isOwnerPackage = $env:HEAD_REF -cmatch '\A(?:owner|feature|fix|security|docs|refactor)/STM-[A-Z]+-[0-9]{3}-[a-z0-9]+(?:-[a-z0-9]+)*\z'
             $isBootstrap = $AllowBootstrap -and $env:HEAD_REF -ceq 'security/STM-SEC-005-safe-pr-adoption'
             if (-not $isIntegration -and -not $isOwnerPackage -and -not $isBootstrap) {
               throw 'Ausfuehrungsfreigabe erfordert einen Owner-Paketbranch oder einen exakt benannten Integrationsbranch.'
