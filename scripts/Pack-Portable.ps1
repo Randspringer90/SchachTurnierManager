@@ -55,17 +55,32 @@ function Invoke-Checked {
 }
 
 Write-Host "[Pack-Portable] Ziel: $portableRoot"
-if (Test-Path -LiteralPath $portableRoot) {
-    if ((Get-Item -LiteralPath $portableRoot -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-        throw "Paketziel ist ein Link/Reparse-Point und wird nicht geloescht: $portableRoot"
+# The lexical check above is not enough: a junction or symlink anywhere between the
+# allowed root (output\ or tmp\) and the delete target could redirect the recursive
+# delete outside the repository. Every existing component on that path, including the
+# allowed root itself, must therefore be a real directory.
+$allowedBase = ($allowedRoots | Where-Object { $candidate.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1).TrimEnd('\', '/')
+$cursor = [System.IO.Path]::GetFullPath($portableRoot).TrimEnd('\', '/')
+while ($true) {
+    if (Test-Path -LiteralPath $cursor) {
+        if ((Get-Item -LiteralPath $cursor -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            throw "Pfadkomponente ist ein Link/Reparse-Point; Paketziel wird nicht geloescht: $cursor"
+        }
     }
+    if ($cursor -ieq $allowedBase) { break }
+    $parent = Split-Path -Parent $cursor
+    if ([string]::IsNullOrEmpty($parent) -or $parent -eq $cursor) { throw "Paketziel liegt nicht unter $allowedBase" }
+    $cursor = $parent.TrimEnd('\', '/')
+}
+if (Test-Path -LiteralPath $portableRoot) {
     Remove-Item -LiteralPath $portableRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path $appOutput, $dataDir | Out-Null
 
 Push-Location $webApp
 try {
-    $npmInstallCommand = "install"
+    # npm ci installs exactly the checked lockfile (STM-SEC-002); npm install could rewrite it.
+    $npmInstallCommand = "ci"
     Invoke-Checked "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
     Invoke-Checked "npm run build" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
 }

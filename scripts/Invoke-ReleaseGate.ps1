@@ -111,6 +111,14 @@ try {
         Pop-Location
     }
 
+    function Assert-LockfileUnchanged([string]$Stage) {
+        if ((Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash -ne $lockHashBefore) {
+            throw "package-lock.json wurde $Stage veraendert; von der geprueften Lockfile darf nicht abgewichen werden."
+        }
+    }
+    # Check before packaging so a deviation never reaches a package build.
+    Assert-LockfileUnchanged 'vor der Paketierung'
+
     if (-not $SkipPack) {
         Invoke-NativeStep 'Pack-Portable' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Pack-Portable.ps1') }
     } else {
@@ -118,9 +126,7 @@ try {
     }
 
     Assert-NoKnownBadFiles
-    if ((Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash -ne $lockHashBefore) {
-        throw 'package-lock.json wurde waehrend des ReleaseGates veraendert; von der geprueften Lockfile darf nicht abgewichen werden.'
-    }
+    Assert-LockfileUnchanged 'waehrend der Paketierung'
     $limitNote = if ($dependencyLimits.Count) { ' Einschraenkung: ' + ($dependencyLimits -join '; ') + ' (keine vollstaendige Herkunftsfreigabe).' } else { '' }
     if ($SkipPack) {
         Write-Host "[ReleaseGate] Gruen: Restore, Build, Tests und Frontend-Build erfolgreich; Paketierung uebersprungen.$limitNote"
