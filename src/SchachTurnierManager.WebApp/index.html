@@ -8,10 +8,18 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/icons/stm-icon.svg" />
     <link rel="apple-touch-icon" href="/icons/stm-icon.svg" />
+    <link rel="stylesheet" href="/startup-guard.css" />
+    <script defer src="/startup-guard.js"></script>
     <title>SchachTurnierManager</title>
   </head>
   <body>
     <div id="root"></div>
+    <section id="stm-startup-status" class="stm-startup-status" hidden aria-labelledby="stm-startup-heading">
+      <h1 id="stm-startup-heading">SchachTurnierManager wird gestartet.</h1>
+      <p id="stm-startup-message" role="status" aria-live="polite" aria-atomic="true">Falls diese Ansicht stehen bleibt, pr&uuml;fe die Verbindung zum Turnierrechner. Du kannst die Startseite erneut &ouml;ffnen.</p>
+      <p><a href="/">Startseite erneut &ouml;ffnen</a></p>
+    </section>
+    <noscript><section class="stm-startup-status" aria-label="JavaScript erforderlich"><h1>JavaScript ist erforderlich.</h1><p>Bitte aktiviere JavaScript f&uuml;r diese Anwendung. Ohne JavaScript kann die Turnierverwaltung nicht gestartet werden.</p></section></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
