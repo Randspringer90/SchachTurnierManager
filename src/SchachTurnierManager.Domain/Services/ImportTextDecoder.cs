@@ -3,12 +3,9 @@ using System.Text;
 namespace SchachTurnierManager.Domain.Services;
 
 /// <summary>
-/// STM-IE-002: Dekodiert Import-Dateien aus dem Swiss-Manager-/Chess-Results-Oekosystem, die
-/// haeufig nicht in UTF-8 vorliegen (Excel/Windows exportiert traditionell in der lokalen
-/// Codepage). Erkennung: strikter UTF-8-Versuch zuerst (inkl. BOM-Behandlung); nur wenn die
-/// Bytes keine gueltige UTF-8-Sequenz ergeben, Fallback auf Windows-1252 (deckt Umlaute/
-/// franzoesische/spanische Namen weitgehend ab). Windows-1252 kann praktisch jede Bytefolge
-/// dekodieren, ist also bewusst der letzte Schritt, nicht der erste.
+/// Decodes import files without guessing an encoding that contradicts their BOM.
+/// Explicit Unicode signatures use strict decoding. Unmarked files retain the
+/// existing strict UTF-8 first, Windows-1252 fallback behaviour.
 /// </summary>
 public static class ImportTextDecoder
 {
@@ -19,34 +16,63 @@ public static class ImportTextDecoder
 
     public static string Decode(byte[] bytes)
     {
+        ArgumentNullException.ThrowIfNull(bytes);
         if (bytes.Length == 0)
         {
             return string.Empty;
         }
 
-        if (TryDecodeStrictUtf8(bytes, out var utf8Text))
+        Encoding? declaredEncoding = null;
+        var signatureLength = 0;
+
+        // UTF-32 LE shares the first two bytes with UTF-16 LE: longest first.
+        if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0 && bytes[3] == 0)
         {
-            return utf8Text;
+            declaredEncoding = new UTF32Encoding(false, false, true);
+            signatureLength = 4;
+        }
+        else if (bytes.Length >= 4 && bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0xFE && bytes[3] == 0xFF)
+        {
+            declaredEncoding = new UTF32Encoding(true, false, true);
+            signatureLength = 4;
+        }
+        else if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        {
+            declaredEncoding = new UTF8Encoding(false, true);
+            signatureLength = 3;
+        }
+        else if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+        {
+            declaredEncoding = new UnicodeEncoding(false, false, true);
+            signatureLength = 2;
+        }
+        else if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+        {
+            declaredEncoding = new UnicodeEncoding(true, false, true);
+            signatureLength = 2;
         }
 
-        var windows1252 = Encoding.GetEncoding(1252);
-        return windows1252.GetString(bytes);
-    }
+        if (declaredEncoding is not null)
+        {
+            try
+            {
+                return declaredEncoding.GetString(bytes.AsSpan(signatureLength));
+            }
+            catch (DecoderFallbackException)
+            {
+                // Existing API handlers accept ArgumentException. Do not expose
+                // decoder messages/inner exceptions containing imported bytes.
+                throw new ArgumentException("Die Importdatei enthaelt ungueltige Unicode-Daten fuer ihre Byte-Reihenfolgemarkierung.", nameof(bytes));
+            }
+        }
 
-    private static bool TryDecodeStrictUtf8(byte[] bytes, out string text)
-    {
-        var strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
         try
         {
-            var hasBom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
-            var span = hasBom ? bytes.AsSpan(3) : bytes.AsSpan();
-            text = strictUtf8.GetString(span);
-            return true;
+            return new UTF8Encoding(false, true).GetString(bytes);
         }
         catch (DecoderFallbackException)
         {
-            text = string.Empty;
-            return false;
+            return Encoding.GetEncoding(1252).GetString(bytes);
         }
     }
 }
