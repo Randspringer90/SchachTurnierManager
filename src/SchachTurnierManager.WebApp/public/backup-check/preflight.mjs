@@ -9,6 +9,15 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const id = value => typeof value === 'string' && value.length === 36 && GUID.test(value) && value !== EMPTY_GUID;
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
 const positive = value => Number.isSafeInteger(value) && value > 0;
+// DateOnly is serialized as yyyy-MM-dd; reject impossible calendar dates as well.
+const isoDate = value => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+};
+// Backend TournamentSettings.PlannedRounds default when the field is absent.
+const DEFAULT_PLANNED_ROUNDS = 5;
 
 // JSON.parse alone discards duplicate properties. Detect duplicates (including
 // escaped spellings) before parsing; strings are decoded as JSON data, never code.
@@ -68,6 +77,9 @@ export function inspectBackup(input) {
   if (!id(data.id)) add('INVALID_TOURNAMENT_ID', '$.id');
   if (!nonempty(data.name)) add('MISSING_NAME', '$.name');
   if (!object(data.settings)) add('MISSING_SETTINGS', '$.settings');
+  // The backend silently uses today when createdOn is missing; that would change the backup.
+  if (!Object.hasOwn(data, 'createdOn') || data.createdOn === null) add('MISSING_CREATED_ON', '$.createdOn');
+  else if (!isoDate(data.createdOn)) add('INVALID_CREATED_ON', '$.createdOn');
   const arrays = ['players', 'rounds', 'auditJournal'];
   for (const field of arrays) {
     if (!Array.isArray(data[field])) add('MISSING_ARRAY', `$.${field}`);
@@ -87,7 +99,8 @@ export function inspectBackup(input) {
     if (!nonempty(player.name)) add('MISSING_NAME', `${where}.name`);
     else {
       const normalized = player.name.trim().toLowerCase();
-      if (names.has(normalized)) add('DUPLICATE_PLAYER_NAME', `${where}.name`, 'warning');
+      // EnsureUniquePlayerNames rejects the whole import, so this is an error, not a warning.
+      if (names.has(normalized)) add('DUPLICATE_PLAYER_NAME', `${where}.name`);
       names.add(normalized);
     }
   }
@@ -122,6 +135,12 @@ export function inspectBackup(input) {
       }
     }
   }
+  // ValidateImportedRounds: rounds must run 1..n without gaps and n <= PlannedRounds.
+  const numbers = [...roundNumbers].filter(positive).sort((a, b) => a - b);
+  if (numbers.some((number, index) => number !== index + 1)) add('ROUND_SEQUENCE_GAP', '$.rounds');
+  const planned = data.settings.plannedRounds;
+  if (planned !== undefined && !Number.isSafeInteger(planned)) add('INVALID_PLANNED_ROUNDS', '$.settings.plannedRounds');
+  else if (data.rounds.length > Math.max(1, planned ?? DEFAULT_PLANNED_ROUNDS)) add('TOO_MANY_ROUNDS', '$.rounds');
   report.summary = {
     name: data.name.trim().slice(0, 160), players: data.players.length,
     rounds: data.rounds.length, boards, auditEntries: data.auditJournal.length,

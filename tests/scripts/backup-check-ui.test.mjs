@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mountBackupCheck } from '../../src/SchachTurnierManager.WebApp/public/backup-check/app.mjs';
 import { readFileSync } from 'node:fs';
 
-const bytes = name => new TextEncoder().encode(JSON.stringify({ id: '10000000-0000-0000-0000-000000000001', name, settings: {}, players: [], rounds: [], auditJournal: [] }));
+const bytes = name => new TextEncoder().encode(JSON.stringify({ id: '10000000-0000-0000-0000-000000000001', name, createdOn: '2026-10-01', settings: {}, players: [], rounds: [], auditJournal: [] }));
 function dom() {
   class Element {
     constructor(tag = 'div') { this.tagName = tag; this.textContent = ''; this.children = []; this.handlers = new Map(); this.value = ''; this.files = []; }

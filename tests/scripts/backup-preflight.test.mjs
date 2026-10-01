@@ -72,9 +72,41 @@ test('bye with a null black reference is valid', () => {
 test('the same player may appear again in a later round', () => {
   const data = make(); data.rounds.push({ ...structuredClone(data.rounds[0]), roundNumber: 2 }); assert.equal(inspect(data).status, 'STRUCTURE_OK');
 });
-test('duplicate display names are warnings, not fabricated full backend validation', () => {
+// PR #77 review: the preview must not report STRUCTURE_OK for files the backend import rejects
+// or silently changes (EnsureUniquePlayerNames, ValidateImportedRounds, CreatedOn default).
+test('duplicate display names are errors because the backend import rejects them', () => {
   const data = make(); data.players[1].name = ' synthetic alpha '; const report = inspect(data);
-  assert.equal(report.status, 'WARNINGS'); assert.ok(has(report, 'DUPLICATE_PLAYER_NAME'));
+  assert.equal(report.status, 'INVALID'); assert.ok(has(report, 'DUPLICATE_PLAYER_NAME'));
+  assert.equal(report.issues.find(issue => issue.code === 'DUPLICATE_PLAYER_NAME').severity, 'error');
+});
+test('missing createdOn is an error instead of a silent change to today', () => {
+  const data = make(); delete data.createdOn; const report = inspect(data);
+  assert.equal(report.status, 'INVALID'); assert.ok(has(report, 'MISSING_CREATED_ON'));
+});
+for (const value of ['2026-13-01', '2026-02-30', '01.10.2026', '2026-10-1', 42, null]) {
+  test(`invalid createdOn ${JSON.stringify(value)} is an error`, () => {
+    const data = make(); data.createdOn = value; const report = inspect(data);
+    assert.equal(report.status, 'INVALID'); assert.ok(has(report, 'INVALID_CREATED_ON') || has(report, 'MISSING_CREATED_ON'));
+  });
+}
+test('a backup that starts with round 2 is rejected like the backend does', () => {
+  const data = make(); data.rounds[0].roundNumber = 2; const report = inspect(data);
+  assert.equal(report.status, 'INVALID'); assert.ok(has(report, 'ROUND_SEQUENCE_GAP'));
+});
+test('a gap between rounds is rejected', () => {
+  const data = make(); data.rounds.push({ ...structuredClone(data.rounds[0]), roundNumber: 3 }); const report = inspect(data);
+  assert.equal(report.status, 'INVALID'); assert.ok(has(report, 'ROUND_SEQUENCE_GAP'));
+});
+test('more rounds than planned are rejected', () => {
+  const data = make(); data.settings = { plannedRounds: 1 }; data.rounds.push({ ...structuredClone(data.rounds[0]), roundNumber: 2 });
+  const report = inspect(data); assert.equal(report.status, 'INVALID'); assert.ok(has(report, 'TOO_MANY_ROUNDS'));
+});
+test('without plannedRounds the backend default of five rounds applies', () => {
+  const data = make();
+  for (const roundNumber of [2, 3, 4, 5]) data.rounds.push({ ...structuredClone(data.rounds[0]), roundNumber });
+  assert.equal(inspect(data).status, 'STRUCTURE_OK');
+  data.rounds.push({ ...structuredClone(data.rounds[0]), roundNumber: 6 });
+  assert.ok(has(inspect(data), 'TOO_MANY_ROUNDS'));
 });
 test('IDs are compared case insensitively', () => {
   const data = make(); const key = 'abcdefab-cdef-abcd-abcd-abcdefabcdef';

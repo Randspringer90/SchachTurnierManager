@@ -12,7 +12,12 @@ limit, depth 64, list size 20000 and a bounded 100-entry issue display. The nati
 camelCase TournamentState shape is checked for required root fields and lists,
 nonzero GUID identifiers, repeated player/round/board identifiers and valid
 per-round player references. Self-pairing and multiple assignments are errors.
-Duplicate display names are warnings. Other JSON export/audit wrappers are rejected.
+The preview mirrors the backend import contract where it is known, so that it never
+reports STRUCTURE_OK for a file the import rejects or silently changes: duplicate
+display names are errors (EnsureUniquePlayerNames), rounds must run 1..n without
+gaps and not exceed settings.plannedRounds (default 5, ValidateImportedRounds), and
+createdOn must be a valid yyyy-MM-dd date (a missing value would silently become
+"today"). Other JSON export/audit wrappers are rejected.
 
 All user text uses textContent. CSP disallows connections/forms and only loads
 local script/style resources. New file selection or reset invalidates pending
@@ -29,7 +34,7 @@ Before an actual import, preserve the current state and make that decision separ
 npm --prefix src/SchachTurnierManager.WebApp run test:backup
 ```
 
-65/65 tests passed: 53 core cases and 12 synthetic DOM/source-contract cases.
+76/76 tests passed (core cases incl. the backend-contract cases plus synthetic DOM/source-contract cases).
 They cover malformed input, limits, duplicate escaped keys, references, byes,
 Unicode/BOM, nonmutation, literal rendering, stale reads, reset and read failures.
 These are not browser tests. The attempted Chromium navigation was blocked with
@@ -42,11 +47,14 @@ prebuild chains. Preserve all other scripts from #69/#71/#72 and newer dependenc
 when merging package.json. No lockfile/version change is required. The original
 entry HTML and package.json were byte-verified before the targeted changes.
 
-## Remaining integration documentation
+## Remaining scope (STM-UX-003 stays open)
 
-BACKLOG.md / CHANGELOG.md synchronization remains required before merge. Existing
-STM-UX-003 should reference issue #73 and this PR as an In Review subpackage, not
-mark all Backup/Restore UX Done. Proposed Unreleased entry:
-"STM-UX-003: added a browser-local structural backup preview with bounded validation,
-literal findings and no upload/import side effects. Actual restore remains separate."
-The existing canonical planning file remains the only task authority.
+The preview is a standalone page. It does NOT protect the actual import yet: the
+existing import still accepts unchecked text and overwrites with
+overwriteExisting=true, and the checked file is not handed to the import as exactly
+that content. Wiring the preview into the import flow (import only the confirmed,
+unchanged bytes, with an explicit overwrite confirmation) is the next STM-UX-003
+subpackage. Until then the page is an optional pre-check, not a safety barrier.
+
+BACKLOG.md and CHANGELOG.md record this subpackage (issue #73, PR #77) as partial
+delivery; Backup/Restore UX as a whole is not Done.
