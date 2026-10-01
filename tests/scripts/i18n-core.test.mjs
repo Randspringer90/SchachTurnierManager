@@ -11,6 +11,9 @@ for (const [stored, preferred, expected] of [
   [null, ['zz-ZZ'], 'de'], ['constructor', [], 'de'], [42, [null, 'en'], 'en'],
   ['english', [], 'de'], ['es<script>', ['en'], 'en'], ['es--AR', [], 'de'],
   ['es-', [], 'de'], [null, ['EN-us'], 'en'], ['__proto__', ['pt'], 'pt'],
+  // BCP-47 extensions and private use use one-character singletons (u, t, x).
+  [null, ['en-US-u-ca-gregory'], 'en'], [null, ['es-x-private'], 'es'], [null, ['pt-BR-t-de'], 'pt'],
+  ['es-u-', [], 'de'], [null, ['en-u-toolongsubtag'], 'de'],
 ]) {
   test(`language ${JSON.stringify([stored, preferred])}`, () => assert.equal(select(stored, preferred), expected));
 }

@@ -7,7 +7,8 @@ export function selectLanguage<T extends string>(
     if (typeof candidate !== 'string') continue;
     const tag = candidate.trim().toLowerCase();
     // Supported languages use two-letter bases; ignore malformed preference data.
-    if (!/^[a-z]{2}(?:[-_][a-z0-9]{2,8})*$/.test(tag)) continue;
+    // BCP-47 subtags are 1-8 alphanumerics (singletons such as u, t, x introduce extensions).
+    if (!/^[a-z]{2}(?:[-_][a-z0-9]{1,8})*$/.test(tag)) continue;
     const code = tag.split(/[-_]/, 1)[0];
     const match = supported.find(language => language === code);
     if (match !== undefined) return match;
