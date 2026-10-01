@@ -76,6 +76,8 @@ try {
     Assert-NoKnownBadFiles
     Write-NodeEngineHint
 
+    Invoke-NativeStep 'Dependency supply-chain safety' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Test-DependencySupplyChainSafety.ps1') -Root $Root }
+
     Invoke-NativeStep 'dotnet restore' { dotnet restore }
     Invoke-NativeStep 'dotnet build' { dotnet build }
     if (-not $NoDotnetTest) {
