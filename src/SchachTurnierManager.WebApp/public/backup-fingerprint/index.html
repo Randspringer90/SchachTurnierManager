@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Backup-Pr&uuml;fsumme | SchachTurnierManager</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><p><a href="/">Zur Turnierverwaltung</a></p><h1>Backup-Pr&uuml;fsumme</h1>
+<p>Berechne SHA-256 f&uuml;r eine selbst ausgew&auml;hlte Datei oder vergleiche sie mit einem separat erhaltenen Wert. Maximal 5 MiB. Die Dateibytes verlassen diese Seite nicht.</p>
+<p class="notice">Eine passende Pr&uuml;fsumme beweist keine vertrauensw&uuml;rdige Herkunft und keine Wiederherstellbarkeit. Schon andere Leerzeichen, Zeilenumbr&uuml;che oder ein BOM &auml;ndern den Wert. Es wird nichts importiert, hochgeladen oder gespeichert.</p>
+<label for="file">Lokale Backup-Datei</label><input id="file" type="file">
+<label for="expected">Bekannte SHA-256-Pr&uuml;fsumme (optional)</label><input id="expected" type="text" maxlength="128" autocomplete="off" spellcheck="false" aria-describedby="hash-help">
+<p id="hash-help">Nur 64 hexadezimale Zeichen, ohne Dateinamen oder Pr&auml;fix. Keine zus&auml;tzlichen Zeichen innerhalb des Werts.</p>
+<button id="start" type="button">Pr&uuml;fsumme pr&uuml;fen</button><button id="clear" type="button">Auswahl zur&uuml;cksetzen</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<section id="result" hidden><h2>SHA-256 der ausgew&auml;hlten Bytes</h2><label for="hash">Pr&uuml;fsumme zum manuellen Kopieren</label><textarea id="hash" rows="3" readonly spellcheck="false"></textarea></section>
+<noscript><p>JavaScript ist f&uuml;r die lokale Pr&uuml;fung erforderlich.</p></noscript></main><script type="module" src="./app.mjs"></script></body></html>
