@@ -1,0 +1,11 @@
+body { margin: 0; color: #15243b; background: #f4f6f9; font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 68rem; margin: 2rem auto; padding: 1.5rem; background: white; border: 1px solid #ced5df; border-radius: .6rem; }
+h1 { line-height: 1.25; } label { display: block; font-weight: 600; margin-top: 1rem; }
+input, button, textarea { font: inherit; box-sizing: border-box; max-width: 100%; }
+input[type=text], textarea { width: 100%; padding: .6rem; border: 1px solid #657287; border-radius: .25rem; }
+button { padding: .65rem 1.1rem; margin: 1rem .4rem .4rem 0; cursor: pointer; }
+button:disabled { cursor: default; } :focus-visible { outline: 3px solid #145cb3; outline-offset: 3px; }
+.notice { padding: .8rem 1rem; border-left: .3rem solid #145cb3; background: #edf3fc; }
+.table-wrap { overflow-x: auto; } table { width: 100%; border-collapse: collapse; } th, td { border-bottom: 1px solid #ced5df; padding: .5rem; text-align: left; overflow-wrap: anywhere; }
+[hidden] { display: none !important; } @media (max-width: 44rem) { main { margin: .5rem; padding: 1rem; } }
+@media (forced-colors: active) { main, .notice { border: 1px solid CanvasText; } }
