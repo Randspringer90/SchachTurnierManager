@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Backups vergleichen | SchachTurnierManager</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><p><a href="/">Zur Turnierverwaltung</a></p><h1>Zwei Turnierbackups vergleichen</h1>
+<p>W&auml;hle zwei native JSON-Backups desselben Turniers, jeweils maximal 5 MiB. Der Vergleich erfolgt nur im Browser. Kein Upload, kein Import und kein &Uuml;berschreiben.</p>
+<p class="notice">Links ist der Ausgangsstand, rechts der Vergleichsstand &ndash; Dateinamen oder Zeitstempel bestimmen nicht automatisch, welches Backup neuer ist. Der Vergleich pr&uuml;ft keine Schachregeln und gibt keine Wiederherstellung frei.</p>
+<label for="before">Linkes Backup (Ausgangsstand)</label><input id="before" type="file" accept=".json,application/json">
+<label for="after">Rechtes Backup (Vergleichsstand)</label><input id="after" type="file" accept=".json,application/json">
+<button id="start" type="button">Backups vergleichen</button><button id="clear" type="button">Auswahl zur&uuml;cksetzen</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<section id="result" hidden><h2>Unterschiede von links nach rechts</h2><pre id="details"></pre></section>
+<details><summary>Was wird verglichen?</summary><p>Spieler und Audit-Eintr&auml;ge werden nach GUID, Runden nach Rundennummer zugeordnet. Neue, entfernte und ge&auml;nderte Eintr&auml;ge werden gez&auml;hlt. Pro Gruppe werden bis zu 200 IDs angezeigt. Inhalte einschlie&szlig;lich Paarungen, Ergebnissen und Zusatzfeldern werden ber&uuml;cksichtigt; Namen und Rohwerte werden nicht ausgegeben.</p><p>Leerzeichen au&szlig;erhalb von Texten, Objektschl&uuml;sselreihenfolge und die Reihenfolge der drei Hauptlisten werden ignoriert. Andere Array-Reihenfolgen und Zahlenschreibweisen (etwa 1 und 1.0) z&auml;hlen konservativ als Unterschied. CamelCase und PascalCase werden zum Auffinden der Hauptfelder unterst&uuml;tzt, aber nicht als identische Inhalte normalisiert.</p></details>
+<noscript><p>JavaScript ist f&uuml;r den lokalen Vergleich erforderlich.</p></noscript></main><script type="module" src="./app.mjs"></script></body></html>
