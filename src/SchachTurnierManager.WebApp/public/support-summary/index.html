@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Datensparsamer Supportbericht | SchachTurnierManager</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><p><a href="/">Zur Turnierverwaltung</a></p><h1>Datensparsamer Supportbericht</h1>
+<p>Ermittle Kennzahlen aus einer nativen JSON-Turniersicherung, ohne die Sicherung selbst weiterzugeben. Die Auswertung bleibt lokal im Browser; es gibt keinen Upload und keinen automatischen Export.</p>
+<p class="notice">Datensparsam bedeutet nicht garantiert anonym: Auch Anzahlen k&ouml;nnen R&uuml;ckschl&uuml;sse erm&ouml;glichen. Vor manuellem Kopieren und Weitergeben selbst pr&uuml;fen. Dies ersetzt weder Datenschutzpr&uuml;fung noch Backupvalidierung.</p>
+<p>Ausgegeben werden nur Anzahlen von Spielern, Runden, Paarungen, Audit-Eintr&auml;gen sowie gesperrten und best&auml;tigten Runden. Namen, IDs, Datumsangaben, Ratingwerte, Texte, Pfade, Einstellungen und Datei-Hashes fehlen absichtlich.</p>
+<label for="file">Native JSON-Sicherung (maximal 5 MiB)</label><input id="file" type="file" accept=".json,application/json">
+<button id="start" type="button">Kennzahlen ermitteln</button><button id="clear" type="button">Zur&uuml;cksetzen</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<section id="result" hidden><h2>Vorschau zur eigenen Pr&uuml;fung</h2><label for="output">Kennzahlen zum manuellen Kopieren</label><textarea id="output" rows="22" readonly spellcheck="false"></textarea></section>
+
+<noscript><p>JavaScript ist f&uuml;r diese Funktion erforderlich.</p></noscript></main><script type="module" src="./main.js"></script></body></html>
