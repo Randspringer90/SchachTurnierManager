@@ -83,8 +83,8 @@ exit $ExitCode
     catch { $rejected = $true }
     Assert-True $rejected 'A bare process ID was accepted as an owned handle.'
 
-    # The two modified callers must not restore shell/browser window launches.
-    foreach ($relativePath in @('scripts/Start-Dev.ps1', 'scripts/Invoke-ClickInstallReadiness.ps1')) {
+    # The modified callers must not restore shell/browser window launches.
+    foreach ($relativePath in @('scripts/Start-Dev.ps1', 'scripts/Invoke-ClickInstallReadiness.ps1', 'scripts/Invoke-LoggingReadiness.ps1')) {
         $parseErrors = $null
         $tokens = $null
         $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $Root $relativePath), [ref]$tokens, [ref]$parseErrors)
