@@ -38,8 +38,8 @@ const cases = [
 
 for (const [head, base, association, headRepository, allowed] of cases) {
   test(`Bash policy: ${JSON.stringify(head)} -> ${base} / ${association || 'missing'}`, () => {
-    const result = spawnSync('bash', ['--noprofile', '--norc', '-c', script], {
-      encoding: 'utf8', timeout: 5000,
+    const result = spawnSync(process.env.STM_BASH_EXE || 'bash', ['--noprofile', '--norc', '-c', script], {
+      encoding: 'utf8', timeout: 5000, windowsHide: true,
       env: { PATH: process.env.PATH, HEAD_REF: head, BASE_REF: base,
         AUTHOR_ASSOCIATION: association, HEAD_REPOSITORY: headRepository, REPOSITORY: canonical }
     });
@@ -51,7 +51,7 @@ for (const [head, base, association, headRepository, allowed] of cases) {
 for (const name of ['ci.yml', 'security-gate.yml', 'pr-static-security-review.yml']) {
   test(`${name}: matching owner pattern and unchanged approval barriers`, () => {
     const source = readFileSync(new URL(name, workflows), 'utf8');
-    const pattern = source.match(/\$isOwnerPackage = \$env:HEAD_REF -cmatch '([^']+)'/)?.[1];
+    const pattern = source.match(/\$isOwnerPackage = -not \$AllowBootstrap -and \$env:HEAD_REF -cmatch '([^']+)'/)?.[1];
     assert.ok(pattern);
     const regex = new RegExp(pattern.replace(/^\\A/, '^').replace(/\\z$/, '$'));
     for (const [head, base, association, repository, allowed] of cases.filter(c => c[0].startsWith('owner/'))) {
@@ -76,7 +76,7 @@ for (const name of ['ci.yml', 'security-gate.yml', 'pr-static-security-review.ym
 for (const name of ['ci.yml', 'security-gate.yml', 'pr-static-security-review.yml']) {
   test(`${name}: canonical existing owner feature branches remain compatible`, () => {
     const source = readFileSync(new URL(name, workflows), 'utf8');
-    const pattern = source.match(/\$isOwnerPackage = \$env:HEAD_REF -cmatch '([^']+)'/)?.[1];
+    const pattern = source.match(/\$isOwnerPackage = -not \$AllowBootstrap -and \$env:HEAD_REF -cmatch '([^']+)'/)?.[1];
     const regex = new RegExp(pattern.replace(/^\\A/, '^').replace(/\\z$/, '$'));
     for (const prefix of ['owner', 'feature', 'fix', 'security', 'docs', 'refactor']) {
       const branch = `${prefix}/STM-INFRA-009-pr-readiness`;

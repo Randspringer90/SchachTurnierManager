@@ -1,7 +1,7 @@
 # Codex SOL v1 completion run
 
 - Zeit: 2026-07-15 17:56 (Europe/Berlin)
-- Quelle: Codex, GPT-5.6 Sol, hohe Reasoning-/Qualitaetseinstellung
+- Quelle: Codex, Sol-Profil, hohe Reasoning-/Qualitaetseinstellung
 - Ziel: Den SchachTurnierManager autonom, sicher und in vollstaendigen,
   jeweils getesteten Arbeitspaketen in Richtung v1.0.0 weiterentwickeln.
 - Datenschutz: Diese persistierte Promptfassung ersetzt absolute lokale Pfade durch

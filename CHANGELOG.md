@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- STM-AI-007: Konkrete KI-Modellvarianten in `config/model-catalog.json` zentralisiert. Runtime-Adapter loesen stabile Schluessel auf; Katalog-/Provider-Schema, offizielle Quellen und Sicherheitsgrenzen werden fail-closed geprueft. Anleitung fuer regelmaessige Aktualisierung auf die neueste verifizierte stabile Generation; historische Laufangaben versionsneutral gehalten.
+
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-

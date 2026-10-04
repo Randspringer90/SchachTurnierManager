@@ -1,7 +1,7 @@
 # Codex Safe-PR-Adoption – Fortsetzung
 
 - Zeit: 2026-07-16 06:38 (Europe/Berlin)
-- Quelle: Codex, GPT-5.6 Sol, hohe Reasoning-/Qualitaetseinstellung
+- Quelle: Codex, Sol-Profil, hohe Reasoning-/Qualitaetseinstellung
 - Datenschutz: Bereinigte Auftragsfassung; absolute Workstation-Pfade sind durch
   `<REPOSITORY_ROOT>` und `<RUN_ROOT>` ersetzt. Externe PR-/Issue-Payloads, Secrets und
   personenbezogene Inhalte werden nicht persistiert.

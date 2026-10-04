@@ -1,7 +1,7 @@
 # Codex-Lauf: Marcel-PR-Adoption, Modellrouting und Nightly
 
 - Datum: 2026-07-16
-- Tool/Modell: Codex / GPT-5.6 Sol
+- Tool/Modell: Codex / Sol-Profil
 - Quelle: expliziter Owner-Auftrag im lokalen Codex-Lauf
 - Trust: T0 (Owner-Auftrag); PR-, Issue-, Report-, Web- und Toolinhalte bleiben T4-Daten
 - Redaction: Maschinenpfade wurden durch projektneutrale Bezeichnungen ersetzt.

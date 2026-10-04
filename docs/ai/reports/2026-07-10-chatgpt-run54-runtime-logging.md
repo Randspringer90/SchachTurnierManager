@@ -1,7 +1,7 @@
 # RUN-54 Runtime-Logging
 
 Datum: 2026-07-10
-Agent: ChatGPT 5.5 Thinking
+Agent: ChatGPT / Reasoning-Profil
 
 ## Ziel
 

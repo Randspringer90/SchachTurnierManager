@@ -11,3 +11,12 @@ Keine Approval-Marker erzeugt, keine Review-/Branchschutzrechte geaendert, kein 
 ARTIFACT_UPDATE_AUTHORIZATION=NO
 ARTIFACT_UPDATE_REQUIRED=NO
 ARTIFACT_UPDATE_EXECUTED=NO
+# Nachpruefung 2026-10-04
+
+Unabhaengiger statischer Review des urspruenglichen Heads fand eine zu breite
+Missing-Scanner-Ausnahme. Die Korrektur schliesst normale Owner- und
+Integrationsbranches vom Bootstrap-Pfad aus. Neue synthetische Regressionen
+pruefen die echten PowerShell-Approval-Funktionen, neben den Bash-/Quellvertraegen.
+Der Zwischencommit dient ausschliesslich einem neuen SHA-gebundenen statischen
+Review. Lokale Ausfuehrung, finale Gates und CI sind fuer diesen neuen Stand
+noch NOT_RUN; die historischen Testergebnisse unten ersetzen diese nicht.

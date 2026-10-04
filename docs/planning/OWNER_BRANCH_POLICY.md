@@ -10,6 +10,8 @@ Der Owner-Ausfuehrungspfad verlangt weiterhin OWNER-Autor und Head im kanonische
 
 Ein zulaessiger Branchname ist KEINE Ausfuehrungsfreigabe. Die drei Gate-Workflows verlangen weiterhin den exakten Head-SHA, den Repository-Owner und dessen passenden Review. BLOCKED_UNVERIFIED bleibt immer gesperrt; Base-SHA-Checkout und read-only Permissions bleiben erhalten. Keine automatische Review-Erzeugung, kein Auto-Merge.
 
+Fehlt das statische Skript im Base-Stand, ist ausschliesslich der exakt benannte historische Bootstrap-Branch mit passendem SHA-Review zulaessig. Owner-Paket- und Integrationsbranches duerfen diese Ausnahme nicht verwenden. Die erweiterten Tests fuehren die echten PowerShell-Approval-Funktionen mit synthetischen gh-Antworten aus; keine Netzwerk- oder Credential-Verwendung.
+
 Tests: `node --test tests/scripts/owner-branch-policy.test.mjs`. 30/30 PASS: 24 echte Bash-Fixtures, drei statische Workflow-Vertraege und drei Kompatibilitaetsmatrizen fuer bestehende normgerechte Owner-Branches. CI fuehrt sie erst nach bestehender statischer Freigabe aus. Die PowerShell-Funktionen selbst sind damit noch nicht end-to-end getestet.
 
 Der PR loest das Namensproblem. Er beseitigt nicht die absichtlich fehlenden Owner-Reviews bei PR #57, #59 oder #61. Vor Merge bleiben Owner-/CODEOWNERS-Review, alle Projekt-Gates und Synchronisierung der kanonischen Backlog-/Changelog-Dokumentation erforderlich.

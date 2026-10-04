@@ -47,6 +47,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-AI-004 | Nightly-/Resume-Unterbau | P1 | Done | ai | owner | [#20](https://github.com/Randspringer90/SchachTurnierManager/issues/20), [PR #21](https://github.com/Randspringer90/SchachTurnierManager/pull/21), Merge `a6df385` | v1.0.0 |
 | STM-AI-005 | Providerübergreifende Promptzerlegung und Routed Execution | P1 | Done | ai | owner | [#26](https://github.com/Randspringer90/SchachTurnierManager/issues/26) (PR [#29](https://github.com/Randspringer90/SchachTurnierManager/pull/29), Merge `8305814`) | v1.0.0 |
 | STM-AI-006 | Aktive zentrale Nightly-Orchestrierung | P1 | Done | ai | owner | [#27](https://github.com/Randspringer90/SchachTurnierManager/issues/27) (PR [#32](https://github.com/Randspringer90/SchachTurnierManager/pull/32), Merge `c1a2d4c`; zentrale Registrierung ACTIVE 2026-07-16) | v1.0.0 |
+| STM-AI-007 | Aktuelle Modellgenerationen zentral und versionsneutral pflegen | P1 | InProgress | ai | owner | Owner-Auftrag 2026-10-04; bestehender PR #98 ueberlappt | v1.0.0 |
 | STM-INFRA-001 | Skriptstruktur-Migration | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-002 | Performance- & Belastungstests | P2 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-003 | Codex-Contributor-Starterpaket (Doku/Vorlage/Generator/Tests) | P3 | Done | infrastructure | owner | – | development |

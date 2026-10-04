@@ -1,6 +1,6 @@
 # Fabel5-Lauf 2026-07-17 – Marcels PRs, Push-Gate, Kollaborationsmodell, Android
 
-Orchestrator: claude-fable-5 (interaktiv, Owner-Auftrag)
+Orchestrator: Claude / Fabel-Profil (historischer Lauf) (interaktiv, Owner-Auftrag)
 Runordner: `<lokaler Runordner>`
 
 | | |
