@@ -2,6 +2,13 @@
   "$schema": "./provider-runtime-policy.schema.json",
   "schemaVersion": 1,
   "description": "Laufzeitzuordnung logischer Profile zu lokalen, nichtinteraktiven CLI-Runtimes. Verwendet ausschliesslich vorhandene lokale Logins; persistiert keine Tokens/Secrets. Modell-Slugs sind Laufzeitdaten: die Runtime muss die Verfuegbarkeit vor Nutzung bestaetigen (kein stiller Wechsel). Proxy-Werte kommen ausschliesslich aus der Prozessumgebung und stehen nie in diesem Repo.",
+  "modelCatalog": {
+    "verifiedOn": "2026-10-04",
+    "selection": "latest-reviewed-stable-per-role",
+    "availability": "runtime-confirmation-required",
+    "refresh": "review-official-provider-catalog-before-changing-model-ids",
+    "comment": "Logische Profile bleiben erhalten. Luna ist hier die Rolle fuer grosse Implementierung und verwendet Sol; Terra nutzt das aktuelle effiziente Luna-Modell. Kein Modellwechsel bei Auth-, Quota- oder Sicherheitsfehlern."
+  },
   "providerPreference": {
     "anthropic": ["fabel", "opus", "sonnet"],
     "openai": ["sol", "terra", "luna"]
@@ -17,9 +24,9 @@
         "comment": "Ohne Permission-Bypass kann der Child-Prozess keine mutierenden Tools freischalten; Ergebnisse sind reine Textausgaben (T3)."
       },
       "profiles": {
-        "fabel": { "model": "fable" },
-        "opus": { "model": "opus" },
-        "sonnet": { "model": "sonnet" }
+        "fabel": { "model": "claude-fable-5-1" },
+        "opus": { "model": "claude-opus-5-5" },
+        "sonnet": { "model": "claude-sonnet-5-5" }
       }
     },
     "openai": {
@@ -33,9 +40,9 @@
         "comment": "Sandbox read-only: Child darf Repo lesen, aber nicht schreiben, nicht committen, nicht pushen."
       },
       "profiles": {
-        "sol": { "model": "gpt-5.6-sol" },
-        "terra": { "model": "gpt-5.6-terra" },
-        "luna": { "model": "gpt-5.6-luna" }
+        "sol": { "model": "gpt-6.1-sol" },
+        "terra": { "model": "gpt-6-luna" },
+        "luna": { "model": "gpt-6.1-sol" }
       }
     }
   },
