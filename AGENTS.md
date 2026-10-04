@@ -79,6 +79,14 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
   mittleren Risikos. Qualitaet hat Vorrang vor Kosten; kritische Aufgaben werden nie
   automatisch herabgestuft. Die Runtime muss Profilverfuegbarkeit bestaetigen; ein
   stiller Modell- oder Profilwechsel ist verboten.
+  Konkrete Modellvarianten stehen ausschliesslich in `config/model-catalog.json`.
+  Vor groesseren KI-Laeufen die neueste stabile Generation fuer jedes benoetigte
+  Profil anhand der dort verlinkten offiziellen Quellen pruefen. Bei verifizierten
+  Nachfolgern den Katalog samt Pruefdatum im autorisierten Scope aktualisieren und
+  `scripts/Test-ModelCatalogReadiness.ps1` sowie die Routing-/Security-Gates ausfuehren.
+  Keine Versionspins in Prompts, Skills oder Laufberichten duplizieren. Historische
+  Profilangaben belegen keine heutige Modellnutzung. Kein automatischer kostenpflichtiger
+  API-Wechsel; fehlende Account-/CLI-Verfuegbarkeit gezielt als HOLD dokumentieren.
 - **Internet-Recherche**: fuer zeitkritische Fakten Skill `internet-research` nutzen
   (Websuche des Tools, Proxy beachten, Quellen + Datum dokumentieren).
 - **Wissensmanagement**: projektspezifisches Wissen gehoert **in dieses Repo**

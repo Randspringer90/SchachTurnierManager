@@ -1,0 +1,25 @@
+{
+  "$schema": "./model-catalog.schema.json",
+  "schemaVersion": 1,
+  "verifiedOn": "2026-10-04",
+  "description": "Einzige Quelle konkreter Modellvarianten. Aufgabenprofile bleiben stabil; vor groesseren KI-Laeufen neueste stabile Generation anhand offizieller Quellen pruefen. Keine automatische Ausfuehrung, API-Kosten oder stillen Fallbacks.",
+  "sources": {
+    "openai": "https://developers.openai.com/api/docs/models",
+    "anthropic": "https://platform.claude.com/docs/en/models/overview"
+  },
+  "updatePolicy": {
+    "preferLatestStableWithinProfile": true,
+    "requireOfficialSources": true,
+    "requireAvailabilityConfirmation": true,
+    "requireQualityAndSecurityChecks": true,
+    "noSilentFallback": true,
+    "noAutomaticPaidApiSwitch": true
+  },
+  "models": {
+    "openaiSol": { "provider": "openai", "id": "gpt-6.1-sol" },
+    "openaiLuna": { "provider": "openai", "id": "gpt-6-luna" },
+    "anthropicFabel": { "provider": "anthropic", "id": "claude-fable-5-1" },
+    "anthropicOpus": { "provider": "anthropic", "id": "claude-opus-5-5" },
+    "anthropicSonnet": { "provider": "anthropic", "id": "claude-sonnet-5-5" }
+  }
+}
