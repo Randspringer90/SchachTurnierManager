@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { subscribeStoredLanguage } from './language-preference';
 import { de, type Messages } from './locales/de';
 import { en } from './locales/en';
 import { es } from './locales/es';
@@ -78,6 +79,14 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<LanguageCode>(detectInitialLanguage);
+
+  useEffect(() => subscribeStoredLanguage(
+    typeof window === 'undefined' ? undefined : window,
+    STORAGE_KEY,
+    LANGUAGES.map(language => language.code),
+    setLangState,
+  ), []);
+
 
   const setLang = (next: LanguageCode) => {
     setLangState(next);
