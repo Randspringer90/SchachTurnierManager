@@ -47,8 +47,17 @@ Merge `50a33671cc6b197ffa4227835e46a138c7ce3247`; integrierter Tree identisch
 mit dem getesteten PR-Tree. Auch main normal fast-forwarded/gepusht und
 beide Remote-SHAs verifiziert. Branches wurden erhalten.
 
-Startinventur: 29 PRs. Stand nach #84: 2 merged (#63/#84), 4 nachvollziehbar
-superseded geschlossen (#49/#51/#53/#54), 23 noch offen. Zwischenzeitlich
+PR #67 bestand 39 gezielte CSV-Regressionen und den vollstaendigen CommitGuard
+mit 555 .NET-Tests, 164 QR-Golden-Tests, TypeScript/Vite und lokaler Paketierung.
+Unabhaengiger Finalreview, alle acht aktuellen GitHub-Checks, SHA-gebundener
+Owner-Review und geloeste Reviewkonversationen wurden vor Merge verifiziert.
+Head `3db4e5318fd52576a19bc27bc8709d33d3d26155`, Squash-Merge
+`eecb882c8eca0c34107d7265151f9672534bd713`; getesteter und integrierter Tree
+identisch. development/main normal gepusht und beide Remote-SHAs explizit
+abgeglichen. SEC-006 bleibt fuer weitere CSV-Oberflaechen offen.
+
+Startinventur: 29 PRs. Stand nach #67: 3 merged (#63/#84/#67), 4 nachvollziehbar
+superseded geschlossen (#49/#51/#53/#54), 22 noch offen. Zwischenzeitlich
 erstellte PRs werden davon getrennt inventarisiert. #55/#57/#59 haben
 dokumentierte echte technische/fachliche/Security-Blocker; kein blockierter
 Head wurde ausgefuehrt. Dies bleibt ein Zwischenbericht bis alle Start-PRs

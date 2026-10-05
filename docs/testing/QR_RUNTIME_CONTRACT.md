@@ -20,20 +20,27 @@ The normal npm build executes the same test before tsc/Vite. Uses the already
 pinned TypeScript dependency to transpile the real source into an isolated test
 context. The VM is NOT claimed as a security boundary.
 
-45/45 tests passed on Node 22.16.0; the original source failed 29/45. Standalone
+Historical package verification: 45/45 tests passed on Node 22.16.0; the original source failed 29/45. Standalone
 strict TypeScript checking passed with locally available TypeScript 5.8.3.
 The independent QR golden suite (STM-QR-002) also passed on the combined source.
 Four synthetic matrices were decoded back to their exact payloads with OpenCV.
 These are not phone-camera, full-browser, .NET, or full-app integration tests.
-Pinned TypeScript 6.0.3, complete project gates and independent Codex/CODEOWNERS
-review remain integration requirements. No dependency or version was updated.
+No dependency or version was updated by this package.
+
+Integration verification on 2026-10-05: 209/209 tests passed against the combined
+source (45 runtime and 164 golden tests; zero failures/skips). The complete static
+review and independent review of head dc68825a0da766f7e1cac857d2f2579f7860c1d0
+against development eecb882c8eca0c34107d7265151f9672534bd713 passed. Both suites
+remain build prerequisites with the existing pinned TypeScript toolchain.
+Complete CommitGuard, fresh review of any further head and current GitHub CI
+are still required before merge; these targeted results are not a merge approval.
 
 ## Integration
 
 Both QR packages share an identical tests/scripts/helpers/qr-runtime.mjs. Keep
 both npm test commands and both build prerequisites when merging package.json;
 retain the test/prebuild changes from #69/#71/#72/#77 and later branches.
-No existing PR branch was edited. Canonical BACKLOG/CHANGELOG synchronization
-is still required before merge: STM-QR-001 is In Review, not Done. Suggested
-changelog: QR inputs are bounded/validated; UTF-8 fallback and coordinate access
-are consistent. This package does not complete STM-MOB-005.
+The existing owner branch was synchronized by a normal merge from current
+development. The sole package.json conflict was resolved additively; dependency
+fields and lockfile are unchanged. Canonical BACKLOG/CHANGELOG now describe
+STM-QR-001 as In Review. This package does not complete STM-MOB-005.
