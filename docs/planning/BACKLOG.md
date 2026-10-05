@@ -31,6 +31,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 
 | ID | Titel | Prio | Status | Kategorie | Ziel-Bearb. | Issue | Release |
 |----|-------|------|--------|-----------|-------------|-------|---------|
+| STM-QR-002 | QR-Matrix-Regressionen fuer 40 Versionen und vier ECC-Stufen | P2 | In Review | infrastructure | owner | [#83](https://github.com/Randspringer90/SchachTurnierManager/issues/83), PR #84; 160 synthetische Referenzvektoren, 164 lokale Tests bestanden; kein Abschluss von STM-MOB-005 | v1.0.0 |
 | STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | Done | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) (geschlossen; PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6), Merge `ecfb473`) | v1.0.0 |
 | STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | In Progress | security | owner | via [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) | v1.0.0 |
 | STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |

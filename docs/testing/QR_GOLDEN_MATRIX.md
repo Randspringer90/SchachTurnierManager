@@ -32,6 +32,11 @@ scanner tolerance, mask optimality, browser rendering or arbitrary UTF-8 payload
 The runtime package separately tests Unicode and four local OpenCV decode smokes.
 Full pinned-toolchain builds, CI and independent review remain required.
 
+Owner integration run 2026-10-05: `npm ci` completed and the 164 golden
+tests passed locally against head dc67ce5b1632ce2e38f7c91f20dfa0f2c28b1200,
+after the complete SHA-bound static review on base 9bf429d. Full project
+gates and CI are recorded separately; this result is not a merge approval.
+
 ## Integration
 
 Preserve both test:qr:runtime and test:qr:golden prerequisites when combining
