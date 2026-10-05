@@ -54,7 +54,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-004 | Safe-PR-Skripte gegen offenes stdin härten (`$input`-Kollision) | P2 | Done | infrastructure | owner | [#38](https://github.com/Randspringer90/SchachTurnierManager/issues/38) (PR [#39](https://github.com/Randspringer90/SchachTurnierManager/pull/39), Merge `4681e01`) | v1.0.0 |
 | STM-INFRA-005 | Hart verdrahtetes `D:\Temp` in 8 Skripten auf `%TEMP%`-Fallback umstellen | P3 | Backlog | infrastructure | either | – | v1.0.0 |
 | STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` flaky – Wurzel: nichtdeterministischer Graph-Hash | P2 | In Review | infrastructure | owner | [#46](https://github.com/Randspringer90/SchachTurnierManager/issues/46) (PR läuft; 20/20 lokale Läufe grün) | v1.0.0 |
-| STM-INFRA-007 | Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR | P3 | Backlog | infrastructure | owner | – | v1.0.0 |
+| STM-INFRA-007 | Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR | P3 | In Review | infrastructure | owner | [#62](https://github.com/Randspringer90/SchachTurnierManager/issues/62), [PR #63](https://github.com/Randspringer90/SchachTurnierManager/pull/63) | v1.0.0 |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
 | STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Done | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) (Original-PR [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40), sichere Adoption [#45](https://github.com/Randspringer90/SchachTurnierManager/pull/45), Merge `7634399`; Folge: STM-FACH-011/012) | v1.0.0 |
 | STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) (entsperrt: STM-FACH-002 ist Done) | v1.0.0 |
@@ -183,7 +183,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   Namen wie `fix/…` scheitern an `ci-static-prerequisite`, sobald der Review
   `OWNER_REVIEW_REQUIRED` liefert. Die bisherige Praxis (#29, #32, #39) umgeht das,
   indem die **Issue**-Nummer in das Adoptions-Muster gesetzt wird.
-- **Priorität:** P3 · **Status:** Backlog · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
+- **Priorität:** P3 · **Status:** In Review · **Kategorie:** infrastructure · **Ziel-Bearbeiter:** owner · **Owner:** der Owner
 - **Warum das zählt:** Ein Branchname, der „Adoption von PR N" behauptet, obwohl es
   keinen PR N gibt, macht die Herkunft von Änderungen an sicherheitskritischen Pfaden
   unklar – genau dort, wo Nachvollziehbarkeit am wichtigsten ist.
@@ -196,7 +196,7 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
   - Keine Aufweichung: Contributor-Branches erhalten den Pfad nicht.
   - `CONTRIBUTING.md`/`BRANCHING_STRATEGY.md` dokumentieren die Regel.
 - **Definition of Done:** DoD + Gates grün.
-- **PR:** – · **Ziel-Release:** v1.0.0
+- **PR:** [#63](https://github.com/Randspringer90/SchachTurnierManager/pull/63), Issue [#62](https://github.com/Randspringer90/SchachTurnierManager/issues/62). 78 lokale Branch-/Approval-Regressionen bestanden; finale SHA-gebundene Freigabe, vollständige Gates und CI vor Merge erforderlich. · **Ziel-Release:** v1.0.0
 
 ### STM-INFRA-006 · `Test-RoutedExecutionReadiness.ps1` ist flaky (checkpoint.json-Race)
 - **Beschreibung:** Das Gate schlägt nichtdeterministisch fehl. Symptom ist immer

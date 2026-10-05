@@ -1,8 +1,7 @@
 name: Branch-Policy
 
-# Erzwingt zulässige Quell-/Ziel-Branch-Kombinationen.
-# Sicherheit: Branch-Namen werden NUR über Environment-Variablen an das Skript übergeben,
-# niemals direkt in die Shell interpoliert (kein Script-Injection-Risiko).
+# Erzwingt zulaessige Quell-/Ziel-Branch-Kombinationen.
+# Branch-Namen und Identitaeten bleiben Daten in Environment-Variablen.
 on:
   pull_request:
     branches:
@@ -20,46 +19,38 @@ jobs:
     env:
       HEAD_REF: ${{ github.head_ref }}
       BASE_REF: ${{ github.base_ref }}
+      AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+      HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+      REPOSITORY: ${{ github.repository }}
     steps:
-      - name: Regeln prüfen
+      - name: Regeln pruefen
         shell: bash
         run: |
           set -euo pipefail
           head="$HEAD_REF"
           base="$BASE_REF"
-          echo "PR: $head  ->  $base"
-
-          allowed=1
+          allowed=0
           case "$base" in
             development)
               case "$head" in
                 feature/*|fix/*|security/*|docs/*|refactor/*) allowed=1 ;;
                 integration/pr-*-safe-adoption)
-                  if [[ "$head" =~ ^integration/pr-[1-9][0-9]*-safe-adoption$ ]]; then allowed=1; else allowed=0; fi ;;
-                *) allowed=0 ;;
+                  if [[ "$head" =~ ^integration/pr-[1-9][0-9]*-safe-adoption$ ]]; then allowed=1; fi ;;
+                owner/*)
+                  if [[ "$head" =~ ^owner/STM-[A-Z]+-[0-9]{3}-[a-z0-9]+(-[a-z0-9]+)*$ ]] &&
+                     [[ "${AUTHOR_ASSOCIATION:-}" == "OWNER" ]] &&
+                     [[ -n "${REPOSITORY:-}" && "${HEAD_REPOSITORY:-}" == "$REPOSITORY" ]]; then allowed=1; fi ;;
               esac
               ;;
             main)
-              case "$head" in
-                release/*|hotfix/*) allowed=1 ;;
-                *) allowed=0 ;;
-              esac
+              case "$head" in release/*|hotfix/*) allowed=1 ;; esac
               ;;
             release/*)
-              case "$head" in
-                development|release-fix/*) allowed=1 ;;
-                *) allowed=0 ;;
-              esac
-              ;;
-            *)
-              echo "Unerwarteter Zielbranch '$base' – Policy nicht definiert."
-              allowed=0
+              case "$head" in development|release-fix/*) allowed=1 ;; esac
               ;;
           esac
-
           if [ "$allowed" -ne 1 ]; then
-            echo "::error::Branch '$head' darf nicht per PR nach '$base' gemergt werden."
-            echo "Erlaubt: development <= feature|fix|security|docs|refactor/* oder integration/pr-<nr>-safe-adoption ; main <= release|hotfix/* ; release/* <= development|release-fix/*"
+            echo "::error::Nicht zulaessige Branch-Kombination oder fehlende Owner-Identitaet."
             exit 1
           fi
-          echo "Branch-Policy OK."
+          echo "Branch-Policy OK. Dies ersetzt keinen SHA-gebundenen Owner-Review."
