@@ -480,7 +480,23 @@ function encodeBytesToCodewords(version: number, ecl: Ecl, bytes: number[]): num
  * passende Version. Wirft, wenn der Text auch bei Version 40 nicht passt.
  */
 export function encodeText(text: string, ecl: Ecl = Ecl.Medium): QrCode {
+  if (typeof text !== 'string') {
+    throw new TypeError('QR input must be a string.');
+  }
+  if (!Number.isInteger(ecl) || ecl < Ecl.Low || ecl > Ecl.High) {
+    throw new RangeError('Invalid QR error correction level.');
+  }
+
+  // Version 40 uses a four-bit mode and sixteen-bit byte count. UTF-8 needs
+  // at least as many bytes as UTF-16 code units, so reject before allocation.
+  const maxBytes = Math.floor((getNumDataCodewords(MAX_VERSION, ecl) * 8 - 20) / 8);
+  if (text.length > maxBytes) {
+    throw new RangeError('Text is too long for a QR code.');
+  }
   const bytes = utf8Bytes(text);
+  if (bytes.length > maxBytes) {
+    throw new RangeError('Text is too long for a QR code.');
+  }
 
   let version = MIN_VERSION;
   for (; ; version++) {
@@ -502,7 +518,8 @@ export function encodeText(text: string, ecl: Ecl = Ecl.Medium): QrCode {
     size: builder.size,
     modules,
     getModule(x: number, y: number): boolean {
-      return x >= 0 && x < builder.size && y >= 0 && y < builder.size && modules[y][x];
+      return Number.isInteger(x) && Number.isInteger(y)
+        && x >= 0 && x < builder.size && y >= 0 && y < builder.size && modules[y][x];
     },
   };
 }
@@ -511,5 +528,23 @@ function utf8Bytes(text: string): number[] {
   if (typeof TextEncoder !== 'undefined') {
     return Array.from(new TextEncoder().encode(text));
   }
-  return Array.from(unescape(encodeURIComponent(text))).map((ch) => ch.charCodeAt(0));
+  // Match TextEncoder's scalar-value conversion, including lone surrogates.
+  const bytes: number[] = [];
+  for (const character of text) {
+    let point = character.codePointAt(0)!;
+    if (point >= 0xd800 && point <= 0xdfff) {
+      point = 0xfffd;
+    }
+    if (point < 0x80) {
+      bytes.push(point);
+    } else if (point < 0x800) {
+      bytes.push(0xc0 | (point >>> 6), 0x80 | (point & 0x3f));
+    } else if (point < 0x10000) {
+      bytes.push(0xe0 | (point >>> 12), 0x80 | ((point >>> 6) & 0x3f), 0x80 | (point & 0x3f));
+    } else {
+      bytes.push(0xf0 | (point >>> 18), 0x80 | ((point >>> 12) & 0x3f),
+        0x80 | ((point >>> 6) & 0x3f), 0x80 | (point & 0x3f));
+    }
+  }
+  return bytes;
 }
