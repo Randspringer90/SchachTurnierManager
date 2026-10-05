@@ -8,9 +8,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/icons/stm-icon.svg" />
     <link rel="apple-touch-icon" href="/icons/stm-icon.svg" />
+    <link rel="stylesheet" href="/offline-notice/style.css" />
+    <script type="module" src="/offline-notice/main.js"></script>
     <title>SchachTurnierManager</title>
   </head>
   <body>
+    <section id="stm-offline-notice" class="stm-offline-notice" hidden>
+      <p id="stm-offline-message" role="status" aria-live="polite" aria-atomic="true"></p>
+      <button id="stm-offline-dismiss" type="button">Hinweis ausblenden</button>
+    </section>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
