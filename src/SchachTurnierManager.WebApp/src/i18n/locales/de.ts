@@ -12,6 +12,7 @@ export const de = {
   'backend.offline': 'nicht erreichbar',
 
   'language.label': 'Sprache',
+  'language.sessionOnly': 'Die Sprache gilt nur für diese Sitzung: Die Auswahl konnte nicht im Browser gespeichert werden.',
 
   'operator.backend': 'Backend',
   'operator.tournament': 'Turnier',

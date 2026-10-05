@@ -12,6 +12,7 @@ export const en: Partial<Messages> = {
   'backend.offline': 'unreachable',
 
   'language.label': 'Language',
+  'language.sessionOnly': 'This language applies only to this session: the selection could not be saved in the browser.',
 
   'operator.backend': 'Backend',
   'operator.tournament': 'Tournament',
