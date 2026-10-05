@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- Dokumentationskorrekturen aus Marcel-Mentes PR #54 uebernommen: bereits gemergte FIDE-Dutch-/Swiss-Manager-Adoptionen in Detailbacklog und Contributor-Queue konsistent dargestellt; verbleibende Folgeaufgaben und der offene Integrationstraeger #55 bleiben separat.
+
 - STM-INFRA-007: Exakt normgerechte Owner-Paketbranches in Branch- und Ausführungsgates konsistent zugelassen. Owner-Identität, kanonisches Repository und SHA-gebundener Review bleiben zwingend; die Missing-Scanner-Ausnahme gilt ausschließlich für den historischen Bootstrap-Branch. 78 Regressionen prüfen Branchregeln und echte PowerShell-Approval-Funktionen einschließlich ungültiger/staler Reviews.
 
 - STM-AI-007: Konkrete KI-Modellvarianten in `config/model-catalog.json` zentralisiert. Runtime-Adapter loesen stabile Schluessel auf; Katalog-/Provider-Schema, offizielle Quellen und Sicherheitsgrenzen werden fail-closed geprueft. Anleitung fuer regelmaessige Aktualisierung auf die neueste verifizierte stabile Generation; historische Laufangaben versionsneutral gehalten.

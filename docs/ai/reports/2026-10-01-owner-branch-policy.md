@@ -38,3 +38,18 @@ wurden unabhaengig statisch geprueft, ohne neue Findings.
 Der finale Commit braucht erneut statischen SHA-Review, passenden Owner-Marker,
 vollstaendige lokale Gates und aktuelle gruene GitHub-CI. Dieser Bericht ist
 kein Merge- oder Abschlussnachweis.
+
+# Integrationsnachweis 2026-10-05
+
+Finaler Head `779ce6ca04efbaecb38a9f5397655bf06fd2cd31` erneut statisch
+vollstaendig geprueft: 16 eingeordnete Findings, keine kritischen Findings;
+passender SHA-gebundener Owner-Marker. Beide lokalen Node-Suites erneut 78/78
+PASS. Commit-If-Green lief erfolgreich: 516 .NET-Tests, Frontend-/Portable-Build,
+Git-Safety; Open-Source-Safety und AgentInstructionIntegrity separat bestanden.
+Alle acht aktuellen GitHub-Checks SUCCESS, keine offenen Review-Threads.
+CI: https://github.com/Randspringer90/SchachTurnierManager/actions/runs/37274260600
+
+PR #63 per dokumentierter Owner-Konvention mit gruener CI squash-gemergt:
+`d1b621333ca1202706f7b74c95425e373e9b5be8`. Lokales development anschliessend
+per fetch und pull --ff-only aktualisiert und SHA-identisch verifiziert.
+Remote-Branch erhalten. Kein main-/Release-/Deployment-Schritt.
