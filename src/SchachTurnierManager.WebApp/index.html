@@ -8,9 +8,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/icons/stm-icon.svg" />
     <link rel="apple-touch-icon" href="/icons/stm-icon.svg" />
+    <link rel="stylesheet" href="/privacy-curtain/style.css" />
+    <script type="module" src="/privacy-curtain/main.js"></script>
     <title>SchachTurnierManager</title>
   </head>
   <body>
+    <aside id="stm-privacy-controls" class="stm-privacy-controls" aria-label="Sichtschutz">
+      <button id="stm-privacy-toggle" type="button" disabled aria-controls="root" aria-expanded="true">Turnieransicht ausblenden</button>
+      <p id="stm-privacy-status" role="status" aria-live="polite">Nur ein Sichtschutz in diesem Tab, keine Zugangssperre. Andere Fenster und Downloads bleiben sichtbar.</p>
+    </aside>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
