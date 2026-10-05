@@ -2,6 +2,19 @@
 
 Quelle: Owner-Auftrag vom 2026-10-04, einschliesslich nachfolgender Klarstellungen.
 
+## Verbindlicher Scope-Nachtrag 2026-10-05
+
+Der Owner hat anschliessend ausdruecklich `main` als Integrationsziel benannt
+und dies wiederholt bestaetigt. Die fruehere No-main-Grenze unten ist damit
+ersetzt. Bestehende PRs bleiben im vorhandenen geprueften development-Workflow;
+der jeweils gepruefte konsolidierte Stand wird danach ohne History-Rewrite nach
+main uebernommen. Die anfängliche Branch-Divergenz ist fuer diesen begrenzten
+Zweck jetzt Teil des Auftrags. Keine neuen PRs, Releases, Tags oder Deployments;
+keine Sicherheitsgates abschwaechen. Ein gemergter PR wird geschlossen;
+Remote-Branches werden wegen der nicht eindeutig geaenderten Loeschgrenze erhalten.
+
+Die nachfolgenden Stichpunkte dokumentieren den urspruenglichen Auftrag.
+
 - Alle beim Live-Start offenen PRs gegen `development` statisch pruefen, sicher integrieren oder mit belegtem Ersatz beziehungsweise echtem Blocker klassifizieren. Keine kuenstlichen Schliessungen.
 - Lokalen und Remote-Stand nach realen Builds, Tests und Security-Gates synchronisieren. Keine neuen PRs, Releases, Tags, Deployments, externen Artefakt-Uploads, Force-Pushes oder Aenderungen an `main`. Bestehende Branches erhalten.
 - Veraltete Modellvorgaben ersetzen. Konkrete Modellvarianten nur an einer Stelle pflegen; alle Instruktionen verwenden logische Profile und einen Hinweis auf die neueste offiziell verifizierte stabile Generation. Historische Lauftexte versionsneutral halten, ohne damalige Ausfuehrungen als aktuelle Modellnutzung darzustellen.

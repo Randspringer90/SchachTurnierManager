@@ -4,6 +4,13 @@
 Jeder relevante KI-Lauf (Claude Code, Codex, andere) traegt sich hier ein.
 Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
+> **2026-10-05 (Codex / Sol-Profil):** Owner-Nachtrag zur bestehenden PR-Integration:
+> `main` ausdruecklich als zusaetzliches Integrationsziel freigegeben. Auftrag:
+> [all-prs-model-catalog](prompts/20261004_1854_all-prs-model-catalog.md);
+> [Fortsetzungsbericht](reports/20261005_2004_main-integration_REPORT.md).
+> Main-/development-Historien ohne Rewrite erhalten; alte externe Fleet-Pflicht
+> aus dem aktiven Instruktionsstand entfernt, kanonischer Backlog bleibt erhalten.
+
 > **2026-07-16 (Claude / Fabel-Profil):** Owner-Masterlauf – Marcels Work-Queue
 > (Issues #3/#4 präzisiert+zugewiesen, #22–#25 neu, `MARCEL_WORK_QUEUE.md`),
 > STM-AI-005 Routed Execution (PR #29, Merge `8305814`, Live-Smoke Anthropic),
@@ -76,3 +83,4 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 ## 2026-07-09 RUN-53 Klick-Installation
 
 Kollegenpaket nach RUN-52 um einen Doppelklick-Installationspfad, Uninstall, Shortcut-Erzeugung, Frischinstallations-Smoke-Test, Doku, Skill und Guard-Test erweitern. Keine Secrets oder externen Projektabhaengigkeiten in das Paket aufnehmen.
+| 2026-07-15 | Codex | KFM-FLEET-CORRECTION-CODEX-SOL-FINALIZE-20260715 - BAT/CMD-Gate dokumentieren; bekannten Public-History-Blocker respektieren. | [Prompt](prompts/20260715_1236_kfm_fleet_correction_codex_sol_finalize.md) | [Report](reports/20260715_1236_kfm_fleet_correction_codex_sol_finalize_REPORT.md) |

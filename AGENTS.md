@@ -107,3 +107,10 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
 ## Klick-Installation / Kollegen-Rollout
 
 Bei Aenderungen an Release-, Setup-, Desktop-, Portable- oder Kollegenpaketen den Skill `.agents/skills/click-installation.md` beachten. Installation muss eigenstaendig bleiben, keine Nachbarprojekt-Abhaengigkeiten einfuehren und lokale Secrets aus dem Paket heraushalten. Vor Commit mindestens `Invoke-ClickInstallReadiness.ps1` oder den passenden Release-/Kollegen-Readiness-Lauf ausfuehren.
+
+## Historischer externer Batch-Check
+
+Der fruehere workstationbezogene Fleet-Check ist keine Pflichtabhaengigkeit
+dieses eigenstaendigen Projekts. Fuer Commit und Push gelten die vorhandenen
+repositoryeigenen Safety-, Readiness- und Build-Gates. Eine externe Registrierung
+ist optional und erteilt keine Ausfuehrungs- oder Publish-Freigabe.
