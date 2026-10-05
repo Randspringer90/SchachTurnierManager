@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- STM-SEC-006 / PR #67, erster Teilumfang: gemeinsamer CSV-Ausgabeencoder fuer Teilnehmer- und Swiss-Manager-Export. Formelartige Praefixe, verdeckende Unicode-/Whitespace-Zeichen und Steuerzeichen werden als Text ausgegeben; normale numerische Literale und Quelldaten bleiben erhalten. JSON bleibt der verlustfreie Backup-Kanal; weitere CSV-Oberflaechen bleiben Folgearbeit.
+
 - STM-QR-002 / PR #84: Unabhaengige QR-Matrix-Regressionen fuer alle 40 Versionen und vier ECC-Stufen. 160 synthetische Referenzvektoren und vier Coverage-/Mutationspruefungen; Bestandteil des Frontend-Builds, ohne neue Runtime-Abhaengigkeit.
 
 - Dokumentationskorrekturen aus Marcel-Mentes PR #54 uebernommen: bereits gemergte FIDE-Dutch-/Swiss-Manager-Adoptionen in Detailbacklog und Contributor-Queue konsistent dargestellt; verbleibende Folgeaufgaben und der offene Integrationstraeger #55 bleiben separat.

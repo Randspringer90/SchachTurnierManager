@@ -29,7 +29,7 @@ frontend audit CSV and operator-generated CSV must be inventoried and hardened i
 follow-up scopes. TRF16 is fixed-width text, not CSV: never add CSV quoting or text
 prefixes to its fixed positions. No pairing or tie-break formula is changed here.
 
-## Evidence
+## Original submission evidence (historical)
 
 39 xUnit cases added, including 19 dangerous-input cases that each cover both
 separators. Test source and original codec blob identities checked statically.

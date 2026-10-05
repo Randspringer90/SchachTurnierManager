@@ -42,6 +42,7 @@ gates and CI are recorded separately; this result is not a merge approval.
 Preserve both test:qr:runtime and test:qr:golden prerequisites when combining
 package.json, as well as existing prebuild/i18n/PWA/backup tests and newer metadata.
 The shared QR test helper is byte-identical in both PRs. Canonical BACKLOG and
-CHANGELOG still need synchronization before merge: STM-QR-002 In Review;
-changelog: independent QR regression matrix across all 40 versions and four ECC
-levels. No source/runtime/API change, no reserved mobile feature implementation.
+CHANGELOG were synchronized in d690767a. PR #84 merged as 50a3367 after full
+local gates and current-head CI passed; the same tree was fast-forwarded to main.
+The canonical STM-QR-002 row is Done. No source/runtime/API change or reserved
+mobile feature implementation is implied.
