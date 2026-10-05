@@ -20,3 +20,21 @@ pruefen die echten PowerShell-Approval-Funktionen, neben den Bash-/Quellvertraeg
 Der Zwischencommit dient ausschliesslich einem neuen SHA-gebundenen statischen
 Review. Lokale Ausfuehrung, finale Gates und CI sind fuer diesen neuen Stand
 noch NOT_RUN; die historischen Testergebnisse unten ersetzen diese nicht.
+
+# Fortsetzung 2026-10-05
+
+Der neue statische Review ist an Base `f6f9e342277385ee3807008d2dafabdbb84cba47`
+und PR-Head `aea9b523917a3e71da9964a11d6b67a79f8b11d1` gebunden:
+OWNER_REVIEW_REQUIRED, 14 Findings, keine kritischen Findings. Workflows,
+Abhaengigkeits-/Pfadfindings und die festen relativen Testpfade wurden vollstaendig
+geprueft. Der Owner-Marker gilt ausschliesslich fuer diesen Zwischenstand.
+
+Lokal tatsaechlich ausgefuehrt: beide Node-Suites, 78/78 PASS, keine Skips.
+Der erste Windows-Lauf deckte eine CRLF-Abhaengigkeit der Bash-Extraktion auf;
+Normalisierung vor der Extraktion behebt die Ursache. Zwei weitere Negativfaelle
+pruefen CHANGES_REQUESTED und ungueltiges Review-JSON. Diese zwei Testkorrekturen
+wurden unabhaengig statisch geprueft, ohne neue Findings.
+
+Der finale Commit braucht erneut statischen SHA-Review, passenden Owner-Marker,
+vollstaendige lokale Gates und aktuelle gruene GitHub-CI. Dieser Bericht ist
+kein Merge- oder Abschlussnachweis.

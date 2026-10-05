@@ -53,6 +53,8 @@ for (const name of ['ci.yml', 'security-gate.yml', 'pr-static-security-review.ym
     ['wrong-reviewer', { SYNTHETIC_REVIEWS: JSON.stringify([[{ ...approvedReview, user: { login: 'synthetic-other' } }]]) }, false, false],
     ['stale-review', { SYNTHETIC_REVIEWS: JSON.stringify([[{ ...approvedReview, commit_id: 'b'.repeat(40) }]]) }, false, false],
     ['wrong-marker', { SYNTHETIC_REVIEWS: JSON.stringify([[{ ...approvedReview, body: 'synthetic-nonapproval' }]]) }, false, false],
+    ['rejected-review-state', { SYNTHETIC_REVIEWS: JSON.stringify([[{ ...approvedReview, state: 'CHANGES_REQUESTED' }]]) }, false, false],
+    ['invalid-review-json', { SYNTHETIC_REVIEWS: 'synthetic-invalid-json' }, false, false],
     ['missing-scanner-owner', {}, true, false],
     ['missing-scanner-integration', { HEAD_REF: 'integration/pr-62-safe-adoption' }, true, false],
     ['exact-bootstrap', { HEAD_REF: 'security/STM-SEC-005-safe-pr-adoption' }, true, true],

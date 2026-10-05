@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const workflows = new URL('../../.github/workflows/', import.meta.url);
-const branchPolicy = readFileSync(new URL('branch-policy.yml', workflows), 'utf8');
+const branchPolicy = readFileSync(new URL('branch-policy.yml', workflows), 'utf8').replace(/\r\n/g, '\n');
 const runBlock = branchPolicy.match(/        run: \|\n((?:          .*\n|\n)+)/)?.[1];
 assert.ok(runBlock, 'Branch policy must contain a literal Bash run block.');
 const script = runBlock.replace(/^          /gm, '');
