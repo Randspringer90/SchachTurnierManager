@@ -1,0 +1,8 @@
+body { font: 1rem/1.5 system-ui, sans-serif; color: CanvasText; background: Canvas; margin: 0; }
+main { max-width: 90rem; margin: auto; padding: 1.25rem; }
+label { display: inline-block; margin: .5rem .25rem; } input, select, button { font: inherit; max-width: 100%; }
+button { padding: .6rem .8rem; margin: .5rem .3rem; }
+.scroll { overflow-x: auto; } table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid currentColor; text-align: start; padding: .5rem; overflow-wrap: anywhere; }
+td { max-width: 35rem; white-space: pre-wrap; }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
