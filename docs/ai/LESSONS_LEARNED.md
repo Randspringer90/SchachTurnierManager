@@ -4,6 +4,15 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-04 — Modellpflege braucht eine einzige Variantenquelle
+
+- Kontext: Versionsvorgaben in Runtime-Policy und historischen Lauftexten drifteten auseinander.
+- Lesson: Stabile Aufgabenprofile und konkrete Anbieter-IDs getrennt halten. Profilnamen
+  sind keine Modellfamilien; ein effizientes Modell darf grosse Implementierung nicht herabstufen.
+- Konsequenz: Ein zentraler, offiziell verifizierter Katalog; Schema-/Provider-Grenzen,
+  versionsneutrale Dokumentation und ein Vertragstest fuer Updates an genau einer Stelle.
+  Relative PowerShell-Pfade ueber die PowerShell-Path-API statt Prozess-CWD aufloesen.
+
 ## 2026-07-16 — FIDE-Modi brauchen Versions-, Format- und Policy-Grenzen
 
 - Kontext: STM-FACH-001, sichere Adoption von PR #10 gegen FIDE C.07/03-2026.
@@ -24,6 +33,10 @@ keine Voraussetzung.
 - Konsequenz: Base-SHA-Code prüft vor jeder Ausführung; T4-Dateipfade werden nie automatisch
   als erlaubter Integrationsscope übernommen; Artefakte sind SHA-/Policy-/Hash-gebunden und
   WhatIf/StaticOnly werden durch Negativtests gegen Mutationen abgesichert.
+
+## 2026-07-15 - KFM-FLEET-CORRECTION-CODEX-SOL-FINALIZE-20260715
+
+- Ein grüner Arbeitsbaumscan ersetzt keine offene Public-History-Entscheidung.
 
 ## 2026-07-10 — Public-nahe Testdaten und KI-Laufprotokolle
 

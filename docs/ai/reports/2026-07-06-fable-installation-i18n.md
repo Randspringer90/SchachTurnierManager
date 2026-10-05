@@ -1,4 +1,4 @@
-# Report 2026-07-06 – Claude Fable 5: Installation, i18n-Fundament, Codex-Roadmap
+# Report 2026-07-06 – Claude / Fabel-Profil: Installation, i18n-Fundament, Codex-Roadmap
 
 ## TL;DR
 

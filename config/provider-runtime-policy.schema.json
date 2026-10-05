@@ -3,9 +3,10 @@
   "$id": "provider-runtime-policy.schema.json",
   "title": "STM Provider-Runtime-Policy",
   "type": "object",
-  "required": ["schemaVersion", "providerPreference", "providers", "safety", "retry", "classification"],
+  "required": ["schemaVersion", "modelCatalogFile", "providerPreference", "providers", "safety", "retry", "classification"],
   "properties": {
-    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "schemaVersion": { "const": 2 },
+    "modelCatalogFile": { "const": "model-catalog.json" },
     "description": { "type": "string" },
     "providerPreference": {
       "type": "object",
@@ -36,8 +37,9 @@
             "minProperties": 1,
             "additionalProperties": {
               "type": "object",
-              "required": ["model"],
-              "properties": { "model": { "type": "string", "minLength": 1 } }
+              "required": ["modelKey"],
+              "additionalProperties": false,
+              "properties": { "modelKey": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9]+$" } }
             }
           }
         }

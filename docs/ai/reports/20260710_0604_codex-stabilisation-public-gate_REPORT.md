@@ -1,7 +1,7 @@
 # Codex Stabilisation Public-Gate Report
 
 Datum: 2026-07-10
-Agent: Codex / GPT-5-basiert
+Agent: Codex / Codex-Profil
 
 ## TL;DR
 

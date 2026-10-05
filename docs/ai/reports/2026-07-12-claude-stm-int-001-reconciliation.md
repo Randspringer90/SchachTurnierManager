@@ -1,6 +1,6 @@
 # Abschlussbericht – STM-INT-001 v0.41-Reconciliation (2026-07-12)
 
-Modell: Claude Opus 4.8. Branch: `refactor/STM-INT-001-reconcile-v041` (von `origin/development`).
+Modell: Claude / Opus-Profil. Branch: `refactor/STM-INT-001-reconcile-v041` (von `origin/development`).
 
 ## Ausgangscommit
 `development` = `ee620bc109c334374beb3c1ec4ecd37cc416691f` (verifiziert, synchron, sauber).

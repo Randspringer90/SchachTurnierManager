@@ -1,6 +1,6 @@
-# Opus-4.8-Lauf 2026-07-18 – Marcels PRs, Setup-EXE, Android-APK
+# Opus-Lauf 2026-07-18 – Marcels PRs, Setup-EXE, Android-APK
 
-Orchestrator: claude-opus-4-8 (interaktiv, gründliches Owner-Review)
+Orchestrator: Claude / Opus-Profil (historischer Lauf) (interaktiv, gründliches Owner-Review)
 
 | | |
 |---|---|

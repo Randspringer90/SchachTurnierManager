@@ -1,7 +1,7 @@
 # Codex Safe-PR-Adoption und v1-Fortschritt
 
 Datum: 2026-07-16
-Ausführungsprofil: GPT-5.6 Sol, hohe Reasoning-/Qualitätseinstellung
+Ausführungsprofil: Sol-Profil, hohe Reasoning-/Qualitätseinstellung
 Zielbranch: `development`
 
 ## Rekonstruierter Ausgangszustand

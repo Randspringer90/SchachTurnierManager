@@ -1,6 +1,6 @@
 # Prompt: Codex-Stabilisierung und Public-Gate
 
-Quelle: Codex/GPT-5-basierter Agent, 2026-07-10.
+Quelle: Codex-Agent (historischer Lauf), 2026-07-10.
 
 Der urspruengliche Auftrag wurde fuer das Git-Protokoll bereinigt: lokale Absolutpfade, personenbezogene Namen und potenziell private Handoff-Details werden hier nicht wortgetreu gespeichert.
 
