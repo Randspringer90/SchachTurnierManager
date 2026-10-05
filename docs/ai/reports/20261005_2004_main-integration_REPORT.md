@@ -28,6 +28,28 @@ fand einen Owner-Namen in historischen PLANS-Notizen; diese Referenzen
 wurden durch die neutrale Rollenbezeichnung Owner ersetzt. Die Gate-Regeln
 bleiben unveraendert. Testpakete und Rohlogs bleiben lokal ausserhalb Git.
 
-Dieser Bericht ist ein Zwischenstand. Das Merge muss alle Safety-Gates
-bestehen, normal gepusht und gegen beide Remote-SHAs verifiziert werden.
-Weitere PRs bleiben bis zu ihrem eigenen aktuellen Review/Test/CI offen.
+Die Zusammenfuehrung wurde nach erneut gruenem CommitGuard und unabhaengigem
+Finalreview als `9bf429dd803f751e7e88d1b789afab3f505351f0` committed. Beide
+Elternhistorien bleiben enthalten. Git-/OpenSource-Safety, Agent-Integrity,
+Prompt-Injection-, Skill-, Knowledge- und Katalog-Gates bestanden.
+GitHub-CI dieses SHAs bestand ebenfalls:
+https://github.com/Randspringer90/SchachTurnierManager/actions/runs/37355573863
+Normaler Push nach development und anschliessend main; beide Remote-SHAs
+explizit mit dem lokalen Stand abgeglichen. Keine Ruleset-Aenderung,
+kein Force-Push, Release, Tag, Deployment oder Artefakt-Upload.
+
+PR #84 wurde auf aktuellen Base-/Head-SHAs erneut statisch geprueft;
+164 lokale QR-Tests, voller CommitGuard (516 .NET-Tests, TypeScript/Vite,
+lokale Paketierung), unabhaengiger Finalreview und alle acht aktuellen
+GitHub-Checks bestanden. PR-Head `d690767a1a5c571d48f31f02edbabd5e33d237b4`,
+CI https://github.com/Randspringer90/SchachTurnierManager/actions/runs/37356822059
+Merge `50a33671cc6b197ffa4227835e46a138c7ce3247`; integrierter Tree identisch
+mit dem getesteten PR-Tree. Auch main normal fast-forwarded/gepusht und
+beide Remote-SHAs verifiziert. Branches wurden erhalten.
+
+Startinventur: 29 PRs. Stand nach #84: 2 merged (#63/#84), 4 nachvollziehbar
+superseded geschlossen (#49/#51/#53/#54), 23 noch offen. Zwischenzeitlich
+erstellte PRs werden davon getrennt inventarisiert. #55/#57/#59 haben
+dokumentierte echte technische/fachliche/Security-Blocker; kein blockierter
+Head wurde ausgefuehrt. Dies bleibt ein Zwischenbericht bis alle Start-PRs
+abschliessend klassifiziert und der konsolidierte Stand verifiziert sind.
