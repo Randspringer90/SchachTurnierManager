@@ -1,6 +1,6 @@
 # Abschlussbericht: Fabel5 – Routed Execution, Nightly-Aktivierung, Contributor-Queue
 
-Datum: 2026-07-16 (Abendlauf) · Orchestrator: Claude Fabel 5 · Modus: autonomer Owner-Lauf
+Datum: 2026-07-16 (Abendlauf) · Orchestrator: Claude / Fabel-Profil · Modus: autonomer Owner-Lauf
 
 ## Ergebnis (Kurzfassung)
 
@@ -44,7 +44,7 @@ gesetzt, nie committet); Direktverbindungen werden von der Firewall abgelehnt.
 - **Tatsächliche Modellaufrufe (Live-Smoke):**
   - anthropic/sonnet: README-Linkcheck real ausgeführt, Ergebnis durch Fabel
     faktisch verifiziert (COMPLETED, reviewedBy=fabel) → **Anthropic-Routing OK**.
-  - openai/gpt-5.6-terra → reale Eskalation → openai/gpt-5.6-luna: beide durch das
+  - OpenAI/Terra-Profil → reale Eskalation → OpenAI/Luna-Profil: beide durch das
     externe ChatGPT-/Codex-Wochenkontingent blockiert („try again at Jul 23rd,
     2026 1:54 PM“); vom System korrekt als usage-limit klassifiziert und
     zustandserhaltend gecheckpointet → **OpenAI-Routing PARTIAL, ehrlich

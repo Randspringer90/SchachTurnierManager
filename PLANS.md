@@ -498,3 +498,45 @@ Nächste Schritte:
 - [x] Readiness-Test prueft Paket, Checksums, Installation, Shortcut, Healthcheck, Dashboard, Tournament-API, isolierte SQLite und Uninstall.
 - [ ] Echten Test auf einem Kollegen-PC oder einer frischen Windows-VM ausfuehren und Ergebnis dokumentieren.
 - [ ] Entscheidung treffen: unsignierter Bootstrapper bleibt ausreichend oder signierte Setup-EXE vorbereiten.
+
+# Historischer 100%-Zielplan (superseded)
+
+Dieser aus der alten main-Historie erhaltene Abschnitt dokumentiert einen
+frueheren Lauf. Prozentwerte, HOLDs und Freigabehinweise daraus steuern keinen
+heutigen Lauf. Aktive Aufgaben und deren Status stehen ausschliesslich in
+[docs/planning/BACKLOG.md](docs/planning/BACKLOG.md); aktuelle Qualitaetskriterien
+stehen in [docs/planning/DEFINITION_OF_DONE.md](docs/planning/DEFINITION_OF_DONE.md).
+
+Stand: 2026-07-10 · Fabel-Gesamtlauf. Evidenz: Repo clean/synchron (run50 lokal), Public-Gate-Befund 2026-07-09, Queue-Status read-only-only/public-repo.
+
+1. **Projektziel**: Schachturnier-Verwaltung (PUBLIC-Repo-Kandidat) mit Turnier-, Spieler- und Rundenverwaltung.
+2. **Ist-Zustand**: Fachlich weit fortgeschritten (siehe Detailplan oben); run50-Push GEHALTEN wegen Public-Gate-Befund: interner Host + Proxy-IP in .agents/skills/internet-research/SKILL.md (pre-existing).
+3. **Zielzustand 100%**: Public-Repo ohne interne Hosts/IPs/PII in Arbeitsstand UND History; normale Weiterentwicklung entsperrt.
+4. **Nicht-Ziele**: History-Rewrite ohne Owner; Force-Push; Aufnahme von Teilnehmer-PII.
+5. **Architekturstatus**: stabil (Details im Hauptplan oben).
+6. **Funktionsumfang**: Kernfunktionen vorhanden (Hauptplan).
+7. **Offene Features**: laut Hauptplan; derzeit nachrangig gegenueber Public-Gate.
+8. **Offene Bugs**: keine neuen bekannt.
+9. **Technische Schulden**: interner Host/IP-Leak in Skill-Datei (Arbeitsstand redigierbar, History = Owner-Entscheid).
+10. **Tests/Gates**: projektlokale Tests + Public-Gate-Whole-Tree-Scan; Scan-Befund dokumentiert.
+11. **Logging/Diagnose**: lokal, unkritisch.
+12. **Datenhaltung**: lokale Turnierdaten; keine echten Personendaten ins Repo.
+13. **Sicherheit/Secrets/PII**: PUBLIC-Gate aktiv: Host/IP-Redaction vor jedem Push; History-Entscheidung (rewrite vs. neu aufsetzen vs. belassen) = Owner.
+14. **Installation/Packaging**: lokal.
+15. **Wissensbasis/Langdock**: nur Metadaten; keine Teilnehmerdaten.
+16. **Agenten/Skills**: .agents/skills vorhanden; internet-research-SKILL muss redigiert werden.
+17. **Nightly/Automation**: NICHT nightly-faehig fuer Push (needs-Owner-approval); lokale read-only Checks erlaubt.
+18. **Dokumentation**: PLANS/NEXT_PROMPT aktuell; Public-Gate-Befund in Registry-Memory dokumentiert.
+19. **Bekannte Blocker**: Public-History-Entscheidung Owner (P1 fuer diesen Repo-Push).
+20. **Gewichtete Meilensteine**:
+    | Meilenstein | Gewicht | Status |
+    |---|---|---|
+    | Fachlicher Kern (Hauptplan) | 50 | erledigt (Basis run50) |
+    | Arbeitsstand-Redaction (Host/IP raus) | 15 | offen (sicher lokal machbar) |
+    | History-Entscheidung + Umsetzung | 20 | blockiert (Owner) |
+    | Push + Public-Whole-Tree-Scan gruen | 15 | blockiert (haengt an History) |
+21. **Fertigstellungsgrad**: 50 % im Public-Release-Scope (fachlicher Kern erledigt; Release-Kette blockiert).
+22. **Naechster Schritt**: Arbeitsstand-Redaction der SKILL.md lokal vorbereiten (ohne Push), Entscheidungsvorlage fuer Owner schreiben.
+23. **Done-Kriterien**: Whole-Tree- und History-Scan ohne interne Hosts/IPs/PII; Owner-Go dokumentiert; Push clean.
+24. **Stop-Regeln**: kein Force-Push, kein History-Rewrite ohne Owner, Status ehrlich needs-Owner-approval halten.
+25. **Fortsetzungsnotiz**: Befund-Quelle: Fabel-Memory 2026-07-09 (schach-public-gate-host-ip-leak); zuerst Redaction-Slice, dann Owner-Vorlage.

@@ -1,6 +1,6 @@
 # Abschlussbericht – Codex-Contributor-Starterpaket (2026-07-12)
 
-Modell: Claude Opus 4.8 (claude-opus-4-8). Branch: `development`.
+Modell: Claude / Opus-Profil (historischer Lauf). Branch: `development`.
 
 ## Ausgangscommit
 `f42eb346694ca406309f9ffe1f55075a4e874529` (development, sauber, synchron mit origin).

@@ -1,7 +1,7 @@
 # Abschlussbericht – Kollaborations-Bootstrap & development-Branch (2026-07-12)
 
 ## Modell
-Claude Opus 4.8 (claude-opus-4-8), Fortsetzung einer durch Nutzungslimit unterbrochenen
+Claude / Opus-Profil (historischer Lauf), Fortsetzung einer durch Nutzungslimit unterbrochenen
 Fabel-Planungssession.
 
 ## Ausgangslage

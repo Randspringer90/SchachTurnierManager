@@ -10,7 +10,7 @@
 | Branch          | Zweck                                         | Direkter Push | Merge-Quelle                     |
 |-----------------|-----------------------------------------------|---------------|----------------------------------|
 | `main`          | Nur der jeweils neueste **freigegebene Release-Stand** | Gesperrt (nur Admin-Notfall) | `release/*`, `hotfix/*` (per PR) |
-| `development`   | **Standardbranch**, aktueller Entwicklungsstand | Nur Owner (der Owner, Admin-Bypass) | `feature/* fix/* security/* docs/* refactor/*` sowie `integration/pr-<nr>-safe-adoption` (per PR) |
+| `development`   | **Standardbranch**, aktueller Entwicklungsstand | Nur Owner (der Owner, Admin-Bypass) | `feature/* fix/* security/* docs/* refactor/*`, gepruefte `owner/STM-<BEREICH>-<NNN>-<slug>` sowie `integration/pr-<nr>-safe-adoption` (per PR) |
 | `feature/*` u.a.| Einzelne Backlog-Aufgabe                       | Ersteller     | –                                |
 | `release/*`     | Release-Stabilisierung                        | Gesperrt (PR) | `development`, `release-fix/*`   |
 | `hotfix/*`      | Dringende Korrektur am Release                | Gesperrt (PR) | von `main` abgezweigt            |
@@ -25,6 +25,11 @@
 - `main` darf **nie** gelöscht oder force-gepusht werden.
 
 ## `development`
+
+Owner-Paketbranches folgen [OWNER_BRANCH_POLICY.md](OWNER_BRANCH_POLICY.md).
+Ein zulaessiger Name ersetzt weder den statischen Base-/Head-SHA-Review noch die
+Owner-Identitaet, Projektgates und aktuelle CI. Die historische Missing-Scanner-
+Bootstrap-Ausnahme gilt ausschliesslich fuer ihren exakt benannten Branch.
 
 - **GitHub-Standardbranch** und Quelle aller Feature-Branches.
 - Neue Planung, Architektur, Features und Bugfixes laufen grundsätzlich gegen `development`.
