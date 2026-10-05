@@ -1,0 +1,14 @@
+:root { color-scheme: light dark; font: 1rem/1.55 system-ui, sans-serif; }
+body { margin: 0; color: CanvasText; background: Canvas; }
+main { margin: auto; padding: 1.5rem; max-width: 80rem; }
+h1,h2 { line-height: 1.2; } label { display: inline-block; margin: .45rem .6rem .45rem 0; }
+input,select,button { font: inherit; max-width: 100%; box-sizing: border-box; padding: .5rem; }
+button { cursor: pointer; margin: .3rem; } fieldset { margin: 1rem 0; }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.scroll { overflow-x: auto; } table { border-collapse: collapse; width: 100%; }
+th,td { text-align: start; padding: .6rem; border-block-end: 1px solid; overflow-wrap: anywhere; }
+.notice { border-inline-start: .25rem solid; padding-inline-start: .8rem; }
+[hidden] { display: none !important; } [data-stale=true] { border: 3px dashed; }
+.presentation { font-size: 1.4rem; } .presentation .operator-controls { display: none; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 45rem) { main { padding: .8rem; } }
