@@ -11,6 +11,7 @@
     "config/tool-permission-profiles.json",
     "config/trusted-instruction-paths.json",
     "config/model-routing.json",
+    "config/model-catalog.json",
     "config/task-decomposition-policy.json",
     "config/provider-runtime-policy.json",
     "config/nightly-run.json",

@@ -76,10 +76,11 @@ jobs:
               throw 'Ausführungsfreigabe ist ausschließlich für einen Owner-Branch im kanonischen Repository zulässig.'
             }
             if ($RequireIntegrationBranch) {
-              $isIntegration = $env:HEAD_REF -cmatch '^integration/pr-[1-9][0-9]*-safe-adoption$'
+              $isIntegration = -not $AllowBootstrap -and $env:HEAD_REF -cmatch '^integration/pr-[1-9][0-9]*-safe-adoption$'
+              $isOwnerPackage = -not $AllowBootstrap -and $env:HEAD_REF -cmatch '\A(?:owner|feature|fix|security|docs|refactor)/STM-[A-Z]+-[0-9]{3}-[a-z0-9]+(?:-[a-z0-9]+)*\z'
               $isBootstrap = $AllowBootstrap -and $env:HEAD_REF -ceq 'security/STM-SEC-005-safe-pr-adoption'
-              if (-not $isIntegration -and -not $isBootstrap) {
-                throw 'Ausführungsfreigabe erfordert einen exakt nach dem Original-PR benannten Owner-Integrationsbranch.'
+              if (-not $isIntegration -and -not $isOwnerPackage -and -not $isBootstrap) {
+                throw 'Ausfuehrungsfreigabe erfordert einen Owner-Paketbranch oder einen exakt benannten Integrationsbranch.'
               }
             }
             if (-not (Test-ShaBoundOwnerReview)) {

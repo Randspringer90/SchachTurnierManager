@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "build": "tsc --noEmit && vite build --configLoader native --outDir ../../tmp/webapp-dist --emptyOutDir false",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+    "build": "npm run test:qr:golden && npm run test:qr:runtime && tsc --noEmit && vite build --configLoader native --outDir ../../tmp/webapp-dist --emptyOutDir false",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "test:qr:golden": "node --test ../../tests/scripts/qr-golden.test.mjs",
+    "test:qr:runtime": "node --test ../../tests/scripts/qr-runtime.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.2",

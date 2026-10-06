@@ -1,6 +1,6 @@
 # Abschlussbericht – Agenten-, Skill- & Security-Grundlage (STM-AI-001) 2026-07-12
 
-- **Modell:** Claude Opus 4.8 (claude-opus-4-8).
+- **Modell:** Claude / Opus-Profil (historischer Lauf).
 - **Ausgangscommit (development):** `ecfb473` (PR #6/STM-INT-001 gemergt; verifiziert).
 - **Branch:** `feature/STM-AI-001-agent-skill-foundation`.
 - **Offene PRs bei Start:** keine. **Collaborator-Kollision:** keine (keine PRs/Remote-Feature-Branches/Assignees; STM-TB-001/FACH-001/IE-001/DOC-001 nicht berührt).

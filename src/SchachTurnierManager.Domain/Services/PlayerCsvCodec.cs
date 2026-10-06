@@ -134,17 +134,7 @@ public static class PlayerCsvCodec
         return Enum.TryParse<PlayerStatus>(value, ignoreCase: true, out var parsed) ? parsed : PlayerStatus.Active;
     }
 
-    private static string Escape(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var mustQuote = value.Contains(';') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
-        var escaped = value.Replace("\"", "\"\"");
-        return mustQuote ? $"\"{escaped}\"" : escaped;
-    }
+    private static string Escape(string? value) => CsvFieldEncoder.Encode(value, ';');
 
     private static IReadOnlyList<string> ParseLine(string line)
     {

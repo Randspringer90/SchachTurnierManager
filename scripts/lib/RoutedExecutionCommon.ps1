@@ -45,17 +45,73 @@ function Get-ProviderRuntimePolicy {
     if (-not $PolicyPath) {
         $PolicyPath = Join-Path (Get-RoutedRepoRoot) 'config/provider-runtime-policy.json'
     }
+    $pathProvider = $null
+    $pathDrive = $null
+    $PolicyPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PolicyPath, [ref]$pathProvider, [ref]$pathDrive)
+    if ($pathProvider.Name -ne 'FileSystem') { throw 'Modell-Policy benoetigt einen FileSystem-Pfad.' }
     if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         throw "Provider-Runtime-Policy fehlt: $PolicyPath"
     }
-    $policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
-    foreach ($key in @('schemaVersion', 'providerPreference', 'providers', 'safety', 'retry', 'classification')) {
+    $configDirectory = Split-Path -Parent ([IO.Path]::GetFullPath($PolicyPath))
+    $catalogPath = Join-Path $configDirectory 'model-catalog.json'
+    $runtimeSchema = Join-Path $configDirectory 'provider-runtime-policy.schema.json'
+    $catalogSchema = Join-Path $configDirectory 'model-catalog.schema.json'
+    foreach ($file in @($PolicyPath, $catalogPath, $runtimeSchema, $catalogSchema)) {
+        $item = Get-Item -LiteralPath $file -ErrorAction Stop
+        while ($null -ne $item) {
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw 'Modell-Policy und Katalog duerfen keine Reparse-Points verwenden.'
+            }
+            $item = if ($item -is [IO.FileInfo]) { $item.Directory } else { $item.Parent }
+        }
+    }
+    $policyJson = Get-Content -LiteralPath $PolicyPath -Raw
+    $catalogJson = Get-Content -LiteralPath $catalogPath -Raw
+    try {
+        if (-not (Test-Json -Json $policyJson -SchemaFile $runtimeSchema -ErrorAction Stop) -or
+            -not (Test-Json -Json $catalogJson -SchemaFile $catalogSchema -ErrorAction Stop)) {
+            throw 'ungueltige Modell-Konfiguration'
+        }
+    } catch { throw "Modell-Policy/Katalog verletzt Schema: $($_.Exception.Message)" }
+    $policy = $policyJson | ConvertFrom-Json
+    $catalog = $catalogJson | ConvertFrom-Json
+    foreach ($key in @('schemaVersion', 'modelCatalogFile', 'providerPreference', 'providers', 'safety', 'retry', 'classification')) {
         if ($policy.PSObject.Properties.Name -notcontains $key) {
             throw "Provider-Runtime-Policy unvollstaendig: Schluessel '$key' fehlt."
         }
     }
     if ($policy.safety.childrenMayCommit -or $policy.safety.childrenMayPush) {
         throw 'Provider-Runtime-Policy verletzt Arbeitssicherheit: Children duerfen nie committen oder pushen.'
+    }
+    $officialSources = @{
+        openai = 'https://developers.openai.com/api/docs/models'
+        anthropic = 'https://platform.claude.com/docs/en/models/overview'
+    }
+    foreach ($providerName in $officialSources.Keys) {
+        if ($catalog.sources.$providerName -cne $officialSources[$providerName]) {
+            throw "Modellkatalog: nicht freigegebene offizielle Quelle fuer $providerName."
+        }
+    }
+    $verifiedDate = [datetime]::MinValue
+    if (-not [datetime]::TryParseExact($catalog.verifiedOn, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::None, [ref]$verifiedDate) -or $verifiedDate.Date -gt [datetime]::UtcNow.Date) {
+        throw 'Modellkatalog: ungueltiges oder zukuenftiges Pruefdatum.'
+    }
+    $modelIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($entry in $catalog.models.PSObject.Properties.Value) {
+        if (-not $modelIds.Add($entry.id)) { throw 'Modellkatalog: Modell-ID doppelt; gemeinsamen Schluessel verwenden.' }
+    }
+    foreach ($providerName in $policy.providers.PSObject.Properties.Name) {
+        foreach ($profile in $policy.providers.$providerName.profiles.PSObject.Properties) {
+            $modelKey = $profile.Value.modelKey
+            if ($catalog.models.PSObject.Properties.Name -cnotcontains $modelKey) {
+                throw "Modellkatalog: unbekannter Katalogschluessel '$modelKey'."
+            }
+            $entry = $catalog.models.$modelKey
+            if ($entry.provider -cne $providerName) { throw "Modellkatalog: Provider passt nicht zum Profil '$($profile.Name)'." }
+            # Kompatible In-Memory-Sicht fuer bestehende Provider-Adapter; kein zweiter Versionspin.
+            $profile.Value | Add-Member -NotePropertyName model -NotePropertyValue $entry.id
+        }
     }
     return $policy
 }

@@ -44,6 +44,7 @@ New-Item -ItemType Directory -Force -Path $workRoot | Out-Null
 try {
     $policy = Get-RoutedPolicy
     $runtimePolicy = Get-ProviderRuntimePolicy
+    & (Join-Path $scriptsRoot 'Test-ModelCatalogReadiness.ps1')
 
     # --- 1) Policies vorhanden und konsistent -------------------------------------
     Assert-Check 'policy-decomposition-valide' ($policy.schemaVersion -ge 1)

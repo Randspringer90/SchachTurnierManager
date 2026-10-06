@@ -1,5 +1,17 @@
 ## Unreleased (development)
 
+- STM-QR-001 / PR #82: QR-Eingaben und ECC-Stufen vor Matrixberechnung validieren, Byte-Kapazitaet begrenzen, UTF-8-Fallback fuer einzelne Surrogate an TextEncoder angleichen und ungueltige Koordinaten sicher ablehnen. 45 Runtime-Regressionen ergaenzen die 164 Golden-Tests im Frontend-Build; keine neue Dependency oder mobile Verbindungsoberflaeche.
+
+- STM-SEC-006 / PR #67, erster Teilumfang: gemeinsamer CSV-Ausgabeencoder fuer Teilnehmer- und Swiss-Manager-Export. Formelartige Praefixe, verdeckende Unicode-/Whitespace-Zeichen und Steuerzeichen werden als Text ausgegeben; normale numerische Literale und Quelldaten bleiben erhalten. JSON bleibt der verlustfreie Backup-Kanal; weitere CSV-Oberflaechen bleiben Folgearbeit.
+
+- STM-QR-002 / PR #84: Unabhaengige QR-Matrix-Regressionen fuer alle 40 Versionen und vier ECC-Stufen. 160 synthetische Referenzvektoren und vier Coverage-/Mutationspruefungen; Bestandteil des Frontend-Builds, ohne neue Runtime-Abhaengigkeit.
+
+- Dokumentationskorrekturen aus Marcel-Mentes PR #54 uebernommen: bereits gemergte FIDE-Dutch-/Swiss-Manager-Adoptionen in Detailbacklog und Contributor-Queue konsistent dargestellt; verbleibende Folgeaufgaben und der offene Integrationstraeger #55 bleiben separat.
+
+- STM-INFRA-007: Exakt normgerechte Owner-Paketbranches in Branch- und Ausführungsgates konsistent zugelassen. Owner-Identität, kanonisches Repository und SHA-gebundener Review bleiben zwingend; die Missing-Scanner-Ausnahme gilt ausschließlich für den historischen Bootstrap-Branch. 78 Regressionen prüfen Branchregeln und echte PowerShell-Approval-Funktionen einschließlich ungültiger/staler Reviews.
+
+- STM-AI-007: Konkrete KI-Modellvarianten in `config/model-catalog.json` zentralisiert. Runtime-Adapter loesen stabile Schluessel auf; Katalog-/Provider-Schema, offizielle Quellen und Sicherheitsgrenzen werden fail-closed geprueft. Anleitung fuer regelmaessige Aktualisierung auf die neueste verifizierte stabile Generation; historische Laufangaben versionsneutral gehalten.
+
 - STM-SEC-007: Externe Artefakt-Exfiltration gehaertet. KI-Agenten duerfen keine Ausweich-Repositories/Gists oder externen Bild-/Artefakt-Hosts fuer Screenshots und Laufartefakte verwenden. Das PR-Template fordert keine Screenshot-Uploads mehr; Toolprofile, statische PR-Pruefung und Git-Safety blockieren entsprechende Publishing-Wege beziehungsweise Screenshot-typische Rasterbilder fail-closed.
 
 - STM-IE-002: Swiss-Manager-CSV-Import/-Export und TRF16-Import ergänzt (Import-
