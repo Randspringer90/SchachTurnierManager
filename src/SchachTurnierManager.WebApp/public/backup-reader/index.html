@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer"><title>Turniersicherung lesen</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><a href="/">Zur Turnierverwaltung</a><h1>Turniersicherung ohne Backend lesen</h1>
+<p class="notice">Lokale Datei, kein Live-Stand. Diese Ansicht zeigt gespeicherte Spieler, Paarungen und Ergebnisarten. Sie berechnet keine Punkte oder Ranglisten und speichert keine &Auml;nderungen.</p>
+<label for="file">Native JSON-Sicherung (maximal 5 MiB)</label><input id="file" type="file" accept=".json,application/json"><button id="load" type="button">Sicherung lesen</button><button id="clear" type="button">Ansicht leeren</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<section id="report" hidden><h2 id="title">Lokale Turniersicherung</h2><p id="summary"></p>
+<label><input id="names" type="checkbox">Turnier- und Spielernamen anzeigen (vertrauliche Angaben)</label>
+<label for="query">Spielername filtern</label><input id="query" type="search" maxlength="100" disabled>
+<label for="player-status">Spielerstatus</label><select id="player-status"><option value="">Alle</option><option value="Active">Aktiv</option><option value="Paused">Pausiert</option><option value="Withdrawn">Zur&uuml;ckgezogen</option></select>
+<div class="scroll"><table><caption>Spieler im gespeicherten Stand</caption><thead><tr><th scope="col">Startrang</th><th scope="col">Spieler</th><th scope="col">Status</th></tr></thead><tbody id="players"></tbody></table></div>
+<button id="previous" type="button" disabled>Vorherige 50</button><button id="next" type="button" disabled>N&auml;chste 50</button><p id="page"></p>
+<label for="round">Gespeicherte Runde</label><select id="round"></select><p id="round-status"></p>
+<div class="scroll"><table><caption>Paarungen und gespeicherte Ergebnisarten</caption><thead><tr><th scope="col">Brett</th><th scope="col">Wei&szlig;</th><th scope="col">Schwarz</th><th scope="col">Ergebnisart</th></tr></thead><tbody id="pairings"></tbody></table></div></section>
+<p>Namen werden nur in der Anzeige verborgen, nicht aus der Datei entfernt. Audittexte, Kontaktdaten und Notizen werden nicht dargestellt. Fehlende Spielerbez&uuml;ge und unbekannte Statuswerte werden sichtbar gez&auml;hlt. Kein Upload, kein Import und keine dauerhafte Speicherung.</p>
+<p>Die Seite muss bereits geladen sein, bevor das Backend wegf&auml;llt. Das erstmalige Offline-Laden und die Offline-Auslieferung dieser neuen Dateien sind nicht Bestandteil dieses Pakets. Sammelarchive oder verschl&uuml;sselte Dateien zuerst mit dem passenden Werkzeug in native JSON-Dateien umwandeln.</p>
+<noscript>JavaScript ist f&uuml;r die lokale Leseansicht erforderlich.</noscript></main><script type="module" src="./main.js"></script></body></html>
