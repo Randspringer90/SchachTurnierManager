@@ -24,16 +24,17 @@ Previously tolerated malformed dates now produce a diagnostic intentionally.
 
 ## Integration
 
-Independent branch from development cc47f1101983d3f3272a893dbf54bd66fa2355b4.
+Original package branch started from development cc47f1101983d3f3272a893dbf54bd66fa2355b4.
 The changes touch only the BirthYear call and ParseBirthYear implementation. Source
 three-way merging with PR #67 and STM-IE-009 is conflict-free. With STM-IE-009,
 physical record start lines also apply to these new birth diagnostics.
 
-Proposed canonical BACKLOG entry (still pending): STM-IE-010 | Swiss-Manager birth
-validation | P2 | In Review | import-export | owner | scoped issue | development.
-Proposed CHANGELOG entry: reject invalid complete birth dates before year reduction;
-report the record location without echoing personal input. Integrate these entries
-without discarding newer planning changes. No Done status before all required gates.
+The existing owner branch was synchronized normally with development
+abecd00c93d8c651f362d8ef3f0098200fe385ba on 2026-10-06. Static review of current
+head 866d1f37c17284e44bd46202183390b9e8ba067f resolved all three contextual
+findings before execution. The CSV output encoder from PR #67 is preserved.
+BACKLOG/CHANGELOG now describe this scope as In Review. No Done status before
+all required gates and the actual merge.
 
 ## Verification
 
@@ -42,6 +43,9 @@ malformed dates and ranges, optional blanks, preservation of other fields and ro
 and independence from the current culture. Run SwissManagerBirthDateTests and the
 existing SwissManagerCsvCodecTests, then the full solution.
 
-The environment has no .NET SDK or PowerShell. The 43 cases are added, NOT executed;
-C# compilation, xUnit, full project gates, independent review and CI are pending.
+The historical implementation environment had no .NET SDK or PowerShell and did
+not execute the cases. Current integration verification on 2026-10-06 passed
+55/55 focused tests: 43 new birth-date cases plus 12 existing Swiss-Manager cases,
+zero failures/skips. Full project gates, final independent review and current CI
+remain merge requirements; this targeted result is not a merge approval.
 DateOnly API reference: https://learn.microsoft.com/en-us/dotnet/api/system.dateonly.tryparseexact?view=net-10.0 .

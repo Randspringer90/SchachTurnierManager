@@ -56,8 +56,19 @@ Head `3db4e5318fd52576a19bc27bc8709d33d3d26155`, Squash-Merge
 identisch. development/main normal gepusht und beide Remote-SHAs explizit
 abgeglichen. SEC-006 bleibt fuer weitere CSV-Oberflaechen offen.
 
-Startinventur: 29 PRs. Stand nach #67: 3 merged (#63/#84/#67), 4 nachvollziehbar
-superseded geschlossen (#49/#51/#53/#54), 22 noch offen. Zwischenzeitlich
+PR #82 bestand 209 QR-Tests (45 Runtime, 164 Golden), den vollstaendigen
+CommitGuard mit 555 .NET-Tests, TypeScript/Vite und lokaler Paketierung,
+OpenSource-/Git-Safety sowie unabhaengigen Finalreview. Der erste CI-Versuch
+wurde abgebrochen; er gilt nicht als bestanden. Der erneute Lauf am 2026-10-06
+bestand alle acht aktuellen Checks:
+https://github.com/Randspringer90/SchachTurnierManager/actions/runs/37362590311
+Head `442928fc01267bdd934ff9f675f17f811659e6f0`, Squash-Merge
+`abecd00c93d8c651f362d8ef3f0098200fe385ba`; integrierter Tree identisch mit
+dem getesteten Head. main/development normal gepusht und beide Remote-SHAs
+abgeglichen. Keine Branchloeschung oder Veroeffentlichung von Laufartefakten.
+
+Startinventur: 29 PRs. Stand nach #82: 4 merged (#63/#84/#67/#82), 4 nachvollziehbar
+superseded geschlossen (#49/#51/#53/#54), 21 noch offen. Zwischenzeitlich
 erstellte PRs werden davon getrennt inventarisiert. #55/#57/#59 haben
 dokumentierte echte technische/fachliche/Security-Blocker; kein blockierter
 Head wurde ausgefuehrt. Dies bleibt ein Zwischenbericht bis alle Start-PRs

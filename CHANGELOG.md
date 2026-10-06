@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- STM-IE-010 / PR #80: Swiss-Manager-Geburtsangaben als vollstaendige Kalenderdaten oder vierstellige Jahre validieren, bevor nur das Jahr gespeichert wird. Ungueltige Angaben erhalten eine Zeilendiagnose ohne Echo des persoenlichen Werts; Teilnehmer und andere Felder bleiben erhalten. Bestehender Bereich 1900-2100 unveraendert.
+
 - STM-QR-001 / PR #82: QR-Eingaben und ECC-Stufen vor Matrixberechnung validieren, Byte-Kapazitaet begrenzen, UTF-8-Fallback fuer einzelne Surrogate an TextEncoder angleichen und ungueltige Koordinaten sicher ablehnen. 45 Runtime-Regressionen ergaenzen die 164 Golden-Tests im Frontend-Build; keine neue Dependency oder mobile Verbindungsoberflaeche.
 
 - STM-SEC-006 / PR #67, erster Teilumfang: gemeinsamer CSV-Ausgabeencoder fuer Teilnehmer- und Swiss-Manager-Export. Formelartige Praefixe, verdeckende Unicode-/Whitespace-Zeichen und Steuerzeichen werden als Text ausgegeben; normale numerische Literale und Quelldaten bleiben erhalten. JSON bleibt der verlustfreie Backup-Kanal; weitere CSV-Oberflaechen bleiben Folgearbeit.
