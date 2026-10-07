@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Browser-Voraussetzungen | SchachTurnierManager</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><p><a href="/">Zur Turnierverwaltung</a></p><h1>Browser-Voraussetzungen pr&uuml;fen</h1>
+<p>Diese Ansicht zeigt, welche Schnittstellen der aktuelle Browser f&uuml;r lokale Dateien, Pr&uuml;fsummen und Service Worker bereitstellt. Die Pr&uuml;fung startet nur auf Klick.</p>
+<p class="notice">Keine Berechtigungsdialoge, Testdateien, Uploads, Speicherzugriffe, Hintergrundabfragen oder Installation. Browsername, Ger&auml;tekennung, IP-Adresse und Speicherinhalte werden nicht erfasst.</p>
+<button id="check" type="button">Voraussetzungen pr&uuml;fen</button><button id="reset" type="button">Anzeige leeren</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<section id="output" hidden><h2>Sichtbare Schnittstellen</h2><div class="table-wrap"><table><caption>Momentaufnahme dieses Browsers</caption><thead><tr><th scope="col">Pr&uuml;fung</th><th scope="col">Ergebnis</th></tr></thead><tbody id="checks"></tbody></table></div><h2>Einordnung f&uuml;r Funktionen</h2><ul id="features"></ul></section>
+<h2>Was das Ergebnis nicht beweist</h2><p>Eine sichtbare Schnittstelle kann bei ihrer Benutzung durch Richtlinien oder Laufzeitfehler scheitern. Der Check f&uuml;hrt weder einen Dateiimport noch SHA-256 oder eine Service-Worker-Registrierung aus. Er pr&uuml;ft nicht, ob die PWA installiert ist, Daten dauerhaft gespeichert werden, das Backend erreichbar ist oder alle Programmfunktionen vorhanden sind.</p>
+<p>Bei fehlendem sicherem Kontext k&ouml;nnen manche Funktionen eingeschr&auml;nkt sein. Nutze eine ordnungsgem&auml;&szlig; eingerichtete HTTPS-Adresse oder die Anwendung direkt am Turnierrechner &uuml;ber localhost. Sicherheitsrichtlinien oder Zertifikatspr&uuml;fungen nicht abschalten.</p>
+<noscript><p>JavaScript muss f&uuml;r diesen lokalen Check verf&uuml;gbar sein.</p></noscript></main><script type="module" src="./main.js"></script></body></html>

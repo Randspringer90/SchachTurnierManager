@@ -65,14 +65,21 @@ public static class SwissManagerCsvCodec
             return new SwissManagerImportResult(Array.Empty<Player>(), Array.Empty<string>());
         }
 
-        var lines = csv.Replace("\r\n", "\n").Replace('\r', '\n')
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (lines.Length == 0)
+        IReadOnlyList<CsvRecord> records;
+        try
+        {
+            records = CsvRecordReader.Read(csv, Separator);
+        }
+        catch (ArgumentException ex)
+        {
+            return new SwissManagerImportResult(Array.Empty<Player>(), new[] { ex.Message });
+        }
+        if (records.Count == 0)
         {
             return new SwissManagerImportResult(Array.Empty<Player>(), Array.Empty<string>());
         }
 
-        var header = ParseLine(lines[0]);
+        var header = records[0].Fields;
         var columns = BuildColumnMap(header);
         var errors = new List<string>();
         if (!columns.ContainsKey("name") && !columns.ContainsKey("surname"))
@@ -82,10 +89,10 @@ public static class SwissManagerCsvCodec
         }
 
         var players = new List<Player>();
-        for (var lineIndex = 1; lineIndex < lines.Length; lineIndex++)
+        for (var lineIndex = 1; lineIndex < records.Count; lineIndex++)
         {
-            var oneBasedLineNumber = lineIndex + 1;
-            var values = ParseLine(lines[lineIndex]);
+            var oneBasedLineNumber = records[lineIndex].LineNumber;
+            var values = records[lineIndex].Fields;
 
             var name = ResolveName(values, columns);
             if (string.IsNullOrWhiteSpace(name))
@@ -112,7 +119,7 @@ public static class SwissManagerCsvCodec
                 Federation = NullIfWhiteSpace(Field(values, columns, "fed")),
                 Club = NullIfWhiteSpace(Field(values, columns, "club")),
                 Gender = ParseSex(Field(values, columns, "sex")),
-                BirthYear = ParseBirthYear(Field(values, columns, "birth")),
+                BirthYear = ParseBirthYear(Field(values, columns, "birth"), oneBasedLineNumber, errors),
                 Rating = new RatingProfile
                 {
                     Dwz = ParseNullableInt(Field(values, columns, "rating nat"), oneBasedLineNumber, "Rating nat", errors),
@@ -177,37 +184,31 @@ public static class SwissManagerCsvCodec
     /// Akzeptiert reines Jahr (JJJJ), TRF-Datum (JJJJ/MM/TT) und deutsches Datum (TT.MM.JJJJ);
     /// reduziert in jedem Fall auf das Jahr (PII-Minimierung, siehe Klassenkommentar).
     /// </summary>
-    private static int? ParseBirthYear(string value)
+    private static int? ParseBirthYear(string value, int lineNumber, List<string> errors)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        if (value.Length == 4 && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var bareYear))
+        if (value.Length == 4 && value.All(ch => ch is >= '0' and <= '9')
+            && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var year)
+            && IsPlausibleYear(year))
         {
-            return IsPlausibleYear(bareYear) ? bareYear : null;
+            return year;
         }
 
-        if (value.Contains('/'))
+        // "M"/"d" accept one or two digits, so 1990/6/15 and 15.6.1990 (accepted
+        // before STM-IE-010) stay valid while the calendar check still applies.
+        if (DateOnly.TryParseExact(value, new[] { "yyyy/M/d", "d.M.yyyy" },
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            && IsPlausibleYear(date.Year))
         {
-            var part = value.Split('/')[0];
-            if (int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var trfYear) && IsPlausibleYear(trfYear))
-            {
-                return trfYear;
-            }
+            return date.Year;
         }
 
-        if (value.Contains('.'))
-        {
-            var segments = value.Split('.');
-            var part = segments[^1];
-            if (int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var germanYear) && IsPlausibleYear(germanYear))
-            {
-                return germanYear;
-            }
-        }
-
+        // Birth dates are personal data: report the location, never echo the value.
+        errors.Add($"Zeile {lineNumber}: 'Birth' ist kein gueltiges Jahr (1900-2100) oder Datum (JJJJ/MM/TT, TT.MM.JJJJ); Geburtsjahr wird ignoriert.");
         return null;
     }
 
@@ -235,41 +236,6 @@ public static class SwissManagerCsvCodec
 
     private static string Escape(string? value) => CsvFieldEncoder.Encode(value, Separator);
 
-    private static IReadOnlyList<string> ParseLine(string line)
-    {
-        var values = new List<string>();
-        var current = new StringBuilder();
-        var inQuotes = false;
-
-        for (var i = 0; i < line.Length; i++)
-        {
-            var ch = line[i];
-            if (ch == '"')
-            {
-                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
-                {
-                    current.Append('"');
-                    i++;
-                }
-                else
-                {
-                    inQuotes = !inQuotes;
-                }
-            }
-            else if (ch == Separator && !inQuotes)
-            {
-                values.Add(current.ToString());
-                current.Clear();
-            }
-            else
-            {
-                current.Append(ch);
-            }
-        }
-
-        values.Add(current.ToString());
-        return values;
-    }
 }
 
 public sealed record SwissManagerImportResult(IReadOnlyList<Player> Players, IReadOnlyList<string> Errors);

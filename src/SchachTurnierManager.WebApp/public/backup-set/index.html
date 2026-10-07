@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Mehrere Turniere gemeinsam sichern | SchachTurnierManager</title><link rel="stylesheet" href="../workflow-common/style.css"></head>
+<body><main id="screen"><a href="/">Zur Turnierverwaltung</a><h1>Mehrere Turniere gemeinsam sichern</h1>
+
+<p class="notice">Das Archiv enth&auml;lt vollst&auml;ndige, unverschl&uuml;sselte Turnierdaten und kann personenbezogene Angaben enthalten. Sicher aufbewahren, nicht &ouml;ffentlich weitergeben. Ein Sammelabruf ist keine atomare Datenbankkopie.</p>
+<section><h2>1. Sammelsicherung erstellen</h2><button id="list" type="button">Turnierliste laden</button><fieldset><legend>1 bis 10 Turniere ausw&auml;hlen</legend><div id="choices"></div></fieldset>
+<label><input id="consent" type="checkbox"> Mir ist bewusst, dass die Sicherung vertrauliche Turnierdaten enth&auml;lt.</label>
+<button id="collect" type="button">Auswahl nacheinander sichern</button><a id="archive-download" hidden>Sammelsicherung herunterladen</a>
+<p>Grenzen: 2 MiB pro Export, 10 MiB Rohdaten insgesamt. Bei einem Fehler wird kein unvollst&auml;ndiges Archiv als erfolgreich angeboten.</p></section>
+<section><h2>2. Einzelne native Sicherung zur&uuml;ckgewinnen</h2><label>Sammelarchiv <input id="file" type="file" accept=".json,application/json"></label><button id="read" type="button">Archiv lokal pr&uuml;fen</button>
+<label>Enthaltenes Turnier <select id="member"><option value="">Bitte Archiv lesen</option></select></label><a id="item-download" hidden>Native JSON-Sicherung herunterladen</a>
+<p>Die originalen JSON-Texte bleiben erhalten, auch Zahlenschreibweise, Leerzeichen und BOM. Alle enthaltenen SHA-256-Werte werden vor dem Einzeldownload kontrolliert. Das beweist weder Herkunft noch fachliche Wiederherstellbarkeit. Kein automatischer Import, kein &Uuml;berschreiben und kein L&ouml;schen.</p></section>
+<button id="cancel" type="button">Abbrechen / Ergebnisse leeren</button><p id="status" role="status" aria-live="polite">Noch keine Daten abgerufen.</p>
+<noscript>JavaScript ist f&uuml;r diese Funktion erforderlich.</noscript></main><script type="module" src="./main.mjs"></script></body></html>

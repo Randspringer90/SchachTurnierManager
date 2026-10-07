@@ -43,7 +43,12 @@ function Test-IsPatternSource([string]$NormalizedPath, [string]$Content) {
 }
 
 function Test-IsAllowedBlockedPath([string]$NormalizedPath) {
-    return $NormalizedPath -in @('logs/README.md', 'logs/.gitkeep') -or $NormalizedPath -match '^(?i:docs/(ai/reports|reports)/[^/]+\.md)$'
+    # .codex/ stays blocked as a directory so a real local Codex configuration
+    # can never reach a public snapshot. Exactly two adapter files are exempt:
+    # a README and an example config that contains only placeholders. This is an
+    # explicit file allowlist, not a prefix, so any new .codex/ file is blocked.
+    return $NormalizedPath -in @('logs/README.md', 'logs/.gitkeep', '.codex/README.md', '.codex/config.example.toml') `
+        -or $NormalizedPath -match '^(?i:docs/(ai/reports|reports)/[^/]+\.md)$'
 }
 
 function Test-RepositoryKind {

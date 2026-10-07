@@ -156,11 +156,20 @@ try {
             Write-Host "        Belegenden Prozess finden: Get-NetTCPConnection -LocalPort $Port -State Listen" -ForegroundColor DarkGray
             exit 2
         }
-        $dll = Join-Path $root 'src\SchachTurnierManager.WebApi\bin\Release\net10.0\SchachTurnierManager.WebApi.dll'
+        # Directory.Build.props redirects BaseOutputPath to tmp\dotnet-bin\<project>\.
+        # The legacy src\**\bin path is still probed so older checkouts keep working.
+        $dllCandidates = @(
+            (Join-Path $root 'tmp\dotnet-bin\SchachTurnierManager.WebApi\Release\net10.0\SchachTurnierManager.WebApi.dll'),
+            (Join-Path $root 'src\SchachTurnierManager.WebApi\bin\Release\net10.0\SchachTurnierManager.WebApi.dll')
+        )
         Write-Host "[Smoke] Baue WebApi (Release), damit kein veraltetes Binary getestet wird ..." -ForegroundColor Yellow
         & dotnet build (Join-Path $root 'src\SchachTurnierManager.WebApi') -c Release -v minimal
         if ($LASTEXITCODE -ne 0) { Write-Error "Build fehlgeschlagen."; exit 2 }
-        if (-not (Test-Path $dll)) { Write-Error "WebApi-DLL nicht gefunden: $dll"; exit 2 }
+        $dll = $dllCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        if (-not $dll) {
+            Write-Error "WebApi-DLL nicht gefunden. Geprueft:`n  $($dllCandidates -join "`n  ")"
+            exit 2
+        }
 
         New-Item -ItemType Directory -Force -Path $DataDirectory | Out-Null
         Write-Host "[Smoke] Isoliertes Datenverzeichnis: $DataDirectory" -ForegroundColor DarkGray

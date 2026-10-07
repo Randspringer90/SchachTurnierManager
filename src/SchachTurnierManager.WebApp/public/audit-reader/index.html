@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Audit-Export durchsuchen</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><a href="/">Zur Turnierverwaltung</a><h1>Audit-JSONL lokal durchsuchen</h1>
+<p>Vorhandenen JSONL-Auditexport (stm-audit-bundle-1) ausw&auml;hlen: maximal 5 MiB und 5.000 Ereignisse. Keine Verbindung zum Backend, kein Upload, Import oder &Uuml;berschreiben.</p>
+<label for="file">Audit-JSONL-Datei</label><input id="file" type="file" accept=".jsonl,.ndjson"><button id="load" type="button">Datei lesen</button><button id="clear" type="button">Anzeige leeren</button>
+<p>Snapshots, Spieler- und Akteursdaten werden nicht angezeigt. Zusammenfassungen k&ouml;nnen trotzdem Namen oder andere vertrauliche Inhalte enthalten: nur bei Bedarf einblenden.</p>
+<label><input id="show-summary" type="checkbox">Vertrauliche Zusammenfassungen anzeigen</label>
+<label for="severity">Schweregrad</label><select id="severity"><option value="">Alle</option><option>Info</option><option>Warning</option><option>Critical</option></select>
+<label for="action">Aktion</label><select id="action"><option value="">Alle Aktionen</option></select>
+<label for="round">Runde (optional)</label><input id="round" type="text" inputmode="numeric" maxlength="9" autocomplete="off">
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<div class="scroll"><table><caption>Ereignisse in Exportreihenfolge</caption><thead><tr><th scope="col">Zeitangabe im Export</th><th scope="col">Aktion</th><th scope="col">Schwere</th><th scope="col">Runde</th><th scope="col">Brett</th><th scope="col">Zusammenfassung</th></tr></thead><tbody id="entries"></tbody></table></div>
+<button id="previous" type="button" disabled>Vorherige 200</button><button id="next" type="button" disabled>N&auml;chste 200</button>
+<p>Dies ist eine Leseansicht, keine Echtheits-, Schachregel- oder vollst&auml;ndige Integrit&auml;tspr&uuml;fung. Zeitangaben werden unver&auml;ndert gezeigt. JSON-Schl&uuml;ssel werden wie durch JSON.parse interpretiert; bei doppelt benannten Feldern gilt der letzte Wert. Der Vergleich der Ereignisanzahl ersetzt keine Signatur. Unbekannte Datensatztypen werden gez&auml;hlt, nicht still als gepr&uuml;ft behandelt.</p>
+<noscript>JavaScript ist f&uuml;r die lokale Ansicht erforderlich.</noscript></main><script type="module" src="./main.js"></script></body></html>

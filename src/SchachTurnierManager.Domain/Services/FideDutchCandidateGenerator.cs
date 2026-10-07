@@ -15,55 +15,112 @@ namespace SchachTurnierManager.Domain.Services;
 /// Das hält die Zahl der Möglichkeiten klein: Ohne diese Beschneidung müsste ein Bracket mit zehn
 /// Residents alle Permutationen durchlaufen.
 /// </remarks>
-public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criteria)
+public sealed class FideDutchCandidateGenerator
 {
+    private readonly FideDutchAbsoluteCriteria _criteria;
+    private readonly Dictionary<(Guid Left, Guid Right), bool> _pairingCache = new();
+    private readonly Action _externalCheck;
+    private readonly FideDutchSearchBudget _budget;
+
+    public FideDutchCandidateGenerator(
+        FideDutchAbsoluteCriteria criteria,
+        Action? checkBudget = null,
+        FideDutchSearchOptions? resourceOptions = null)
+    {
+        _criteria = criteria;
+        _externalCheck = checkBudget ?? (() => { });
+        _budget = new FideDutchSearchBudget(resourceOptions ?? FideDutchSearchOptions.Exhaustive, 0);
+    }
+
+    internal FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criteria, FideDutchSearchBudget budget)
+    {
+        _criteria = criteria;
+        _externalCheck = () => { };
+        _budget = budget;
+    }
+
     /// <summary>
     /// Alle Kandidaten des Brackets, in Erzeugungsreihenfolge. Der <c>GenerationIndex</c> zählt dabei
     /// hoch — Art. 3.8 vergleicht ihn bei Gleichstand.
     /// </summary>
-    public IEnumerable<FideDutchCandidate> Generate(FideDutchBracket bracket)
+    public IEnumerable<FideDutchCandidate> Generate(FideDutchBracket bracket) => GenerateCore(bracket, null);
+
+    internal IEnumerable<FideDutchCandidate> Generate(
+        FideDutchBracket bracket,
+        Func<IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>, int, bool> canImprove) =>
+        GenerateCore(bracket, canImprove);
+
+    private IEnumerable<FideDutchCandidate> GenerateCore(
+        FideDutchBracket bracket,
+        Func<IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>, int, bool>? canImprove)
     {
+        _budget.CheckPlayerCount(bracket.Players.Count);
+        // Identität auf dichte, lokale Indizes abbilden: kein Hashverlust und keine TPN-Kollision.
+        var identityById = bracket.Players.Select((profile, ordinal) => (profile.Player.Id, ordinal))
+            .ToDictionary(entry => entry.Id, entry => entry.ordinal);
+        var width = Math.Max(0, bracket.Players.Count - 1).ToString(System.Globalization.CultureInfo.InvariantCulture).Length;
         var index = 0;
-
-        // Verschiedene Erzeugungswege - andere Transposition, anderer Exchange - fuehren haeufig zur
-        // GLEICHEN Paarung. Fuer die Auslosung ist nur die Paarung selbst relevant, und Art. 3.8
-        // vergleicht bei Gleichstand den ZUERST erzeugten Kandidaten. Deshalb wird jede Paarung nur
-        // einmal ausgegeben, und zwar bei ihrem ersten Auftreten: Das ist regelkonform und schneidet
-        // die Kandidatenzahl drastisch. Ohne das laufen die Property-Tests ueber zehn Minuten.
-        var seen = new HashSet<string>();
-
-        // [C6] (Art. 2.4.1) will moeglichst viele Paare. Deshalb absteigend: Kandidaten mit mehr
-        // Paaren entstehen zuerst. Weniger Paare sind trotzdem noetig, wenn [C4] (Art. 2.2.1) sie
-        // erzwingt - das entscheidet aber erst das Backtracking, nicht diese Erzeugung.
-        for (var pairCount = bracket.MaxPairsUpperBound; pairCount >= 0; pairCount--)
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var retainedCharacters = 0;
+        try
         {
-            foreach (var candidate in GenerateWithPairCount(bracket, pairCount))
+            var maximumPairs = bracket.IsHomogeneous
+                ? bracket.MaxPairsUpperBound : Math.Min(bracket.MaxPairsUpperBound, bracket.Residents.Count);
+            for (var pairCount = maximumPairs; pairCount >= 0; pairCount--)
             {
-                if (seen.Add(KeyOf(candidate)))
+                CheckBudget();
+                // Verschiedene Paarzahlen können keine identische Paarung darstellen.
+                seen.Clear();
+                _budget.ReleaseKeyCharacters(retainedCharacters);
+                retainedCharacters = 0;
+                foreach (var candidate in GenerateWithPairCount(bracket, pairCount, canImprove))
                 {
+                    CheckBudget();
+                    var maximumCharacters = checked(candidate.Pairs.Count * (2 * width + 2) +
+                        candidate.Downfloaters.Count * (width + 1) + 1);
+                    _budget.RetainKeyCharacters(maximumCharacters);
+                    var key = KeyOf(candidate, identityById);
+                    if (!seen.Add(key))
+                    {
+                        _budget.ReleaseKeyCharacters(maximumCharacters);
+                        continue;
+                    }
+
+                    retainedCharacters += maximumCharacters;
+                    _budget.Candidate();
                     yield return candidate with { GenerationIndex = index++ };
                 }
             }
         }
+        finally
+        {
+            _budget.ReleaseKeyCharacters(retainedCharacters);
+        }
     }
 
     /// <summary>Kanonischer Schlüssel einer Paarung — unabhängig davon, über welchen Weg sie entstand.</summary>
-    private static string KeyOf(FideDutchCandidate candidate)
+    private static string KeyOf(FideDutchCandidate candidate, IReadOnlyDictionary<Guid, int> identityById)
     {
-        var pairs = candidate.Pairs
-            .Select(pair => pair.A.Tpn < pair.B.Tpn ? $"{pair.A.Tpn}-{pair.B.Tpn}" : $"{pair.B.Tpn}-{pair.A.Tpn}")
-            .OrderBy(text => text, StringComparer.Ordinal);
-
-        var floats = candidate.Downfloaters.Select(profile => profile.Tpn).OrderBy(tpn => tpn);
-
-        return string.Join(",", pairs) + "|" + string.Join(",", floats);
+        static string Token(int ordinal) => ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var pairs = candidate.Pairs.Select(pair =>
+        {
+            var left = identityById[pair.A.Player.Id];
+            var right = identityById[pair.B.Player.Id];
+            return left < right ? Token(left) + "-" + Token(right) : Token(right) + "-" + Token(left);
+        }).OrderBy(text => text, StringComparer.Ordinal);
+        var floats = candidate.Downfloaters.Select(profile => identityById[profile.Player.Id]).OrderBy(ordinal => ordinal);
+        return string.Join(",", pairs) + "|" + string.Join(",", floats.Select(Token));
     }
 
-    private IEnumerable<FideDutchCandidate> GenerateWithPairCount(FideDutchBracket bracket, int pairCount)
+    private IEnumerable<FideDutchCandidate> GenerateWithPairCount(
+        FideDutchBracket bracket,
+        int pairCount,
+        Func<IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>, int, bool>? canImprove)
     {
         return bracket.IsHomogeneous
-            ? GenerateHomogeneous(bracket.Players, pairCount)
-            : GenerateHeterogeneous(bracket, pairCount);
+            ? GenerateHomogeneous(bracket.Players, pairCount, canImprove, pairCount,
+                Array.Empty<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>())
+            : GenerateHeterogeneous(bracket, pairCount, canImprove);
     }
 
     /// <summary>
@@ -74,8 +131,18 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
     /// </summary>
     private IEnumerable<FideDutchCandidate> GenerateHomogeneous(
         IReadOnlyList<FideDutchPlayerProfile> players,
-        int pairCount)
+        int pairCount,
+        Func<IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>, int, bool>? canImprove,
+        int totalPairCount,
+        IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)> establishedPairs)
     {
+        // Dieser Bound gilt für ALLE Aufteilungen und Exchanges des Remainders.
+        // Eine verbesserte vollständige Lösung kann einen zuvor offenen MDP-Präfix ausschließen.
+        if (canImprove is not null && !canImprove(establishedPairs, totalPairCount))
+        {
+            yield break;
+        }
+
         if (pairCount == 0)
         {
             yield return new FideDutchCandidate(
@@ -93,12 +160,19 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
 
         foreach (var (s1, s2) in EnumerateExchanges(originalS1, originalS2, players))
         {
-            foreach (var selection in EnumerateTranspositions(s1, s2, players))
+            foreach (var selection in EnumerateTranspositions(s1, s2, players, canImprove, totalPairCount, establishedPairs))
             {
                 var pairs = s1.Zip(selection, (a, b) => (a, b)).ToList();
                 var used = selection.Select(profile => profile.Player.Id).ToHashSet();
                 var downfloaters = s2.Where(profile => !used.Contains(profile.Player.Id)).ToList();
                 yield return new FideDutchCandidate(pairs, downfloaters, 0);
+                // Nach yield hat die Strategie möglicherweise einen neuen vollständigen best.
+                // Vor weiteren Transpositionen oder eager Exchange-Listen den festen Präfix
+                // erneut prüfen; dessen Ausschluss gilt für den gesamten restlichen Remainder.
+                if (canImprove is not null && !canImprove(establishedPairs, totalPairCount))
+                {
+                    yield break;
+                }
             }
         }
     }
@@ -112,7 +186,10 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
     /// Die Verschachtelung folgt Art. 3.7: außen die Menge der paarbaren MDPs (Art. 4.4), darin die
     /// Transpositionen von S2, ganz innen die Änderungen am Remainder.
     /// </summary>
-    private IEnumerable<FideDutchCandidate> GenerateHeterogeneous(FideDutchBracket bracket, int pairCount)
+    private IEnumerable<FideDutchCandidate> GenerateHeterogeneous(
+        FideDutchBracket bracket,
+        int pairCount,
+        Func<IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>, int, bool>? canImprove)
     {
         var maxMdps = Math.Min(bracket.M0, pairCount);
 
@@ -122,10 +199,12 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
         {
             foreach (var mdpSet in EnumerateMdpSets(bracket.Mdps, m1))
             {
+                CheckBudget();
                 var limbo = bracket.Mdps.Where(mdp => !mdpSet.Contains(mdp)).ToList();
                 var residents = bracket.Residents;
 
-                foreach (var selection in EnumerateTranspositions(mdpSet, residents, bracket.Players))
+                foreach (var selection in EnumerateTranspositions(mdpSet, residents, bracket.Players, canImprove, pairCount,
+                    Array.Empty<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>()))
                 {
                     var mdpPairs = mdpSet.Zip(selection, (a, b) => (a, b)).ToList();
                     var used = selection.Select(profile => profile.Player.Id).ToHashSet();
@@ -135,7 +214,7 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
                     // Er darf weniger Paare bilden, als rechnerisch moeglich waeren - dann floaten
                     // die uebrigen Residents ab.
                     var remainderPairs = pairCount - m1;
-                    foreach (var remainderCandidate in GenerateHomogeneous(remainder, remainderPairs))
+                    foreach (var remainderCandidate in GenerateHomogeneous(remainder, remainderPairs, canImprove, pairCount, mdpPairs))
                     {
                         yield return new FideDutchCandidate(
                             Pairs: mdpPairs.Concat(remainderCandidate.Pairs).ToList(),
@@ -152,7 +231,7 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
     /// Da die MDPs bereits nach Art. 1.2 geordnet sind, entspricht das den Kombinationen in
     /// lexikografischer Reihenfolge der Positionen.
     /// </summary>
-    private static IEnumerable<List<FideDutchPlayerProfile>> EnumerateMdpSets(
+    private IEnumerable<List<FideDutchPlayerProfile>> EnumerateMdpSets(
         IReadOnlyList<FideDutchPlayerProfile> mdps,
         int size)
     {
@@ -168,16 +247,23 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
         }
     }
 
-    private static IEnumerable<int[]> Combinations(int count, int size)
+    private IEnumerable<int[]> Combinations(int count, int size)
     {
-        if (size > count)
+        if (size < 0 || size > count)
         {
+            yield break;
+        }
+
+        if (size == 0)
+        {
+            yield return Array.Empty<int>();
             yield break;
         }
 
         var indices = Enumerable.Range(0, size).ToArray();
         while (true)
         {
+            CheckBudget();
             yield return (int[])indices.Clone();
 
             var position = size - 1;
@@ -211,7 +297,10 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
     private IEnumerable<List<FideDutchPlayerProfile>> EnumerateTranspositions(
         IReadOnlyList<FideDutchPlayerProfile> s1,
         IReadOnlyList<FideDutchPlayerProfile> s2,
-        IReadOnlyList<FideDutchPlayerProfile> bracketOrder)
+        IReadOnlyList<FideDutchPlayerProfile> bracketOrder,
+        Func<IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>, int, bool>? canImprove,
+        int totalPairCount,
+        IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)> establishedPairs)
     {
         if (s1.Count == 0)
         {
@@ -234,6 +323,17 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
 
         IEnumerable<List<FideDutchPlayerProfile>> Extend(int depth)
         {
+            using var recursion = _budget.EnterRecursion();
+            CheckBudget();
+            if (canImprove is not null)
+            {
+                var prefix = establishedPairs.Concat(s1.Take(depth).Zip(chosen, (a, b) => (A: a, B: b))).ToArray();
+                if (!canImprove(prefix, totalPairCount))
+                {
+                    yield break;
+                }
+            }
+
             if (depth == s1.Count)
             {
                 yield return new List<FideDutchPlayerProfile>(chosen);
@@ -242,7 +342,8 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
 
             for (var index = 0; index < s2.Count; index++)
             {
-                if (used[index] || !criteria.MayBePaired(s1[depth], s2[index]))
+                CheckBudget();
+                if (used[index] || !MayBePairedCached(s1[depth], s2[index]))
                 {
                     continue;
                 }
@@ -268,49 +369,121 @@ public sealed class FideDutchCandidateGenerator(FideDutchAbsoluteCriteria criter
     /// Der identische „Tausch" (nichts getauscht) kommt zuerst — Art. 3.6 probiert erst alle
     /// Transpositionen der ursprünglichen Aufteilung.
     /// </summary>
-    private static IEnumerable<(List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)> EnumerateExchanges(
+    private IEnumerable<(List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)> EnumerateExchanges(
         IReadOnlyList<FideDutchPlayerProfile> originalS1,
         IReadOnlyList<FideDutchPlayerProfile> originalS2,
         IReadOnlyList<FideDutchPlayerProfile> bracketOrder)
     {
-        var bsn = bracketOrder
-            .Select((profile, index) => (profile.Player.Id, Bsn: index + 1))
+        var bsn = bracketOrder.Select((profile, index) => (profile.Player.Id, Bsn: index + 1))
             .ToDictionary(entry => entry.Id, entry => entry.Bsn);
 
-        var exchanges = new List<(int Size, int SumDifference, int LargestOut, int SmallestIn, List<FideDutchPlayerProfile> S1, List<FideDutchPlayerProfile> S2)>();
+        // Die unveränderte Aufteilung muss vor jedem materialisierten Exchange erreichbar sein.
+        yield return (originalS1.ToList(), originalS2.ToList());
 
-        var maxSize = Math.Min(originalS1.Count, originalS2.Count);
-        for (var size = 0; size <= maxSize; size++)
+        for (var size = 1; size <= Math.Min(originalS1.Count, originalS2.Count); size++)
         {
-            foreach (var fromS1 in Combinations(originalS1.Count, size))
+            var exchanges = new List<ExchangeDescriptor>();
+            var retainedIndices = 0;
+            try
             {
-                foreach (var fromS2 in Combinations(originalS2.Count, size))
+                var sequence = 0;
+                foreach (var fromS1 in Combinations(originalS1.Count, size))
                 {
-                    var outgoing = fromS1.Select(index => originalS1[index]).ToList();
-                    var incoming = fromS2.Select(index => originalS2[index]).ToList();
-
-                    var newS1 = originalS1.Except(outgoing).Concat(incoming).OrderBy(p => bsn[p.Player.Id]).ToList();
-                    var newS2 = originalS2.Except(incoming).Concat(outgoing).OrderBy(p => bsn[p.Player.Id]).ToList();
-
-                    var sumOut = outgoing.Sum(p => bsn[p.Player.Id]);
-                    var sumIn = incoming.Sum(p => bsn[p.Player.Id]);
-
-                    exchanges.Add((
-                        Size: size,
-                        SumDifference: Math.Abs(sumOut - sumIn),
-                        LargestOut: outgoing.Count == 0 ? 0 : -outgoing.Max(p => bsn[p.Player.Id]),
-                        SmallestIn: incoming.Count == 0 ? 0 : incoming.Min(p => bsn[p.Player.Id]),
-                        S1: newS1,
-                        S2: newS2));
+                    foreach (var fromS2 in Combinations(originalS2.Count, size))
+                    {
+                        CheckBudget();
+                        _budget.RetainExchange(checked(size * 2));
+                        retainedIndices += size * 2;
+                        // Nur kompakte Indizes behalten, keine S1/S2-Kopien pro Exchange.
+                        var outgoing = fromS1.Select(index => bsn[originalS1[index].Player.Id]).ToArray();
+                        var incoming = fromS2.Select(index => bsn[originalS2[index].Player.Id]).ToArray();
+                        exchanges.Add(new ExchangeDescriptor(
+                            outgoing, incoming,
+                            Math.Abs(outgoing.Sum(value => (long)value) - incoming.Sum(value => (long)value)),
+                            sequence++));
+                    }
                 }
+
+                CheckBudget();
+                // Der Sortiervorgang ist durch die vorher reservierte Deskriptorzahl begrenzt.
+                // Keine Budgetexception im .NET-Vergleicher, die List.Sort einhüllen würde.
+                exchanges.Sort(CompareExchanges);
+                CheckBudget();
+                foreach (var exchange in exchanges)
+                {
+                    CheckBudget();
+                    var outgoing = exchange.Outgoing.ToHashSet();
+                    var incoming = exchange.Incoming.ToHashSet();
+                    var s1 = originalS1.Where(profile => !outgoing.Contains(bsn[profile.Player.Id]))
+                        .Concat(originalS2.Where(profile => incoming.Contains(bsn[profile.Player.Id])))
+                        .OrderBy(profile => bsn[profile.Player.Id]).ToList();
+                    var s2 = originalS2.Where(profile => !incoming.Contains(bsn[profile.Player.Id]))
+                        .Concat(originalS1.Where(profile => outgoing.Contains(bsn[profile.Player.Id])))
+                        .OrderBy(profile => bsn[profile.Player.Id]).ToList();
+                    yield return (s1, s2);
+                }
+            }
+            finally
+            {
+                _budget.ReleaseExchanges(exchanges.Count, retainedIndices);
+            }
+        }
+    }
+
+    private sealed record ExchangeDescriptor(int[] Outgoing, int[] Incoming, long SumDifference, int Sequence);
+
+    private static int CompareExchanges(ExchangeDescriptor left, ExchangeDescriptor right)
+    {
+        var comparison = left.SumDifference.CompareTo(right.SumDifference);
+        if (comparison != 0)
+        {
+            return comparison;
+        }
+
+        // Größte ABWEICHENDE Ausgangs-BSN: vollständige Mengen absteigend vergleichen.
+        for (var index = left.Outgoing.Length - 1; index >= 0; index--)
+        {
+            comparison = right.Outgoing[index].CompareTo(left.Outgoing[index]);
+            if (comparison != 0)
+            {
+                return comparison;
             }
         }
 
-        return exchanges
-            .OrderBy(entry => entry.Size)
-            .ThenBy(entry => entry.SumDifference)
-            .ThenBy(entry => entry.LargestOut)      // negiert -> groesste zuerst
-            .ThenBy(entry => entry.SmallestIn)
-            .Select(entry => (entry.S1, entry.S2));
+        // Kleinste ABWEICHENDE Eingangs-BSN: vollständige Mengen aufsteigend vergleichen.
+        for (var index = 0; index < left.Incoming.Length; index++)
+        {
+            comparison = left.Incoming[index].CompareTo(right.Incoming[index]);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+        }
+
+        return left.Sequence.CompareTo(right.Sequence);
     }
+
+    private bool MayBePairedCached(FideDutchPlayerProfile a, FideDutchPlayerProfile b)
+    {
+        var key = a.Player.Id.CompareTo(b.Player.Id) <= 0
+            ? (a.Player.Id, b.Player.Id)
+            : (b.Player.Id, a.Player.Id);
+
+        if (_pairingCache.TryGetValue(key, out var allowed))
+        {
+            return allowed;
+        }
+
+        _budget.CachedPair();
+        allowed = _criteria.MayBePaired(a, b);
+        _pairingCache[key] = allowed;
+        return allowed;
+    }
+
+    private void CheckBudget()
+    {
+        _externalCheck();
+        _budget.ThrowIfExceeded();
+    }
+
 }

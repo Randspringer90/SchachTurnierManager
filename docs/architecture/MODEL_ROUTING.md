@@ -74,3 +74,24 @@ pwsh scripts/Resolve-ModelRoute.ps1 `
 - Passt keine sichere Regel, ist eine explizite Owner-Entscheidung erforderlich.
 - `securityReviewRequired` und `humanApprovalRequired` aus dem Agentenrouting bleiben
   zusaetzliche, unabhaengige Gates.
+
+## Modellfreie Runtime-Verifikation
+
+Der Anthropic-Adapter setzt fuer Analyse-Children explizit den Planmodus, die
+Built-in-Werkzeuge Read/Glob/Grep und eine MCP-Toolsperre. Unbeantwortbare
+Toolfreigaben werden verweigert; der Aufruf verwendet reproduzierbar High-Effort
+anstelle eines generationsabhaengigen Defaults. Der OpenAI-Adapter behält seine
+Read-only-Sandbox. Die Readiness prueft die expandierten Adapterargumente ohne
+Modellaufruf.
+
+CLI-Version und `--help` belegen nur die lokal unterstuetzten Flags. Ein
+Adapter-DryRun belegt keine Account- oder konkrete Modellverfuegbarkeit. Fehlt
+deren Nachweis, bleibt das betreffende Profil auf HOLD; weder ein stiller
+Profilwechsel noch ein kostenpflichtiger API-Wechsel ist erlaubt.
+
+Die Runtime-Grenze prueft ausschliesslich Umgebungsvariablennamen und liest
+keine Authentifizierungswerte. Anthropic-Token, benutzerdefinierte Header und
+Provider-/Cloud-Overrides fuehren vor einem Subprozess zu HOLD. Dasselbe gilt
+fuer `CLAUDE_CODE_EFFORT_LEVEL`, weil es laut offizieller CLI-Dokumentation
+`--effort` ueberschreibt. Quelle, geprueft am 2026-10-07:
+https://code.claude.com/docs/en/env-vars.

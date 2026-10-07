@@ -1,7 +1,7 @@
 {
   "$schema": "./model-catalog.schema.json",
   "schemaVersion": 1,
-  "verifiedOn": "2026-10-04",
+  "verifiedOn": "2026-10-07",
   "description": "Einzige Quelle konkreter Modellvarianten. Aufgabenprofile bleiben stabil; vor groesseren KI-Laeufen neueste stabile Generation anhand offizieller Quellen pruefen. Keine automatische Ausfuehrung, API-Kosten oder stillen Fallbacks.",
   "sources": {
     "openai": "https://developers.openai.com/api/docs/models",

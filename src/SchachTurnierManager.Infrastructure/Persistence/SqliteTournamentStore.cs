@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -33,9 +34,13 @@ public sealed class SqliteTournamentStore(TournamentDbContext dbContext) : ITour
         return snapshot is null ? null : Deserialize(snapshot);
     }
 
-    public void Save(TournamentState tournament)
+    public void Save(TournamentState tournament, bool overwriteExisting = true)
     {
+        using var transaction = _dbContext.Database.BeginTransaction(IsolationLevel.Serializable);
+        _dbContext.ChangeTracker.Clear();
         var existing = _dbContext.TournamentSnapshots.SingleOrDefault(x => x.Id == tournament.Id);
+        if (!overwriteExisting && existing is not null)
+            throw new InvalidOperationException($"Turnier {tournament.Id} existiert bereits.");
         var json = JsonSerializer.Serialize(tournament, JsonOptions);
         if (existing is null)
         {
@@ -57,19 +62,51 @@ public sealed class SqliteTournamentStore(TournamentDbContext dbContext) : ITour
         }
 
         _dbContext.SaveChanges();
+        transaction.Commit();
+    }
+
+    public TResult UpdateAtomically<TResult>(Guid id, Func<TournamentState, TResult> update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        using var transaction = _dbContext.Database.BeginTransaction(IsolationLevel.Serializable);
+        try
+        {
+            _dbContext.ChangeTracker.Clear();
+            var snapshot = _dbContext.TournamentSnapshots.SingleOrDefault(x => x.Id == id)
+                ?? throw new InvalidOperationException($"Turnier {id} wurde nicht gefunden.");
+            var tournament = Deserialize(snapshot);
+            var result = update(tournament);
+
+            snapshot.Name = tournament.Name;
+            snapshot.CreatedOn = tournament.CreatedOn.ToString("yyyy-MM-dd");
+            snapshot.UpdatedAt = DateTimeOffset.UtcNow;
+            snapshot.Json = JsonSerializer.Serialize(tournament, JsonOptions);
+            _dbContext.SaveChanges();
+            transaction.Commit();
+            return result;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
 
-    public bool Delete(Guid id)
+    public bool Delete(Guid id, Action<TournamentState>? beforeDelete = null)
     {
+        using var transaction = _dbContext.Database.BeginTransaction(IsolationLevel.Serializable);
+        _dbContext.ChangeTracker.Clear();
         var existing = _dbContext.TournamentSnapshots.SingleOrDefault(x => x.Id == id);
         if (existing is null)
         {
             return false;
         }
 
+        beforeDelete?.Invoke(Deserialize(existing));
         _dbContext.TournamentSnapshots.Remove(existing);
         _dbContext.SaveChanges();
+        transaction.Commit();
         return true;
     }
 

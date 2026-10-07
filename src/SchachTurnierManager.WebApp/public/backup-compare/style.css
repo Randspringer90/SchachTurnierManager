@@ -1,0 +1,11 @@
+body { font: 1rem/1.55 system-ui, sans-serif; margin: 1rem auto; padding: 0 1rem; max-width: 62rem; color: CanvasText; background: Canvas; }
+label, output { display: block; margin: 1rem 0 0.3rem; }
+input, button, textarea { font: inherit; max-width: 100%; box-sizing: border-box; }
+input[type=text], textarea { width: 100%; padding: 0.6rem; }
+button { padding: 0.65rem 1rem; margin: 1rem 0.5rem 1rem 0; }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.notice { border-inline-start: 0.25rem solid currentColor; padding-inline-start: 1rem; }
+pre, code, li, td { overflow-wrap: anywhere; white-space: pre-wrap; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid; padding: 0.5rem; text-align: start; }
+[hidden] { display: none !important; }

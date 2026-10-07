@@ -300,6 +300,9 @@ try {
     $tBudget = if ($null -ne $cp) { @($cp.graph.tasks) | Where-Object { $_.taskId -eq 't-budget' } } else { $null }
     Assert-Check 'tokenbudget-checkpoint' ($null -ne $cp -and $r.ExitCode -eq 2 -and [string]$tBudget.status -eq 'BUDGET_EXCEEDED' -and [string]$cp.runStatus -eq 'INTERRUPTED_BUDGET')
 
+    & pwsh -NoLogo -NoProfile -NonInteractive -File (Join-Path $scriptsRoot 'Test-RoutedRuntimeSafety.ps1') -Root $repoRoot
+    Assert-Check 'native-runner-and-subscription-boundary' ($LASTEXITCODE -eq 0)
+
     # --- 19) Finaler Integrator uebernimmt nur geprueft freigegebene Ergebnisse --------
     $unreviewed = New-SyntheticTask -TaskId 't-int1'
     $unreviewed.status = 'COMPLETED'
@@ -325,6 +328,27 @@ try {
     $dry = & pwsh -NoProfile -File (Join-Path $scriptsRoot 'Invoke-AnthropicProfile.ps1') `
         -ProfileId 'sonnet' -PromptFile 'unused' -OutputFile (Join-Path $workRoot 'dry.out') -DryRun 2>&1 | Out-String
     Assert-Check 'anthropic-dryrun' ($dry -match 'DRY_RUN' -and $dry -notmatch '(?i)(apikey|api_key|bearer)')
+    # Prueft den tatsaechlich expandierten Adaptervertrag ohne Modellaufruf.
+    $anthropicDry = $dry | ConvertFrom-Json
+    $anthropicArgs = @($anthropicDry.arguments)
+    $planIndex = [Array]::IndexOf($anthropicArgs, '--permission-mode')
+    $promptIndex = [Array]::IndexOf($anthropicArgs, '--permission-prompts')
+    $toolsIndex = [Array]::IndexOf($anthropicArgs, '--tools')
+    $denyIndex = [Array]::IndexOf($anthropicArgs, '--disallowedTools')
+    $effortIndex = [Array]::IndexOf($anthropicArgs, '--effort')
+    Assert-Check 'anthropic-adapter-explicit-plan' ($planIndex -ge 0 -and $planIndex + 1 -lt $anthropicArgs.Count -and
+        $anthropicArgs[$planIndex + 1] -ceq 'plan' -and @($anthropicArgs | Where-Object { $_ -ceq '--permission-mode' }).Count -eq 1)
+    Assert-Check 'anthropic-adapter-no-permission-wait' ($promptIndex -ge 0 -and $promptIndex + 1 -lt $anthropicArgs.Count -and
+        $anthropicArgs[$promptIndex + 1] -ceq 'none')
+    Assert-Check 'anthropic-adapter-readonly-tools' ($toolsIndex -ge 0 -and $toolsIndex + 1 -lt $anthropicArgs.Count -and
+        $anthropicArgs[$toolsIndex + 1] -ceq 'Read,Glob,Grep' -and @($anthropicArgs | Where-Object { $_ -ceq '--tools' }).Count -eq 1)
+    Assert-Check 'anthropic-adapter-denies-mcp' ($denyIndex -ge 0 -and $denyIndex + 1 -lt $anthropicArgs.Count -and
+        $anthropicArgs[$denyIndex + 1] -ceq 'mcp__*')
+    Assert-Check 'anthropic-adapter-explicit-high-effort' ($effortIndex -ge 0 -and $effortIndex + 1 -lt $anthropicArgs.Count -and
+        $anthropicArgs[$effortIndex + 1] -ceq 'high')
+    $unsafeAdapterFlags = @('--dangerously-skip-permissions', '--allow-dangerously-skip-permissions', '--fallback-model',
+        '--cloud', '--remote', '--bg', '--background', '--worktree', '--plugin-url')
+    Assert-Check 'anthropic-adapter-no-bypass-fallback-or-background' (@($anthropicArgs | Where-Object { $_ -in $unsafeAdapterFlags }).Count -eq 0)
     $dry = & pwsh -NoProfile -File (Join-Path $scriptsRoot 'Invoke-OpenAIProfile.ps1') `
         -ProfileId 'terra' -PromptFile 'unused' -OutputFile (Join-Path $workRoot 'dry2.out') -DryRun 2>&1 | Out-String
     Assert-Check 'openai-dryrun' ($dry -match 'DRY_RUN' -and $dry -notmatch '(?i)(apikey|api_key|bearer)')

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Backup pruefen | SchachTurnierManager</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main>
+    <a href="/">Zurueck zum Turniermanager</a>
+    <h1>Backup vor dem Import pruefen</h1>
+    <p>Waehle eine Datei aus <strong>Backup JSON</strong>. Die Pruefung erfolgt nur in diesem Browser: kein Upload, kein API-Aufruf, keine Speicherung und kein Import.</p>
+    <label for="backup-file">Turnier-Backup (UTF-8-JSON, hoechstens 5 MiB)</label>
+    <input id="backup-file" type="file" accept=".json,application/json" aria-describedby="limits">
+    <button id="reset" type="button">Ansicht leeren</button>
+    <p id="status" role="status" aria-live="polite">Noch keine Datei ausgewaehlt.</p>
+    <section id="summary" aria-label="Zusammenfassung"></section>
+    <ul id="issues" aria-label="Pruefbefunde"></ul>
+    <aside id="limits">
+      <h2>Was diese Pruefung nicht entscheidet</h2>
+      <p>Geprueft werden Dateistruktur, IDs, Listen und Spielerbezuege. Wertungen, Paarungsregeln, Einstellungen und Audit-Inhalte werden nicht fachlich validiert. Ein unauffaelliger Befund ist keine Garantie fuer eine erfolgreiche Wiederherstellung.</p>
+      <p>Vor dem eigentlichen Import den aktuellen Stand sichern und im Turniermanager bewusst entscheiden, ob ein bestehendes Turnier ersetzt werden darf. Diese Ansicht veraendert niemals ein Turnier.</p>
+    </aside>
+  </main>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

@@ -215,11 +215,16 @@ function Invoke-PortableSmoke([string]$PortableRoot, [string]$DataDir, [int]$Smo
         $tournaments = Invoke-WebRequest -Uri "$url/api/tournaments" -UseBasicParsing -TimeoutSec 5
         if ($tournaments.StatusCode -ne 200) { throw "Turnierliste lieferte Status $($tournaments.StatusCode)." }
 
-        $databasePath = [string]$health.databasePath
-        if (-not (Test-Path -LiteralPath $databasePath)) { throw "SQLite-Datei aus Health wurde nicht angelegt: $databasePath" }
-        if (-not $databasePath.StartsWith($DataDir, [System.StringComparison]::OrdinalIgnoreCase)) {
-            throw "SQLite-Datei liegt nicht im Test-Datenordner. Pfad: $databasePath"
-        }
+        # Health meldet bewusst nur den Dateinamen der Datenbank, nie den vollen
+        # Pfad, damit keine lokalen Maschinenpfade nach aussen gelangen. Der
+        # Nachweis, dass die Datei im isolierten Testordner landet, wird darum
+        # gegen das Dateisystem gefuehrt statt gegen die API-Antwort.
+        $databaseName = [string]$health.database
+        if ([string]::IsNullOrWhiteSpace($databaseName)) { throw 'Health meldet keinen Datenbanknamen.' }
+        if ($databaseName -eq 'custom connection') { throw 'Portable-Test erwartet eine Datei-Datenbank, nicht "custom connection".' }
+
+        $databasePath = Join-Path $DataDir $databaseName
+        if (-not (Test-Path -LiteralPath $databasePath)) { throw "SQLite-Datei wurde nicht im Test-Datenordner angelegt: $databasePath" }
 
         @(
             "Health: OK",

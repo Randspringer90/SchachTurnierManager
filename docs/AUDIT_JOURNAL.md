@@ -75,6 +75,13 @@ nach der Struktur des Regelwerks. Grundlage: `docs/FIDE_DUTCH_REFERENCE.md` (C.0
 - **Keine regelkonforme Paarung möglich**: Die Strategie liefert dann keine Auslosung, sondern gibt
   den Fall mit Fundstelle an den Turnierleiter ab (Art. 1.9.3 — „der Schiedsrichter entscheidet").
   Sie paart in diesem Fall bewusst **nicht** regelwidrig weiter.
+- **Große Felder / Suchbudget (STM-FACH-003):** Die Kandidatensuche arbeitet auch bei 21–200
+  Spielern regelgleich weiter, erzeugt teure Exchange-Stufen aber erst dann, wenn alle kleineren
+  Stufen wirklich gescheitert sind. Standardbudgets sind 2 s bis 50, 10 s bis 100 und 60 s bis
+  200 Spieler. Wird das Budget überschritten, entsteht **kein Teilergebnis** und keine Regel wird
+  gelockert; `TournamentService` behandelt den Fehler wie andere blockierte Auslosungen und
+  schreibt den Grund ins Audit-Journal. Für gezielte Schiedsrichter-/Diagnoseläufe existiert ein
+  expliziter Exhaustive-Modus ohne Timeout.
 
 > **Offen:** Auch hier werden die **verworfenen Alternativkandidaten** nicht mit ihrer Bewertung
 > protokolliert. Das Audit sagt, welche Regel die gewählte Paarung trägt, aber nicht, welcher

@@ -20,6 +20,10 @@ scripts/                   ausführbare Gates und Werkzeuge (Quelle der Wahrheit
 - `AGENTS.md` im Repo-Root ist die einzige verbindliche Regeldatei für alle Agenten. Widersprüche zwischen Provider-Dateien und `AGENTS.md` werden zugunsten von `AGENTS.md` aufgelöst.
 - Provider-spezifische Dateien (`.claude/CLAUDE.md`, `.codex/config.toml`) sind reine Adapter: Sie verweisen auf `AGENTS.md` und `.agents/skills/`, definieren aber keine eigenen oder abweichenden Regeln.
 - `.codex/` ist lokal und git-ignoriert; `.claude/CLAUDE.md` ist als Adapter versioniert.
+- Das oeffentliche Codex-Konfigurationsbeispiel liegt unter
+  `docs/architecture/codex-config.example.toml`. Es verwendet dokumentierte
+  CLI-Schluessel und keine fiktiven Git-Freigaben. Modellversionen bleiben
+  ausschliesslich im zentralen Katalog; das Beispiel aktiviert keine lokale Konfiguration.
 
 ## Ausführende Agenten (austauschbar)
 

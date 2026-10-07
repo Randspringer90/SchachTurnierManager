@@ -84,7 +84,12 @@ try {
     if (-not $manifest.icons -or $manifest.icons.Count -lt 2) { throw 'Manifest enthält weniger als zwei Icons.' }
 
     $serviceWorker = Get-Content -Raw -LiteralPath (Join-Path $distRoot 'service-worker.js')
-    if ($serviceWorker -notmatch "startsWith\('/api/'\)") { throw 'Service Worker muss /api/ bewusst vom Cache ausschließen.' }
+    # STM-UX-002: /api/ is excluded by an explicit allowlist (resourceKind) rather than a
+    # denylist; the worker must still never name an /api path. The full behaviour,
+    # including /api, /API and encoded variants, is covered by `npm run test:pwa`.
+    if ($serviceWorker -notmatch 'function resourceKind\(url\)') { throw 'Service Worker muss Ressourcen über die explizite Allowlist resourceKind auswählen.' }
+    if ($serviceWorker -notmatch 'if \(!kind ') { throw 'Service Worker muss nicht freigegebene Pfade (u. a. /api/) unverändert ans Netz durchreichen.' }
+    if ($serviceWorker -match "(?i)['""``]/api") { throw 'Service Worker darf keinen /api-Pfad cachen oder vorab laden.' }
     if ($serviceWorker -notmatch 'CACHE_NAME') { throw 'Service Worker enthält keinen Cache-Namen.' }
 
     Add-Summary 'PWA-Manifest: OK'

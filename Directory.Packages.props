@@ -3,13 +3,15 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="System.Text.Encoding.CodePages" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <!-- [x.y.z] binds exactly the listed version; a bare version is only a minimum (STM-SEC-002).
+         Keep every explicit reference exact, including framework-provided compatibility APIs. -->
+    <PackageVersion Include="System.Text.Encoding.CodePages" Version="[10.0.0]" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="[10.0.9]" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="[10.0.9]" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="[3.0.3]" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="[18.0.0]" />
+    <PackageVersion Include="xunit" Version="[2.9.3]" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="[3.1.5]" />
+    <PackageVersion Include="coverlet.collector" Version="[6.0.4]" />
   </ItemGroup>
 </Project>
