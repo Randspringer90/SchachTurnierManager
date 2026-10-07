@@ -36,6 +36,20 @@ keine Voraussetzung.
 - Konsequenz: Deterministische konkurrierende Storetests; HTML/Bundle-Regression;
   zentraler Modellkatalog, native fensterlose Auflösung und modellfreie Auth-Gates
   mit getrennten, wahrheitsgemäßen Verifikationsstufen.
+## 2026-10-07 — Statische PR-Evidenz muss vollstaendig und effizient bleiben
+
+- Kontext: GitHub lieferte fuer eine grosse App-Verschiebung keine kompletten
+  Textpatches; eine generische Regex erreichte das unveraenderte Zeitlimit.
+- Lesson: Ein fehlender API-Patch ist keine fehlende Datei. Vollstaendige
+  Blob-/Tree-/Hunk-Bindung kann die Evidenz ergaenzen, ohne Kandidaten auszufuehren.
+  Eine pauschal kompilierte Regex kann andere Regeln verlangsamen; jede Optimierung
+  braucht ihren eigenen semantischen Beweis und unveraenderte Fehlergrenzen.
+- Konsequenz: Exakter Textfallback mit negativen Tests und begrenzten Prozessen;
+  gezielte Engine-Optimierung, frische vertrauenswuerdige Typebindung pro Reload.
+  Generierte Patches vor Anwendung komplett parsen: JavaScript-Ersetzungen mit
+  Regex-Ankern benoetigen Literal-Callbacks, damit Ersetzungsmetazeichen nicht
+  die Vorlage veraendern. Ein eigener Kandidat darf keine neue Runtime aktivieren.
+
 ## 2026-10-04 — Modellpflege braucht eine einzige Variantenquelle
 
 - Kontext: Versionsvorgaben in Runtime-Policy und historischen Lauftexten drifteten auseinander.

@@ -3,6 +3,11 @@
 
 Set-StrictMode -Version Latest
 
+# Every trusted reload has its own compiled type; session-global older types
+# and caller variables must not stand in for the current reviewed runtime.
+$script:ReviewAsciiPatternType = $null
+$script:ReviewAsciiRuntimeNamespace = 'STM.StaticReview.G' + [Guid]::NewGuid().ToString('N')
+
 $artifactVerificationPath = Join-Path $PSScriptRoot 'PullRequestArtifactVerification.ps1'
 if (-not (Test-Path -LiteralPath $artifactVerificationPath -PathType Leaf)) {
     throw 'Trusted Artifact-Verification-Library fehlt.'
@@ -307,6 +312,70 @@ function Get-ReviewPatternCode {
     return 'SUSPICIOUS_CHANGE'
 }
 
+function Get-ReviewAsciiPatternType {
+    $cached = Get-Variable -Name ReviewAsciiPatternType -Scope Script -ErrorAction SilentlyContinue
+    if ($cached -and $cached.Value -is [type] -and
+        $cached.Value.FullName -ceq ($script:ReviewAsciiRuntimeNamespace + '.AsciiPattern')) { return $cached.Value }
+    # This fixed implementation is trusted reviewer code, never PR-provided source.
+    $definition = @'
+using System;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
+namespace STM.StaticReview {
+    public static class AsciiPattern {
+        public static bool IsMatch(string text, TimeSpan timeout) {
+            const string pattern = "[A-Za-z0-9+/]{800,}={0,2}";
+            if (timeout <= TimeSpan.Zero || timeout == Regex.InfiniteMatchTimeout)
+                throw new ArgumentOutOfRangeException(nameof(timeout));
+            var clock = Stopwatch.StartNew();
+            int run = 0;
+            for (int index = 0; index < text.Length; index++) {
+                if ((index & 1023) == 0 && clock.Elapsed >= timeout)
+                    throw new RegexMatchTimeoutException(text, pattern, timeout);
+                char value = text[index];
+                bool allowed = (value >= 'A' && value <= 'Z') ||
+                    (value >= 'a' && value <= 'z') || (value >= '0' && value <= '9') ||
+                    value == '+' || value == '/';
+                run = allowed ? run + 1 : 0;
+                if (run == 800) {
+                    if (clock.Elapsed >= timeout)
+                        throw new RegexMatchTimeoutException(text, pattern, timeout);
+                    return true;
+                }
+            }
+            if (clock.Elapsed >= timeout)
+                throw new RegexMatchTimeoutException(text, pattern, timeout);
+            return false;
+        }
+    }
+}
+'@
+    $definition = $definition.Replace('namespace STM.StaticReview {', ('namespace ' + $script:ReviewAsciiRuntimeNamespace + ' {'))
+    $script:ReviewAsciiPatternType = Add-Type -PassThru -TypeDefinition $definition
+    if ($script:ReviewAsciiPatternType -isnot [type] -or
+        $script:ReviewAsciiPatternType.FullName -cne ($script:ReviewAsciiRuntimeNamespace + '.AsciiPattern')) {
+        throw 'Trusted pattern runtime type mismatch.'
+    }
+    return $script:ReviewAsciiPatternType
+}
+
+function Test-ReviewPatternMatch {
+    param([Parameter(Mandatory)]$Pattern, [Parameter(Mandatory)][AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory)][TimeSpan]$Timeout)
+    $literal = [string]$Pattern.pattern
+    # Optional padding can contain zero characters: the Boolean regex requires
+    # exactly the existence of an 800-character ASCII run. Bind the exact literal.
+    if ([string]$Pattern.id -ceq 'large-base64' -and $literal -ceq '[A-Za-z0-9+/]{800,}={0,2}') {
+        $matcher = Get-ReviewAsciiPatternType
+        return $matcher::IsMatch($Text, $Timeout)
+    }
+    $options = [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    if ([string]$Pattern.id -ceq 'prompt-injection') {
+        $options = $options -bor [Text.RegularExpressions.RegexOptions]::Compiled
+    }
+    return [regex]::new($literal, $options, $Timeout).IsMatch($Text)
+}
+
 function Add-PatternFindings {
     param(
         [Parameter(Mandatory)][AllowEmptyCollection()][Collections.Generic.List[object]]$Findings,
@@ -320,8 +389,7 @@ function Add-PatternFindings {
     foreach ($pattern in $PatternPolicy.patterns) {
         if (@($pattern.appliesTo) -notcontains $Scope) { continue }
         try {
-            $regex = [regex]::new([string]$pattern.pattern, [Text.RegularExpressions.RegexOptions]::CultureInvariant, $timeout)
-            if ($regex.IsMatch($Text)) {
+            if (Test-ReviewPatternMatch -Pattern $pattern -Text $Text -Timeout $timeout) {
                 $Findings.Add((New-ReviewFinding -Code (Get-ReviewPatternCode $pattern.id) -Category $pattern.category -Severity $pattern.severity -Path $Path -Evidence $Text -Detail "Defensives Muster '$($pattern.id)' erkannt."))
             }
         }
@@ -329,6 +397,76 @@ function Add-PatternFindings {
             $Findings.Add((New-ReviewFinding -Code 'SCAN_TIMEOUT' -Category 'unverified' -Severity 'critical' -Path $Path -Evidence $pattern.id -Detail 'Statische Musterpruefung ueberschritt das Zeitlimit.' -RiskClass 'UNVERIFIED'))
         }
     }
+}
+
+function Get-ReviewUnifiedHunkStatistics {
+    param([AllowEmptyString()][string]$Patch, [ValidateRange(0,5242880)][int]$ExpectedAdditions,
+        [ValidateRange(0,5242880)][int]$ExpectedDeletions)
+    $lines = $Patch.Split("`n")
+    $added=0; $removed=0; $oldRemaining=0L; $newRemaining=0L; $hunks=0
+    $lastOldEnd=0L; $lastNewEnd=0L; $canMarkNoNewline=$false
+    for ($i=0; $i -lt $lines.Length; $i++) {
+        $line=$lines[$i]; $header=$line.TrimEnd([char]13)
+        if ($i -eq $lines.Length-1 -and $line -eq '') { continue }
+        if ($header -cmatch '^@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@(?: .*)?$') {
+            if ($oldRemaining -ne 0 -or $newRemaining -ne 0) { throw 'TEXT_EVIDENCE_HUNK_TRUNCATED' }
+            $oldStart=0L; $oldCount=1L; $newStart=0L; $newCount=1L
+            if (-not [int64]::TryParse($Matches[1],[ref]$oldStart) -or -not [int64]::TryParse($Matches[3],[ref]$newStart) -or
+                ($Matches[2] -and -not [int64]::TryParse($Matches[2],[ref]$oldCount)) -or
+                ($Matches[4] -and -not [int64]::TryParse($Matches[4],[ref]$newCount)) -or
+                $oldStart -gt 5242880 -or $newStart -gt 5242880 -or $oldCount -gt 5242880 -or $newCount -gt 5242880 -or
+                ($oldCount -gt 0 -and $oldStart -eq 0) -or ($newCount -gt 0 -and $newStart -eq 0) -or
+                $oldStart -lt $lastOldEnd -or $newStart -lt $lastNewEnd) { throw 'TEXT_EVIDENCE_HUNK_RANGE' }
+            $lastOldEnd=$oldStart+$oldCount; $lastNewEnd=$newStart+$newCount
+            $oldRemaining=$oldCount; $newRemaining=$newCount; $hunks++; $canMarkNoNewline=$false
+            continue
+        }
+        if ($header -ceq '\ No newline at end of file') {
+            if (-not $canMarkNoNewline) { throw 'TEXT_EVIDENCE_NEWLINE_MARKER' }
+            $canMarkNoNewline=$false; continue
+        }
+        if ($hunks -eq 0 -or $line.Length -eq 0) { throw 'TEXT_EVIDENCE_HUNK_BODY' }
+        switch ($line[0]) {
+            '+' { $newRemaining--; $added++ }
+            '-' { $oldRemaining--; $removed++ }
+            ' ' { $oldRemaining--; $newRemaining-- }
+            default { throw 'TEXT_EVIDENCE_HUNK_BODY' }
+        }
+        if ($oldRemaining -lt 0 -or $newRemaining -lt 0) { throw 'TEXT_EVIDENCE_HUNK_OVERFLOW' }
+        $canMarkNoNewline=$true
+    }
+    if ($oldRemaining -ne 0 -or $newRemaining -ne 0 -or $added -ne $ExpectedAdditions -or $removed -ne $ExpectedDeletions) {
+        throw 'TEXT_EVIDENCE_STATS_MISMATCH'
+    }
+    [pscustomobject]@{ additions=$added; deletions=$removed; hunks=$hunks }
+}
+
+function ConvertTo-SafeReviewTextPatchEvidence {
+    param($Evidence,$Metadata)
+    if ($null -eq $Evidence) { return $null }
+    if ([string](Get-ReviewPropertyValue $Evidence 'status' '') -cne 'VERIFIED' -or
+        [string](Get-ReviewPropertyValue $Evidence 'method' '') -cne 'git-no-index-sha1-utf8-v1') { return $null }
+    $safe=[ordered]@{status='VERIFIED';method='git-no-index-sha1-utf8-v1'}
+    foreach ($name in @('baseSha','headSha','baseTreeSha','headTreeSha','beforeBlobSha','afterBlobSha')) {
+        $value=Get-ReviewPropertyValue $Evidence $name $null
+        if ($null -eq $value -and $name -in @('beforeBlobSha','afterBlobSha')) { $safe[$name]=$null;continue }
+        if ([string]$value -cnotmatch '^[0-9a-f]{40}$') { return $null }
+        $safe[$name]=[string]$value
+    }
+    if ($safe.baseSha -cne [string](Get-ReviewPropertyValue $Metadata 'baseSha' (Get-ReviewPropertyValue $Metadata 'baseRefOid' '')) -or
+        $safe.headSha -cne [string](Get-ReviewPropertyValue $Metadata 'headSha' (Get-ReviewPropertyValue $Metadata 'headRefOid' ''))) { return $null }
+    foreach ($name in @('beforeSha256','afterSha256','patchSha256')) {
+        $value=[string](Get-ReviewPropertyValue $Evidence $name '')
+        if ($value -cnotmatch '^[0-9a-f]{64}$') { return $null }
+        $safe[$name]=$value
+    }
+    foreach ($name in @('beforeBytes','afterBytes','additions','deletions')) {
+        $value=0L
+        if (-not [int64]::TryParse([string](Get-ReviewPropertyValue $Evidence $name ''),[ref]$value) -or
+            $value -lt 0 -or $value -gt 5242880) { return $null }
+        $safe[$name]=$value
+    }
+    return [pscustomobject]$safe
 }
 
 function ConvertFrom-GitHubPullRequestReviewData {
@@ -358,13 +496,18 @@ function ConvertFrom-GitHubPullRequestReviewData {
         $previousPath = [string](Get-ReviewPropertyValue $_ 'previous_filename' '')
         $filePatchValue = Get-ReviewPropertyValue $_ 'patch' $null
         $filePatch = if ($null -ne $filePatchValue) { [string]$filePatchValue } else { '' }
-        $patchAdded = @($filePatch -split "`r?`n" | Where-Object { $_ -match '^\+(?!\+\+\+)' }).Count
-        $patchRemoved = @($filePatch -split "`r?`n" | Where-Object { $_ -match '^-(?!---)' }).Count
-        if ($filePatch) {
+        $patchComplete = $false
+        if ($null -ne $filePatchValue) {
+            try {
+                [void](Get-ReviewUnifiedHunkStatistics -Patch $filePatch -ExpectedAdditions ([int](Get-ReviewPropertyValue $_ 'additions' 0)) -ExpectedDeletions ([int](Get-ReviewPropertyValue $_ 'deletions' 0)))
+                $patchComplete = $true
+            } catch { $patchComplete = $false }
+        }
+        if ($null -ne $filePatchValue) {
             $oldPath = if ($previousPath) { $previousPath } else { $path }
             $patchParts.Add("diff --git a/$oldPath b/$path")
-            $patchParts.Add("--- a/$oldPath")
-            $patchParts.Add("+++ b/$path")
+            $patchParts.Add($(if ($status -ceq 'added') { '--- /dev/null' } else { "--- a/$oldPath" }))
+            $patchParts.Add($(if ($status -ceq 'removed') { '+++ /dev/null' } else { "+++ b/$path" }))
             $patchParts.Add($filePatch)
         }
         $mode = ''
@@ -387,7 +530,8 @@ function ConvertFrom-GitHubPullRequestReviewData {
             previousMode = $previousMode
             previousModeAvailable = $previousModeAvailable
             patchAvailable = ($null -ne $filePatchValue)
-            patchComplete = (($null -ne $filePatchValue) -and $patchAdded -eq [int](Get-ReviewPropertyValue $_ 'additions' 0) -and $patchRemoved -eq [int](Get-ReviewPropertyValue $_ 'deletions' 0))
+            patchComplete = $patchComplete
+            textPatchEvidence = Get-ReviewPropertyValue $_ 'textPatchEvidence' $null
         }
     })
     return [pscustomobject]@{ files=$files; patch=($patchParts -join "`n"); treeMetadataComplete=$treeMetadataComplete }
@@ -738,6 +882,7 @@ function Invoke-PullRequestStaticAnalysis {
             status=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $file 'status' 'unknown')) 40)
             mode=if($modeValid){$mode}else{'UNVERIFIED'}; previousMode=if($previousModeValid -and $previousPath){$previousMode}else{$null}
             patchAvailable=$patchAvailable; patchComplete=$patchComplete
+            textPatchEvidence=ConvertTo-SafeReviewTextPatchEvidence -Evidence (Get-ReviewPropertyValue $file 'textPatchEvidence' $null) -Metadata $Metadata
             artifactVerification=if($artifactVerification){[pscustomobject]@{
                 status=$artifactStatus; approvalId=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $artifactVerification 'approvalId' '')) 80)
                 kind=$artifactKind; mimeType=(ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $artifactVerification 'mimeType' '')) 80)

@@ -8,8 +8,9 @@ festgehalten.
 
 ## Umfang und Herkunft
 
-- 37 offene PRs live mit vollstaendiger Pagination und kompletten Dateilisten
-  inventarisiert; erneute Livepruefung bestaetigt weiterhin 37.
+- 37 urspruenglich offene PRs live mit vollstaendiger Pagination und kompletten
+  Dateilisten inventarisiert. Zusaetzlich entstanden die eigenen Integrations-
+  und Scanner-Fix-PRs #114/#115; die finale Livezahl steht im Ergebnis-ZIP.
 - Base: `abecd00c93d8c651f362d8ef3f0098200fe385ba`, identisch fuer
   `origin/development` und `origin/main` beim letzten Fetch.
 - Eigener Integrationsbranch vom aktuellen development im kanonischen Hauptcheckout.
@@ -52,8 +53,22 @@ Erfolgswertung durch das reine load-Ereignis. Ein zusaetzlicher Importbefund ist
 ebenfalls behoben: null-Runden werden vor Sortierung abgewiesen, ohne den vorhandenen
 Turnierzustand zu veraendern. Zwei Regressionen zeigten zuvor die NullReferenceException.
 Alle betroffenen Tests wurden erneut ausgefuehrt; der alte Review-Status gilt
-nicht fuer diesen korrigierten Stand. Ein neuer SHA-/Tree-gebundener Gesamt-Review
-bleibt vor Commit zwingend.
+nicht fuer diesen korrigierten Stand. Der erneute unabhaengige Gesamt-Review
+pruefte alle 453 geaenderten Dateien und gab den Tree
+`f82417ed6fe932cc7f23820870c0d30df1eb72f3` mit READY frei. Der danach gepruefte
+Carrier-Commit ist `9cdff65e2ff8911a577846564fa664779dad2599`.
+
+GitHub-CI prueft PR-Code mit dem vertrauenswuerdigen development-Basisstand.
+Dieser kann zwei fehlende grosse Textpatches nicht vervollstaendigen und zeigt
+timingabhaengige Musterbefunde. Der kleine vorgeschaltete Fix #115 rekonstruiert
+Textnachweise aus verifizierten Blobs und haelt die bisherigen Sicherheitslimits
+ein. Dessen eigener finaler Review steht auf READY fuer Tree
+`87fcdfed77ba1e0ccf32e30bfd461a5187c2f0cd`; Commit
+`1bf337c377226e291ed01e6af105179b06c4a52a` wurde normal gepusht. Ein gefundener
+Standardaufruf-/Scratch-Fehler wurde zuvor behoben und erneut geprueft.
+Der beste Gesamtquellstand wird im bestehenden Carrier zusammengefuehrt und
+braucht seinen eigenen erneuten Gate- und Abschlussreview. Weder der Fix noch
+die lokale Zusammenfuehrung ersetzt development-/Main- oder Owner-Freigaben.
 
 Release-Trust bindet Signaturen an unabhaengig vorgegebene Signer,
 Dateigrenzen und den vollstaendigen Paketinhalt. ZIP-Groessen, Central-/Local-Header,
@@ -107,7 +122,8 @@ Keine externe Plattform-Pflichtabhaengigkeit wurde in STM eingefuehrt.
 - Domain: 625 PASS; Application nach Importkorrektur: 139 PASS;
   Infrastructure: 26 PASS; Golden: 13 PASS.
 - Node: 1755 PASS, 0 FAIL, 3 vorhandene SKIP. Frontend nach Review-Korrekturen:
-  78 PASS; TypeScript/Vite PASS. Vollstaendiger Commit-Guard bleibt ausstehend.
+  78 PASS; TypeScript/Vite PASS. Der vollstaendige Carrier-Commit-Guard bestand;
+  der nachfolgend um den Scanner-Fix ergaenzte Gesamtstand wird erneut geprueft.
 - Neue Review-Regressionen: PWA 79 PASS, Audit-CSV 13 PASS, Turnierprojektion
   inklusive Auswahllogik und verspaeteter Liste 17 PASS, Snapshot-/Import-Fokus 5 PASS.
 - FIDE-Fokus: 43 PASS. Android: 113 reine Java-Assertions PASS.
@@ -121,9 +137,9 @@ Keine externe Plattform-Pflichtabhaengigkeit wurde in STM eingefuehrt.
   53 PASS fuer alle 15 konsolidierten Werkzeuge, ihre echten ES-Module,
   das Aus-/Einblenden des Sichtschutzes und die negative Laufzeitfehlerprobe.
   Das ist ein Start-Smoke; die fachlichen Werkzeug-Vertraege bleiben separat.
-- Sechzehn Repository-/Security-Gates bestanden auf dem ersten eingefrorenen
-  Review-Stand. Endgueltiger Quellstand-Gate und getrennter
-  Gesamt-Review bleiben vor Commit verbindlich.
+- Sechzehn Repository-/Security-Gates bestanden auf dem finalen Carrier-Tree
+  f82417ed. Fuer den nachfolgenden kombinierten Stand bleiben erneute relevante
+  Gates und ein getrennter Abschlussreview vor Commit verbindlich.
 - Zusaetzliche AllHistory-Pruefung: Altlastenbefund; saemtliche 23 betroffenen
   Commits bereits in der vorhandenen Main-Historie. Kein History-Rewrite.
   Der normale aktuelle Quellstand-Safety-Gate ist davon getrennt.
