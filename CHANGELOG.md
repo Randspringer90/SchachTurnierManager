@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- STM-SEC-005: Vollstaendiger SHA-gebundener UTF-8-Textblob-/Diff-Nachweis fuer fehlende oder abgeschnittene GitHub-Patches; echte Hunk-/Inventar-/Tree-Pruefung, begrenzte versteckte Hilfsprozesse und redigierte Provenienz. Prompt-Muster verwenden eine semantisch gleiche kompilierte Regex; die exakt gebundene ASCII-Run-Regel wird linear mit unveraendertem 100-ms-Limit geprueft. Alle Schweregrade, Critical-Blockaden, Artefaktgrenzen und menschlichen Freigabepflichten bleiben bestehen. `Commit-If-Green -SkipPack` erlaubt den vollstaendigen Quell-Gate ohne Produktpaket.
+
 - STM-QR-001 / PR #82: QR-Eingaben und ECC-Stufen vor Matrixberechnung validieren, Byte-Kapazitaet begrenzen, UTF-8-Fallback fuer einzelne Surrogate an TextEncoder angleichen und ungueltige Koordinaten sicher ablehnen. 45 Runtime-Regressionen ergaenzen die 164 Golden-Tests im Frontend-Build; keine neue Dependency oder mobile Verbindungsoberflaeche.
 
 - STM-SEC-006 / PR #67, erster Teilumfang: gemeinsamer CSV-Ausgabeencoder fuer Teilnehmer- und Swiss-Manager-Export. Formelartige Praefixe, verdeckende Unicode-/Whitespace-Zeichen und Steuerzeichen werden als Text ausgegeben; normale numerische Literale und Quelldaten bleiben erhalten. JSON bleibt der verlustfreie Backup-Kanal; weitere CSV-Oberflaechen bleiben Folgearbeit.

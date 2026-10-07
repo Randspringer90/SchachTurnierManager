@@ -45,6 +45,7 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
 | Datum | Tool/Modell | Kurzbeschreibung | Prompt | Report |
 |---|---|---|---|---|
+| 2026-10-07 | Codex / Sol-Profil | STM-SEC-005: SHA-verifizierter Textpatch-Nachweis fuer grosse PRs; unveraenderte Sicherheitsgrenzen | [Prompt](prompts/20261007_1400_codex-pr-text-evidence.md) | [Report](reports/20261007_1400_codex-pr-text-evidence_REPORT.md) |
 | 2026-10-04 | Codex / Sol-Profil, unabhaengiges Security-Review | Bestehende PRs integrieren; aktuelle Modelle zentral und versionsneutral pflegen | [Prompt](prompts/20261004_1854_all-prs-model-catalog.md) | [Modellkatalog-Zwischenabschluss](reports/20261004_1854_model-catalog_REPORT.md) |
 | 2026-07-16 | Codex | Usage-Limit-Resume: lokalen PR-10-Zwischenstand rekonstruieren, fünffach prüfen und STM-FACH-001 sicher fertigstellen | [prompts/20260716_1415_codex-pr10-safe-adoption-resume.md](prompts/20260716_1415_codex-pr10-safe-adoption-resume.md) | [reports/2026-07-16-codex-pr10-safe-adoption.md](reports/2026-07-16-codex-pr10-safe-adoption.md) |
 | 2026-07-16 | Codex / Sol-Profil | Sichere Adoption der Contributor-PRs #9/#10, dynamisches Modellrouting, Wissensmanagement und Nightly-/Resume-Unterbau | [prompts/20260716_1128_codex-marcel-pr-adoption-routing-nightly.md](prompts/20260716_1128_codex-marcel-pr-adoption-routing-nightly.md) | [reports/2026-07-16-codex-marcel-pr-adoption-routing-nightly.md](reports/2026-07-16-codex-marcel-pr-adoption-routing-nightly.md) |

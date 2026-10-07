@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Message,
-    [switch]$Push
+    [switch]$Push,
+    [switch]$SkipPack
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (git rev-parse --show-toplevel).Trim()
@@ -58,7 +59,7 @@ function Add-SafeChangedFiles {
     if ($LASTEXITCODE -ne 0) { throw "git add fuer gepruefte Pfade ist fehlgeschlagen mit Exitcode $LASTEXITCODE." }
 }
 
-Run-Step 'Release-Gate' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Invoke-ReleaseGate.ps1' }
+Run-Step 'Release-Gate' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Invoke-ReleaseGate.ps1' -SkipPack:$SkipPack }
 Run-Step 'Git-Sicherheitspruefung vor Stage' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File '.\scripts\Test-GitCommitSafety.ps1' }
 
 Write-Host '[CommitGuard] git status vor Stage...'

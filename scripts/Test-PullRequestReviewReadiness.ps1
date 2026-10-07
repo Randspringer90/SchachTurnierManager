@@ -4,8 +4,9 @@
 .SYNOPSIS
 Prueft den sicheren Pull-Request-Review- und Adoption-Unterbau deterministisch und ohne Netzwerk.
 .DESCRIPTION
-Alle Fixtures bleiben Daten. Der Gate fuehrt weder Fixture-Code noch Restore-/Build-/Installations-
-oder GitHub-Mutationen aus. Er ist ohne Pester lauffaehig; der Pester-Contract ruft ihn nur auf.
+T4-/PR-Fixtures bleiben Daten. Nur eigene vertrauenswuerdige Prozess-Stressfixtures
+werden begrenzt ausgefuehrt. Kein PR-Code, Restore/Build/Install oder GitHub-Mutationen.
+Der Gate ist ohne Pester lauffaehig; der Pester-Contract ruft ihn nur auf.
 #>
 [CmdletBinding()]
 param(
@@ -44,6 +45,9 @@ function Check([bool]$Condition, [string]$Message) {
 $required = @(
     'scripts/lib/PullRequestReviewCommon.ps1',
     'scripts/lib/PullRequestArtifactVerification.ps1',
+    'scripts/lib/PullRequestTextPatchEvidence.ps1',
+    'scripts/Test-PullRequestTextPatchEvidence.ps1',
+    'scripts/Test-PullRequestPatternEngine.ps1',
     'scripts/Invoke-SafePullRequestReview.ps1',
     'scripts/Test-PullRequestDependencyDelta.ps1',
     'scripts/New-PullRequestAdoptionPrompt.ps1',
@@ -674,6 +678,20 @@ foreach ($gate in @('StaticApproved','TrustedBaseCurrent','IntegrationStartsFrom
 $directMerge = @{} + $eligibleArguments
 $directMerge.DirectForeignMerge = $true
 Check (-not (Test-PullRequestMergeEligibility @directMerge)) 'Direktmerge eines fremden PR muss unabhängig von anderen Gates gesperrt bleiben'
+
+$focusedScratch = Assert-SafeReviewOutputPath -Path (Join-Path $repo ('output/stm-pr-focused-' + [guid]::NewGuid().ToString('N'))) -RepositoryRoot $repo
+[void][IO.Directory]::CreateDirectory($focusedScratch)
+try {
+    foreach ($focusedGate in @('Test-PullRequestTextPatchEvidence.ps1','Test-PullRequestPatternEngine.ps1')) {
+        $focusedArguments=@('-NoLogo','-NoProfile','-File',(Join-Path $PSScriptRoot $focusedGate))
+        if ($focusedGate -ceq 'Test-PullRequestTextPatchEvidence.ps1') { $focusedArguments+=@('-ScratchParent',$focusedScratch) }
+        & pwsh @focusedArguments
+        Check ($LASTEXITCODE -eq 0) "Focused static security regression failed: $focusedGate"
+    }
+} finally {
+    [void](Assert-NoReviewReparseAncestor -Path $focusedScratch -Context 'Owned readiness scratch')
+    [IO.Directory]::Delete($focusedScratch,$false)
+}
 
 if (-not $OutputDirectory -and (Test-Path -LiteralPath $testRoot)) {
     Remove-Item -LiteralPath $testRoot -Recurse -Force

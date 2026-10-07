@@ -339,6 +339,7 @@ ausgeschrieben. Auszug der wichtigsten:
   durch PR-Code, keine rohe Payloadpersistenz, SHA-/Policy-Bindung.
   **Doku/DoD:** Trust Boundaries, Review-/Adoption-Workflow, Templates, Agent/Skills und CI-Gate;
   alle Gates und Owner-Integrations-PR grün; Rulesets online verifiziert. *PR:* [#12](https://github.com/Randspringer90/SchachTurnierManager/pull/12).
+  **Nachpruefung 2026-10-07:** Ein kleiner vorgeschalteter Sicherheitsfix ergaenzt fehlende GitHub-Textpatches durch verifizierte Blob-/Hunk-Evidenz und begrenzt die bisher timingabhaengige Musterpruefung bei unveraenderten Limits. Lokal gezielt geprueft; separate Review-/CI-/Owner-/development-Abnahme des Fixes noch offen. Dieser Nachtrag erklaert weder den laufenden Integrationsauftrag noch dessen Main-/Cleanup-Gates fuer erledigt.
 - **STM-SEC-004** – Public Snapshot & History-Abnahme: alte Git-Historie ist der offene
   Public-Blocker (`scripts/New-OpenSourceSnapshot.ps1`). **Konkreter Befund (2026-07-12):** der
   gepushte Merge-Commit `5d64d12` (auf `origin/development`, public) enthielt in
