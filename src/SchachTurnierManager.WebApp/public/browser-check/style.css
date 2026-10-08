@@ -1,0 +1,11 @@
+body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: CanvasText; background: Canvas; }
+main { max-width: 65rem; margin: 1.5rem auto; padding: 1.25rem; }
+h1 { line-height: 1.25; }
+button { font: inherit; padding: .65rem 1rem; margin: .5rem .5rem .5rem 0; }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.notice { border-inline-start: .25rem solid currentColor; padding-inline-start: 1rem; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: start; border: 1px solid currentColor; padding: .5rem; overflow-wrap: anywhere; }
+[hidden] { display: none !important; }
+@media (max-width: 40rem) { main { margin: 0; padding: 1rem; } }

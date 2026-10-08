@@ -1,0 +1,15 @@
+# Documentation example; never overwrites a user's local .codex/config.toml.
+# CLI reference verified 2026-10-07:
+# https://developers.openai.com/codex/config-reference/
+# Model selection belongs to config/model-catalog.json and the validated runtime
+# router. Do not duplicate version pins here or silently override a session model.
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false
+
+# Git authorization is enforced by AGENTS.md, repository guards and GitHub rules.
+# Codex has no allow_no_verify / allow_force_push configuration keys.
+# This inert example does not change the current authorized runtime permissions.

@@ -63,6 +63,11 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 - `Publish-DesktopApp.ps1` / `Start-Desktop.bat` – self-contained Desktop-Paket (`output\desktop`), Klick-Start, Daten unter `%LocalAppData%\SchachTurnierManager`.
 - `Build-Installer.ps1` – Installer-EXE über Inno Setup 6 aus `installer\SchachTurnierManager.iss` bauen (ISCC.exe erforderlich).
 - `Invoke-InstallerReadiness.ps1` – RUN-05-Readiness mit Run-Log-Bundle, Desktop-Publish, optionalem Installer-Build und Manifesten.
+- `Sign-ReleaseArtifacts.ps1` – explizite Windows-Authenticode-Signierung ausschließlich für freigegebene EXE-Artefakte unter `output/`; benötigt lokalen Code-Signing-Thumbprint plus `-ApproveSigning`.
+- `New-ReleaseUpdateManifest.ps1` – erzeugt das lokale `manual-only`-Update-Manifest mit Größe, SHA256 und Signaturstatus.
+- `Test-ReleaseUpdateManifest.ps1` – fail-closed Manifest-/Hash-/Pfad-/Authenticode-Prüfung; kein Download/Auto-Execute.
+- `Invoke-ReleaseTrustReadiness.ps1` – reale Release-Trust-Abnahme; kann Installer und gültige Signaturen zwingend verlangen.
+- `Test-ReleaseTrustReadiness.ps1` – synthetischer Offline-Vertragstest für Manifest, Tamper-/Traversal-Schutz und No-Auto-Update; Teil des ReleaseGate.
 - `Invoke-PwaReadiness.ps1` – RUN-08: PWA-Manifest, Icons, Service Worker und Vite-Ausgabe prüfen; `/api` bleibt network-only und wird nicht offline gecacht.
 
 ## Git (git)
@@ -106,7 +111,7 @@ Die Unterordner `dev/`, `test/`, `release/`, `git/`, `security/`, `maintenance/`
 
 - `Invoke-SecretSafetyReadiness.ps1` prüft GitSafety, lokale DPAPI-Secret-Ablage unter `.secrets/local/` und Gitignore-Schutz. Der Test legt nur einen temporären Selftest-Wert an, loggt ihn nicht und löscht ihn wieder.
 - `Get-LocalSecret.ps1` liest DPAPI-geschützte lokale Secrets. Standardausgabe ist `SecureString`; Klartext ist nur mit `-AsPlainTextForChildProcessOnly` für direkte Child-Prozess-Übergaben vorgesehen.
-- `Invoke-ReleaseCandidateReadiness.ps1` bündelt ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paketierung und optional Installer-Readiness in einem lokalen temporären Run-ZIP.
+- `Invoke-ReleaseCandidateReadiness.ps1` bündelt ReleaseGate, SecretSafety, Desktop-Publish, portable Self-contained-Paketierung, Release-Trust-Manifest/-Prüfung und optional Installer-Readiness in einem lokalen temporären Run-ZIP. Für Produktionskandidaten erzwingen `-SignArtifacts -SigningCertificateThumbprint <THUMBPRINT> -RequireSignedArtifacts` die vollständige Authenticode-Kette.
 
 Beispiel:
 
@@ -117,3 +122,16 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseCa
 Am Ende wird genau ein `UPLOAD_ZIP=...` ausgegeben.
 
 - `Invoke-ColleagueInstallReadiness.ps1` erzeugt RUN-51: eigenstaendiges Kollegenpaket mit Desktop-ZIP, Portable-ZIP, optionaler Setup-EXE, README, Manifest und SHA256-Pruefsummen.
+
+## Headless Firefox aus dem geprueften Quellstand
+
+`Smoke-FirefoxDialogs.ps1` und `Smoke-FirefoxTournamentFlow.ps1` akzeptieren
+`-SkipPack -SourceAssemblyPath <WebApi-DLL unter tmp/dotnet-bin>`. Sie pruefen
+Dialoge beziehungsweise Turnierablaeufe ohne ein Produktpaket zu erzeugen.
+`Smoke-FirefoxIntegratedTools.ps1 -SourceAssemblyPath <dieselbe DLL>` prueft
+die 15 zusaetzlichen Werkzeug-Einstiege, deren echte ES-Module und den Sichtschutz.
+Die DLL benoetigt ihre Build-Begleitdateien und den aktuellen Frontend-Build in
+`wwwroot`. Diese Start-Smokes ersetzen keine fachlichen Vertragstests.
+Alle drei nutzen dedizierte freie Ports, headless Firefox, native fensterlose
+Kindprozesse und ausschliesslich eigene Prozesshandles fuer das Cleanup.
+`Test-FirefoxSmokeSafety.ps1` prueft die Besitz- und Abbruchgrenzen synthetisch.

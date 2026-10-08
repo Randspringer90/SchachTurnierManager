@@ -6,7 +6,8 @@
     Prüft nur lesend, ob die wichtigsten Voraussetzungen für den Turniertag stimmen:
       - Backend erreichbar (GET /api/health)
       - Frontend-Port (5173) belegt / erreichbar
-      - SQLite-Datenbankpfad existiert (aus dem Health-Endpunkt gelesen)
+      - SQLite-Datenbank existiert (Pfad lokal wie im Backend ermittelt; der oeffentliche
+        Health-Endpunkt nennt bewusst keine absoluten Pfade mehr)
       - Backup-Ordner existiert
       - Git-Arbeitsverzeichnis sauber und mit origin synchron
 
@@ -22,6 +23,11 @@
 .PARAMETER BackupDir
     Erwarteter lokaler Backup-Ordner. Standard: D:\Schach\Backups
 
+.PARAMETER DatabasePath
+    Optionaler expliziter Pfad zur SQLite-Datei. Ohne Angabe wird er wie im Backend
+    ermittelt: SchachTurnierManager__DataDirectory, sonst %LocalAppData%\SchachTurnierManager,
+    jeweils mit der Datei SchachTurnierManager.sqlite.
+
 .EXAMPLE
     pwsh -File .\scripts\Show-EventReadiness.ps1
 #>
@@ -29,7 +35,8 @@
 param(
     [string]$BaseUrl = 'http://localhost:5088',
     [string]$FrontendUrl = 'http://127.0.0.1:5173',
-    [string]$BackupDir = 'D:\Schach\Backups'
+    [string]$BackupDir = 'D:\Schach\Backups',
+    [string]$DatabasePath
 )
 
 $ErrorActionPreference = 'Continue'
@@ -70,14 +77,19 @@ catch {
 if (-not $frontendOk) { $allOk = $false }
 Write-Check $frontendOk 'Frontend erreichbar' $FrontendUrl
 
-# 3) Datenbankpfad existiert
-if ($health -and $health.databasePath) {
-    $dbExists = Test-Path -LiteralPath $health.databasePath
-    if (-not $dbExists) { $allOk = $false }
-    Write-Check $dbExists 'Datenbankpfad existiert' $health.databasePath
+# 3) Datenbank existiert - Pfad lokal wie im Backend ermittelt (Health nennt keine Pfade mehr)
+if ($health -and [string]$health.database -eq 'custom connection' -and -not $DatabasePath) {
+    $allOk = $false
+    Write-Check $false 'Datenbank existiert' 'Backend nutzt eine eigene Connection-String-Konfiguration; bitte -DatabasePath angeben.'
 }
 else {
-    Write-Check $false 'Datenbankpfad existiert' 'Konnte databasePath nicht aus dem Health-Endpunkt lesen.'
+    if (-not $DatabasePath) {
+        $dataDirectory = if ($env:SchachTurnierManager__DataDirectory) { $env:SchachTurnierManager__DataDirectory } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'SchachTurnierManager' }
+        $DatabasePath = Join-Path $dataDirectory 'SchachTurnierManager.sqlite'
+    }
+    $dbExists = Test-Path -LiteralPath $DatabasePath -PathType Leaf
+    if (-not $dbExists) { $allOk = $false }
+    Write-Check $dbExists 'Datenbank existiert' $DatabasePath
 }
 
 # 4) Backup-Ordner existiert

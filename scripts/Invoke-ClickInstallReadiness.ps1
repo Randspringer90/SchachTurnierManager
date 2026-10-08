@@ -1,3 +1,4 @@
+#requires -Version 7.0
 [CmdletBinding()]
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
@@ -12,6 +13,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib/BackgroundProcess.ps1')
 
 $bundleScript = Join-Path $PSScriptRoot 'New-RunLogBundle.ps1'
 $loggedCommandScript = Join-Path $PSScriptRoot 'Invoke-LoggedCommand.ps1'
@@ -36,7 +38,7 @@ function Resolve-UploadZipPath([string]$RunDirectory) {
 
 function Complete-RunBundle {
     $expectedUploadZip = Resolve-UploadZipPath -RunDirectory $runDirectory
-    pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $bundleScript -RunDirectory $runDirectory -RunName $RunName -RepositoryRoot $Root | Out-Null
+    pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $bundleScript -RunDirectory $runDirectory -RunName $RunName -RepositoryRoot $Root | Out-Null
     if (-not (Test-Path -LiteralPath $expectedUploadZip -PathType Leaf)) {
         throw "Upload-ZIP wurde nicht erzeugt: $expectedUploadZip"
     }
@@ -49,7 +51,7 @@ function Invoke-Logged {
         [Parameter(Mandatory = $true)][string]$CommandLine
     )
 
-    pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $loggedCommandScript `
+    pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $loggedCommandScript `
         -RunDirectory $runDirectory `
         -Name $Name `
         -WorkingDirectory $Root `
@@ -107,15 +109,18 @@ function Test-InstalledAppSmoke {
     if (-not (Test-Path -LiteralPath $wwwroot -PathType Container)) { throw "Installiertes wwwroot fehlt: $wwwroot" }
 
     New-Item -ItemType Directory -Force -Path $DataDirectory | Out-Null
-    $env:ASPNETCORE_URLS = "http://127.0.0.1:$Port"
-    $env:SchachTurnierManager__DataDirectory = $DataDirectory
-    $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) -PassThru -WindowStyle Minimized
+    $background = $null
     try {
+        $background = Start-StmBackgroundProcess -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) `
+            -LogDirectory $runDirectory -Name installed-app-smoke `
+            -Environment @{ ASPNETCORE_URLS = "http://127.0.0.1:$Port"; SchachTurnierManager__DataDirectory = $DataDirectory }
+        $process = $background.Process
         $healthUrl = "http://127.0.0.1:$Port/api/health"
         $dashboardUrl = "http://127.0.0.1:$Port/"
         $tournamentsUrl = "http://127.0.0.1:$Port/api/tournaments"
         $ready = $false
         for ($i = 0; $i -lt 45; $i++) {
+            if ($process.HasExited) { throw "Installed app exited with $($process.ExitCode). See $($background.StderrPath)." }
             try {
                 $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 2
                 if ($response.StatusCode -eq 200) { $ready = $true; break }
@@ -131,11 +136,8 @@ function Test-InstalledAppSmoke {
         if ($tournaments.StatusCode -ne 200) { throw "Tournaments StatusCode=$($tournaments.StatusCode)" }
     }
     finally {
-        Remove-Item Env:\ASPNETCORE_URLS -ErrorAction SilentlyContinue
-        Remove-Item Env:\SchachTurnierManager__DataDirectory -ErrorAction SilentlyContinue
-        if ($process -and -not $process.HasExited) {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            $process.WaitForExit(5000) | Out-Null
+        if ($null -ne $background) {
+            Stop-StmBackgroundProcess -Handle $background | Out-Null
         }
     }
 
@@ -152,7 +154,7 @@ try {
     $packageZip = Join-Path $outputRoot "SchachTurnierManager_Kollegenpaket_$version.zip"
 
     if ($BuildPackage -or -not (Test-Path -LiteralPath $packageZip -PathType Leaf)) {
-        $command = 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ColleagueInstallReadiness.ps1'
+        $command = 'pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\scripts\Invoke-ColleagueInstallReadiness.ps1'
         if ($BuildInstaller) { $command += ' -BuildInstaller' }
         if ($AllowMissingInnoSetup) { $command += ' -AllowMissingInnoSetup' }
         if (-not [string]::IsNullOrWhiteSpace($InnoSetupCompiler)) { $command += " -InnoSetupCompiler `"$InnoSetupCompiler`"" }
@@ -177,7 +179,7 @@ try {
 
     $installScript = Join-Path $packageRoot 'Install-SchachTurnierManager.ps1'
     $uninstallScript = Join-Path $packageRoot 'Uninstall-SchachTurnierManager.ps1'
-    Invoke-Logged -Name 'click-install' -CommandLine "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$installScript`" -PackageDirectory `"$packageRoot`" -InstallDirectory `"$installRoot`" -ShortcutDirectory `"$shortcutRoot`" -Quiet"
+    Invoke-Logged -Name 'click-install' -CommandLine "pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$installScript`" -PackageDirectory `"$packageRoot`" -InstallDirectory `"$installRoot`" -ShortcutDirectory `"$shortcutRoot`" -Quiet"
 
     if (-not (Test-Path -LiteralPath (Join-Path $shortcutRoot 'SchachTurnierManager.lnk') -PathType Leaf)) { throw 'Startmenue-Shortcut wurde im Testordner nicht erzeugt.' }
     if (-not (Test-Path -LiteralPath (Join-Path $installRoot 'INSTALLATION_MANIFEST.txt') -PathType Leaf)) { throw 'Installationsmanifest fehlt.' }
@@ -187,7 +189,7 @@ try {
     Write-Host "PORT=$effectivePort"
     Test-InstalledAppSmoke -InstallDirectory $installRoot -DataDirectory $dataRoot -Port $effectivePort
 
-    Invoke-Logged -Name 'click-uninstall' -CommandLine "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$uninstallScript`" -InstallDirectory `"$installRoot`" -ShortcutDirectory `"$shortcutRoot`" -UserDataDirectory `"$dataRoot`" -RemoveUserData -Quiet"
+    Invoke-Logged -Name 'click-uninstall' -CommandLine "pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$uninstallScript`" -InstallDirectory `"$installRoot`" -ShortcutDirectory `"$shortcutRoot`" -UserDataDirectory `"$dataRoot`" -RemoveUserData -Quiet"
     if (Test-Path -LiteralPath $installRoot) { throw 'Installationsordner wurde beim Uninstall-Test nicht entfernt.' }
     if (Test-Path -LiteralPath (Join-Path $shortcutRoot 'SchachTurnierManager.lnk')) { throw 'Shortcut wurde beim Uninstall-Test nicht entfernt.' }
 

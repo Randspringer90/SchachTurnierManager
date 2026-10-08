@@ -13,7 +13,9 @@
 ## Release-Ablauf
 
 1. **Releasefähigkeit prüfen** – `development` ist fachlich/technisch fertig, alle Gates grün
-   (`scripts/Invoke-ReleaseGate.ps1`, `scripts/Invoke-ReleaseCandidateReadiness.ps1`).
+   (`scripts/Invoke-ReleaseGate.ps1`, `scripts/Invoke-ReleaseCandidateReadiness.ps1`). Für einen
+   Produktionskandidaten gehört zusätzlich die signierte Trust-Abnahme nach
+   [`SIGNING_AND_UPDATES.md`](../release/SIGNING_AND_UPDATES.md) dazu.
 2. **Release-Branch erzeugen** – `scripts/Prepare-ReleaseBranch.ps1 -Version 1.0.0`
    (zweigt von aktuellem `development` ab). Erzeugt **noch keinen** Tag.
 3. **Stabilisieren** – auf `release/1.0.0` nur:
@@ -21,10 +23,13 @@
    - Versionsanpassungen (`package.json`, ggf. `Directory.Build.props`)
    - Dokumentation, `CHANGELOG.md` (Release-Abschnitt finalisieren)
    - **keine** neuen Features
-4. **PR nach `main`** – Review durch den Owner, ReleaseGate + Security-Gate erforderlich.
-5. **Merge nach `main`** – Merge-Commit.
-6. **Tag setzen** – der Owner setzt bewusst `v<semver>` auf den Merge-Commit (manuell).
-7. **Rückführung** – Release-Fix-Stand **zwingend** nach `development` zurückmergen, damit
+4. **Release-Artefakte bauen und Trust prüfen** – Desktop/Portable vor dem ZIP-Bau, Setup-EXE
+   nach dem Installer-Build explizit Authenticode-signieren; Update-Manifest erzeugen und mit
+   `Invoke-ReleaseTrustReadiness.ps1 -RequireInstaller -RequireSignedArtifacts` verifizieren.
+5. **PR nach `main`** – Review durch den Owner, ReleaseGate + Security-Gate erforderlich.
+6. **Merge nach `main`** – Merge-Commit.
+7. **Tag setzen** – der Owner setzt bewusst `v<semver>` auf den Merge-Commit (manuell).
+8. **Rückführung** – Release-Fix-Stand **zwingend** nach `development` zurückmergen, damit
    `development` alle Stabilisierungen enthält.
 
 ## Hotfix-Ablauf

@@ -89,6 +89,8 @@ Check ([bool]$config.policy.qualityOverCost) 'Qualitaet vor Kosten ist aktiv'
 Check ([bool]$config.policy.noSilentModelSwitch) 'Stiller Modellwechsel ist verboten'
 Check ([bool]$config.policy.noAutomaticDowngradeForCriticalWork) 'Kritischer Downgrade ist verboten'
 Check ($config.policy.unavailableProfileAction -eq 'block-and-request-explicit-reroute') 'Nichtverfuegbarkeit blockiert fail-closed'
+Check ($config.policy.newestStableModelPerProfile -eq $true) 'Jedes Profil wird auf das neueste verfuegbare stabile Modell seiner Klasse aufgeloest'
+Check ($config.policy.providerNeutralRules -eq $true) 'Regeln und Freigaben gelten providerunabhaengig fuer alle Provider gleich'
 Check ($configText -notmatch '(?i)(claude|gpt|gemini|llama)[-_ ]?[0-9]') 'Keine konkreten Modellversionspins'
 Check ($configText -notmatch '(?i)([A-Z]:\\|/home/|/Users/)') 'Keine lokalen oder fremden absoluten Pfade'
 

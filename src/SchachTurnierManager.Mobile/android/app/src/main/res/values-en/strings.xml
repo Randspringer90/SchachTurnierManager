@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SchachTurnierManager</string>
+    <string name="title">Connect to the tournament PC</string>
+    <string name="subtitle">View tournaments, pairings and standings from the PC on the same Wi-Fi network.</string>
+    <string name="server_label">PC server address</string>
+    <string name="server_hint">Private Wi-Fi IP, localhost or a .local name. No credentials.</string>
+    <string name="test">Test connection</string>
+    <string name="connect">Connect</string>
+    <string name="testing">Testing connection …</string>
+    <string name="rechecking">Checking connection again before opening …</string>
+    <string name="connected">Local SchachTurnierManager with dashboard confirmed.</string>
+    <string name="invalid">Enter a valid private server address without credentials.</string>
+    <string name="wrong_server">Not a compatible SchachTurnierManager with an embedded dashboard.</string>
+    <string name="failed">Connection failed. Is the tournament PC running on the same Wi-Fi network?</string>
+    <string name="timeout">Connection timed out. Check the connection to the tournament PC.</string>
+    <string name="test_first">Test this address successfully before connecting.</string>
+    <string name="blocked">This external address or device capability is blocked in companion mode.</string>
+    <string name="app_version">App version: %1$s</string>
+    <string name="server_version">Server version: %1$s</string>
+    <string name="not_connected">not connected</string>
+    <string name="dashboard_ready">Dashboard available</string>
+    <string name="return_launcher">Back to server selection</string>
+</resources>

@@ -13,7 +13,9 @@ $runDirectory = ($runDirectory | Select-Object -Last 1).Trim()
 $summaryPath = Join-Path $runDirectory 'knowledge-base-readiness-summary.txt'
 $sourceReportPath = Join-Path $runDirectory 'knowledge-base-source-report.txt'
 $webAppRoot = Join-Path $root 'src\SchachTurnierManager.WebApp'
-$mainTsx = Join-Path $webAppRoot 'src\main.tsx'
+. (Join-Path $PSScriptRoot 'lib\WebAppSourceSnapshot.ps1')
+# STM-FE-014: assert against the whole WebApp source tree, not a single file.
+$mainTsx = New-WebAppSourceSnapshot -WebAppRoot $webAppRoot -Destination (Join-Path $runDirectory 'webapp-sources.snapshot.txt')
 $knowledgeJson = Join-Path $webAppRoot 'src\knowledge\localKnowledgeBase.json'
 $knowledgeReadme = Join-Path $webAppRoot 'src\knowledge\README.md'
 $stylesCss = Join-Path $webAppRoot 'src\styles.css'

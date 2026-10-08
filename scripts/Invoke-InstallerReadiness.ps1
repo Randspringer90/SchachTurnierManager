@@ -5,7 +5,10 @@ param(
     [switch]$SkipPublish,
     [switch]$BuildInstaller,
     [switch]$AllowMissingInnoSetup,
-    [string]$InnoSetupCompiler
+    [string]$InnoSetupCompiler,
+    [switch]$SignArtifacts,
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer
 )
 
 Set-StrictMode -Version Latest
@@ -21,6 +24,10 @@ $manualChecklistPath = Join-Path $runDirectory 'manual-installer-test-checklist.
 
 function Add-Summary([string]$Line) {
     $Line | Add-Content -Encoding UTF8 -LiteralPath $summaryPath
+}
+
+function ConvertTo-PowerShellLiteral([string]$Value) {
+    return "'" + ($Value -replace "'", "''") + "'"
 }
 
 function Invoke-Logged([string]$Name, [string]$CommandLine) {
@@ -146,6 +153,8 @@ $inno = Find-InnoSetupCompiler
     "SkipReleaseGate: $($SkipReleaseGate.IsPresent)",
     "SkipPublish: $($SkipPublish.IsPresent)",
     "InnoSetupCompiler: $(if ($inno) { $inno } else { 'NICHT GEFUNDEN' })",
+    "SignArtifacts: $($SignArtifacts.IsPresent)",
+    "Timestamping: $(if ([string]::IsNullOrWhiteSpace($TimestampServer)) { 'nein' } else { 'explizit konfiguriert' })",
     ''
 ) | Set-Content -Encoding UTF8 -LiteralPath $summaryPath
 
@@ -179,7 +188,18 @@ if ($BuildInstaller) {
         }
     }
     else {
-        Invoke-Logged 'build-installer-skippublish' 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -SkipPublish'
+        $buildInstallerCommand = 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -SkipPublish'
+        if ($SignArtifacts) {
+            if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+                throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+            }
+            $buildInstallerCommand += " -SignArtifacts -SigningCertificateThumbprint $(ConvertTo-PowerShellLiteral $SigningCertificateThumbprint)"
+            if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+                $buildInstallerCommand += " -TimestampServer $(ConvertTo-PowerShellLiteral $TimestampServer)"
+            }
+        }
+
+        Invoke-Logged 'build-installer-skippublish' $buildInstallerCommand
         $count = Write-InstallerManifest
         if ($count -lt 1) { throw 'Installer-Build meldete OK, aber keine Setup-EXE wurde gefunden.' }
         Add-Summary "Installer-Build: OK ($count Setup-Datei(en))"

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SchachTurnierManager</string>
+    <string name="title">Mit dem Turnier-PC verbinden</string>
+    <string name="subtitle">Turniere, Paarungen und Tabellen vom PC im gleichen WLAN anzeigen.</string>
+    <string name="server_label">Serveradresse des PCs</string>
+    <string name="server_hint">Private WLAN-IP, localhost oder ein Name mit .local. Keine Zugangsdaten.</string>
+    <string name="test">Verbindung testen</string>
+    <string name="connect">Verbinden</string>
+    <string name="testing">Verbindung wird getestet …</string>
+    <string name="rechecking">Verbindung wird vor dem Öffnen erneut geprüft …</string>
+    <string name="connected">Lokaler SchachTurnierManager mit Dashboard bestätigt.</string>
+    <string name="invalid">Bitte eine gültige private Serveradresse ohne Zugangsdaten eingeben.</string>
+    <string name="wrong_server">Kein passender SchachTurnierManager mit eingebettetem Dashboard.</string>
+    <string name="failed">Verbindung fehlgeschlagen. Läuft der Turnier-PC im gleichen WLAN?</string>
+    <string name="timeout">Zeitüberschreitung. Bitte die Verbindung zum Turnier-PC prüfen.</string>
+    <string name="test_first">Bitte diese Adresse zuerst erfolgreich testen.</string>
+    <string name="blocked">Diese externe Adresse oder Gerätefunktion ist im Companion gesperrt.</string>
+    <string name="app_version">App-Version: %1$s</string>
+    <string name="server_version">Server-Version: %1$s</string>
+    <string name="not_connected">noch nicht verbunden</string>
+    <string name="dashboard_ready">Dashboard vorhanden</string>
+    <string name="return_launcher">Zur Serverauswahl</string>
+</resources>

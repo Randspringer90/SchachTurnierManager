@@ -1,6 +1,6 @@
 # Release Operations, Installation und lokale Secrets
 
-Stand: 0.50.0
+Stand: 0.54.1
 
 ## Zielbild
 
@@ -19,7 +19,7 @@ Der SchachTurnierManager soll als eigenständiges lokales Produkt nutzbar sein:
 | `output/desktop/SchachTurnierManager.bat` | normale Windows-Nutzer | self-contained, kein .NET beim Nutzer nötig |
 | `output/SchachTurnierManager_Desktop_<version>.zip` | ZIP-Verteilung | klickbarer Start über BAT |
 | `output/portable/Start-SchachTurnierManager.bat` | portable Tests/USB/Frischordner | Daten lokal im Paketordner |
-| `output/installer/SchachTurnierManager_Setup_<version>.exe` | spätere Kollegen-/Vereinsinstallation | benötigt lokal Inno Setup 6 zum Bauen |
+| `output/installer/SchachTurnierManager_Setup_<version>.exe` | Kollegen-/Vereinsinstallation | benötigt lokal Inno Setup 6; Produktionsrelease wird explizit Authenticode-signiert |
 
 ## Standardprüfung
 
@@ -36,6 +36,11 @@ Das Skript erzeugt am Ende `UPLOAD_ZIP=...` und enthält:
 - optional Installer-Readiness
 - GitSafety
 - Release-Artefaktmanifest mit SHA256
+- Release-Trust-Readiness mit maschinenlesbarem `manual-only`-Update-Manifest
+
+Für einen echten Produktionskandidaten kommt Authenticode-Signierung hinzu. Sie ist **nie**
+automatisch aktiv und benötigt einen expliziten lokalen Zertifikat-Thumbprint plus
+`-RequireSignedArtifacts`. Details: [`../release/SIGNING_AND_UPDATES.md`](../release/SIGNING_AND_UPDATES.md).
 
 ## Logging
 

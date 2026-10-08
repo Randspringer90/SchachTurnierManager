@@ -31,15 +31,15 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 
 | ID | Titel | Prio | Status | Kategorie | Ziel-Bearb. | Issue | Release |
 |----|-------|------|--------|-----------|-------------|-------|---------|
-| STM-QR-001 | QR-Runtime-Eingaben, UTF-8-Fallback und Koordinatenzugriff absichern | P2 | In Review | infrastructure | owner | PR #82; 45 Runtime- und 164 Golden-Tests lokal bestanden; voller CommitGuard und aktuelle CI vor Merge erforderlich. Kein Abschluss von STM-MOB-005. | v1.0.0 |
+| STM-QR-001 | QR-Runtime-Eingaben, UTF-8-Fallback und Koordinatenzugriff absichern | P2 | Done | infrastructure | owner | PR #82 regulär nach main übernommen; main `abecd00`, SHA-gebundene CI erfolgreich. QR-Runtime/Golden-Tests sind Build-Gates; kein Abschluss von STM-MOB-005. | v1.0.0 |
 | STM-QR-002 | QR-Matrix-Regressionen fuer 40 Versionen und vier ECC-Stufen | P2 | Done | infrastructure | owner | [#83](https://github.com/Randspringer90/SchachTurnierManager/issues/83), PR #84, Merge `50a3367`; 164 lokale Tests, vollstaendige Gates und aktuelle PR-CI gruen; auch nach main uebernommen. Kein Abschluss von STM-MOB-005. | v1.0.0 |
 | STM-INT-001 | v0.41-Merge nachziehen (AI-Help/Export/Dashboard reconcilen) | P1 | Done | infrastructure | owner | [#5](https://github.com/Randspringer90/SchachTurnierManager/issues/5) (geschlossen; PR [#6](https://github.com/Randspringer90/SchachTurnierManager/pull/6), Merge `ecfb473`) | v1.0.0 |
 | STM-SEC-001 | Prompt-Injection-Verteidigung härten | P1 | In Progress | security | owner | via [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) | v1.0.0 |
-| STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | – | v1.0.0 |
+| STM-SEC-002 | Dependency-/Lizenz-/Supply-Chain-Prüfung | P1 | Backlog | security | either | PR #61 lokal adaptiert: alle acht NuGet-Pins exakt; strukturelles Offline-Gate vor Paketmanagern. Offen: Advisory-/Lizenzabnahme und PARTIAL-Provenienz; noch kein vollständiger DoD-Abschluss. | v1.0.0 |
 | STM-SEC-003 | Datenschutz / PII-Minimierung | P1 | Backlog | security | owner | – | v1.0.0 |
 | STM-SEC-004 | Public Snapshot & Git-History-Abnahme | P0 | Blocked | security | owner | – | v1.0.0 |
 | STM-SEC-005 | Sichere Pull-Request-Prüfung und kontrollierte Übernahme | P1 | Done | security | owner | [#11](https://github.com/Randspringer90/SchachTurnierManager/issues/11) (PR [#12](https://github.com/Randspringer90/SchachTurnierManager/pull/12)) | v1.0.0 |
-| STM-SEC-006 | CSV-Formel-Injection in allen CSV-Exporten neutralisieren (führende `=`/`+`/`-`/`@`/Tab) | P2 | In Review | security | either | PR #67 sichert Teilnehmer-/Swiss-Manager-CSV. Elternscope bleibt offen: Tabellen-/Paarungs-/Vorschau-/Frontend-Audit-CSV pruefen; TRF16 ist Fixed-Width und erhaelt keine CSV-Praefixe. | v1.0.0 |
+| STM-SEC-006 | CSV-Formel-Injection in allen CSV-Exporten neutralisieren (führende `=`/`+`/`-`/`@`/Tab) | P2 | In Progress | security | either | PR #67 sichert Teilnehmer-/Swiss-Manager-CSV. Elternscope bleibt offen: Tabellen-/Paarungs-/Vorschau-/Frontend-Audit-CSV pruefen; TRF16 ist Fixed-Width und erhaelt keine CSV-Praefixe. | v1.0.0 |
 | STM-SEC-007 | Externe Artefakt-/Screenshot-Exfiltration durch KI-Agenten verhindern | P0 | Done | security | owner | – | v1.0.0 |
 | STM-INFRA-008 | PR-Security-Gate für Android-/Binär-Buildartefakte tragfähig machen | P2 | In Progress | infrastructure | owner | – (Branch `security/STM-INFRA-008-android-artifact-gates`; enge PR-Head-/Pfad-/Hash-Attestation in Arbeit; blockiert den Merge von STM-MOB-001 #49) | post-1.0 |
 | STM-AI-001 | Agenten- & Skill-Zielstandard + Migration | P2 | Done | ai | owner | [#7](https://github.com/Randspringer90/SchachTurnierManager/issues/7) (PR [#8](https://github.com/Randspringer90/SchachTurnierManager/pull/8)) | v1.0.0 |
@@ -58,8 +58,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-INFRA-006 | `Test-RoutedExecutionReadiness.ps1` flaky – Wurzel: nichtdeterministischer Graph-Hash | P2 | In Review | infrastructure | owner | [#46](https://github.com/Randspringer90/SchachTurnierManager/issues/46) (PR läuft; 20/20 lokale Läufe grün) | v1.0.0 |
 | STM-INFRA-007 | Branchnamen-Policy: sanktionierter Pfad für Owner-Pakete ohne Contributor-PR | P3 | Done | infrastructure | owner | [#62](https://github.com/Randspringer90/SchachTurnierManager/issues/62), [PR #63](https://github.com/Randspringer90/SchachTurnierManager/pull/63), Merge `d1b6213` | v1.0.0 |
 | STM-FACH-001 | Kampflose Partien in Paarung & Wertung | P1 | Done | pairing | friend | [#1](https://github.com/Randspringer90/SchachTurnierManager/issues/1) (Original-PR [#10](https://github.com/Randspringer90/SchachTurnierManager/pull/10), sichere Adoption [#14](https://github.com/Randspringer90/SchachTurnierManager/pull/14), Merge `31a3a06`) | v1.0.0 |
-| STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | Done | pairing | friend | [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) (Original-PR [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40), sichere Adoption [#45](https://github.com/Randspringer90/SchachTurnierManager/pull/45), Merge `7634399`; Folge: STM-FACH-011/012) | v1.0.0 |
-| STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | Backlog | pairing | either | [#23](https://github.com/Randspringer90/SchachTurnierManager/issues/23) (entsperrt: STM-FACH-002 ist Done) | v1.0.0 |
+| STM-FACH-002 | Vollständigeres FIDE-Dutch-Schweizer-System | P1 | In Progress | pairing | friend | Ursprüngliche Adoption #45 in main (`7634399`); aktueller Review fand C8-/C19-/C21-Lücken. Korrektur und Regel-Oracles im Integrationskandidaten; erneute Gesamtprüfung und main-Übernahme ausstehend. | v1.0.0 |
+| STM-FACH-003 | Große Schweizer Felder > 20 Spieler | P1 | In Progress | pairing | either | PR #57 wird angepasst: Streaming, Ressourcen-/Timeoutgrenzen, C8/C19/C21 und GUID-Schlüssel; Oracles und Mehr-Runden-Lasttests im Review. Kein Teilresultat nach Budgetabbruch; main-Nachweis ausstehend. | v1.0.0 |
 | STM-FACH-011 | Setzlisten-Vergabe nach C.04.2 Art. 2.2 (Startrang statt Eingabereihenfolge) | P2 | Backlog | pairing | friend | – (Folge aus STM-FACH-002; die FIDE-Dutch-Strategie warnt aktuell nur im Audit) | post-1.0 |
 | STM-FACH-012 | WebApp-UI-Auswahl für Pairing-Strategie und Anfangsfarbe | P2 | In Review | ui | friend | Quellumfang im offenen Integrationstraeger [#55](https://github.com/Randspringer90/SchachTurnierManager/pull/55); #51 ersetzt. Backend/API/Persistenz integriert, UI-Abnahme vor Merge erforderlich. | v1.0.0 |
 | STM-TB-001 | Buchholz / Buchholz-Cut / Sonneborn-Berger – Golden-Tests | P2 | Done | tiebreaks | friend | [#2](https://github.com/Randspringer90/SchachTurnierManager/issues/2) (Original-PR [#9](https://github.com/Randspringer90/SchachTurnierManager/pull/9), sichere Adoption [#13](https://github.com/Randspringer90/SchachTurnierManager/pull/13), Merge `2e0fdd7`) | v1.0.0 |
@@ -74,8 +74,8 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-REL-001 | Setup-EXE (Klick-Installation) | P1 | Done | release | friend | Original-PR [#33](https://github.com/Randspringer90/SchachTurnierManager/pull/33) (Marcel), sichere Adoption [#34](https://github.com/Randspringer90/SchachTurnierManager/pull/34), Merge `b263925` | v1.0.0 |
 | STM-REL-002 | Signierung & Update-Konzept | P1 | Backlog | release | owner | – | v1.0.0 |
 | STM-REL-003 | Echter Kollegen-PC-Test | P1 | Backlog | release | owner | – | v1.0.0 |
-| STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | – | v1.0.0 |
-| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | Blocked | mobile | either | [#43](https://github.com/Randspringer90/SchachTurnierManager/issues/43) (blockiert: Android SDK fehlt auf der Workstation) | post-1.0 |
+| STM-REL-004 | Release Candidate v1.0.0 | P0 | Blocked | release | owner | –  Zusatzkriterium aus historischem ID-Konflikt: stale Vite-Bundles im RC-Quellbuild ausschließen; keine doppelte Aufgabenzeile. | v1.0.0 |
+| STM-MOB-001 | Android-Begleit-App und installierbare APK | P2 | In Progress | mobile | either | PR #55: native Begleit-App als Quelladaption ohne fremde Binärartefakte; private LAN-Verbindung, DE/EN und Health-Vertrag. Installierbare APK, Android-Build/Deviceprüfung und main-Übernahme bleiben separat offen. | post-1.0 |
 | STM-MOB-002 | F-Droid-Readiness | P3 | Blocked | mobile | owner | – (blockiert: STM-MOB-001 + Lizenzentscheidung STM-SEC-004) | post-1.0 |
 | STM-MOB-003 | Mobile Paarungsansicht | P2 | Backlog | mobile | friend | – (nach STM-MOB-001) | post-1.0 |
 | STM-MOB-004 | Mobile Ergebniseingabe (Bestätigung, Undo, Audit) | P2 | Backlog | mobile | friend | – (nach STM-MOB-003) | post-1.0 |
@@ -104,6 +104,21 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 | STM-FACH-010 | Blitz-/Schnellschach-Vorlagen | P3 | Backlog | pairing | friend | – | post-1.0 |
 | STM-UX-012 | Öffentliche Live-Anzeige im lokalen Netzwerk (read-only) | P3 | Backlog | ui | either | – | post-1.0 |
 | STM-DOC-001 | Contributor-Doku verifizieren & abrunden | P3 | Done | documentation | friend | [#4](https://github.com/Randspringer90/SchachTurnierManager/issues/4) (Original-PR [#31](https://github.com/Randspringer90/SchachTurnierManager/pull/31), sichere Adoption [#36](https://github.com/Randspringer90/SchachTurnierManager/pull/36)) | v1.0.0 |
+| STM-API-003 | Turnierpaket-Exportendpunkte bereitstellen | P2 | In Review | infrastructure | owner | – (Commit `0f5c2bb`; Formatter/Service existierten, die beiden Routen fehlten; Operator-Smoke 31 OK / 0 Fehler) | v1.0.0 |
+| STM-DOC-002 | Repository- und KI-Adapter-Layout konsolidieren | P2 | In Review | documentation | owner | – (Commits `ab61005`, `eee20dd`; `.codex`-Adapter, REPOSITORY_LAYOUT.md, AI_PROVIDER_ADAPTERS.md, docs/ai/README.md) | v1.0.0 |
+| STM-DOC-003 | main-only Laufdoku (`53dba48`) nach development übernehmen | P3 | In Review | documentation | owner | – (lokal im Integrationskandidaten; noch nicht in main; AGENTS.md-Hunk mit fremdem Maschinenpfad bewusst nicht übernommen) | v1.0.0 |
+| STM-FE-013 | WebApp-Contracts, HTTP-Client und Assistentenlogik aus `main.tsx` lösen | P2 | In Review | ui | owner | – (Branch `feature/STM-FE-013-frontend-modularization`, in `integration/final-candidate` gemergt) | v1.0.0 |
+| STM-FE-014 | `main.tsx` auf Bootstrap reduzieren, App-Shell und Libs extrahieren | P2 | In Review | ui | owner | – (Commit `b174519`; 4550 → 23 Zeilen; Contract-Checks prüfen jetzt den ganzen Quellbaum) | v1.0.0 |
+| STM-FE-015 | `app/App.tsx` (3253 Zeilen) in Featurebereiche zerlegen | P2 | Backlog | ui | either | – (Folge von STM-FE-014: Teilnehmer, Runden/Ergebnisse, Tabelle/Export, Einstellungen, Assistent je eigenes Modul; verhaltensbewahrend, kein neues God-Component) | post-1.0 |
+| STM-IE-009 | Mehrzeilige CSV-Felder und BOM ohne zusätzliche Spieler importieren | P2 | In Review | import-export | owner | PR [#79](https://github.com/Randspringer90/SchachTurnierManager/pull/79) (lokal im Integrationskandidaten; noch nicht in main; Export-Import-Rundlauf mit Formelschutz getestet) | v1.0.0 |
+| STM-IE-010 | Ungültige Swiss-Manager-Geburtsdaten nicht als Jahr übernehmen | P2 | In Review | import-export | owner | PR [#80](https://github.com/Randspringer90/SchachTurnierManager/pull/80) (lokal im Integrationskandidaten; noch nicht in main; gültige Daten ohne führende Null bleiben akzeptiert) | v1.0.0 |
+| STM-IE-011 | Unicode-Dateien beim Spielerimport korrekt dekodieren | P2 | In Review | import-export | owner | PR [#86](https://github.com/Randspringer90/SchachTurnierManager/pull/86) (nach Beginn der Konsolidierung eingegangen; nicht Teil von STM-INT-002) | v1.0.0 |
+| STM-INFRA-009 | Read-only PR-Sammelprüfung (Checks, Statuses, Reviews; keine DoD-/Merge-Freigabe) | P2 | In Review | infrastructure | owner | [#64](https://github.com/Randspringer90/SchachTurnierManager/issues/64) (PR [#65](https://github.com/Randspringer90/SchachTurnierManager/pull/65), lokal im Integrationskandidaten; noch nicht in main) | v1.0.0 |
+| STM-INFRA-010 | Lokalen Integrationsstand ohne Git-Schreibzugriffe prüfen | P2 | In Review | infrastructure | owner | PR [#75](https://github.com/Randspringer90/SchachTurnierManager/pull/75) (lokal im Integrationskandidaten; noch nicht in main; kein Lazy-Fetch, kein Clean-Urteil bei Gitlinks, kein Status-Fingerprint) | v1.0.0 |
+| STM-INFRA-011 | Fortschritt je Zielversion aus dem Backlog messen | P3 | In Review | infrastructure | owner | PR [#88](https://github.com/Randspringer90/SchachTurnierManager/pull/88) (nach Beginn der Konsolidierung eingegangen; nicht Teil von STM-INT-002) | v1.0.0 |
+| STM-INT-002 | Konsolidierte Integration der offenen PRs (2026-10-01) | P1 | In Progress | infrastructure | owner | Aktuelle Konsolidierung von 37 offenen PRs auf `integration/pr-55-safe-adoption` vom aktuellen development; PR-Matrix, lokale Alt-Commits und separate Reviews. main-Nachweis und CODEOWNER-Freigabe ausstehend. | v1.0.0 |
+| STM-STAB-001 | Jede scheiternde Bedienaktion endet in einer sichtbaren Meldung | P1 | In Review | ui | owner | – (lokale Commits `befc4e5`/`7054223`/`6fe9434`, lokal im Integrationskandidaten; noch nicht in main; Frist gilt bis zum gelesenen Antwortkörper) | v1.0.0 |
+| STM-UX-013 | Zurücksetzen/Löschen ohne native Browserdialoge (Firefox-Fix) | P1 | In Review | ui | owner | – (Commit `b4f9008` auf `integration/final-candidate`; **Achtung:** die Commit-Betreffzeile nennt versehentlich `STM-UX-012`, das an die read-only Live-Anzeige vergeben ist. Kanonisch gilt diese Zeile.) | v1.0.0 |
 
 ---
 
@@ -288,17 +303,17 @@ Doku-Bedarf · Definition of Done · PR · Ziel-Release`
 - **Beschreibung:** Ausbau des Basis-Schweizer-Systems zum vollständigeren FIDE-Dutch-System
   (Score Groups, Floater, Farbpräferenzen, Wiederholungsschutz, Bye-Regeln, deterministische
   Entscheidungsreihenfolge, Audit-Trail). Vollständige Spezifikation im Issue.
-- **Priorität:** P1 · **Status:** Done · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
+- **Priorität:** P1 · **Status:** In Progress (erneute Prüfung 2026-10-07) · **Kategorie:** pairing · **Ziel-Bearbeiter:** friend · **Owner:** der Owner
 - **GitHub-Issue:** [#22](https://github.com/Randspringer90/SchachTurnierManager/issues/22) · **Branch:** `feature/STM-FACH-002-fide-dutch`
-- **Abhängigkeiten:** STM-FACH-001 (Done; Forfeit-/Bye-Verhalten darf nicht regressieren). STM-FACH-003 ist fachlich entsperrt; sein PR #57 besitzt einen eigenen offenen Performancebefund.
+- **Abhängigkeiten:** STM-FACH-001 (Forfeit-/Bye-Verhalten darf nicht regressieren). STM-FACH-003 enthält die separat geprüfte Großfeld-/Budgetoptimierung; sein PR #57 wird im Integrationskandidaten angepasst.
 - **Akzeptanzkriterien:** siehe Issue #22 (Golden-Turniere zuerst, Property-Tests für absolute
   Kriterien, Determinismus, Audit-Trail, FIDE-C.04-Abgleich mit Artikelnummern).
-- **Tests:** Golden-/Property-/Regressionstests. Aktueller vollständiger Lauf: 516 .NET-Tests bestanden, darunter 13 Golden-Tests; diese Statuskorrektur verändert keine Fachlogik.
+- **Tests im Kandidaten:** 625 Domain-Tests, 43 fokussierte Regel-/Lastprüfungen und 13 Golden-Tests bestanden. C8, wiederholte MDP-Punktdifferenzen bei C19/C21, Exchange-Reihenfolge und GUID-Identität wurden mit Oracles korrigiert. Der finale Gesamtstand, sein Review und seine CI-/main-Nachweise bleiben verbindlich.
 - **Security:** keine externen Daten; nur synthetische Fixtures.
 - **Doku-Bedarf:** `docs/AUDIT_JOURNAL.md`, `CHANGELOG.md`.
-- **Definition of Done:** DoD + Gates grün; **Final-Review durch unabhängigen Owner-Prozess mit
-  stärkstem Review-Profil (fachlich kritisch, kein Auto-Merge).**
-- **PR:** Original [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40), sichere Adoption [#45](https://github.com/Randspringer90/SchachTurnierManager/pull/45), Merge `7634399`. Statuskorrektur nach Vorschlag von Marcel-Mente in [#54](https://github.com/Randspringer90/SchachTurnierManager/pull/54). Folgeaufgaben STM-FACH-011/012 bleiben separat; UI-Quellumfang von #51 ist im offenen Integrationsträger #55 enthalten. · **Ziel-Release:** v1.0.0
+- **Definition of Done:** noch nicht erneut vollständig nachgewiesen. Unabhängiger finaler Regelreview, Owner-/CODEOWNER-Freigaben, aktuelle CI und main-Übernahme müssen den tatsächlich korrigierten Quellstand betreffen. Keine Zertifizierungsbehauptung.
+- **Historischer Nachweis:** Original [#40](https://github.com/Randspringer90/SchachTurnierManager/pull/40), Adoption [#45](https://github.com/Randspringer90/SchachTurnierManager/pull/45), Merge `7634399`; damaliger Abschluss-/497-Test-Nachweis gilt ausschließlich für diesen früheren Stand. Die spätere Statuskorrektur in [#54](https://github.com/Randspringer90/SchachTurnierManager/pull/54) ersetzt keine neue Abnahme der am 2026-10-07 gefundenen Regellücken.
+- **Folgeaufgaben:** STM-FACH-011 (Setzlisten-Vergabe) bleibt separat. STM-FACH-012 (UI-Auswahl für Strategie/Anfangsfarbe) ist fachlich im Integrationsträger [#55](https://github.com/Randspringer90/SchachTurnierManager/pull/55) erhalten; finaler main-Nachweis fehlt noch. **Ziel-Release:** v1.0.0.
 
 ---
 

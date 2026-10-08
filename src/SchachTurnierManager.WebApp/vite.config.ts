@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { serviceWorkerBuildFingerprint } from './service-worker-build.mjs';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), serviceWorkerBuildFingerprint()],
   server: {
     // host: true bindet alle Interfaces (localhost bleibt erreichbar) und erlaubt den
     // Zugriff vom Handy im gleichen WLAN/Hotspot fuer die QR-Wuerfelseite. /api wird

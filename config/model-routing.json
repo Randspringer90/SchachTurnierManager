@@ -3,6 +3,8 @@
   "schemaVersion": 2,
   "description": "Repo-internes, provideruebergreifend nutzbares Routing ueber logische Ausfuehrungsprofile. Es enthaelt keine Versionspins und keine Fremdprojektpfade.",
   "policy": {
+    "newestStableModelPerProfile": true,
+    "providerNeutralRules": true,
     "qualityOverCost": true,
     "noSilentModelSwitch": true,
     "noAutomaticDowngradeForCriticalWork": true,

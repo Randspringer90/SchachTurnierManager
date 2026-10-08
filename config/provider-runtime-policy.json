@@ -12,10 +12,10 @@
       "executable": "claude",
       "versionArgs": ["--version"],
       "invocation": {
-        "argumentTemplate": ["-p", "--model", "{model}", "--output-format", "text", "--add-dir", "{projectPath}"],
+        "argumentTemplate": ["-p", "--model", "{model}", "--permission-mode", "plan", "--permission-prompts", "none", "--tools", "Read,Glob,Grep", "--disallowedTools", "mcp__*", "--effort", "high", "--output-format", "text", "--add-dir", "{projectPath}"],
         "promptViaStdin": true,
         "readOnlyByDefault": true,
-        "comment": "Ohne Permission-Bypass kann der Child-Prozess keine mutierenden Tools freischalten; Ergebnisse sind reine Textausgaben (T3)."
+        "comment": "Expliziter Planmodus und ausschliesslich Read/Glob/Grep; MCP-Tools sind gesperrt. Nicht beantwortbare Toolfreigaben werden verweigert. High-Effort macht die Reviewtiefe unabhaengig vom Modell-Default; Ergebnisse bleiben T3."
       },
       "profiles": {
         "fabel": { "modelKey": "anthropicFabel" },
