@@ -4,6 +4,9 @@
 - 2026-10-08: Abschlussintegration, identische Regex-Prüfung kompilieren;
   [Prompt](prompts/20261008_1455_compiled_scanner.md),
   [Bericht](reports/20261008_1455_compiled_scanner_REPORT.md).
+- 2026-10-08: Exakter Kontextnachweis für die erhöhte Scannerfrist;
+  [Prompt](prompts/20261008_1523_timeout_pattern_context.md),
+  [Bericht](reports/20261008_1523_timeout_pattern_context_REPORT.md).
 
 Jeder relevante KI-Lauf (Claude Code, Codex, andere) traegt sich hier ein.
 Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.

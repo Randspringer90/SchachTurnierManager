@@ -416,4 +416,40 @@ $scenario.review.sourcePatternContexts[0].blobSha=$scenario.files[0].headBlobSha
 $findings=@(Invoke-ContextScenario $scenario)
 Assert-ContextEqual (@($findings | Where-Object { $_.code -ceq 'SCAN_TIMEOUT' -and $_.severity -ceq 'CRITICAL' }).Count -gt 0) $true 'Match enumeration budget remains fail closed'
 Assert-ContextEqual (@($findings | Where-Object detail -CEQ 'SCAN_TIMEOUT_PHASE=BOUNDARY_ENUMERATION; SCAN_TIMEOUT_PATTERN=CREDENTIAL_ACCESS').Count -gt 0) $true 'Enumeration cap timeout has closed diagnostics'
+# Reproduce the real one-line timeout change with its unchanged defensive
+# pattern in GitHub's context lines. Bind complete blobs, not just this hunk.
+$realPolicies=Import-PullRequestReviewPolicies -RepositoryRoot $repositoryRoot
+$policyPath='config/suspicious-change-patterns.json'
+$policyText=[IO.File]::ReadAllText((Join-Path $repositoryRoot $policyPath)).Replace("`r`n","`n")
+$beforeText=[regex]::Replace($policyText,'("regexTimeoutMilliseconds"\s*:\s*)\d+','${1}100')
+$afterText=[regex]::Replace($policyText,'("regexTimeoutMilliseconds"\s*:\s*)\d+','${1}1000')
+$beforeLines=$beforeText.Split("`n"); $afterLines=$afterText.Split("`n")
+$scenario=New-ContextScenario
+$scenario.files[0].path=$policyPath
+$scenario.files[0].beforeBlobSha=Get-SyntheticGitBlobSha $beforeText
+$scenario.files[0].headBlobSha=Get-SyntheticGitBlobSha $afterText
+$scenario.suspicious.patterns=@($realPolicies.suspicious.patterns|Where-Object id -CEQ 'encoded-execution')
+$scenario.review.sourcePatternContexts=@($realPolicies.review.sourcePatternContexts|Where-Object path -CEQ $policyPath)
+$hunk=[Collections.Generic.List[string]]::new()
+$hunk.Add("diff --git a/$policyPath b/$policyPath`n--- a/$policyPath`n+++ b/$policyPath`n@@ -1,7 +1,7 @@")
+for($lineIndex=0;$lineIndex -lt 7;$lineIndex++){
+    if($beforeLines[$lineIndex] -cne $afterLines[$lineIndex]){
+        $hunk.Add('-'+$beforeLines[$lineIndex]); $hunk.Add('+'+$afterLines[$lineIndex])
+    }else{$hunk.Add(' '+$beforeLines[$lineIndex])}
+}
+$scenario.patch=$hunk -join "`n"
+$findings=@(Invoke-ContextScenario $scenario)
+Assert-ContextEqual (@($findings|Where-Object { $_.code -ceq 'ENCODED_EXECUTION' -and $_.severity -ceq 'HIGH' }).Count) 1 'Exact reviewed timeout-only file retains owner scrutiny'
+Assert-ContextEqual (@($findings|Where-Object severity -CEQ 'CRITICAL').Count) 0 'Defensive unchanged context does not execute a payload'
+foreach($drift in @('headBlob','beforeBlob','ruleHash','path')){
+    $changed=Copy-ContextValue $scenario
+    switch($drift){
+        headBlob { $changed.files[0].headBlobSha='c'*40 }
+        beforeBlob { $changed.files[0].beforeBlobSha='d'*40 }
+        ruleHash { $changed.review.sourcePatternContexts[0].patterns[0].definitionSha256='0'*64 }
+        path { $changed.review.sourcePatternContexts[0].path='config/other-patterns.json' }
+    }
+    $findings=@(Invoke-ContextScenario $changed)
+    Assert-ContextEqual (@($findings|Where-Object { $_.code -ceq 'ENCODED_EXECUTION' -and $_.severity -ceq 'CRITICAL' }).Count) 1 "Timeout-only attestation rejects $drift drift"
+}
 Write-Output ('PATTERN_CONTEXT_ASSERTIONS={0} FAIL=0 NETWORK_CALLS=0 FOREIGN_CODE_EXECUTED=false' -f $script:assertions)

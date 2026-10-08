@@ -11,6 +11,13 @@ keine Voraussetzung.
 - Konsequenz: Identische Ausdrücke beibehalten, Kaltlauf und Vollenumeration
   vergleichen; auf ausdrücklichen Owner-Nachtrag weiterhin endliche Budgets
   angemessen erhöhen und ausschließlich geschlossene Diagnosecodes ausgeben.
+## 2026-10-08 — Defensive Musterdefinitionen bleiben hashgebunden
+
+- Kontext: Eine autorisierte Timeoutänderung verändert den Datei-Hash; der
+  unveränderte Regextext im Diffkontext kann dadurch lexikalisch kritisch sein.
+- Lesson: Alte Freigaben dürfen neue Bytes nicht pauschal legitimieren.
+- Konsequenz: Vollständigen neuen Dateiblob separat reviewen und den vorhandenen
+  exakten Kontextnachweis über einen selbst vollständig geprüften Policy-PR binden.
 
 ## 2026-10-08 — Native Scanzeit und Verwaltungsaufwand trennen
 
