@@ -1,18 +1,45 @@
 #requires -Version 7.0
 # SECURITY-PATTERN-FILE: Inert synthetic static-review fixtures; no candidate execution.
 [CmdletBinding()]
-param()
+param(
+    [string]$CommonPath,
+    [ValidatePattern('^[0-9a-f]{40}$')][string]$ReviewedBaseSha
+)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $trustedRuntime = Join-Path $repositoryRoot 'scripts/lib/PullRequestReviewCommon.ps1'
-$cursor = $trustedRuntime
-while ($cursor) {
-    $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
-    if ($item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Untrusted context-test runtime path.' }
-    $parent = Split-Path -Parent $cursor
-    if (-not $parent -or $parent -ceq $cursor) { break }
-    $cursor = $parent
+if ($CommonPath) {
+    # An explicit historical-runtime regression only accepts a reviewed Git
+    # ancestor copied inside ignored output, never arbitrary candidate source.
+    if (-not $ReviewedBaseSha) { throw 'Historical runtime requires ReviewedBaseSha.' }
+    $trustedRuntime=[IO.Path]::GetFullPath($CommonPath)
+    $outputPrefix=(Join-Path $repositoryRoot 'output')+[IO.Path]::DirectorySeparatorChar
+    $comparison=if($IsWindows){[StringComparison]::OrdinalIgnoreCase}else{[StringComparison]::Ordinal}
+    if (-not $trustedRuntime.StartsWith($outputPrefix,$comparison)) { throw 'Historical runtime must stay inside project output.' }
+    & git -C $repositoryRoot merge-base --is-ancestor $ReviewedBaseSha HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Historical runtime is not a current reviewed ancestor.' }
+    $reviewedSource=@(& git -C $repositoryRoot show ($ReviewedBaseSha+':scripts/lib/PullRequestReviewCommon.ps1'))
+    if ($LASTEXITCODE -ne 0) { throw 'Reviewed historical runtime is unavailable.' }
+} elseif ($ReviewedBaseSha) { throw 'ReviewedBaseSha requires CommonPath.' }
+foreach ($runtimePath in @($trustedRuntime,(Join-Path (Split-Path -Parent $trustedRuntime) 'PullRequestArtifactVerification.ps1'),(Join-Path $repositoryRoot 'scripts/lib/PullRequestArtifactVerification.ps1'))) {
+    $cursor = $runtimePath
+    while ($cursor) {
+        $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
+        if ($item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Untrusted context-test runtime path.' }
+        $parent = Split-Path -Parent $cursor
+        if (-not $parent -or $parent -ceq $cursor) { break }
+        $cursor = $parent
+    }
+}
+if ($CommonPath) {
+    $copiedSource=(Get-Content -Raw -LiteralPath $trustedRuntime).Replace("`r`n","`n").TrimEnd([char]10)
+    if ($copiedSource -cne ($reviewedSource -join "`n").TrimEnd([char]10)) { throw 'Historical runtime differs from reviewed Git source.' }
+    $copiedHelper=Join-Path (Split-Path -Parent $trustedRuntime) 'PullRequestArtifactVerification.ps1'
+    $currentHelper=Join-Path $repositoryRoot 'scripts/lib/PullRequestArtifactVerification.ps1'
+    if ((Get-Content -Raw -LiteralPath $copiedHelper).Replace("`r`n","`n") -cne (Get-Content -Raw -LiteralPath $currentHelper).Replace("`r`n","`n")) {
+        throw 'Historical runtime helper differs from current trusted library.'
+    }
 }
 . $trustedRuntime
 $script:assertions = 0
@@ -347,6 +374,36 @@ $scenario.review.sourcePatternContexts[0].blobSha=$scenario.files[0].headBlobSha
 $findings=@(Invoke-ContextScenario $scenario)
 Assert-ContextEqual (@($findings | Where-Object { $_.code -ceq 'SCAN_TIMEOUT' -and $_.severity -ceq 'CRITICAL' }).Count -gt 0) $true 'Bound rule timeout stays critical'
 Assert-ContextEqual (@($findings | Where-Object severity -CEQ 'HIGH').Count) 0 'Timeout cannot gain exception'
+
+# A native regex can be fast while attribution crosses many valid hunk ranges.
+# Two cheap occurrences in one final content line produce one attested finding;
+# NextMatch also checks the bookkeeping spent reaching that final range. No
+# wall-clock assertion or fixture deadline override is needed for this contract.
+$scenario=Copy-ContextValue $baseline
+$hunkCount=100000
+$patchBuilder=[Text.StringBuilder]::new()
+$beforeBuilder=[Text.StringBuilder]::new()
+$afterBuilder=[Text.StringBuilder]::new()
+$path=$scenario.files[0].path
+[void]$patchBuilder.Append("diff --git a/$path b/$path`n--- a/$path`n+++ b/$path")
+for ($hunkIndex=0; $hunkIndex -lt $hunkCount; $hunkIndex++) {
+    $lineNumber=1+2*$hunkIndex
+    $after=if($hunkIndex -eq $hunkCount-1){'synthetic-risk synthetic-risk'}else{'benign'}
+    [void]$patchBuilder.Append("`n@@ -$lineNumber +$lineNumber @@`n-seed`n+$after")
+    [void]$beforeBuilder.Append("seed`n"); [void]$afterBuilder.Append($after+"`n")
+    if($hunkIndex -lt $hunkCount-1){[void]$beforeBuilder.Append("unchanged`n"); [void]$afterBuilder.Append("unchanged`n")}
+}
+$scenario.patch=$patchBuilder.ToString()
+$scenario.files[0].additions=$hunkCount; $scenario.files[0].deletions=$hunkCount
+$scenario.files[0].beforeBlobSha=Get-SyntheticGitBlobSha $beforeBuilder.ToString()
+$scenario.files[0].headBlobSha=Get-SyntheticGitBlobSha $afterBuilder.ToString()
+$scenario.review.sourcePatternContexts[0].beforeBlobSha=$scenario.files[0].beforeBlobSha
+$scenario.review.sourcePatternContexts[0].blobSha=$scenario.files[0].headBlobSha
+Assert-ContextEqual ([Text.Encoding]::UTF8.GetByteCount($scenario.patch) -lt 5242880) $true 'Many-hunk fixture remains inside patch budget'
+$strictStatistics=Get-ReviewUnifiedHunkStatistics -Patch ($scenario.patch.Substring($scenario.patch.IndexOf('@@ ',[StringComparison]::Ordinal))) -ExpectedAdditions $hunkCount -ExpectedDeletions $hunkCount
+Assert-ContextEqual $strictStatistics.hunks $hunkCount 'Many-hunk fixture has complete strictly counted hunks'
+Assert-Risk $scenario HIGH 'Late cheap match across many attribution ranges'
+Assert-ContextEqual @(Invoke-ContextScenario $scenario).Count 1 'Repeated many-hunk attribution retains one owner-review finding'
 
 # Many individually cheap, content-only matches cannot evade the bounded
 # whole-patch enumeration budget through an otherwise exact attestation.

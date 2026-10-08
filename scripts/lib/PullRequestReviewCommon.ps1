@@ -524,13 +524,19 @@ function Add-ReviewContextBoundPatchFindings {
     # interval may be considered by the file-bound classification below.
     foreach ($rule in $contextPolicy.patterns) {
         $timeout=[TimeSpan]::FromMilliseconds([int]$PatternPolicy.regexTimeoutMilliseconds)
+        # The native per-match timeout is independent of bounded PowerShell
+        # enumeration, range attribution and runtime initialization overhead.
+        $enumerationBudget=[TimeSpan]::FromSeconds(2)
         $clock=[Diagnostics.Stopwatch]::StartNew(); $rangeIndex=0; $matchesChecked=0
         try {
             $regex=[regex]::new([string]$rule.pattern,[Text.RegularExpressions.RegexOptions]::CultureInvariant,$timeout)
             $match=$regex.Match($Patch)
             while ($match.Success) {
-                if ($clock.Elapsed -ge $timeout -or ++$matchesChecked -gt 10000) { throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
-                while ($rangeIndex -lt $contentRanges.Count -and $contentRanges[$rangeIndex].end -le $match.Index) { $rangeIndex++ }
+                if ($clock.Elapsed -ge $enumerationBudget -or ++$matchesChecked -gt 10000) { throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
+                while ($rangeIndex -lt $contentRanges.Count -and $contentRanges[$rangeIndex].end -le $match.Index) {
+                    $rangeIndex++
+                    if (($rangeIndex -band 127) -eq 0 -and $clock.Elapsed -ge $enumerationBudget) { throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
+                }
                 if ($rangeIndex -ge $contentRanges.Count -or $contentRanges[$rangeIndex].start -gt $match.Index -or
                     $match.Index+$match.Length -gt $contentRanges[$rangeIndex].end) {
                     $Findings.Add((New-ReviewFinding -Code (Get-ReviewPatternCode $rule.id) -Category $rule.category -Severity critical -Evidence $Patch -Detail 'Muster ausserhalb eindeutiger Hunk-Inhaltsgrenzen; keine Kontextklassifikation.'))
