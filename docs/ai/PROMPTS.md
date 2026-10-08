@@ -93,3 +93,4 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 Kollegenpaket nach RUN-52 um einen Doppelklick-Installationspfad, Uninstall, Shortcut-Erzeugung, Frischinstallations-Smoke-Test, Doku, Skill und Guard-Test erweitern. Keine Secrets oder externen Projektabhaengigkeiten in das Paket aufnehmen.
 
 > **2026-10-08 (Codex / Sol-Profil):** [Owner-Masterprompt, security-redigiert](prompts/20261008_1030_final-integration.md); [Laufbericht](reports/20261008_1030_final-integration_REPORT.md). CSV-Preview-Race, Scanner-/Integrations-PRs, SHA-gebundene KI-/CI-Freigabe, Main-Proof und Fortschrittsaudit.
+| 2026-10-08 | Codex | Finalintegration: fokussierter Scanner-Tree-Binding-Folgefix | [Prompt](prompts/20261008_1030_final-integration.md) | [Report](reports/20261008_1030_scanner_tree_binding_REPORT.md) |
