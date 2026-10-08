@@ -1,5 +1,6 @@
 ## Unreleased (development)
 
+- Ergebniseingabe lehnt undefinierte numerische Ergebnis- und Vorbedingungswerte vor Datenbank-/Audit-Aenderungen kontrolliert ab; normale Ergebniskorrekturen bleiben erhalten.
 - Spieler- und Paarungseditoren sind an Turnier und Generation gebunden. Turnierwechsel verwerfen alte Entwuerfe; spaete Speicher- und externe Abgleichantworten ueberschreiben keine neueren Editoren.
 - JSON-Backup-Import prueft verschachtelte Rating-, Ergebnis-, Audit- und Forensik-Pflichtdaten vor allen Seiteneffekten; beschaedigte Backups ersetzen keine gueltigen Turniere. Optionale Nullwerte und sichere Altformat-Normalisierung bleiben erhalten.
 - CSV-Spielerimport bindet die Vorschau an Turnier, exakten CSV-Inhalt, Ersetzen-Option und Request-Generation; verspaetete Antworten werden verworfen und der Importauftrag vor Versand erneut geprueft. Acht Regressionen und echte headless React-Szenarien sichern den Ablauf ab.

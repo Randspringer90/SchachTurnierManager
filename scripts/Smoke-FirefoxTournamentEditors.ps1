@@ -100,6 +100,10 @@ state.release = function(index) { state.queue[index].resolve(new Response('{}', 
 '@
     $null = Invoke-MarionetteScript 'document.querySelector(".player-form").requestSubmit(); return true;'
     Wait-Editor 'return window.wrappedJSObject.__editorSmoke.queue.length === 1;'
+    Set-EditorInput '.player-form input[aria-label="Name, erforderlich"]' 'A newer typing'
+    Assert-Editor 'Typing during a held save in the same tournament uses a refreshed token' 'return document.querySelector(".player-form input[aria-label=\"Name, erforderlich\"]").value === "A newer typing";'
+    $null = Invoke-MarionetteScript 'document.querySelector(".player-form button.secondary").click(); return true;'
+    Assert-Editor 'Cancel during a held save in the same tournament remains effective' 'return document.querySelector(".player-form button[type=submit]").textContent === "Speichern" && document.querySelector(".player-form input[aria-label=\"Name, erforderlich\"]").value === "";'
     Select-EditorTournament 'Editor Synthetic Beta'
     Set-EditorInput '.player-form input[aria-label="Name, erforderlich"]' 'B current draft'
     Invoke-MarionettePageScript 'window.__editorSmoke.release(0);'

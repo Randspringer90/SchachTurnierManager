@@ -831,6 +831,8 @@ export function App() {
 
     const operation = playerEditorGuard.advance(playerEditorToken);
     if (!operation || operation.tournamentId !== selectedTournament.id) return;
+    // Refresh rendered tokens even when clearing an already-null error bails out.
+    setPlayerForm(current => ({ ...current }));
     setError(null);
     const existing = editingPlayerId ? selectedTournament.players.find(player => player.id === editingPlayerId) : undefined;
     const body = JSON.stringify(formToRequest(playerForm, existing?.startingRank));
@@ -1126,6 +1128,7 @@ export function App() {
     const edit = pairingEdit(round, pairing);
     const operation = pairingEditorGuard.advance(pairingEditorToken);
     if (!operation || operation.tournamentId !== selectedTournament.id) return;
+    setPairingEdits(current => ({ ...current }));
     setError(null);
     try {
       await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/boards/${pairing.boardNumber}/pairing`, {
@@ -1270,6 +1273,7 @@ export function App() {
 
     const operation = playerEditorGuard.advance(playerEditorToken);
     if (!operation || operation.tournamentId !== selectedTournament.id) return;
+    setPlayerForm(current => ({ ...current }));
     setError(null);
     try {
       const result = await requestJson<ExternalPlayerApplyResult>(`/api/tournaments/${selectedTournament.id}/external-players/apply`, {

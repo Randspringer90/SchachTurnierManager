@@ -46,3 +46,10 @@ JSON backup required-object regressions live in
 stored/input/audit-sink mutation; one legacy/optional-null case must import and
 remain usable for standings and export. These 41 tests are included in the
 Application suite, rather than counted again as unique cases.
+
+The editor smoke additionally checks same-tournament typing and cancellation
+while a save response is delayed (nine total assertions). Async editor initiation
+guarantees a render of the advanced token, even if the error was already null.
+Four `ResultKindValidationTests` reject undefined numeric result/precondition
+values before store or audit mutation; valid UI result flows remain covered by
+the existing concurrent-update and tournament browser tests.

@@ -652,6 +652,11 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         GameResultKind resultKind,
         GameResultKind? expectedPreviousResult = null)
     {
+        if (!Enum.IsDefined(resultKind) ||
+            (expectedPreviousResult is { } expected && !Enum.IsDefined(expected)))
+        {
+            throw new InvalidOperationException("Ergebniswert oder erwarteter vorheriger Ergebniswert ist ungültig.");
+        }
         return _store.UpdateAtomically(tournamentId, tournament =>
         {
             var roundIndex = RequireRoundIndex(tournament, roundNumber);

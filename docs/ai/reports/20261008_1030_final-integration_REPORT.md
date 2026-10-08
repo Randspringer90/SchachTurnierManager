@@ -88,3 +88,11 @@ incoming JSON plus unchanged audit-sink write count. Editor unit regressions and
 headless browser regressions cover tournament ownership, shared player IDs,
 matching board keys, selection ABA and late save replies. These are new tests,
 not additional counts of cases already run by the full source gate.
+
+The second independent review closed both MAJORs and found two bounded MINORs.
+Async editor initiation now forces a token-refresh render; the real browser
+checks same-tournament typing and cancellation during a delayed save. Numeric
+undefined result kinds and expected-result preconditions are rejected before
+the atomic store transaction (four RED/GREEN regressions); valid result updates
+remain covered by existing workflow/concurrency tests. A fresh SHA-bound review
+is required after these corrections as well.
