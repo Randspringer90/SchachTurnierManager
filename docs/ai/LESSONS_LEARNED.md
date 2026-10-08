@@ -13,6 +13,21 @@ keine Voraussetzung.
 - Konsequenz: Regression für die identische Wurzel und die weiterhin abgewiesene
   Unterverzeichnis; derselbe native Vergleich schützt auch den CLI-Einstieg.
 
+## 2026-10-08 — Laufzeitreserve ohne Semantikwechsel
+
+- Kontext: Wiederholter Remote-Timeout, genauer Regelpfad noch unbekannt.
+- Lesson: Ein positiver IsMatch-Lauf misst nicht die vollständige Match-Enumeration.
+- Konsequenz: Identische Ausdrücke beibehalten, Kaltlauf und Vollenumeration
+  vergleichen; auf ausdrücklichen Owner-Nachtrag weiterhin endliche Budgets
+  angemessen erhöhen und ausschließlich geschlossene Diagnosecodes ausgeben.
+## 2026-10-08 — Defensive Musterdefinitionen bleiben hashgebunden
+
+- Kontext: Eine autorisierte Timeoutänderung verändert den Datei-Hash; der
+  unveränderte Regextext im Diffkontext kann dadurch lexikalisch kritisch sein.
+- Lesson: Alte Freigaben dürfen neue Bytes nicht pauschal legitimieren.
+- Konsequenz: Vollständigen neuen Dateiblob separat reviewen und den vorhandenen
+  exakten Kontextnachweis über einen selbst vollständig geprüften Policy-PR binden.
+
 ## 2026-10-08 — Native Scanzeit und Verwaltungsaufwand trennen
 
 - Kontext: Identische Scanner-Eingaben ergeben auf verschiedenen Runnern eine
