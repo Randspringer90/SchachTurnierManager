@@ -4,6 +4,14 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Native Scanzeit und Verwaltungsaufwand trennen
+
+- Kontext: Identische Scanner-Eingaben ergeben auf verschiedenen Runnern eine
+  zusaetzliche blockierende Klassifikation; alte Logs zeigen deren Code nicht.
+- Lesson: Eine native Regex-Frist darf nicht versehentlich Initialisierung,
+  Hunk-Suche und PowerShell-Verwaltung messen. Diese brauchen eigene feste Grenzen.
+- Konsequenz: Native 100-ms-Regel unveraendert, separate begrenzte Enumeration und
+  Trefferlimit; nur validierte blockierende Codes fuer leakfreie CI-Diagnose.
 ## 2026-10-08 — Scanner-Kontexte nur unveraenderlich klassifizieren
 
 - Kontext: Harmlose vollstaendige Dateien enthalten lexikalisch kritische Signale.
