@@ -1,11 +1,24 @@
 ## Unreleased (development)
 
+
+### Geprüfte Gesamtintegration 2026-10-08
+
+- Main `6394382b210c19f7f684bf971c45cb067458a37e` enthält unabhängig KI-geprüften Integrationsstand `55f114f1ada27a23b3a506ab98e9f5d033629bd9` aus #114 mit separaten Scannerfixes #115/#116/#117/#118/#119/#120. Vollständige Datei-/Code- und Testnachweise dokumentieren sichere Ersetzung der Original-PRs.
+- Scanner #119: identische kompilierte .NET-Backtrackingmuster mit unveränderten Flags; ausdrücklich endliche Ownerautorisierung erhöht native Regexdeadline auf 1000 ms und Enumerationsbudget auf 10 s. Matchcap 10000, sämtliche Schweregrade und CRITICAL bei Timeout/Grenzüberschreitung bleiben erhalten. Redigierte Closed-phase/pattern-Diagnostik; fokussierte PowerShell-Evidenz 106 Text / 286 Engine / 5 TreeSHA-Adapter / 242 Context / 44 Readiness = 683 Assertions, frühere Context234/236/240 getrennt. Keine zusätzliche Node-Fallzählung, keine Rulesetänderung oder CI-/Security-Gate-Abschaltung. Exakte Review-/CI-/Merge-Bindung bleibt vor finaler Übernahme Pflicht.
+- CSV-Preview und Import sind an Turnier, Inhalt, Replace-Option und Requestgeneration gebunden. Alte Antworten und geänderte Importidentitäten vor Import abgewiesen; normaler Preview→Import bleibt erhalten.
+- Verschachtelte Backup-Pflichtdaten vor Input-/Store-/Auditmutation validiert; nullable und sichere Legacy-Daten bleiben kompatibel. Ergebnis-/Vorbedingungswerte und generationsgebundene Spieler-/Paarungseditoren regressiongetestet.
+- FIDE-Dutch-C8/C19/C21, Exchange-Reihenfolge, GUID-Identität und endliche Großfeldbudgets durch unabhängige Oracles/Properties/Goldens geprüft. Issue-#22-Umfang erneut abgeschlossen; Setzlistenvergabe, beschleunigte Paarung und vollständige UI-Auswahlabnahme bleiben eigene Aufgaben.
+- Git-Zustandsprüfung: native Windows-Pfadkanonisierung verhindert falsche ROOT_REQUIRED-Befunde bei unterschiedlich geschriebenen Laufwerksbuchstaben; gleiche Wurzel und weiterhin abgewiesenes Unterverzeichnis regressiongetestet.
+- Nachweis: 2698 einzigartige automatisierte PASS / 0 FAIL / 3 Plattform-SKIP (.NET 848, Frontend 93, Node 1757), TypeScript/Vite erfolgreich, 142 echte Headlessbrowser-Assertions, 17 Repository-/Security-Gates. Wiederholungen nicht doppelt gezählt; frühere RED-/Timeout-Aufrufe getrennt dokumentiert.
+- Fortschritt aus 87 eindeutigen Aufgaben / 54 v1: DoD 31, vollständig implementiert 35, vollständig getestet 29. Teilumfänge erhalten keine erfundenen Prozente. Reale Installer-/Signatur-/Android-Geräte-/Kollegenabnahme und vollständige Offline-Schreibkonflikte weiterhin offen.
+- Owner verlangt KI-Code-Review. Vorhandener Ruleset-Bypass ausschließlich für menschliche Approval/CODEOWNER-Anforderung; Rulesets, Tests und Security-Gates nicht abgeschaltet. Keine Release-, Deployment-, Kosten- oder History-Rewrite-Aktion.
+
 - Ergebniseingabe lehnt undefinierte numerische Ergebnis- und Vorbedingungswerte vor Datenbank-/Audit-Aenderungen kontrolliert ab; normale Ergebniskorrekturen bleiben erhalten.
 - Spieler- und Paarungseditoren sind an Turnier und Generation gebunden. Turnierwechsel verwerfen alte Entwuerfe; spaete Speicher- und externe Abgleichantworten ueberschreiben keine neueren Editoren.
 - JSON-Backup-Import prueft verschachtelte Rating-, Ergebnis-, Audit- und Forensik-Pflichtdaten vor allen Seiteneffekten; beschaedigte Backups ersetzen keine gueltigen Turniere. Optionale Nullwerte und sichere Altformat-Normalisierung bleiben erhalten.
 - CSV-Spielerimport bindet die Vorschau an Turnier, exakten CSV-Inhalt, Ersetzen-Option und Request-Generation; verspaetete Antworten werden verworfen und der Importauftrag vor Versand erneut geprueft. Acht Regressionen und echte headless React-Szenarien sichern den Ablauf ab.
 
-- STM-INT-002, Integrationskandidat: Inhalte aller aktuell offenen PRs werden auf dem aktuellen development-Stand adaptiert und konsolidiert; main-Nachweis und erforderliche GitHub-Reviews bleiben eigene Abschlussgates. Historische lokale Integrationsbehauptungen ersetzen diesen Nachweis nicht.
+- STM-INT-002: Relevante Inhalte der 37 ursprünglichen Quell-PRs sind über #114 auf development konsolidiert und im geprüften main `6394382b210c19f7f684bf971c45cb067458a37e` enthalten; Integrations-Head `55f114f1ada27a23b3a506ab98e9f5d033629bd9`. Scanner #115/#116/#117/#118/#119/#120 separat geprüft und übernommen. Ersetzte Original-PRs erst nach vollständigem Main-Proof geschlossen; Endstati stehen in der Integrationsmatrix.
 - Teilnehmerimport: mehrzeilige CSV-Felder/BOM, sichere Unicode-Dekodierung, Geburtsdatumvalidierung und Export-Import-Verträge aus #79/#80/#86.
 - Bedienung und lokale Werkzeuge: modulare App-Shell, sichere Ergebniskorrekturen und Dialoge, API-Fehler/Timeouts, Startup-Recovery, persistente Sprache mit externem Abgleich, Katalogaudit, Datenschutzblende und vollständige Einstiegsliste. Backup-Vorschau/-Vergleich/-Fingerabdruck/-Set/-Leser/-Verschlüsselung, Audit-Leser/Dateinamen, Offline-FIDE-Suche/-Ratingprüfung, Live-Wertung und Browser-/Verbindungs-/Supportchecks werden gemeinsam überprüft.
 - Offline/PWA: vollständige Shell-Slots mit fail-closed Fetch-Regeln und konsistenter HTML/Bundle-Version; ein Build-Fingerabdruck im Worker löst auch bei geänderten HTML-/Bundle-/Public-Ressourcen das reguläre Browser-Update aus. Keine privaten API-Antworten im Service-Worker-Cache.
@@ -16,7 +29,7 @@
 - Supply Chain #61: acht exakte NuGet-Pins und unveränderte Paketversionen; additive npm-Testbefehle und strukturelle Prüfung vor restore/npm ci. Fehlende Registry-Provenienz bleibt ausdrücklich PARTIAL.
 - AI-Harness: offizieller Modellkatalog am 2026-10-07 neu verifiziert; dynamische Qualitätsprofile und zentrale Modellschlüssel bleiben erhalten. Native CLI-Auflösung und modellfreie Subscription-Auth prüfen Voraussetzungen vor der Ausführung; API-/Cloud-Wechsel und stille Fallbacks bleiben gesperrt. Prozess- und Routingregressionen ergänzen die bisherigen Gates.
 - Android #55: Quelladaption der LAN-Begleit-App ohne Übernahme von JAR/APK/PNG-Binärartefakten. Android-Build und Geräteabnahme werden nicht aus Quelltests abgeleitet.
-- STM-SEC-005: Vollstaendiger SHA-gebundener UTF-8-Textblob-/Diff-Nachweis fuer fehlende oder abgeschnittene GitHub-Patches; echte Hunk-/Inventar-/Tree-Pruefung, begrenzte versteckte Hilfsprozesse und redigierte Provenienz. Prompt-Muster verwenden eine semantisch gleiche kompilierte Regex; die exakt gebundene ASCII-Run-Regel wird linear mit unveraendertem 100-ms-Limit geprueft. Alle Schweregrade, Critical-Blockaden, Artefaktgrenzen und menschlichen Freigabepflichten bleiben bestehen. `Commit-If-Green -SkipPack` erlaubt den vollstaendigen Quell-Gate ohne Produktpaket.
+- STM-SEC-005: Vollstaendiger SHA-gebundener UTF-8-Textblob-/Diff-Nachweis fuer fehlende oder abgeschnittene GitHub-Patches; echte Hunk-/Inventar-/Tree-Pruefung, begrenzte versteckte Hilfsprozesse und redigierte Provenienz. Prompt-Muster verwenden eine semantisch gleiche kompilierte Regex; die exakt gebundene ASCII-Run-Regel wird linear mit unveraendertem 100-ms-Limit geprueft. Alle Schweregrade, Critical-Blockaden, Artefaktgrenzen und SHA-gebundenen Ausführungsfreigaben bleiben bestehen. `Commit-If-Green -SkipPack` erlaubt den vollstaendigen Quell-Gate ohne Produktpaket.
 
 - STM-QR-001 / PR #82: QR-Eingaben und ECC-Stufen vor Matrixberechnung validieren, Byte-Kapazitaet begrenzen, UTF-8-Fallback fuer einzelne Surrogate an TextEncoder angleichen und ungueltige Koordinaten sicher ablehnen. 45 Runtime-Regressionen ergaenzen die 164 Golden-Tests im Frontend-Build; keine neue Dependency oder mobile Verbindungsoberflaeche.
 
@@ -73,10 +86,12 @@
   Ursprung: Marcel-Mente (PR #40), sicher an den aktuellen development-Stand adaptiert;
   FIDE-C.04.3-Fassung 2026, Artikelstruktur 1–5 und Kriterien [C1]–[C21] wurden im
   Owner-Review unabhängig gegen die Primärquelle (`handbook.fide.com/chapter/C0403202602`)
-  bestätigt. **Offen (Folgearbeit):** Die WebApp-UI bietet noch keine Auswahl für
-  `PairingStrategy`/`SwissInitialColour` — das Backend ist vollständig und über API/Persistenz
-  nutzbar, die Oberfläche folgt separat. Performance für Felder über 20 Spieler bleibt
-  STM-FACH-003.
+  bestätigt. **Aktuelle Nachprüfung 2026-10-08:** C8/C19/C21 und Exchange-/GUID-Grenzen sind
+  mit unabhängigen Oracles korrigiert; begrenzter Issue-#22-Umfang und separate endliche
+  Großfeldabnahme STM-FACH-003 erneut geprüft in main enthalten. Die WebApp bietet
+  `PairingStrategy`/`SwissInitialColour`; vollständige gezielte UI-Optionen bleiben
+  eigene Abnahme STM-FACH-012. Automatische Setzlistenvergabe STM-FACH-011 und
+  beschleunigtes System STM-FACH-005 bleiben offen. Keine FIDE-Zertifizierung.
 - STM-INFRA-006: Nichtdeterministischen Graph-Hash in der Routed-Execution behoben.
   `Get-TaskGraphHash` serialisierte den Graph direkt per `ConvertTo-Json`; dessen
   Property-Reihenfolge ist bei Hashtables nicht garantiert und variiert zwischen
