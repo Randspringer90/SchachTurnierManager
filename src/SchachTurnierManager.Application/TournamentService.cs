@@ -1130,6 +1130,13 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
         ValidateImportedPlayers(tournament.Players);
         ValidateImportedRounds(tournament);
+        foreach (var entry in tournament.AuditJournal)
+        {
+            if (entry is null || entry.Actor is null || entry.Summary is null)
+            {
+                throw new InvalidOperationException("Importiertes Audit-Journal enthält einen leeren Eintrag oder Pflichttext.");
+            }
+        }
     }
 
     private static void ValidateImportedPlayers(IReadOnlyList<Player> players)
@@ -1150,6 +1157,11 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             if (player.Id == Guid.Empty)
             {
                 throw new InvalidOperationException($"Importierter Teilnehmer '{player.Name}' hat keine gültige ID.");
+            }
+
+            if (player.Rating is null)
+            {
+                throw new InvalidOperationException($"Importierter Teilnehmer in Zeile {index + 1} hat kein Ratingprofil.");
             }
 
             if (!ids.Add(player.Id))
@@ -1223,6 +1235,8 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                 throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat keine Paarungsliste.");
             }
 
+            ValidateImportedRoundEvidence(round);
+
             var boardNumbers = new HashSet<int>();
             var roundPlayers = new HashSet<Guid>();
             foreach (var pairing in round.Pairings)
@@ -1235,6 +1249,16 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                 if (pairing.BoardNumber <= 0)
                 {
                     throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} enthält eine ungültige Brettnummer.");
+                }
+
+                if (pairing.Result is null || !Enum.IsDefined(pairing.Result.Kind))
+                {
+                    throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Ergebnis fehlt oder ist ungültig.");
+                }
+                if (pairing.Chess960StartPosition is { } position &&
+                    (position.WhiteBackRank is null || position.BlackBackRank is null))
+                {
+                    throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Chess960-Pflichttext fehlt.");
                 }
 
                 if (!boardNumbers.Add(pairing.BoardNumber))
@@ -1267,6 +1291,44 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                     AddImportedRoundPlayer(roundPlayers, pairing.BlackPlayerId.Value, round.RoundNumber, pairing.BoardNumber);
                 }
             }
+        }
+    }
+
+    private static void ValidateImportedRoundEvidence(TournamentRound round)
+    {
+        var audit = round.Audit;
+        if (audit is null || audit.Algorithm is null || audit.RulesetVersion is null)
+        {
+            throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat keinen vollständigen Auditstand.");
+        }
+        ValidateImportedTextList(audit.Messages);
+        ValidateImportedTextList(audit.ScoreGroups);
+        ValidateImportedTextList(audit.Floaters);
+        ValidateImportedTextList(audit.ColorNotes);
+
+        if (round.Forensics is not { } forensics) return;
+        if (forensics.Trigger is null || forensics.Format is null || forensics.Algorithm is null || forensics.QualitySeverity is null)
+        {
+            throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat unvollständige Forensiktexte.");
+        }
+        ValidateImportedTextList(forensics.ByeDecisions);
+        ValidateImportedTextList(forensics.RematchWarnings);
+        ValidateImportedTextList(forensics.ScoreGroupDeviations);
+        ValidateImportedTextList(forensics.ColorNotes);
+        ValidateImportedTextList(forensics.EngineMessages);
+        ValidateImportedTextList(forensics.Findings);
+        if (forensics.ProposedPairings is null || forensics.ProposedPairings.Any(board =>
+                board is null || board.White is null || board.Black is null))
+        {
+            throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat eine unvollständige forensische Brettliste.");
+        }
+    }
+
+    private static void ValidateImportedTextList(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Any(value => value is null))
+        {
+            throw new InvalidOperationException("Importierte Audit-/Forensikliste fehlt oder enthält einen leeren Textwert.");
         }
     }
 

@@ -10,6 +10,7 @@ import React from 'react';
 import { buildAuditJournalCsv } from '../lib/auditCsv';
 import { createTournamentProjectionLoader, type TournamentProjection } from '../lib/tournamentProjection';
 import { createPlayerImportPreviewGuard } from '../lib/playerImportPreview';
+import { createTournamentEditorGuard } from '../lib/tournamentEditorGuard';
 import { LanguageSwitcher, useI18n } from '../i18n';
 import { describeApiError, healthProbeTimeoutMs, isApiTransportError, pairingRequestTimeoutMs, requestJson, requestText } from '../api/client';
 import {
@@ -240,6 +241,10 @@ export function App() {
   const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
+  const [playerEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
+  const [pairingEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
+  const playerEditorToken = playerEditorGuard.capture(selectedId);
+  const pairingEditorToken = pairingEditorGuard.capture(selectedId);
   const [pendingResultChange, setPendingResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
   const [lastResultChange, setLastResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
   const createTournamentInFlight = React.useRef(false);
@@ -274,6 +279,9 @@ export function App() {
   const setSelectedId = React.useCallback((id: string) => {
     if (projectionLoader.disposed) return;
     if (projectionLoader.select(id)) {
+      playerEditorGuard.select(id); pairingEditorGuard.select(id);
+      setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); setPairingEdits({});
+      setExternalDuplicateChecks({});
       importPreviewGuard.update({ ...importPreviewGuard.inputs, tournamentId: id });
       setImportPreview(null); setConfirmWarningImport(false);
       setPairingQualityReports({}); setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false);
@@ -281,7 +289,7 @@ export function App() {
       setActionConfirm(null); setError(null);
     }
     setSelectedIdState(id);
-  }, [projectionLoader, importPreviewGuard]);
+  }, [projectionLoader, importPreviewGuard, playerEditorGuard, pairingEditorGuard]);
 
   const [tournamentListLoader] = React.useState(() => {
     const loader = createTournamentProjectionLoader<Tournament[]>(state => {
@@ -297,7 +305,7 @@ export function App() {
 
   React.useEffect(() => {
     projectionLoader.resume(); tournamentListLoader.resume();
-    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); };
+    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); playerEditorGuard.invalidate(); pairingEditorGuard.invalidate(); };
   }, [projectionLoader, tournamentListLoader, importPreviewGuard]);
 
   const loadTournaments = React.useCallback(async (): Promise<Tournament[] | null> => {
@@ -821,23 +829,28 @@ export function App() {
       return;
     }
 
+    const operation = playerEditorGuard.advance(playerEditorToken);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
     setError(null);
     const existing = editingPlayerId ? selectedTournament.players.find(player => player.id === editingPlayerId) : undefined;
     const body = JSON.stringify(formToRequest(playerForm, existing?.startingRank));
     try {
       if (editingPlayerId) {
         await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${editingPlayerId}`, { method: 'PUT', body });
+        if (!playerEditorGuard.isCurrent(operation)) return;
         setStatus('Teilnehmer aktualisiert.');
       } else {
         await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players`, { method: 'POST', body });
+        if (!playerEditorGuard.isCurrent(operation)) return;
         setStatus('Teilnehmer gespeichert.');
       }
 
+      playerEditorGuard.invalidate();
       setPlayerForm(emptyPlayerForm);
       setEditingPlayerId(null);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(describeApiError(ex, lang));
+      if (playerEditorGuard.isCurrent(operation)) setError(describeApiError(ex, lang));
     }
   }
 
@@ -846,17 +859,22 @@ export function App() {
       return;
     }
 
+    const captured = projectionLoader.capture(selectedTournament.id);
+    const editor = playerEditorToken;
+    if (!captured) return;
     setError(null);
     try {
       await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}`, { method: 'DELETE' });
+      if (!projectionLoader.isCurrent(captured)) return;
       setStatus('Teilnehmer gelöscht oder zurückgezogen.');
-      if (editingPlayerId === player.id) {
+      if (editingPlayerId === player.id && playerEditorGuard.isCurrent(editor)) {
+        playerEditorGuard.invalidate();
         setEditingPlayerId(null);
         setPlayerForm(emptyPlayerForm);
       }
       await refresh(selectedTournament.id);
     } catch (ex) {
-      reportActionFailure(`Teilnehmer ${player.name} konnte nicht entfernt werden`, ex);
+      if (projectionLoader.isCurrent(captured)) reportActionFailure(`Teilnehmer ${player.name} konnte nicht entfernt werden`, ex);
     }
   }
 
@@ -1081,7 +1099,7 @@ export function App() {
 
   function pairingEdit(round: TournamentRound, pairing: Pairing): PairingEdit {
     const key = editKey(round.roundNumber, pairing.boardNumber);
-    return pairingEdits[key] ?? {
+    return (pairingEditorGuard.isCurrent(pairingEditorToken) ? pairingEdits[key] : undefined) ?? {
       whitePlayerId: pairing.whitePlayerId ?? '',
       blackPlayerId: pairing.blackPlayerId ?? '',
       notes: pairing.notes ?? ''
@@ -1089,10 +1107,15 @@ export function App() {
   }
 
   function updatePairingEdit(roundNumber: number, boardNumber: number, patch: Partial<PairingEdit>): void {
+    const round = selectedTournament?.rounds.find(item => item.roundNumber === roundNumber);
+    const pairing = round?.pairings.find(item => item.boardNumber === boardNumber);
+    if (!round || !pairing) return;
+    const edit = pairingEdit(round, pairing);
+    if (!pairingEditorGuard.advance(pairingEditorToken)) return;
     const key = editKey(roundNumber, boardNumber);
     setPairingEdits(previous => ({
       ...previous,
-      [key]: { ...(previous[key] ?? { whitePlayerId: '', blackPlayerId: '', notes: '' }), ...patch }
+      [key]: { ...edit, ...patch }
     }));
   }
 
@@ -1101,6 +1124,8 @@ export function App() {
       return;
     }
     const edit = pairingEdit(round, pairing);
+    const operation = pairingEditorGuard.advance(pairingEditorToken);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
     setError(null);
     try {
       await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/rounds/${round.roundNumber}/boards/${pairing.boardNumber}/pairing`, {
@@ -1111,7 +1136,9 @@ export function App() {
           notes: edit.notes || null
         })
       });
+      if (!pairingEditorGuard.isCurrent(operation)) return;
       setStatus(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} manuell gespeichert.`);
+      pairingEditorGuard.invalidate();
       setPairingEdits(previous => {
         const copy = { ...previous };
         delete copy[editKey(round.roundNumber, pairing.boardNumber)];
@@ -1119,7 +1146,7 @@ export function App() {
       });
       await refresh(selectedTournament.id);
     } catch (ex) {
-      reportActionFailure(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} konnte nicht gespeichert werden`, ex);
+      if (pairingEditorGuard.isCurrent(operation)) reportActionFailure(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} konnte nicht gespeichert werden`, ex);
     }
   }
 
@@ -1180,6 +1207,7 @@ export function App() {
   }
 
   function applyExternalPlayer(profile: ExternalPlayerProfile): void {
+    if (!playerEditorGuard.advance(playerEditorToken)) return;
     setPlayerForm(applyExternalProfileToForm(profile));
     setEditingPlayerId(null);
     setStatus(`${profile.name} aus ${externalSourceLabel(profile.source)} in das Teilnehmerformular übernommen.`);
@@ -1202,6 +1230,7 @@ export function App() {
   }
 
   function editExistingFromProfile(player: Player): void {
+    if (!playerEditorGuard.advance(playerEditorToken)) return;
     setEditingPlayerId(player.id);
     setPlayerForm(playerToForm(player));
     setStatus(`Vorhandenen Teilnehmer ${player.name} zum Bearbeiten geladen.`);
@@ -1213,19 +1242,22 @@ export function App() {
       return null;
     }
 
+    const captured = projectionLoader.capture(selectedTournament.id);
+    if (!captured) return null;
     setError(null);
     try {
       const duplicateCheck = await requestJson<ExternalPlayerDuplicateCheck>(`/api/tournaments/${selectedTournament.id}/external-players/check-duplicates`, {
         method: 'POST',
         body: JSON.stringify({ profile })
       });
+      if (!projectionLoader.isCurrent(captured)) return null;
       setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: duplicateCheck }));
       setStatus(duplicateCheck.hasLikelyDuplicate
         ? `${duplicateCheck.matches.length} mögliche Dublette(n) für ${profile.name} gefunden.`
         : `Keine sichere Dublette für ${profile.name} gefunden.`);
       return duplicateCheck;
     } catch (ex) {
-      reportActionFailure(`Dublettenprüfung für ${profile.name} fehlgeschlagen`, ex);
+      if (projectionLoader.isCurrent(captured)) reportActionFailure(`Dublettenprüfung für ${profile.name} fehlgeschlagen`, ex);
       return null;
     }
   }
@@ -1236,6 +1268,8 @@ export function App() {
       return;
     }
 
+    const operation = playerEditorGuard.advance(playerEditorToken);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
     setError(null);
     try {
       const result = await requestJson<ExternalPlayerApplyResult>(`/api/tournaments/${selectedTournament.id}/external-players/apply`, {
@@ -1247,13 +1281,15 @@ export function App() {
           overwriteExistingValues
         })
       });
+      if (!playerEditorGuard.isCurrent(operation)) return;
       setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: result.duplicateCheck }));
+      playerEditorGuard.invalidate();
       setEditingPlayerId(result.player.id);
       setPlayerForm(playerToForm(result.player));
       setStatus(`${result.message} Geänderte Felder: ${result.changedFields.length ? result.changedFields.join(', ') : 'keine'}.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(describeApiError(ex, lang));
+      if (playerEditorGuard.isCurrent(operation)) setError(describeApiError(ex, lang));
     }
   }
 
@@ -1587,8 +1623,18 @@ function openRoundPrint(roundNumber: number) {
   }
 
   function editPlayer(player: Player): void {
+    if (!playerEditorGuard.advance(playerEditorToken)) return;
     setEditingPlayerId(player.id);
     setPlayerForm(playerToForm(player));
+  }
+
+  function updatePlayerForm(form: PlayerForm): void {
+    if (playerEditorGuard.advance(playerEditorToken)) setPlayerForm(form);
+  }
+
+  function cancelPlayerEdit(): void {
+    if (!playerEditorGuard.advance(playerEditorToken)) return;
+    setEditingPlayerId(null); setPlayerForm(emptyPlayerForm);
   }
 
   function diagnosticsFor(roundNumber: number): RoundDiagnostics | undefined {
@@ -3007,29 +3053,29 @@ function openRoundPrint(roundNumber: number) {
             <article className="card">
               <h3>{editingPlayerId ? (lang === 'en' ? 'Edit participant' : 'Teilnehmer bearbeiten') : (lang === 'en' ? 'Add participant' : 'Teilnehmer erfassen')}</h3>
               <form onSubmit={(event) => void savePlayer(event)} className="player-form wide">
-                <input aria-label={lang === 'en' ? 'Name, required' : 'Name, erforderlich'} value={playerForm.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, name: event.target.value })} placeholder={lang === 'en' ? 'Name *' : 'Name *'} />
-                <input aria-label={lang === 'en' ? 'Club' : 'Verein'} value={playerForm.club} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, club: event.target.value })} placeholder={lang === 'en' ? 'Club' : 'Verein'} />
-                <input aria-label={lang === 'en' ? 'Federation' : 'Verband oder Federation'} value={playerForm.federation} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, federation: event.target.value })} placeholder={lang === 'en' ? 'Federation' : 'Verband/Federation'} />
-                <input aria-label={lang === 'en' ? 'Country' : 'Land'} value={playerForm.country} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, country: event.target.value })} placeholder={lang === 'en' ? 'Country' : 'Land'} />
-                <input aria-label={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} type="number" min="1900" max="2100" />
-                <select aria-label={lang === 'en' ? 'Gender category' : 'Geschlechtskategorie'} value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
+                <input aria-label={lang === 'en' ? 'Name, required' : 'Name, erforderlich'} value={playerForm.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, name: event.target.value })} placeholder={lang === 'en' ? 'Name *' : 'Name *'} />
+                <input aria-label={lang === 'en' ? 'Club' : 'Verein'} value={playerForm.club} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, club: event.target.value })} placeholder={lang === 'en' ? 'Club' : 'Verein'} />
+                <input aria-label={lang === 'en' ? 'Federation' : 'Verband oder Federation'} value={playerForm.federation} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, federation: event.target.value })} placeholder={lang === 'en' ? 'Federation' : 'Verband/Federation'} />
+                <input aria-label={lang === 'en' ? 'Country' : 'Land'} value={playerForm.country} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, country: event.target.value })} placeholder={lang === 'en' ? 'Country' : 'Land'} />
+                <input aria-label={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} value={playerForm.birthYear} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, birthYear: event.target.value })} placeholder={lang === 'en' ? 'Birth year' : 'Geburtsjahr'} type="number" min="1900" max="2100" />
+                <select aria-label={lang === 'en' ? 'Gender category' : 'Geschlechtskategorie'} value={playerForm.gender} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePlayerForm({ ...playerForm, gender: Number(event.target.value) })}>
                   {genderOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
                 </select>
-                <input aria-label="DWZ" value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
-                <input aria-label="DWZ-Index" value={playerForm.dwzIndex} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, dwzIndex: event.target.value })} placeholder="DWZ-Index" type="number" min="0" />
-                <input aria-label="Elo Standard" value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo Standard" type="number" min="0" />
-                <input aria-label="Elo Rapid" value={playerForm.rapidElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, rapidElo: event.target.value })} placeholder="Elo Rapid" type="number" min="0" />
-                <input aria-label="Elo Blitz" value={playerForm.blitzElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, blitzElo: event.target.value })} placeholder="Elo Blitz" type="number" min="0" />
-                <input aria-label={lang === 'en' ? 'Manual tournament rating' : 'Manuelle Turnierwertungszahl'} value={playerForm.manualTwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, manualTwz: event.target.value })} placeholder={lang === 'en' ? 'Manual tournament rating' : 'TWZ manuell'} type="number" min="0" />
-                <input aria-label="FIDE ID" value={playerForm.fideId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, fideId: event.target.value })} placeholder="FIDE-ID" />
-                <input aria-label="DSB ID" value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
-                <input aria-label={lang === 'en' ? 'Title' : 'Titel'} value={playerForm.title} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, title: event.target.value })} placeholder={lang === 'en' ? 'Title' : 'Titel'} />
-                <select aria-label={lang === 'en' ? 'Participant status' : 'Teilnehmerstatus'} value={playerForm.status} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setPlayerForm({ ...playerForm, status: Number(event.target.value) })}>
+                <input aria-label="DWZ" value={playerForm.dwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, dwz: event.target.value })} placeholder="DWZ" type="number" min="0" />
+                <input aria-label="DWZ-Index" value={playerForm.dwzIndex} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, dwzIndex: event.target.value })} placeholder="DWZ-Index" type="number" min="0" />
+                <input aria-label="Elo Standard" value={playerForm.elo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, elo: event.target.value })} placeholder="Elo Standard" type="number" min="0" />
+                <input aria-label="Elo Rapid" value={playerForm.rapidElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, rapidElo: event.target.value })} placeholder="Elo Rapid" type="number" min="0" />
+                <input aria-label="Elo Blitz" value={playerForm.blitzElo} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, blitzElo: event.target.value })} placeholder="Elo Blitz" type="number" min="0" />
+                <input aria-label={lang === 'en' ? 'Manual tournament rating' : 'Manuelle Turnierwertungszahl'} value={playerForm.manualTwz} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, manualTwz: event.target.value })} placeholder={lang === 'en' ? 'Manual tournament rating' : 'TWZ manuell'} type="number" min="0" />
+                <input aria-label="FIDE ID" value={playerForm.fideId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, fideId: event.target.value })} placeholder="FIDE-ID" />
+                <input aria-label="DSB ID" value={playerForm.nationalId} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, nationalId: event.target.value })} placeholder="DSB-ID" />
+                <input aria-label={lang === 'en' ? 'Title' : 'Titel'} value={playerForm.title} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, title: event.target.value })} placeholder={lang === 'en' ? 'Title' : 'Titel'} />
+                <select aria-label={lang === 'en' ? 'Participant status' : 'Teilnehmerstatus'} value={playerForm.status} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePlayerForm({ ...playerForm, status: Number(event.target.value) })}>
                   {playerStatusOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
                 </select>
-                <input aria-label={lang === 'en' ? 'Notes' : 'Notizen'} value={playerForm.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPlayerForm({ ...playerForm, notes: event.target.value })} placeholder={lang === 'en' ? 'Notes' : 'Notizen'} />
+                <input aria-label={lang === 'en' ? 'Notes' : 'Notizen'} value={playerForm.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePlayerForm({ ...playerForm, notes: event.target.value })} placeholder={lang === 'en' ? 'Notes' : 'Notizen'} />
                 <button type="submit" disabled={!selectedTournament}>{editingPlayerId ? (lang === 'en' ? 'Update' : 'Aktualisieren') : (lang === 'en' ? 'Save' : 'Speichern')}</button>
-                {editingPlayerId && <button type="button" className="secondary" onClick={() => { setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); }}>{t('common.cancel')}</button>}
+                {editingPlayerId && <button type="button" className="secondary" onClick={cancelPlayerEdit}>{t('common.cancel')}</button>}
               </form>
             </article>
           </div>

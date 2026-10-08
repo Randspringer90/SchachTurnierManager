@@ -32,3 +32,17 @@ tournament. No private database or existing browser profile is used.
 Set process-local `STM_SMOKE_RETAIN_DATA=1` to retain temporary diagnostic
 directories after owned processes have stopped and their ports are verified.
 This keeps evidence without retaining running children or opening visible windows.
+
+The same ownership rule protects player and manual-pairing drafts through
+`tournamentEditorGuard.ts`. Seven frontend regressions cover selection, ABA,
+stale handlers, new typing and reverse completion order. The independent
+headless `scripts/Smoke-FirefoxTournamentEditors.ps1` creates two cloned
+synthetic tournaments with identical player IDs and board keys. It verifies
+selection reset, late player/pairing replies, exact request ownership, unchanged
+stored target data and the normal real-API save path (seven browser assertions).
+
+JSON backup required-object regressions live in
+`BackupRequiredObjectsTests.cs`: 40 malformed cases must reject before any
+stored/input/audit-sink mutation; one legacy/optional-null case must import and
+remain usable for standings and export. These 41 tests are included in the
+Application suite, rather than counted again as unique cases.

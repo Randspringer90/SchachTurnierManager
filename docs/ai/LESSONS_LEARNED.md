@@ -6,6 +6,15 @@ keine Voraussetzung.
 
 ## 2026-10-08 — Previewfreigabe muss den importierten Auftrag binden
 
+- Auch Spieler-/Paarungsentwuerfe brauchen Turnier- und Generationsbindung.
+  Kopierte Turniere duerfen dieselben Spieler-IDs besitzen; die Spieler-ID allein
+  schuetzt deshalb nicht vor einem Edit im falschen Turnier. Neue Eingaben und
+  Auswahlwechsel muessen alte Handler und spaete Antworten synchron entwerten.
+- Backupvalidierung muss verschachtelte Pflichtobjekte vor Normalisierung,
+  Auditspiegel und Persistenz pruefen. Nullable C#-Annotationen verhindern keine
+  expliziten JSON-Nullwerte. Ablehnungstests vergleichen gespeicherte und
+  eingehende Daten vollstaendig und pruefen unveraenderte Auditspiegelschreibungen.
+
 - CSV-Vorschauen brauchen Turnier-, Inhalts-, Options- und Generationsbindung.
   Abort allein ist kein Beweis; Tests muessen spaete Antworten auch bei ignoriertem Abort liefern.
 - Identitaet unmittelbar vor Import pruefen und synchron verbrauchen. UI-Buttonzustand

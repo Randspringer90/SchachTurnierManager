@@ -458,8 +458,11 @@ return true;
     $afterRestart = Get-TournamentName
     $missing = @($expected | Where-Object { $afterRestart -notcontains $_ })
     Write-Result 'Nach dem Neustart sind alle Turniere weiterhin vorhanden' ($missing.Count -eq 0) ("fehlend: " + ($missing -join ', '))
+    # Health and tournament-list loading finish independently. Wait for the
+    # actual target before testing its click; a healthy API alone is insufficient.
+    $listReady = Wait-ForCondition 'return Array.from(document.querySelectorAll(".list button")).some(n => (n.textContent||"").includes("Flow Turnier Alpha"));' 40
     Write-Result 'Turnier laesst sich nach dem Neustart erneut oeffnen' `
-        ([bool](Invoke-MarionetteScript 'const b = Array.from(document.querySelectorAll(".list button")).find(n => (n.textContent||"").includes("Flow Turnier Alpha")); if (!b) { return false; } b.click(); return true;'))
+        ($listReady -and [bool](Invoke-MarionetteScript 'const b = Array.from(document.querySelectorAll(".list button")).find(n => (n.textContent||"").includes("Flow Turnier Alpha")); if (!b) { return false; } b.click(); return true;'))
     Start-Sleep -Seconds 2
     Write-Result 'Das geoeffnete Turnier wird angezeigt' ((Get-BodyText) -match 'Flow Turnier Alpha')
     Save-Evidence '06-nach-neustart'

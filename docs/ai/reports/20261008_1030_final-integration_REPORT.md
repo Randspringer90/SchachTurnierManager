@@ -70,3 +70,21 @@ Official model catalog sources were retrieved on 2026-10-08:
 The repository catalog entries remain current; no generation or provider change
 was needed. The existing CoreKI runtime and inherited review runtime were used;
 no paid model probe or provider/profile fallback was started.
+
+## Independent review corrections
+
+The first frozen candidate failed independent review with two MAJOR findings:
+editor state could cross tournament boundaries (including cloned player IDs),
+and malformed nested backup objects could overwrite a usable stored snapshot.
+Both findings are fixed before proposing integration. Player/pairing drafts and
+their callbacks carry owner/generation tokens; synchronous selection reset and
+stale-handler rejection protect dispatch and late completions. Backup validation
+rejects required null objects/text/list members and undefined result kinds before
+normalization, audit writes or persistence, retaining optional/legacy defaults.
+
+The backup regression first ran RED (40 rejected-case failures, one valid-case
+pass), then GREEN (41 passes). Every rejected case checks complete stored and
+incoming JSON plus unchanged audit-sink write count. Editor unit regressions and
+headless browser regressions cover tournament ownership, shared player IDs,
+matching board keys, selection ABA and late save replies. These are new tests,
+not additional counts of cases already run by the full source gate.
