@@ -4,6 +4,13 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — GitHub-Tree-Metadaten an den echten Tree-SHA binden
+
+- Kontext: Der grosse Integrations-PR braucht den vollstaendigen Textpatch-Fallback.
+- Lesson: Ein commit-ish am GitHub-Git-Tree-Endpunkt kann als Antwort-SHA wiederkehren.
+- Konsequenz: Tree-SHAs aus validierter Commit-Metadatenbindung abfragen; die strikte
+  Tree-Identitaetspruefung beibehalten und den Online-Adapter synthetisch regressieren.
+
 ## 2026-10-07 — Statische PR-Evidenz muss vollstaendig und effizient bleiben
 
 - Kontext: GitHub lieferte fuer eine grosse App-Verschiebung keine kompletten
