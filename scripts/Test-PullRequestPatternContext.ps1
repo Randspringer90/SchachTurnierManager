@@ -374,6 +374,7 @@ $scenario.review.sourcePatternContexts[0].blobSha=$scenario.files[0].headBlobSha
 $findings=@(Invoke-ContextScenario $scenario)
 Assert-ContextEqual (@($findings | Where-Object { $_.code -ceq 'SCAN_TIMEOUT' -and $_.severity -ceq 'CRITICAL' }).Count -gt 0) $true 'Bound rule timeout stays critical'
 Assert-ContextEqual (@($findings | Where-Object severity -CEQ 'HIGH').Count) 0 'Timeout cannot gain exception'
+Assert-ContextEqual (@($findings | Where-Object detail -CEQ 'SCAN_TIMEOUT_PHASE=BOUNDARY_NATIVE; SCAN_TIMEOUT_PATTERN=CREDENTIAL_ACCESS').Count -gt 0) $true 'Native boundary timeout has closed diagnostics'
 
 # A native regex can be fast while attribution crosses many valid hunk ranges.
 # Two cheap occurrences in one final content line produce one attested finding;
@@ -414,4 +415,5 @@ $scenario.files[0].headBlobSha=Get-SyntheticGitBlobSha ($manyMatches+"`n")
 $scenario.review.sourcePatternContexts[0].blobSha=$scenario.files[0].headBlobSha
 $findings=@(Invoke-ContextScenario $scenario)
 Assert-ContextEqual (@($findings | Where-Object { $_.code -ceq 'SCAN_TIMEOUT' -and $_.severity -ceq 'CRITICAL' }).Count -gt 0) $true 'Match enumeration budget remains fail closed'
+Assert-ContextEqual (@($findings | Where-Object detail -CEQ 'SCAN_TIMEOUT_PHASE=BOUNDARY_ENUMERATION; SCAN_TIMEOUT_PATTERN=CREDENTIAL_ACCESS').Count -gt 0) $true 'Enumeration cap timeout has closed diagnostics'
 Write-Output ('PATTERN_CONTEXT_ASSERTIONS={0} FAIL=0 NETWORK_CALLS=0 FOREIGN_CODE_EXECUTED=false' -f $script:assertions)

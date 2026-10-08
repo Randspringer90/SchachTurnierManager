@@ -370,10 +370,9 @@ function Test-ReviewPatternMatch {
         $matcher = Get-ReviewAsciiPatternType
         return $matcher::IsMatch($Text, $Timeout)
     }
-    $options = [Text.RegularExpressions.RegexOptions]::CultureInvariant
-    if ([string]$Pattern.id -ceq 'prompt-injection') {
-        $options = $options -bor [Text.RegularExpressions.RegexOptions]::Compiled
-    }
+    # Compile the same backtracking expression; language, spans and the native
+    # timeout stay unchanged, including catastrophic-pattern rejection.
+    $options = [Text.RegularExpressions.RegexOptions]::CultureInvariant -bor [Text.RegularExpressions.RegexOptions]::Compiled
     return [regex]::new($literal, $options, $Timeout).IsMatch($Text)
 }
 
@@ -395,7 +394,8 @@ function Add-PatternFindings {
             }
         }
         catch [Text.RegularExpressions.RegexMatchTimeoutException] {
-            $Findings.Add((New-ReviewFinding -Code 'SCAN_TIMEOUT' -Category 'unverified' -Severity 'critical' -Path $Path -Evidence $pattern.id -Detail 'Statische Musterpruefung ueberschritt das Zeitlimit.' -RiskClass 'UNVERIFIED'))
+            $ruleCode=Get-ReviewPatternCode ([string]$pattern.id)
+            $Findings.Add((New-ReviewFinding -Code 'SCAN_TIMEOUT' -Category 'unverified' -Severity 'critical' -Path $Path -Evidence $pattern.id -Detail "SCAN_TIMEOUT_PHASE=PATTERN_NATIVE; SCAN_TIMEOUT_PATTERN=$ruleCode" -RiskClass 'UNVERIFIED'))
         }
     }
 }
@@ -526,16 +526,18 @@ function Add-ReviewContextBoundPatchFindings {
         $timeout=[TimeSpan]::FromMilliseconds([int]$PatternPolicy.regexTimeoutMilliseconds)
         # The native per-match timeout is independent of bounded PowerShell
         # enumeration, range attribution and runtime initialization overhead.
-        $enumerationBudget=[TimeSpan]::FromSeconds(2)
+        $enumerationBudget=[TimeSpan]::FromSeconds(10)
         $clock=[Diagnostics.Stopwatch]::StartNew(); $rangeIndex=0; $matchesChecked=0
+        $scanPhase='BOUNDARY_NATIVE'
         try {
-            $regex=[regex]::new([string]$rule.pattern,[Text.RegularExpressions.RegexOptions]::CultureInvariant,$timeout)
+            $options=[Text.RegularExpressions.RegexOptions]::CultureInvariant -bor [Text.RegularExpressions.RegexOptions]::Compiled
+            $regex=[regex]::new([string]$rule.pattern,$options,$timeout)
             $match=$regex.Match($Patch)
             while ($match.Success) {
-                if ($clock.Elapsed -ge $enumerationBudget -or ++$matchesChecked -gt 10000) { throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
+                if ($clock.Elapsed -ge $enumerationBudget -or ++$matchesChecked -gt 10000) { $scanPhase='BOUNDARY_ENUMERATION'; throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
                 while ($rangeIndex -lt $contentRanges.Count -and $contentRanges[$rangeIndex].end -le $match.Index) {
                     $rangeIndex++
-                    if (($rangeIndex -band 127) -eq 0 -and $clock.Elapsed -ge $enumerationBudget) { throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
+                    if (($rangeIndex -band 127) -eq 0 -and $clock.Elapsed -ge $enumerationBudget) { $scanPhase='BOUNDARY_ENUMERATION'; throw [Text.RegularExpressions.RegexMatchTimeoutException]::new() }
                 }
                 if ($rangeIndex -ge $contentRanges.Count -or $contentRanges[$rangeIndex].start -gt $match.Index -or
                     $match.Index+$match.Length -gt $contentRanges[$rangeIndex].end) {
@@ -545,7 +547,8 @@ function Add-ReviewContextBoundPatchFindings {
                 $match=$match.NextMatch()
             }
         } catch [Text.RegularExpressions.RegexMatchTimeoutException] {
-            $Findings.Add((New-ReviewFinding -Code SCAN_TIMEOUT -Category unverified -Severity critical -Evidence $rule.id -Detail 'Grenzpruefung ueberschritt das begrenzte Scanbudget.' -RiskClass UNVERIFIED))
+            $ruleCode=Get-ReviewPatternCode ([string]$rule.id)
+            $Findings.Add((New-ReviewFinding -Code SCAN_TIMEOUT -Category unverified -Severity critical -Evidence $rule.id -Detail "SCAN_TIMEOUT_PHASE=$scanPhase; SCAN_TIMEOUT_PATTERN=$ruleCode" -RiskClass UNVERIFIED))
         }
     }
     foreach ($segment in $segments) {

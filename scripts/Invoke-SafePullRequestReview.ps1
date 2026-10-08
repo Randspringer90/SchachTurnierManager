@@ -395,5 +395,11 @@ Write-Host "PR_REVIEW_FINDINGS=$(@($analysis.findings).Count)"
 foreach ($code in @($analysis.findings | Where-Object severity -CEQ 'CRITICAL' | Select-Object -ExpandProperty code -Unique)) {
     if ([string]$code -cmatch '\A[A-Z0-9_]{1,100}\z') { Write-Host "PR_REVIEW_BLOCKING_CODE=$code" }
 }
+foreach ($finding in @($analysis.findings | Where-Object { $_.severity -ceq 'CRITICAL' -and $_.code -ceq 'SCAN_TIMEOUT' })) {
+    if ([string]$finding.detail -cmatch '\ASCAN_TIMEOUT_PHASE=(PATTERN_NATIVE|BOUNDARY_NATIVE|BOUNDARY_ENUMERATION); SCAN_TIMEOUT_PATTERN=([A-Z_]{1,100})\z') {
+        Write-Host "PR_REVIEW_TIMEOUT_PHASE=$($Matches[1])"
+        Write-Host "PR_REVIEW_TIMEOUT_PATTERN=$($Matches[2])"
+    }
+}
 Write-Host 'FOREIGN_CODE_EXECUTED=false'
 exit 0
