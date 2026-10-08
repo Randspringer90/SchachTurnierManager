@@ -4,6 +4,14 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Defensive Musterdefinitionen bleiben hashgebunden
+
+- Kontext: Eine autorisierte Timeoutänderung verändert den Datei-Hash; der
+  unveränderte Regextext im Diffkontext kann dadurch lexikalisch kritisch sein.
+- Lesson: Alte Freigaben dürfen neue Bytes nicht pauschal legitimieren.
+- Konsequenz: Vollständigen neuen Dateiblob separat reviewen und den vorhandenen
+  exakten Kontextnachweis über einen selbst vollständig geprüften Policy-PR binden.
+
 ## 2026-10-08 — Native Scanzeit und Verwaltungsaufwand trennen
 
 - Kontext: Identische Scanner-Eingaben ergeben auf verschiedenen Runnern eine
