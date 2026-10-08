@@ -392,5 +392,8 @@ $summaryLines = @(
 
 Write-Host "PR_REVIEW_DECISION=$($analysis.decision)"
 Write-Host "PR_REVIEW_FINDINGS=$(@($analysis.findings).Count)"
+foreach ($code in @($analysis.findings | Where-Object severity -CEQ 'CRITICAL' | Select-Object -ExpandProperty code -Unique)) {
+    if ([string]$code -cmatch '\A[A-Z0-9_]{1,100}\z') { Write-Host "PR_REVIEW_BLOCKING_CODE=$code" }
+}
 Write-Host 'FOREIGN_CODE_EXECUTED=false'
 exit 0
