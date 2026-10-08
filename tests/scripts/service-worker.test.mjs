@@ -149,9 +149,9 @@ const shellMime = req => req.url.endsWith('.svg') ? 'image/svg+xml' : req.url.en
 const shellResponse = req => response('shell', { headers: { 'Content-Type': shellMime(req) } });
 test('installation pre-caches validated shell without credentials or redirects', async () => {
   const app = harness({ fetch: shellResponse }); await app.lifecycle('install');
-  assert.equal(app.calls.length, 14); assert.equal(app.state.skips, 1);
-  // All shell files, including startup/offline/privacy modules, then complete + pending.
-  assert.equal(app.stores.get(otherSlot).size, 15); assert.equal(app.state.puts.length, 16);
+  assert.equal(app.calls.length, 24); assert.equal(app.state.skips, 1);
+  // All 14 original shell files plus 10 recovery files, then complete + pending.
+  assert.equal(app.stores.get(otherSlot).size, 25); assert.equal(app.state.puts.length, 26);
   assert.equal(app.stores.has(current), false);
   assert.ok(app.calls.every(req => req.credentials === 'omit' && req.redirect === 'error'));
 });
@@ -234,4 +234,118 @@ for (const metadata of [ { status: 500 }, { redirected: true }, { headers: { 'Ca
 }
 test('failed precache storage does not activate new worker', async () => {
   const app = harness({ fetch: shellResponse }); app.state.failPut = true; await assert.rejects(app.lifecycle('install')); assert.equal(app.state.skips, 0);
+});
+
+// STM-UX-002: exactly two local recovery tools, never selected backup contents.
+const recoveryPaths = ['backup-reader', 'backup-lock'].flatMap(folder =>
+  ['index.html', 'main.js', 'ui.js', 'core.js', 'style.css'].map(name => `/${folder}/${name}`));
+const recoveryResponse = (path, version = 'v1') => response(`${version}:${path}`, {
+  headers: { 'Content-Type': shellMime(request(path)) },
+});
+function recoveryFetch(version) {
+  return req => recoveryPaths.includes(new URL(req.url).pathname)
+    ? recoveryResponse(new URL(req.url).pathname, version) : shellResponse(req);
+}
+async function installedRecovery() {
+  const app = harness({ fetch: req => app.fetchImpl(req) });
+  app.fetchImpl = recoveryFetch('v1');
+  await app.lifecycle('install'); await app.lifecycle('activate');
+  return app;
+}
+test('both recovery pages and their entire static dependency sets are precached', async () => {
+  const app = await installedRecovery();
+  const fetched = app.calls.map(req => new URL(req.url).pathname);
+  assert.equal(fetched.length, 24);
+  for (const path of recoveryPaths) assert.equal(fetched.filter(value => value === path).length, 1, path);
+  assert.ok(app.calls.every(req => req.credentials === 'omit' && req.redirect === 'error'));
+  app.calls.length = 0; app.fetchImpl = offline;
+  for (const path of recoveryPaths) {
+    const event = app.dispatch(request(path, { mode: path.endsWith('.html') ? 'navigate' : 'cors' }));
+    assert.ok(event.result, path);
+    assert.equal(await (await event.result).text(), `v1:${path}`, path);
+    assert.equal(event.waits.length, 1); await Promise.all(event.waits);
+  }
+  assert.equal(app.calls.length, 0, 'the first tool visit after installation needs no network');
+});
+test('real recovery HTML and module imports stay inside the exact cached closure', () => {
+  const root = new URL('../../src/SchachTurnierManager.WebApp/public/', import.meta.url);
+  for (const path of recoveryPaths) {
+    const content = readFileSync(new URL(path.slice(1), root), 'utf8');
+    const dependencies = path.endsWith('.html')
+      ? [...content.matchAll(/<(?:script|link)\b[^>]*?(?:src|href)="([^"]+)"/g)].map(match => match[1])
+      : path.endsWith('.js') ? [...content.matchAll(/\b(?:from\s*|import\s*)['"]([^'"]+)['"]/g)].map(match => match[1]) : [];
+    for (const dependency of dependencies) {
+      const resolved = new URL(dependency, origin + path);
+      assert.equal(resolved.origin, origin); assert.equal(resolved.search, '');
+      assert.ok(recoveryPaths.includes(resolved.pathname), `${path} -> ${dependency}`);
+    }
+  }
+});
+test('an online new version cannot replace individual active recovery modules', async () => {
+  const app = await installedRecovery(); app.calls.length = 0; app.state.puts.length = 0;
+  app.fetchImpl = recoveryFetch('v2');
+  for (const path of recoveryPaths) assert.equal(await (await app.dispatch(request(path)).result).text(), `v1:${path}`);
+  assert.equal(app.calls.length, 0); assert.equal(app.state.puts.length, 0);
+  await app.lifecycle('install');
+  for (const path of recoveryPaths) assert.equal(await (await app.dispatch(request(path)).result).text(), `v1:${path}`);
+  await app.lifecycle('activate'); app.fetchImpl = offline;
+  for (const path of recoveryPaths) assert.equal(await (await app.dispatch(request(path)).result).text(), `v2:${path}`);
+});
+for (const metadata of [
+  { status: 404 }, { redirected: true }, { type: 'opaque' },
+  { headers: { 'Cache-Control': 'private' } }, { headers: { 'Cache-Control': 'no-store' } },
+  { headers: { Vary: 'Cookie' } }, { headers: { 'Content-Type': 'application/json' } },
+]) test(`unsafe recovery module cannot replace the complete active slot ${JSON.stringify(metadata)}`, async () => {
+  const app = await installedRecovery(); const skipped = app.state.skips;
+  app.fetchImpl = req => new URL(req.url).pathname === '/backup-lock/core.js' ? response('unsafe', metadata) : recoveryFetch('v2')(req);
+  await assert.rejects(app.lifecycle('install')); assert.equal(app.state.skips, skipped);
+  await app.lifecycle('activate'); app.fetchImpl = offline;
+  for (const path of recoveryPaths) assert.equal(await (await app.dispatch(request(path)).result).text(), `v1:${path}`);
+});
+test('a recovery write failure leaves the previous tools intact', async () => {
+  const app = await installedRecovery(); app.fetchImpl = recoveryFetch('v2'); app.state.failPut = true;
+  await assert.rejects(app.lifecycle('install')); app.state.failPut = false;
+  await app.lifecycle('activate'); app.fetchImpl = offline;
+  for (const path of recoveryPaths) assert.equal(await (await app.dispatch(request(path)).result).text(), `v1:${path}`);
+});
+test('missing complete marker cannot serve a partial recovery snapshot offline', async () => {
+  const app = harness({ fetch: offline });
+  for (const path of recoveryPaths) await app.seed(current, path, recoveryResponse(path));
+  for (const path of recoveryPaths) {
+    const event = app.dispatch(request(path)); assert.ok(event.result, path);
+    const result = await event.result; assert.equal(result.status, 503);
+    assert.equal(result.headers.get('cache-control'), 'no-store');
+  }
+});
+test('private data under recovery-like paths is never intercepted or cached', () => {
+  const paths = ['/backup-reader/local.json', '/backup-reader/index.html?file=synthetic', '/backup-reader/',
+    '/backup-reader-other/index.html', '/backup-reader/extra.js', '/backup-reader/core.js.map',
+    '/backup-lock/secret.stmenc', '/backup-lock/core.js?token=synthetic', '/backup-lock/private.csv',
+    '/backup-lock/session', '/backup-locking/core.js', 'https://elsewhere.invalid/backup-lock/core.js', 'blob:https://synthetic.invalid/example'];
+  for (const path of paths) {
+    const app = harness(); const event = app.dispatch(request(path));
+    assert.equal(event.result, undefined, path); assert.equal(app.calls.length, 0);
+    assert.equal(app.state.puts.length, 0);
+  }
+});
+test('recovery paths keep method, credential, range and no-store exclusions', () => {
+  for (const options of [{ method: 'POST' }, { method: 'PUT' }, { method: 'DELETE' }, { method: 'HEAD' },
+    { cache: 'no-store' }, { headers: new Headers({ Authorization: 'synthetic' }) }, { headers: new Headers({ Range: 'bytes=0-1' }) }]) {
+    const app = harness();
+    for (const path of recoveryPaths) assert.equal(app.dispatch(request(path, options)).result, undefined, path);
+    assert.equal(app.calls.length, 0);
+  }
+});
+test('an unavailable recovery cache still permits a normal online request without writes', async () => {
+  const app = harness({ fetch: req => recoveryFetch('online')(req) }); app.state.failOpen = true;
+  for (const path of recoveryPaths) assert.equal(await (await app.dispatch(request(path)).result).text(), `online:${path}`);
+  assert.equal(app.state.puts.length, 0);
+});
+test('private cached recovery content is rejected even with a complete marker', async () => {
+  const app = harness({ fetch: offline }); await app.seed(current, '/__stm-shell/complete', response('complete'));
+  for (const path of recoveryPaths) {
+    await app.seed(current, path, response('PRIVATE-SYNTHETIC', { headers: { 'Content-Type': shellMime(request(path)), 'Cache-Control': 'private' } }));
+    const result = await app.dispatch(request(path)).result;
+    assert.equal(result.status, 503); assert.doesNotMatch(await result.text(), /PRIVATE-SYNTHETIC/);
+  }
 });
