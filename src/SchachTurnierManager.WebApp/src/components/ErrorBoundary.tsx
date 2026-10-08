@@ -1,26 +1,25 @@
 import React from 'react';
 
-// Top-level error boundary (STM-FE-013). A thrown render error previously blanked
-// the whole SPA — fatal during a live demo. This catches it and offers a reload,
-// with bilingual copy so it works even if the i18n context is what failed.
-
+// Independent bilingual fallback: the translation provider may itself have failed.
+// Exception payloads can contain names, paths or server data; never inspect them here.
+const ERROR_REFERENCE = 'UI_RENDER_FAILURE';
 type ErrorBoundaryProps = { children: React.ReactNode };
-type ErrorBoundaryState = { hasError: boolean; message: string };
+type ErrorBoundaryState = { hasError: boolean };
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, message: '' };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
-    const message = error instanceof Error ? error.message : String(error);
-    return { hasError: true, message };
+  static getDerivedStateFromError(_error: unknown): ErrorBoundaryState {
+    return { hasError: true };
   }
 
-  componentDidCatch(error: unknown): void {
-    // Surface for local debugging; no external logging (privacy / offline-first).
-    console.error('[SchachTurnierManager] Unerwarteter Fehler / unexpected error:', error);
+  componentDidCatch(_error: unknown): void {
+    // Deliberately log only a stable diagnostic, not the original exception/stack.
+    // React/browser development diagnostics are outside this boundary's control.
+    console.error(`[SchachTurnierManager] ${ERROR_REFERENCE}`);
   }
 
   private handleReload = (): void => {
@@ -35,19 +34,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return (
       <div role="alert" className="app-error-boundary">
         <h1>Etwas ist schiefgelaufen · Something went wrong</h1>
-        <p>
-          Die Anwendung ist auf einen unerwarteten Fehler gestoßen. Ihre gespeicherten
-          Turnierdaten sind davon nicht betroffen.
+        <p lang="de">
+          Die Anzeige konnte nicht fortgesetzt werden. Hier lässt sich nicht feststellen,
+          ob die letzte Eingabe gespeichert wurde. Bitte nach dem Neuladen den Turnierstand prüfen.
         </p>
-        <p>
-          The app hit an unexpected error. Your saved tournament data is not affected.
+        <p lang="en">
+          The display could not continue. This screen cannot determine whether your last
+          change was saved. Check the tournament state after reloading.
         </p>
-        {this.state.message ? (
-          <pre className="app-error-boundary__detail">{this.state.message}</pre>
-        ) : null}
+        <p>Fehlerreferenz · Error reference: <code>{ERROR_REFERENCE}</code></p>
+        <p lang="de">Ungespeicherte Eingaben können beim Neuladen oder Verlassen dieser Seite verloren gehen.</p>
+        <p lang="en">Unsaved input may be lost when you reload or leave this page.</p>
         <button type="button" onClick={this.handleReload} className="app-error-boundary__reload">
           Neu laden · Reload
         </button>
+        <p><a href="/backup-reader/index.html">Lokale Sicherung ansehen · Inspect local backup</a></p>
       </div>
     );
   }
