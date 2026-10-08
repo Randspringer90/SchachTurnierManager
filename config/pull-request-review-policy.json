@@ -115,6 +115,21 @@
   ],
   "sourcePatternContexts": [
     {
+      "path": "config/suspicious-change-patterns.json",
+      "mode": "100644",
+      "blobSha": "37df009445ddf6061afcf6db119dcfd3a10b299f",
+      "beforeBlobSha": "7a25e6fdf9abc10513ca18503056ee27a0d96308",
+      "beforeMode": "100644",
+      "reviewHeadSha": "1c20809adc58eefe9083951b017edde93e485cc3",
+      "patterns": [
+        {
+          "id": "encoded-execution",
+          "definitionSha256": "62112e880972a385b5b9a46a421395973bd58a504737391c568283f7b16d7d7f"
+        }
+      ],
+      "reviewEvidence": "Independent exact whole-file review of 1c20809: only owner-authorized finite timeout 100 to 1000 ms; all pattern definitions unchanged. Retain HIGH and exact-SHA execution approval."
+    },
+    {
       "path": "docs/ai/prompts/20260718_1815_codex-build-week-finalization.md",
       "mode": "100644",
       "blobSha": "05e24c58e831092921dd3aba178d0beffa290951",
