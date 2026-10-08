@@ -8,7 +8,7 @@ $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 . (Join-Path $PSScriptRoot 'lib/PullRequestReviewCommon.ps1')
 $policy = Import-PullRequestReviewPolicies -RepositoryRoot $repositoryRoot
 $timeout = [TimeSpan]::FromMilliseconds([int]$policy.suspicious.regexTimeoutMilliseconds)
-if ($timeout.TotalMilliseconds -ne 100) { throw 'Pattern timeout policy drift.' }
+if ($timeout.TotalMilliseconds -ne 1000) { throw 'Pattern timeout policy drift.' }
 $assertions = 0
 function Assert-PatternEqual($Actual, $Expected, [string]$Label) {
     if ($Actual -cne $Expected) { throw "Pattern assertion failed: $Label" }
@@ -70,17 +70,18 @@ try { [void]$matcher::IsMatch(('!'*100000), [TimeSpan]::FromTicks(1)) }
 catch [Text.RegularExpressions.RegexMatchTimeoutException] { $timedOut = $true }
 Assert-PatternEqual $timedOut $true 'Linear matcher deadline stays fail closed'
 $findings = [Collections.Generic.List[object]]::new()
-$timeoutPolicy = [pscustomobject]@{regexTimeoutMilliseconds=100;patterns=@(
+$timeoutPolicy = [pscustomobject]@{regexTimeoutMilliseconds=[int]$timeout.TotalMilliseconds;patterns=@(
     [pscustomobject]@{id='synthetic-timeout';pattern='(a+)+b';appliesTo=@('patch');category='unverified';severity='critical'})}
 Add-PatternFindings -Findings $findings -Scope patch -Text ('a'*30000) -PatternPolicy $timeoutPolicy
 Assert-PatternEqual $findings.Count 1 'Timeout finding retained'
 Assert-PatternEqual $findings[0].code 'SCAN_TIMEOUT' 'Timeout code retained'
 Assert-PatternEqual $findings[0].severity 'CRITICAL' 'Timeout severity retained'
+Assert-PatternEqual $findings[0].detail 'SCAN_TIMEOUT_PHASE=PATTERN_NATIVE; SCAN_TIMEOUT_PATTERN=SUSPICIOUS_CHANGE' 'Timeout uses only closed diagnostic codes'
 
-# Full budget input is checked completely. Each original rule still uses 100 ms.
+# Full budget input is checked completely within the explicitly bounded policy.
 $negative = ((('A'*799+'!') * 6553).PadRight(5242880,'!'))
 $clock = [Diagnostics.Stopwatch]::StartNew()
 Assert-PatternEqual (Test-ReviewPatternMatch $large $negative $timeout) $false '5 MiB bounded negative scan'
 $milliseconds = $clock.Elapsed.TotalMilliseconds
 Assert-PatternEqual (Test-ReviewPatternMatch $large ($negative.Substring(0,5242080)+'A'*800) $timeout) $true 'Tail match remains visible'
-Write-Output ('PATTERN_ENGINE_ASSERTIONS={0} FAIL=0 TIMEOUT_MS=100 NEGATIVE_SCAN_MS={1:N2} NETWORK_CALLS=0' -f $assertions,$milliseconds)
+Write-Output ('PATTERN_ENGINE_ASSERTIONS={0} FAIL=0 TIMEOUT_MS={1} NEGATIVE_SCAN_MS={2:N2} NETWORK_CALLS=0' -f $assertions,$timeout.TotalMilliseconds,$milliseconds)

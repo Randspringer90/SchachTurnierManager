@@ -1,6 +1,9 @@
 - 2026-07-09: ChatGPT RUN-11 Knowledge-Base-Readiness Parser-Hotfix (`scripts/Invoke-KnowledgeBaseReadiness.ps1`) -> 0.48.1.
 # KI-Prompt-Log — SchachTurnierManager
 
+- 2026-10-08: Abschlussintegration, identische Regex-Prüfung kompilieren;
+  [Prompt](prompts/20261008_1455_compiled_scanner.md),
+  [Bericht](reports/20261008_1455_compiled_scanner_REPORT.md).
 - 2026-10-08: Exakter Kontextnachweis für die erhöhte Scannerfrist;
   [Prompt](prompts/20261008_1523_timeout_pattern_context.md),
   [Bericht](reports/20261008_1523_timeout_pattern_context_REPORT.md).

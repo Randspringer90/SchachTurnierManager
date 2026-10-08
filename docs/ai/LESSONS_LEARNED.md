@@ -4,6 +4,13 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Laufzeitreserve ohne Semantikwechsel
+
+- Kontext: Wiederholter Remote-Timeout, genauer Regelpfad noch unbekannt.
+- Lesson: Ein positiver IsMatch-Lauf misst nicht die vollständige Match-Enumeration.
+- Konsequenz: Identische Ausdrücke beibehalten, Kaltlauf und Vollenumeration
+  vergleichen; auf ausdrücklichen Owner-Nachtrag weiterhin endliche Budgets
+  angemessen erhöhen und ausschließlich geschlossene Diagnosecodes ausgeben.
 ## 2026-10-08 — Defensive Musterdefinitionen bleiben hashgebunden
 
 - Kontext: Eine autorisierte Timeoutänderung verändert den Datei-Hash; der

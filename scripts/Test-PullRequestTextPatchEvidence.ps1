@@ -268,5 +268,5 @@ if($IsWindows){
 }
 Assert-Equal $policy.review.maxChangedFiles 3000 'unchanged files limit'
 Assert-Equal $policy.review.maxPatchBytes 5242880 'unchanged patch limit'
-Assert-Equal $policy.suspicious.regexTimeoutMilliseconds 100 'unchanged regex deadline'
+Assert-Equal $policy.suspicious.regexTimeoutMilliseconds 1000 'owner-authorized bounded regex deadline'
 Write-Output ('TEXT_PATCH_EVIDENCE_ASSERTIONS='+$script:assertions+' NETWORK_CALLS=0 PROVIDER_CALLS=0 CANDIDATE_EXECUTION=0')
