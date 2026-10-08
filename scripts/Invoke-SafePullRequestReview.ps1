@@ -132,6 +132,12 @@ function Get-OnlineReviewInput {
     if ($needsTextEvidence) {
         $headCommit = Invoke-TrustedGhJson -Context 'PR-Head-Git-Commit' -Arguments @('api',"repos/$Repository/git/commits/$([string]$metadata.headRefOid)")
         $baseCommit = Invoke-TrustedGhJson -Context 'PR-Base-Git-Commit' -Arguments @('api',"repos/$Repository/git/commits/$([string]$metadata.baseRefOid)")
+        # GitHub accepts commit-ish tree refs but echoes that ref as response.sha.
+        # Resolve the actual tree IDs from commit metadata before strict binding.
+        Assert-ReviewTextSha ([string]$headCommit.tree.sha)
+        Assert-ReviewTextSha ([string]$baseCommit.tree.sha)
+        $headTree = Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Head-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$headCommit.tree.sha)?recursive=1")
+        $baseTree = Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Base-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$baseCommit.tree.sha)?recursive=1")
         $comparison = Invoke-TrustedGhJson -Context 'PR-Merge-Base' -Arguments @('api',"repos/$Repository/compare/$([string]$metadata.baseRefOid)...$([string]$metadata.headRefOid)?per_page=1")
         $textBlobProvider = {
             param([string]$BlobSha,[int64]$ExpectedSize)
