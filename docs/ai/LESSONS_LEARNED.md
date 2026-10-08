@@ -4,6 +4,16 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Previewfreigabe muss den importierten Auftrag binden
+
+- CSV-Vorschauen brauchen Turnier-, Inhalts-, Options- und Generationsbindung.
+  Abort allein ist kein Beweis; Tests muessen spaete Antworten auch bei ignoriertem Abort liefern.
+- Identitaet unmittelbar vor Import pruefen und synchron verbrauchen. UI-Buttonzustand
+  allein verhindert weder alte Event-Closures noch wiederholte Dispatches.
+- Echte KI-Ausfuehrungsfreigabe als COMMENTED Review und menschliches APPROVED/CODEOWNER
+  sind getrennte Mechanismen. Den aktuellen roten Check konkret lesen, bevor eine
+  enge Scanner-Bootstrap-Ausnahme beansprucht wird.
+
 ## 2026-10-07 — Abschlussreview muss echte Erfolgsbedingungen pruefen
 
 - Kontext: Getrennter Review des konsolidierten PR-Quellstands.

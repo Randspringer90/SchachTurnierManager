@@ -9,6 +9,7 @@
 import React from 'react';
 import { buildAuditJournalCsv } from '../lib/auditCsv';
 import { createTournamentProjectionLoader, type TournamentProjection } from '../lib/tournamentProjection';
+import { createPlayerImportPreviewGuard } from '../lib/playerImportPreview';
 import { LanguageSwitcher, useI18n } from '../i18n';
 import { describeApiError, healthProbeTimeoutMs, isApiTransportError, pairingRequestTimeoutMs, requestJson, requestText } from '../api/client';
 import {
@@ -232,6 +233,9 @@ export function App() {
   const [csvContent, setCsvContent] = React.useState('Name;Verein;Geburtsjahr;Geschlecht;DWZ;DWZIndex;Elo;TWZ;FIDE-ID;DSB-ID;Titel;Status;Notizen\n');
   const [replacePlayers, setReplacePlayers] = React.useState(false);
   const [importPreview, setImportPreview] = React.useState<PlayerImportPreview | null>(null);
+  const [importPreviewGuard] = React.useState(() => createPlayerImportPreviewGuard<PlayerImportPreview>({
+    tournamentId: selectedId, content: csvContent, replaceExisting: replacePlayers,
+  }));
   const [formatImportResult, setFormatImportResult] = React.useState<{ added: number; errors: string[] } | null>(null);
   const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
@@ -270,12 +274,14 @@ export function App() {
   const setSelectedId = React.useCallback((id: string) => {
     if (projectionLoader.disposed) return;
     if (projectionLoader.select(id)) {
+      importPreviewGuard.update({ ...importPreviewGuard.inputs, tournamentId: id });
+      setImportPreview(null); setConfirmWarningImport(false);
       setPairingQualityReports({}); setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false);
       setChess960DialogRound(null); setPendingResultChange(null); setLastResultChange(null); setBoardDiceModal(null);
       setActionConfirm(null); setError(null);
     }
     setSelectedIdState(id);
-  }, [projectionLoader]);
+  }, [projectionLoader, importPreviewGuard]);
 
   const [tournamentListLoader] = React.useState(() => {
     const loader = createTournamentProjectionLoader<Tournament[]>(state => {
@@ -291,8 +297,8 @@ export function App() {
 
   React.useEffect(() => {
     projectionLoader.resume(); tournamentListLoader.resume();
-    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); };
-  }, [projectionLoader, tournamentListLoader]);
+    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); };
+  }, [projectionLoader, tournamentListLoader, importPreviewGuard]);
 
   const loadTournaments = React.useCallback(async (): Promise<Tournament[] | null> => {
     let data: Tournament[] | null = null;
@@ -1252,11 +1258,21 @@ export function App() {
   }
 
   function useSampleCsvTemplate(): void {
-    setCsvContent(sampleCsvTemplate);
-    setReplacePlayers(false);
+    updateCsvContent(sampleCsvTemplate);
+    updateReplacePlayers(false);
     setImportPreview(null);
     setConfirmWarningImport(false);
     setStatus('CSV-Beispielvorlage eingefügt. Bitte Daten anpassen und danach Import prüfen.');
+  }
+
+  function updateCsvContent(content: string): void {
+    importPreviewGuard.update({ ...importPreviewGuard.inputs, content });
+    setCsvContent(content); setImportPreview(null); setConfirmWarningImport(false);
+  }
+
+  function updateReplacePlayers(replaceExisting: boolean): void {
+    importPreviewGuard.update({ ...importPreviewGuard.inputs, replaceExisting });
+    setReplacePlayers(replaceExisting); setImportPreview(null); setConfirmWarningImport(false);
   }
 
   async function previewPlayersImport() {
@@ -1265,17 +1281,22 @@ export function App() {
       return;
     }
 
-    setError(null);
+    const request = importPreviewGuard.begin({ tournamentId: selectedTournament.id, content: csvContent, replaceExisting: replacePlayers });
+    if (!request) return;
+    setImportPreview(null); setConfirmWarningImport(false); setError(null);
     try {
-      const preview = await requestJson<PlayerImportPreview>(`/api/tournaments/${selectedTournament.id}/players/preview-import.csv`, {
+      const preview = await requestJson<PlayerImportPreview>(`/api/tournaments/${request.tournamentId}/players/preview-import.csv`, {
         method: 'POST',
-        body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
+        body: JSON.stringify({ content: request.content, replaceExisting: request.replaceExisting }),
+        signal: request.signal,
       });
+      if (!importPreviewGuard.accept(request, preview)) return;
       setImportPreview(preview);
       setConfirmWarningImport(false);
       const blockerText = preview.hasBlockingIssues ? ' Blockierende Probleme müssen vor dem Import behoben werden.' : '';
       setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
     } catch (ex) {
+      if (!importPreviewGuard.isCurrent(request)) return;
       reportActionFailure('CSV konnte nicht geprüft werden', ex);
     }
   }
@@ -1310,7 +1331,8 @@ export function App() {
       return;
     }
 
-    if (!importPreview) {
+    const identity = { tournamentId: selectedTournament.id, content: csvContent, replaceExisting: replacePlayers };
+    if (!importPreview || !importPreviewGuard.matches(identity, importPreview)) {
       setError('Bitte CSV zuerst prüfen.');
       return;
     }
@@ -1331,16 +1353,21 @@ export function App() {
     }
 
     setError(null);
+    // Consume before dispatch: double clicks and older preview replies cannot
+    // authorize a second import. The payload below is the validated snapshot.
+    importPreviewGuard.invalidate();
+    setImportPreview(null); setConfirmWarningImport(false);
+    const selection = projectionLoader.capture(identity.tournamentId);
     try {
-      const imported = await requestJson<Player[]>(`/api/tournaments/${selectedTournament.id}/players/import.csv`, {
+      const imported = await requestJson<Player[]>(`/api/tournaments/${identity.tournamentId}/players/import.csv`, {
         method: 'POST',
-        body: JSON.stringify({ content: csvContent, replaceExisting: replacePlayers })
+        body: JSON.stringify({ content: identity.content, replaceExisting: identity.replaceExisting })
       });
-      setImportPreview(null);
-      setConfirmWarningImport(false);
+      if (!selection || !projectionLoader.isCurrent(selection)) return;
       setStatus(`${imported.length} Teilnehmer importiert.`);
-      await refresh(selectedTournament.id);
+      await refresh(identity.tournamentId);
     } catch (ex) {
+      if (!selection || !projectionLoader.isCurrent(selection)) return;
       reportActionFailure('Teilnehmerimport fehlgeschlagen', ex);
     }
   }
@@ -3692,12 +3719,12 @@ function openRoundPrint(roundNumber: number) {
               <section>
                 <h4>Teilnehmer-CSV</h4>
                 <p className="muted csv-reimport-note">{csvReimportNote(lang)}</p>
-                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => { setCsvContent(event.target.value); setImportPreview(null); setConfirmWarningImport(false); }} rows={7} />
-                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setReplacePlayers(event.target.checked); setImportPreview(null); setConfirmWarningImport(false); }} /> vorhandene Teilnehmer ersetzen</label>
+                <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => updateCsvContent(event.target.value)} rows={7} />
+                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateReplacePlayers(event.target.checked)} /> vorhandene Teilnehmer ersetzen</label>
                 <div className="actions">
                   <button type="button" className="secondary" onClick={() => useSampleCsvTemplate()}>CSV-Vorlage einsetzen</button>
                   <button type="button" onClick={() => void previewPlayersImport()} disabled={!selectedTournament || !csvContent.trim()}>Import prüfen</button>
-                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || importPreview.hasBlockingIssues || (importPreview.warningRows > 0 && !confirmWarningImport)}>CSV importieren</button>
+                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || !importPreviewGuard.matches({ tournamentId: selectedTournament.id, content: csvContent, replaceExisting: replacePlayers }, importPreview) || importPreview.hasBlockingIssues || (importPreview.warningRows > 0 && !confirmWarningImport)}>CSV importieren</button>
                   <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>CSV exportieren</button>
                 </div>
                 {importPreview && (

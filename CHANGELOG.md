@@ -1,5 +1,7 @@
 ## Unreleased (development)
 
+- CSV-Spielerimport bindet die Vorschau an Turnier, exakten CSV-Inhalt, Ersetzen-Option und Request-Generation; verspaetete Antworten werden verworfen und der Importauftrag vor Versand erneut geprueft. Acht Regressionen und echte headless React-Szenarien sichern den Ablauf ab.
+
 - STM-INT-002, Integrationskandidat: Inhalte aller aktuell offenen PRs werden auf dem aktuellen development-Stand adaptiert und konsolidiert; main-Nachweis und erforderliche GitHub-Reviews bleiben eigene Abschlussgates. Historische lokale Integrationsbehauptungen ersetzen diesen Nachweis nicht.
 - Teilnehmerimport: mehrzeilige CSV-Felder/BOM, sichere Unicode-Dekodierung, Geburtsdatumvalidierung und Export-Import-Verträge aus #79/#80/#86.
 - Bedienung und lokale Werkzeuge: modulare App-Shell, sichere Ergebniskorrekturen und Dialoge, API-Fehler/Timeouts, Startup-Recovery, persistente Sprache mit externem Abgleich, Katalogaudit, Datenschutzblende und vollständige Einstiegsliste. Backup-Vorschau/-Vergleich/-Fingerabdruck/-Set/-Leser/-Verschlüsselung, Audit-Leser/Dateinamen, Offline-FIDE-Suche/-Ratingprüfung, Live-Wertung und Browser-/Verbindungs-/Supportchecks werden gemeinsam überprüft.

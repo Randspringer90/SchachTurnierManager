@@ -231,6 +231,10 @@ function Stop-StmFirefoxSmoke {
         if (-not (Test-StmFirefoxPortFree $port)) { $failures.Add("Dedicated port remains occupied after owned-handle cleanup: $port") }
     }
     if ($failures.Count -gt 0) { throw ('Owned smoke cleanup failed; temp data retained: ' + ($failures -join ' | ')) }
+    if ($env:STM_SMOKE_RETAIN_DATA -ceq '1') {
+        Write-Host 'Owned smoke processes stopped and ports verified; temporary evidence retained by request.'
+        return
+    }
     if ($Context.Failed) {
         Write-Warning "Failed smoke retains local diagnostic logs after owned-handle cleanup and free-port verification: $($Context.DataDirectory)"
         return
