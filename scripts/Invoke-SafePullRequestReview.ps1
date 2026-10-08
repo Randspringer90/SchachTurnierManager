@@ -129,15 +129,23 @@ function Get-OnlineReviewInput {
         [IO.Path]::GetExtension($_.path).ToLowerInvariant() -notin
             (@($policies.review.blockedFileTypes)+@($policies.review.archiveFileTypes)+@('.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.woff','.woff2','.ttf','.mp4','.apk'))
     }).Count -gt 0
-    if ($needsTextEvidence) {
+    $needsPatternContext = @((Get-ReviewPropertyValue $policies.review 'sourcePatternContexts' @())).Count -gt 0
+    $patternContextHeadSha = ''
+    if ($needsTextEvidence -or $needsPatternContext) {
         $headCommit = Invoke-TrustedGhJson -Context 'PR-Head-Git-Commit' -Arguments @('api',"repos/$Repository/git/commits/$([string]$metadata.headRefOid)")
         $baseCommit = Invoke-TrustedGhJson -Context 'PR-Base-Git-Commit' -Arguments @('api',"repos/$Repository/git/commits/$([string]$metadata.baseRefOid)")
         # GitHub accepts commit-ish tree refs but echoes that ref as response.sha.
         # Resolve the actual tree IDs from commit metadata before strict binding.
         Assert-ReviewTextSha ([string]$headCommit.tree.sha)
         Assert-ReviewTextSha ([string]$baseCommit.tree.sha)
+        if ([string]$headCommit.sha -cne [string]$metadata.headRefOid -or [string]$baseCommit.sha -cne [string]$metadata.baseRefOid) { throw 'TEXT_EVIDENCE_COMMIT_BINDING' }
         $headTree = Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Head-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$headCommit.tree.sha)?recursive=1")
         $baseTree = Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Base-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$baseCommit.tree.sha)?recursive=1")
+        if ([string]$headTree.sha -cne [string]$headCommit.tree.sha -or [string]$baseTree.sha -cne [string]$baseCommit.tree.sha -or
+            [bool](Get-ReviewPropertyValue $headTree 'truncated' $true) -or [bool](Get-ReviewPropertyValue $baseTree 'truncated' $true)) { throw 'TEXT_EVIDENCE_TREE_BINDING' }
+        $patternContextHeadSha = [string]$metadata.headRefOid
+    }
+    if ($needsTextEvidence) {
         $comparison = Invoke-TrustedGhJson -Context 'PR-Merge-Base' -Arguments @('api',"repos/$Repository/compare/$([string]$metadata.baseRefOid)...$([string]$metadata.headRefOid)?per_page=1")
         $textBlobProvider = {
             param([string]$BlobSha,[int64]$ExpectedSize)
@@ -154,8 +162,9 @@ function Get-OnlineReviewInput {
             -BaseTree $baseTree -HeadTree $headTree -Comparison $comparison -ExpectedBaseSha ([string]$metadata.baseRefOid) `
             -ExpectedHeadSha ([string]$metadata.headRefOid) -BlobProvider $textBlobProvider -GitExecutable $gitApplication.Source `
             -ScratchParent $scratchParent -ReviewPolicy $policies.review)
-        $converted = ConvertFrom-GitHubPullRequestReviewData -ApiFiles $apiFiles -HeadTree $headTree -BaseTree $baseTree
     }
+    if ($needsTextEvidence -or $needsPatternContext) { $converted = ConvertFrom-GitHubPullRequestReviewData -ApiFiles $apiFiles -HeadTree $headTree -BaseTree $baseTree }
+    $metadata | Add-Member -NotePropertyName patternContextHeadSha -NotePropertyValue $patternContextHeadSha -Force
     $metadata | Add-Member -NotePropertyName gitTreeMetadataComplete -NotePropertyValue ([bool]$converted.treeMetadataComplete) -Force
     $blobProvider = {
         param([string]$BlobSha, [int64]$ExpectedSize)
@@ -190,6 +199,7 @@ function Get-OfflineReviewInput {
     # T4-Bundles koennen Gitmodus, Tree-Vollstaendigkeit und Patchvollstaendigkeit nicht selbst
     # attestieren. Offline bleibt deshalb ein Findings-/Planungsmodus und immer fail-closed.
     $metadata | Add-Member -NotePropertyName gitTreeMetadataComplete -NotePropertyValue $false -Force
+    $metadata | Add-Member -NotePropertyName patternContextHeadSha -NotePropertyValue '' -Force
     $files = @($rawFiles | ForEach-Object {
         [pscustomobject]@{
             path = [string](Get-ReviewPropertyValue $_ 'path' (Get-ReviewPropertyValue $_ 'filename' ''))
@@ -278,6 +288,7 @@ $metadataReport.bodyLength = ([string](Get-ReviewPropertyValue $metadata 'body' 
 $metadataReport.author = $safeAuthor
 $metadataReport.headRefName = $safeHeadRef
 $metadataReport.gitTreeMetadataComplete = [bool](Get-ReviewPropertyValue $metadata 'gitTreeMetadataComplete' $true)
+$metadataReport.patternContextHeadSha = [string](Get-ReviewPropertyValue $metadata 'patternContextHeadSha' '')
 $metadataReport.artifactAttestationStatus = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'artifactAttestationStatus' 'NOT_EVALUATED')) 40
 $metadataReport.artifactAttestationApprovalId = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'artifactAttestationApprovalId' '')) 80
 $metadataReport.state = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'state' 'UNKNOWN')) 30

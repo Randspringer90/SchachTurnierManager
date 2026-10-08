@@ -4,6 +4,13 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Scanner-Kontexte nur unveraenderlich klassifizieren
+
+- Kontext: Harmlose vollstaendige Dateien enthalten lexikalisch kritische Signale.
+- Lesson: Keine pauschale Dateityp-Ausnahme. Separater Volltextreview und exakte
+  Pfad-/Modus-/Vorher-/Nachher-Blob-/Regelbindung begrenzen die Klassifikation.
+- Konsequenz: HIGH-Finding und Owner-SHA-Freigabe erhalten; unbekannte Bytes,
+  Metadaten, Header, strukturelle Fehler und Timeouts bleiben blockiert.
 ## 2026-10-08 — GitHub-Tree-Metadaten an den echten Tree-SHA binden
 
 - Kontext: Der grosse Integrations-PR braucht den vollstaendigen Textpatch-Fallback.
