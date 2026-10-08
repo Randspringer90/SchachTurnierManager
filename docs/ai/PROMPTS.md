@@ -96,3 +96,4 @@ Kollegenpaket nach RUN-52 um einen Doppelklick-Installationspfad, Uninstall, Sho
 | 2026-10-08 | Codex | Finalintegration: fokussierter Scanner-Tree-Binding-Folgefix | [Prompt](prompts/20261008_1030_final-integration.md) | [Report](reports/20261008_1030_scanner_tree_binding_REPORT.md) |
 | 2026-10-08 | Codex | Finalintegration: exakte gepruefte Scanner-Kontexte | [Prompt](prompts/20261008_1120_scanner_context.md) | [Report](reports/20261008_1120_scanner_context_REPORT.md) |
 | 2026-10-08 | Codex | Finalintegration: native Scannergrenze und begrenzte Enumeration | [Prompt](prompts/20261008_1350_scanner_budget.md) | [Report](reports/20261008_1350_scanner_budget_REPORT.md) |
+| 2026-10-08 | Codex | Finalintegration: native Windows-Wurzelidentität | [Prompt](prompts/20261008_1425_windows_root_case.md) | [Report](reports/20261008_1425_windows_root_case_REPORT.md) |

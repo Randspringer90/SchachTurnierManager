@@ -4,6 +4,15 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Windows-Wurzeln nativ kanonisieren
+
+- Kontext: Die Remote-CI verwendet einen anders geschriebenen Laufwerksbuchstaben
+  als Git; eine strikte Stringprüfung lehnt dadurch dieselbe Repositorywurzel ab.
+- Lesson: Beide bereits existierenden Pfade über das native Dateisystem auflösen,
+  statt Pfadstrings pauschal ohne Beachtung der Dateisystemidentität umzuschreiben.
+- Konsequenz: Regression für die identische Wurzel und die weiterhin abgewiesene
+  Unterverzeichnis; derselbe native Vergleich schützt auch den CLI-Einstieg.
+
 ## 2026-10-08 — Native Scanzeit und Verwaltungsaufwand trennen
 
 - Kontext: Identische Scanner-Eingaben ergeben auf verschiedenen Runnern eine

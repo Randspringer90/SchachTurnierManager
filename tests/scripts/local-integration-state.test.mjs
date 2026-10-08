@@ -110,6 +110,18 @@ test('wrong repository fails closed without disclosing remote value', () => fixt
 test('subdirectory is not silently used as repository root', () => fixture(root => {
   mkdirSync(join(root, 'nested')); assert.deepEqual(inspectLocalState(join(root, 'nested')).errors, ['ROOT_REQUIRED']);
 }));
+test('Windows drive-letter casing still identifies the same canonical root', { skip: process.platform !== 'win32' }, () => fixture(root => {
+  const lowerDriveRoot = root[0].toLowerCase() + root.slice(1);
+  const report = inspectLocalState(lowerDriveRoot);
+  assert.equal(report.complete, true);
+  assert.equal(report.status, 'NO_VISIBLE_CHANGES');
+  assert.deepEqual(report.errors, []);
+}));
+test('Windows drive-letter normalization still rejects a nested directory', { skip: process.platform !== 'win32' }, () => fixture(root => {
+  mkdirSync(join(root, 'nested'));
+  const lowerDriveRoot = root[0].toLowerCase() + root.slice(1);
+  assert.deepEqual(inspectLocalState(join(lowerDriveRoot, 'nested')).errors, ['ROOT_REQUIRED']);
+}));
 test('nonexistent root reports only a bounded error code', () => {
   const report = inspectLocalState(join(tmpdir(), 'nonexistent-stm-fixture-173947'));
   assert.equal(report.complete, false); assert.deepEqual(report.errors, ['LOCAL_INSPECTION_FAILED']);

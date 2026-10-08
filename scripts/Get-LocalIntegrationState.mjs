@@ -48,7 +48,9 @@ export function inspectLocalState(directory = process.cwd()) {
     contentChangesDuringRead: 'NOT_DETERMINED', submoduleWorkingTrees: 'NOT_INSPECTED', errors: [],
   };
   try {
-    const requestedRoot = realpathSync(directory);
+    // Resolve through the native filesystem so Windows drive-letter spelling
+    // cannot make the same root differ from Git's canonical top-level path.
+    const requestedRoot = realpathSync.native(directory);
     // Ignore inherited Git routing/config overrides, not repository policies.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
     // GIT_NO_LAZY_FETCH stops partial clones from fetching missing objects (network + object writes).
@@ -67,7 +69,7 @@ export function inspectLocalState(directory = process.cwd()) {
       }
     };
     if (git(['rev-parse', '--is-inside-work-tree']).trim() !== 'true') throw Error('NOT_A_WORKTREE');
-    const root = realpathSync(git(['rev-parse', '--show-toplevel']).trim());
+    const root = realpathSync.native(git(['rev-parse', '--show-toplevel']).trim());
     if (root !== requestedRoot) throw Error('ROOT_REQUIRED');
     const remoteValues = args => git(args).replace(/\r?\n$/, '').split(/\r?\n/);
     const origins = remoteValues(['remote', 'get-url', '--all', 'origin']);
@@ -159,5 +161,5 @@ export function main(args = process.argv.slice(2), stdout = process.stdout, stde
 }
 
 let entry = false;
-try { entry = !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { /* Imported module. */ }
+try { entry = !!process.argv[1] && realpathSync.native(process.argv[1]) === realpathSync.native(fileURLToPath(import.meta.url)); } catch { /* Imported module. */ }
 if (entry) process.exitCode = main();
