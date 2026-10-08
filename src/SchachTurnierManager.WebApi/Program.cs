@@ -191,7 +191,6 @@ app.MapGet("/api/health", () => Results.Ok(new
     version = "0.54.1",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
-    databasePath = databaseFullPath,
     embeddedDashboard = embeddedDashboardAvailable,
     logging = new
     {
@@ -199,7 +198,7 @@ app.MapGet("/api/health", () => Results.Ok(new
         applicationLevel = configuredApplicationLogLevel,
         console = "simple-single-line",
         file = fileLoggingEnabled ? "enabled" : "disabled",
-        directory = runtimeLogDirectory,
+        storage = "local",
         retainedFiles = retainedLogFileCount,
         maxFileSizeBytes = maxLogFileSizeBytes
     }
@@ -512,7 +511,12 @@ app.MapPost("/api/tournaments/{id:guid}/results", (Guid id, RecordBoardResultReq
 {
     try
     {
-        return Results.Ok(service.RecordResult(id, request.RoundNumber, request.BoardNumber, request.Result));
+        return Results.Ok(service.RecordResult(
+            id,
+            request.RoundNumber,
+            request.BoardNumber,
+            request.Result,
+            request.ExpectedPreviousResult));
     }
     catch (InvalidOperationException ex)
     {
@@ -524,7 +528,12 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNu
 {
     try
     {
-        return Results.Ok(service.RecordResult(id, roundNumber, boardNumber, request.Result));
+        return Results.Ok(service.RecordResult(
+            id,
+            roundNumber,
+            boardNumber,
+            request.Result,
+            request.ExpectedPreviousResult));
     }
     catch (InvalidOperationException ex)
     {
@@ -890,6 +899,34 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/print/html", (Gu
     try
     {
         return ToDownload(service.ExportPrintableRoundHtml(id, roundNumber));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+// Tournament package: printable pack (standings, current-round result sheet,
+// operator safety hints) and the machine readable equivalent. The formatter and
+// the service layer already implemented both; only these routes were missing,
+// so Smoke-OperatorWorkflow could never reach the feature.
+app.MapGet("/api/tournaments/{id:guid}/package/print/html", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportPrintableTournamentPackageHtml(id));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/tournaments/{id:guid}/package/export.json", (Guid id, TournamentService service) =>
+{
+    try
+    {
+        return ToDownload(service.ExportTournamentPackageJson(id));
     }
     catch (InvalidOperationException ex)
     {

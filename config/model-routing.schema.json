@@ -12,8 +12,10 @@
     "policy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["qualityOverCost", "noSilentModelSwitch", "noAutomaticDowngradeForCriticalWork", "profileAvailabilityMustBeConfirmedByRuntime", "unavailableProfileAction", "criticalTaskCategories"],
+      "required": ["qualityOverCost", "noSilentModelSwitch", "noAutomaticDowngradeForCriticalWork", "profileAvailabilityMustBeConfirmedByRuntime", "unavailableProfileAction", "criticalTaskCategories", "newestStableModelPerProfile", "providerNeutralRules"],
       "properties": {
+        "newestStableModelPerProfile": { "const": true },
+        "providerNeutralRules": { "const": true },
         "qualityOverCost": { "const": true },
         "noSilentModelSwitch": { "const": true },
         "noAutomaticDowngradeForCriticalWork": { "const": true },

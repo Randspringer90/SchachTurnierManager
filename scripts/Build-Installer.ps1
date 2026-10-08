@@ -1,6 +1,9 @@
 param(
     [switch]$SkipPublish,
-    [string]$InnoSetupCompiler
+    [string]$InnoSetupCompiler,
+    [switch]$SignArtifacts,
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer
 )
 
 # Baut die Installer-EXE (Inno Setup) aus dem Desktop-Paket.
@@ -25,7 +28,18 @@ if (Test-Path $packageJsonPath) {
 }
 
 if (-not $SkipPublish -or -not (Test-Path (Join-Path $desktopRoot "app"))) {
-    & (Join-Path $PSScriptRoot "Publish-DesktopApp.ps1") -NoZip
+    $publishArgs = @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'Publish-DesktopApp.ps1'),'-NoZip')
+    if ($SignArtifacts) {
+        if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+            throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+        }
+        $publishArgs += @('-SignArtifacts','-SigningCertificateThumbprint',$SigningCertificateThumbprint)
+        if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+            $publishArgs += @('-TimestampServer',$TimestampServer)
+        }
+    }
+
+    & pwsh.exe @publishArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Publish-DesktopApp.ps1 fehlgeschlagen (ExitCode=$LASTEXITCODE)"
     }
@@ -77,6 +91,29 @@ $installerRoot = Join-Path $root 'output\installer'
 $setupFiles = @(Get-ChildItem -LiteralPath $installerRoot -Filter 'SchachTurnierManager_Setup_*.exe' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
 if ($setupFiles.Count -gt 0) {
     $latest = $setupFiles | Select-Object -First 1
+
+    if ($SignArtifacts) {
+        if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+            throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+        }
+
+        $signArgs = @(
+            '-NoLogo','-NoProfile','-ExecutionPolicy','Bypass',
+            '-File',(Join-Path $PSScriptRoot 'Sign-ReleaseArtifacts.ps1'),
+            '-ArtifactPath',$latest.FullName,
+            '-CertificateThumbprint',$SigningCertificateThumbprint,
+            '-ApproveSigning'
+        )
+        if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+            $signArgs += @('-TimestampServer',$TimestampServer)
+        }
+
+        & pwsh.exe @signArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "Sign-ReleaseArtifacts.ps1 fehlgeschlagen (ExitCode=$LASTEXITCODE)."
+        }
+    }
+
     $hash = Get-FileHash -LiteralPath $latest.FullName -Algorithm SHA256
     Write-Host "[Build-Installer] Setup: $($latest.FullName)"
     Write-Host "[Build-Installer] SHA256: $($hash.Hash)"

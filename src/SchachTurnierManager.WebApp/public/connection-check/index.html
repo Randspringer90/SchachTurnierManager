@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Verbindung zum Turnierrechner pr&uuml;fen | SchachTurnierManager</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><p><a href="/">Zur Turnierverwaltung</a></p><h1>Verbindung zum Turnierrechner pr&uuml;fen</h1>
+<p>Diese Pr&uuml;fung fragt nur den bestehenden Health-Endpunkt dieser Anwendung ab. Sie startet keine Dienste, &auml;ndert keine Daten, l&ouml;scht keine Caches und pr&uuml;ft keine fremden Server.</p>
+<p id="hint" class="notice"></p>
+<button id="start" type="button">Verbindung jetzt pr&uuml;fen</button><button id="cancel" type="button" disabled>Abbrechen</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<p>Pro Klick wird maximal eine Anfrage an <code>/api/health</code> gestellt. Die Frist umfasst auch das Lesen der Antwort. Es gibt kein automatisches Polling oder Weiterleiten auf eine andere Adresse.</p>
+<p>Eine empfangene Healthantwort belegt weder erfolgreiche Datenbankschreibvorg&auml;nge noch Internetzugang. Datenbankpfade, Protokollverzeichnisse und technische Antwortinhalte werden nicht angezeigt. Im separaten Vite-Entwicklungsbetrieb ist ein passendes Same-Origin-API-Routing erforderlich.</p>
+
+<noscript><p>JavaScript ist f&uuml;r diese Funktion erforderlich.</p></noscript></main><script type="module" src="./main.js"></script></body></html>

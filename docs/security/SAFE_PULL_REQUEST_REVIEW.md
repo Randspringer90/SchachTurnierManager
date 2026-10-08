@@ -106,6 +106,23 @@ externe Klassifizierung ist kein Repository-Gate und keine Pflichtabhängigkeit 
 
 ## CI-Grenze
 
+Fehlende oder unvollstaendige GitHub-Textpatches erhalten einen vollstaendigen
+Fallback nur aus regulaeren, exakt SHA-verifizierten Git-Blobs. Vor dem Abruf
+muessen aktuelle Base/Head, Vergleichsbasis, Root-Trees und die gesamte paginierte
+Dateiinventur uebereinstimmen. Striktes UTF-8, kein NUL und die bisherigen
+5-MiB-/3000-Dateien-Grenzen bleiben zwingend. Ein versteckter, zeitlich und nach
+Ausgabegroesse begrenzter nativer Git-Prozess vergleicht feste inerte Scratchdateien;
+er fuehrt weder PR-Dateien noch externe Diff-/Textconv-Helfer aus. Hunks und
+API-Zeilenstatistik muessen vollstaendig zusammenpassen. Fehler bleiben gesperrt.
+
+Die Prompt-Regel wird mit gleichem Literal und Timeout als kompilierte Regex
+ausgewertet. Ausschliesslich die exakt gebundene ASCII-Run-Regel verwendet einen
+aequivalenten linearen Boolean-Scanner; geaenderte Literale bleiben bei der
+urspruenglichen Regex. Jede Pruefung behaelt 100 ms, Timeout bleibt CRITICAL.
+Eine neue Reviewer-Version muss regulaer im vertrauenswuerdigen Base angenommen
+werden. Kandidaten-Runtime und selbst erklaerte Offline-Provenienz sind keine
+Freigabe. Lexikalische Critical-Treffer werden dadurch nicht dispensiert.
+
 Der Check `pr-static-security` verwendet nach Integration dieses Pakets ausschließlich das
 geprüfte Skript aus dem Base-SHA. Die Workflowdefinition eines `pull_request`-Laufs bleibt
 eine technische GitHub-Actions-Vertrauensgrenze; CODEOWNERS, Rulesets und Owner-Final-Review

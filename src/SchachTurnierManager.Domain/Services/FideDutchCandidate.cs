@@ -37,8 +37,8 @@ public sealed class FideDutchCandidateEvaluator(FideDutchAbsoluteCriteria criter
     /// Unterschied entscheidet.
     /// </summary>
     /// <param name="byeAssignee">
-    /// Der Spieler, der in diesem Kandidaten das Freilos bekäme, oder <c>null</c>. Nur im letzten
-    /// Bracket besetzt — dort entscheiden [C5] und [C9] mit.
+    /// Der tatsächliche Freilos-Empfänger für [C5] oder <c>null</c>. [C9] gilt nur, wenn
+    /// dieser Kandidat genau diesen einen Spieler abfloatet (Art. 2.4.4, Anmerkung).
     /// </param>
     /// <param name="roundsPlayed">Bisher gespielte Runden; nötig für [C9].</param>
     public IReadOnlyList<decimal> Evaluate(
@@ -69,14 +69,14 @@ public sealed class FideDutchCandidateEvaluator(FideDutchAbsoluteCriteria criter
             vector.Add(decimal.MinValue);   // "kein weiterer Downfloater" ist besser als jeder
         }
 
-        // [C8] Art. 2.4.3 wird NICHT hier bewertet: "Waehle die Downfloater so, dass im folgenden
-        // Bracket [C1]-[C7] erfuellbar bleiben" ist eine Aussage ueber den REST der Runde. Das
-        // erledigt das Backtracking in FideDutchPairingStrategy - ein Kandidat, der die Runde
-        // unvollendbar macht, wird dort verworfen (zusammen mit [C4], Art. 2.2.1).
+        // C8 wird von der Strategie zwischen diesem C5-C7-Präfix und C9 eingefügt:
+        // verglichen wird C5-C7 des tatsächlich vollständig gepaarten folgenden Brackets.
 
         // [C9] Art. 2.4.4 - Zahl der ungespielten Partien des Freilos-Empfaengers minimieren.
         // Ungespielt = Runden ohne Partie am Brett (fruehere Freilose, kampflose Ergebnisse).
-        vector.Add(byeAssignee is null ? decimal.MinValue : roundsPlayed - byeAssignee.PlayedColours.Count);
+        var appliesC9 = byeAssignee is not null && candidate.Downfloaters.Count == 1 &&
+            candidate.Downfloaters[0].Player.Id == byeAssignee.Player.Id;
+        vector.Add(appliesC9 ? roundsPlayed - byeAssignee!.PlayedColours.Count : decimal.MinValue);
 
         var allocations = candidate.Pairs
             .Select(pair => colours.Allocate(pair.A, pair.B, initialColour))
@@ -117,10 +117,205 @@ public sealed class FideDutchCandidateEvaluator(FideDutchAbsoluteCriteria criter
         // entscheiden ganze Runden, wenn alles bis [C17] gleichsteht (Golden-Turnier A R5). Die
         // aeltere Fassung formuliert denselben Gedanken klarer: "minimize the score differences of
         // players who receive the SAME downfloat as two rounds before".
-        AddRepeatedFloatScoreDifferences(vector, candidate, bracket, twoRoundsBack: false);
-        AddRepeatedFloatScoreDifferences(vector, candidate, bracket, twoRoundsBack: true);
+        AddRepeatedFloatScoreDifferences(vector, candidate, bracket, twoRoundsBack: false); // C18
+        AddRepeatedUpfloatScoreDifferences(vector, candidate, bracket, twoRoundsBack: false); // C19
+        AddRepeatedFloatScoreDifferences(vector, candidate, bracket, twoRoundsBack: true); // C20
+        AddRepeatedUpfloatScoreDifferences(vector, candidate, bracket, twoRoundsBack: true); // C21
 
         return vector;
+    }
+
+    /// <summary>
+    /// Eine konservative Untergrenze für einen festen C6-Wert. Die Strategie ergänzt C8 und
+    /// den rundenweiten C5-Wert, bevor eine vollständige Paarung vorzeitig angenommen wird.
+    /// </summary>
+    public IReadOnlyList<decimal> LowerBound(
+        FideDutchBracket bracket,
+        int downfloatCount,
+        bool hasBye,
+        int roundsPlayed = 0,
+        IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>? pairedPrefix = null)
+    {
+        if (downfloatCount < 0 || downfloatCount > bracket.Players.Count ||
+            (bracket.Players.Count - downfloatCount) % 2 != 0 ||
+            !bracket.IsHomogeneous && downfloatCount < bracket.Mdps.Count - bracket.Residents.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(downfloatCount));
+        }
+
+        var prefix = pairedPrefix ?? Array.Empty<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>();
+        var allocations = prefix.Select(pair => colours.Allocate(pair.A, pair.B, initialColour)).ToArray();
+        var prefixCandidate = new FideDutchCandidate(prefix, Array.Empty<FideDutchPlayerProfile>(), 0);
+        var eligible = bracket.Players.Where(FideDutchAbsoluteCriteria.MayReceiveBye).ToArray();
+        var lowerBound = new List<decimal>
+        {
+            hasBye && eligible.Length > 0 ? eligible.Min(profile => profile.Points) : decimal.MinValue,
+            downfloatCount
+        };
+        lowerBound.AddRange(bracket.Players.Select(profile => profile.Points)
+            .OrderBy(points => points).Take(downfloatCount).OrderByDescending(points => points));
+        Pad(lowerBound, bracket.Players.Count - downfloatCount);
+
+        // C9 ist nur bei genau einem späteren Freilos-Absteiger aktiv. Die unter allen
+        // Berechtigten kleinste Zahl ist eine Untergrenze; kein historischer Wert wird erfunden.
+        lowerBound.Add(hasBye && downfloatCount == 1 && eligible.Length > 0
+            ? eligible.Min(profile => roundsPlayed - profile.PlayedColours.Count)
+            : decimal.MinValue);
+        lowerBound.Add(allocations.Sum(CountTopscorerColourDifferenceViolations)); // C10
+        lowerBound.Add(allocations.Sum(CountTopscorerTripleColour)); // C11
+        lowerBound.Add(DeniedPreferenceLowerBound(bracket, downfloatCount, FideColourPreferenceStrength.Mild, allocations));
+        lowerBound.Add(DeniedPreferenceLowerBound(bracket, downfloatCount, FideColourPreferenceStrength.Strong, allocations));
+        lowerBound.Add(RepeatedResidentDownLowerBound(bracket, downfloatCount, twoRoundsBack: false));
+        lowerBound.Add(Math.Max(RepeatedOpponentUpLowerBound(bracket, downfloatCount, twoRoundsBack: false),
+            CountMdpOpponents(prefixCandidate, bracket, FideFloat.Up, twoRoundsBack: false)));
+        lowerBound.Add(RepeatedResidentDownLowerBound(bracket, downfloatCount, twoRoundsBack: true));
+        lowerBound.Add(Math.Max(RepeatedOpponentUpLowerBound(bracket, downfloatCount, twoRoundsBack: true),
+            CountMdpOpponents(prefixCandidate, bracket, FideFloat.Up, twoRoundsBack: true)));
+
+        AddRepeatedDownfloatLowerBound(lowerBound, bracket, twoRoundsBack: false, prefix);
+        AddRepeatedUpfloatLowerBound(lowerBound, bracket, downfloatCount, twoRoundsBack: false, prefix);
+        AddRepeatedDownfloatLowerBound(lowerBound, bracket, twoRoundsBack: true, prefix);
+        AddRepeatedUpfloatLowerBound(lowerBound, bracket, downfloatCount, twoRoundsBack: true, prefix);
+
+        return lowerBound;
+    }
+
+    public bool IsTheoreticalMinimum(
+        IReadOnlyList<decimal> score,
+        FideDutchBracket bracket,
+        int downfloatCount,
+        bool hasBye) =>
+        Compare(score, LowerBound(bracket, downfloatCount, hasBye)) == 0;
+
+    private static int DeniedPreferenceLowerBound(
+        FideDutchBracket bracket,
+        int downfloatCount,
+        FideColourPreferenceStrength strength,
+        IReadOnlyList<FideColourAllocation> allocations)
+    {
+        var placed = allocations.SelectMany(allocation => new[] { allocation.White.Player.Id, allocation.Black.Player.Id })
+            .ToHashSet();
+        var preferences = bracket.Players.Where(profile => !placed.Contains(profile.Player.Id))
+            .Select(profile => profile.Preference).Where(preference => preference.Strength >= strength).ToArray();
+        var whites = preferences.Count(preference => preference.Colour == ChessColor.White);
+        var blacks = preferences.Count(preference => preference.Colour == ChessColor.Black);
+        var remainingPairs = (bracket.Players.Count - downfloatCount) / 2 - allocations.Count;
+        var deniedSoFar = allocations.Sum(allocation => CountDeniedPreferences(allocation, strength));
+        // Bekannte Paare bleiben unverändert. Unter allen übrigen Spielern können höchstens d
+        // abfloaten; jede Farbe steht nur noch remainingPairs Mal zur Verfügung.
+        return deniedSoFar + Math.Max(0, Math.Max(whites, blacks) - downfloatCount - remainingPairs);
+    }
+
+    private static int RepeatedResidentDownLowerBound(
+        FideDutchBracket bracket, int downfloatCount, bool twoRoundsBack)
+    {
+        var repeated = bracket.Residents.Count(profile =>
+            (twoRoundsBack ? profile.FloatTwoRoundsBack : profile.FloatLastRound) == FideFloat.Down);
+        // Selbst wenn alle anderen Spieler abfloaten, müssen diese restlichen d Plätze belegt sein.
+        return Math.Max(0, downfloatCount - (bracket.Players.Count - repeated));
+    }
+
+    private static int RepeatedOpponentUpLowerBound(
+        FideDutchBracket bracket, int downfloatCount, bool twoRoundsBack)
+    {
+        if (bracket.IsHomogeneous)
+        {
+            return 0;
+        }
+
+        var minimumPairedMdps = Math.Max(0, bracket.Mdps.Count - downfloatCount);
+        var residentsWithoutRepeat = bracket.Residents.Count(profile =>
+            (twoRoundsBack ? profile.FloatTwoRoundsBack : profile.FloatLastRound) != FideFloat.Up);
+        return Math.Max(0, minimumPairedMdps - residentsWithoutRepeat);
+    }
+
+    private static void AddRepeatedUpfloatLowerBound(
+        List<decimal> vector, FideDutchBracket bracket, int downfloatCount, bool twoRoundsBack,
+        IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)> prefix)
+    {
+        var minimumCount = RepeatedOpponentUpLowerBound(bracket, downfloatCount, twoRoundsBack);
+        var differences = new List<decimal>();
+        foreach (var (a, b) in prefix)
+        {
+            var opponent = IsMdp(a, bracket) ? b : IsMdp(b, bracket) ? a : null;
+            if (opponent is not null &&
+                (twoRoundsBack ? opponent.FloatTwoRoundsBack : opponent.FloatLastRound) == FideFloat.Up)
+            {
+                differences.Add(Math.Abs(a.Points - b.Points));
+            }
+        }
+
+        var additionalMinimum = Math.Max(0, minimumCount - differences.Count);
+        if (additionalMinimum > 0)
+        {
+            var minimumDifference = bracket.Mdps.Min(mdp => bracket.Residents
+                .Where(profile => (twoRoundsBack ? profile.FloatTwoRoundsBack : profile.FloatLastRound) == FideFloat.Up)
+                .Min(resident => Math.Abs(mdp.Points - resident.Points)));
+            for (var index = 0; index < additionalMinimum; index++)
+            {
+                differences.Add(minimumDifference);
+            }
+        }
+
+        // Bekannte Differenzen plus die mindestens noch erforderlichen Wiederholungen.
+        // Weitere optionale Differenzen würden den absteigend sortierten Vektor nur vergrößern.
+        vector.AddRange(differences.OrderByDescending(value => value));
+        Pad(vector, bracket.Mdps.Count - differences.Count);
+    }
+
+    private static void AddRepeatedDownfloatLowerBound(
+        List<decimal> vector,
+        FideDutchBracket bracket,
+        bool twoRoundsBack,
+        IReadOnlyList<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)> prefix)
+    {
+        var differences = bracket.Mdps
+            .Where(profile => (twoRoundsBack ? profile.FloatTwoRoundsBack : profile.FloatLastRound) == FideFloat.Down)
+            .Select(profile =>
+            {
+                var pair = prefix.FirstOrDefault(pair => pair.A.Player.Id == profile.Player.Id || pair.B.Player.Id == profile.Player.Id);
+                if (pair.A is not null)
+                {
+                    var opponent = pair.A.Player.Id == profile.Player.Id ? pair.B : pair.A;
+                    return Math.Abs(profile.Points - opponent.Points);
+                }
+
+                return bracket.IsHomogeneous ? 0m :
+                    bracket.Residents.Select(resident => Math.Abs(profile.Points - resident.Points))
+                        .Append(Math.Abs(profile.Points - bracket.ResidentPoints) + 1m).Min();
+            })
+            .OrderByDescending(value => value).ToArray();
+        vector.AddRange(differences);
+        Pad(vector, bracket.Mdps.Count - differences.Length);
+    }
+
+    private static void Pad(List<decimal> vector, int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            vector.Add(decimal.MinValue);
+        }
+    }
+
+    private static void AddRepeatedUpfloatScoreDifferences(
+        List<decimal> vector,
+        FideDutchCandidate candidate,
+        FideDutchBracket bracket,
+        bool twoRoundsBack)
+    {
+        var differences = new List<decimal>();
+        foreach (var (a, b) in candidate.Pairs)
+        {
+            var opponent = IsMdp(a, bracket) ? b : IsMdp(b, bracket) ? a : null;
+            if (opponent is not null &&
+                (twoRoundsBack ? opponent.FloatTwoRoundsBack : opponent.FloatLastRound) == FideFloat.Up)
+            {
+                differences.Add(Math.Abs(a.Points - b.Points));
+            }
+        }
+
+        vector.AddRange(differences.OrderByDescending(value => value));
+        Pad(vector, bracket.Mdps.Count - differences.Count);
     }
 
     /// <summary>

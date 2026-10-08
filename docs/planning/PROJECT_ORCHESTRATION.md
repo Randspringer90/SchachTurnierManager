@@ -44,6 +44,23 @@ die fünf manifestierten PR-Review-Skills (`pull-request-security-review`,
 
 `scripts/Invoke-ReleaseGate.ps1` ist das Pflicht-Gate vor jedem Commit: `dotnet restore` → `dotnet build` → `dotnet test` → `npm install` + `npm run build` (WebApp) → `Pack-Portable`. Schaltbare Abkürzungen (`-SkipPack`, `-NoNpmInstall`, `-NoDotnetTest`) sind nur für lokale Iteration gedacht, nicht für Commits.
 
+## Manuelle Browsergates
+
+Zwei Smokes fahren einen echten headless Firefox über Marionette gegen das
+portable Paket. Beide sind bewusst **nicht** Teil des Release-Gates, weil sie
+eine lokale Firefox-Installation voraussetzen – vor einem Release-Candidate
+manuell ausführen:
+
+- `scripts/Smoke-FirefoxDialogs.ps1` – Zurücksetzen/Löschen, In-App-Dialoge
+  statt nativer Dialogketten (STM-UX-013).
+- `scripts/Smoke-FirefoxTournamentFlow.ps1` – kompletter Bedienablauf:
+  Turnier anlegen, Doppelklickschutz, Backend nicht erreichbar, Erholung ohne
+  Browserneustart, Runden-/Ergebnis-/Tabellenablauf, Anwendungsneustart und ein
+  Button-Crawl über alle Bereiche. `-SkipPack` überspringt den Paketbau,
+  `-EvidenceDirectory` schreibt Screenshots und `button-matrix.csv`.
+
+Hintergrund und Befundliste: `docs/reports/2026-07-22-local-stabilization.md`.
+
 ## CommitGuard
 
 `scripts/Commit-If-Green.ps1 -Message "..." [-Push]`:

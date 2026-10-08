@@ -29,9 +29,12 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+foreach ($expectedSha in @($ExpectedHeadSha,$ExpectedBaseSha)) {
+    if ($expectedSha -and $expectedSha -cnotmatch '^[0-9a-f]{40}$') { throw 'Erwarteter Event-SHA ist ungueltig.' }
+}
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $commonPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'lib/PullRequestReviewCommon.ps1'))
-foreach ($trustedPath in @($PSCommandPath,$PSScriptRoot,$repoRoot,$commonPath,(Join-Path $repoRoot 'SchachTurnierManager.sln'))) {
+foreach ($trustedPath in @($PSCommandPath,$PSScriptRoot,$repoRoot,$commonPath,(Join-Path $PSScriptRoot 'lib/PullRequestTextPatchEvidence.ps1'),(Join-Path $repoRoot 'SchachTurnierManager.sln'))) {
     $cursor = [IO.Path]::GetFullPath($trustedPath)
     while ($cursor) {
         $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
@@ -58,14 +61,19 @@ if (-not $Offline) {
     $trustedRuntimeRef = if ($ExpectedBaseSha) { $ExpectedBaseSha } else { 'refs/remotes/origin/development' }
     $runtimePaths = @(
         'scripts/Invoke-SafePullRequestReview.ps1','scripts/lib/PullRequestReviewCommon.ps1',
-        'scripts/lib/PullRequestArtifactVerification.ps1',
+        'scripts/lib/PullRequestArtifactVerification.ps1','scripts/lib/PullRequestTextPatchEvidence.ps1',
         'config/pull-request-review-policy.json','config/pull-request-artifact-attestations.json','config/dependency-review-policy.json',
         'config/suspicious-change-patterns.json','config/pr-adoption-policy.json'
     )
+    foreach ($runtimePath in $runtimePaths) {
+        & git -C $repoRoot cat-file -e ($trustedRuntimeRef + ':' + $runtimePath) 2>$null
+        if ($LASTEXITCODE -ne 0) { throw 'Review-Runtime fehlt im erwarteten vertrauenswuerdigen Base-Stand.' }
+    }
     & git -C $repoRoot diff --quiet --no-ext-diff --no-textconv $trustedRuntimeRef -- @runtimePaths
     if ($LASTEXITCODE -ne 0) { throw 'Review-Runtime weicht vom erwarteten vertrauenswuerdigen Base-Stand ab.' }
 }
 . $commonPath
+. (Join-Path $PSScriptRoot 'lib/PullRequestTextPatchEvidence.ps1')
 Assert-ReviewRepositoryIdentifier -Repository $Repository
 if (-not $Offline -and $Repository -cne 'Randspringer90/SchachTurnierManager') { throw 'Online prueft dieses Projektskript ausschliesslich das kanonische Repository.' }
 $policies = Import-PullRequestReviewPolicies -RepositoryRoot $repoRoot
@@ -81,15 +89,15 @@ if ($IntegrationBranchName -cne "integration/pr-$PullRequestNumber-safe-adoption
 if ($PostFeedback -and $SkipGitHubComment) { $PostFeedback = $false }
 if ($PostFeedback) { throw 'Der statische Reviewer darf kein GitHub-Feedback posten; validiertes Posting ist dem Pull-Request-Integrator ueber New-PullRequestFeedback.ps1 vorbehalten.' }
 if ($RunDefenderScan) { throw 'Defender-Scan erfordert ein separat freigegebenes isoliertes Payload-Verzeichnis und ist in der statischen Phase gesperrt.' }
-foreach ($expectedSha in @($ExpectedHeadSha,$ExpectedBaseSha)) {
-    if ($expectedSha -and -not (Test-ReviewSha $expectedSha)) { throw 'Erwarteter Event-SHA ist ungueltig.' }
-}
 
 function Invoke-TrustedGhJson {
-    param([Parameter(Mandatory)][string[]]$Arguments, [Parameter(Mandatory)][string]$Context)
-    $raw = & gh @Arguments 2>$null
-    if ($LASTEXITCODE -ne 0) { throw "$Context konnte nicht gelesen werden." }
-    try { return (($raw -join "`n") | ConvertFrom-Json) } catch { throw "$Context lieferte ungueltiges JSON." }
+    param([Parameter(Mandatory)][string[]]$Arguments, [Parameter(Mandatory)][string]$Context,
+        [ValidateRange(1,7522080)][int]$MaximumResponseBytes=5242880)
+    $ghApplication = Get-Command gh -CommandType Application -ErrorAction Stop | Select-Object -First 1
+    $raw = Invoke-ReviewBoundedNativeRead -Executable $ghApplication.Source -Tool gh -Arguments $Arguments `
+        -WorkingDirectory $repoRoot -MaximumStdoutBytes $MaximumResponseBytes -DeadlineMilliseconds 30000
+    if ($raw.exitCode -ne 0) { throw "$Context konnte nicht gelesen werden." }
+    try { return ($raw.stdout | ConvertFrom-Json) } catch { throw "$Context lieferte ungueltiges JSON." }
 }
 
 function Get-OnlineReviewInput {
@@ -104,6 +112,10 @@ function Get-OnlineReviewInput {
         'api',"repos/$Repository/git/ref/heads/$BaseBranch"
     )
     $metadata | Add-Member -NotePropertyName currentTrustedBaseSha -NotePropertyValue ([string]$baseRef.object.sha) -Force
+    foreach ($liveSha in @([string]$metadata.headRefOid,[string]$metadata.baseRefOid,[string]$baseRef.object.sha)) { Assert-ReviewTextSha $liveSha }
+    if ([string]$metadata.baseRefName -cne $BaseBranch -or [string]$metadata.baseRefOid -cne [string]$baseRef.object.sha -or
+        ($ExpectedHeadSha -and [string]$metadata.headRefOid -cne $ExpectedHeadSha) -or
+        ($ExpectedBaseSha -and [string]$metadata.baseRefOid -cne $ExpectedBaseSha)) { throw 'Live PR/Base binding drift vor Text-Evidence.' }
     $pages = Invoke-TrustedGhJson -Context 'PR-Dateiliste' -Arguments @(
         'api',"repos/$Repository/pulls/$PullRequestNumber/files",'--paginate','--slurp'
     )
@@ -112,6 +124,47 @@ function Get-OnlineReviewInput {
     $headTree = Invoke-TrustedGhJson -Context 'PR-Head-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$metadata.headRefOid)?recursive=1")
     $baseTree = Invoke-TrustedGhJson -Context 'PR-Base-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$metadata.baseRefOid)?recursive=1")
     $converted = ConvertFrom-GitHubPullRequestReviewData -ApiFiles $apiFiles -HeadTree $headTree -BaseTree $baseTree
+    $needsTextEvidence = @($converted.files | Where-Object {
+        (-not $_.patchAvailable -or -not $_.patchComplete) -and
+        [IO.Path]::GetExtension($_.path).ToLowerInvariant() -notin
+            (@($policies.review.blockedFileTypes)+@($policies.review.archiveFileTypes)+@('.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.woff','.woff2','.ttf','.mp4','.apk'))
+    }).Count -gt 0
+    $needsPatternContext = @((Get-ReviewPropertyValue $policies.review 'sourcePatternContexts' @())).Count -gt 0
+    $patternContextHeadSha = ''
+    if ($needsTextEvidence -or $needsPatternContext) {
+        $headCommit = Invoke-TrustedGhJson -Context 'PR-Head-Git-Commit' -Arguments @('api',"repos/$Repository/git/commits/$([string]$metadata.headRefOid)")
+        $baseCommit = Invoke-TrustedGhJson -Context 'PR-Base-Git-Commit' -Arguments @('api',"repos/$Repository/git/commits/$([string]$metadata.baseRefOid)")
+        # GitHub accepts commit-ish tree refs but echoes that ref as response.sha.
+        # Resolve the actual tree IDs from commit metadata before strict binding.
+        Assert-ReviewTextSha ([string]$headCommit.tree.sha)
+        Assert-ReviewTextSha ([string]$baseCommit.tree.sha)
+        if ([string]$headCommit.sha -cne [string]$metadata.headRefOid -or [string]$baseCommit.sha -cne [string]$metadata.baseRefOid) { throw 'TEXT_EVIDENCE_COMMIT_BINDING' }
+        $headTree = Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Head-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$headCommit.tree.sha)?recursive=1")
+        $baseTree = Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Base-Git-Tree' -Arguments @('api',"repos/$Repository/git/trees/$([string]$baseCommit.tree.sha)?recursive=1")
+        if ([string]$headTree.sha -cne [string]$headCommit.tree.sha -or [string]$baseTree.sha -cne [string]$baseCommit.tree.sha -or
+            [bool](Get-ReviewPropertyValue $headTree 'truncated' $true) -or [bool](Get-ReviewPropertyValue $baseTree 'truncated' $true)) { throw 'TEXT_EVIDENCE_TREE_BINDING' }
+        $patternContextHeadSha = [string]$metadata.headRefOid
+    }
+    if ($needsTextEvidence) {
+        $comparison = Invoke-TrustedGhJson -Context 'PR-Merge-Base' -Arguments @('api',"repos/$Repository/compare/$([string]$metadata.baseRefOid)...$([string]$metadata.headRefOid)?per_page=1")
+        $textBlobProvider = {
+            param([string]$BlobSha,[int64]$ExpectedSize)
+            Assert-ReviewTextSha $BlobSha
+            if ($ExpectedSize -lt 0 -or $ExpectedSize -gt 5242880) { throw 'Text blob size ungueltig.' }
+            $encodedBound=4L*[int64][Math]::Ceiling($ExpectedSize/3.0)+[int64][Math]::Ceiling($ExpectedSize/45.0)*4+65536
+            return Invoke-TrustedGhJson -Context 'SHA-gebundener PR-Text-Blob' -MaximumResponseBytes ([int]$encodedBound) -Arguments @('api',"repos/$Repository/git/blobs/$BlobSha")
+        }
+        $gitApplication = Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1
+        $scratchParent = Join-Path $repoRoot 'output'
+        [void](Assert-NoReviewReparseAncestor -Path $scratchParent -Context 'Text evidence scratch parent')
+        if (-not (Test-Path -LiteralPath $scratchParent -PathType Container)) { [void](New-Item -ItemType Directory -Path $scratchParent) }
+        $apiFiles = @(Add-ReviewVerifiedTextPatchEvidence -ApiFiles $apiFiles -Metadata $metadata -BaseCommit $baseCommit -HeadCommit $headCommit `
+            -BaseTree $baseTree -HeadTree $headTree -Comparison $comparison -ExpectedBaseSha ([string]$metadata.baseRefOid) `
+            -ExpectedHeadSha ([string]$metadata.headRefOid) -BlobProvider $textBlobProvider -GitExecutable $gitApplication.Source `
+            -ScratchParent $scratchParent -ReviewPolicy $policies.review)
+    }
+    if ($needsTextEvidence -or $needsPatternContext) { $converted = ConvertFrom-GitHubPullRequestReviewData -ApiFiles $apiFiles -HeadTree $headTree -BaseTree $baseTree }
+    $metadata | Add-Member -NotePropertyName patternContextHeadSha -NotePropertyValue $patternContextHeadSha -Force
     $metadata | Add-Member -NotePropertyName gitTreeMetadataComplete -NotePropertyValue ([bool]$converted.treeMetadataComplete) -Force
     $blobProvider = {
         param([string]$BlobSha, [int64]$ExpectedSize)
@@ -146,6 +199,7 @@ function Get-OfflineReviewInput {
     # T4-Bundles koennen Gitmodus, Tree-Vollstaendigkeit und Patchvollstaendigkeit nicht selbst
     # attestieren. Offline bleibt deshalb ein Findings-/Planungsmodus und immer fail-closed.
     $metadata | Add-Member -NotePropertyName gitTreeMetadataComplete -NotePropertyValue $false -Force
+    $metadata | Add-Member -NotePropertyName patternContextHeadSha -NotePropertyValue '' -Force
     $files = @($rawFiles | ForEach-Object {
         [pscustomobject]@{
             path = [string](Get-ReviewPropertyValue $_ 'path' (Get-ReviewPropertyValue $_ 'filename' ''))
@@ -198,7 +252,8 @@ if (-not $Offline) {
         'api',"repos/$Repository/git/ref/heads/$BaseBranch"
     )
     if ([string]$finalState.headRefOid -cne $headSha -or [string]$finalState.baseRefOid -cne $baseSha -or
-        [string]$finalState.baseRefName -cne $BaseBranch -or [string]$finalBaseRef.object.sha -cne [string]$metadata.currentTrustedBaseSha -or
+        [string]$finalState.baseRefName -cne $BaseBranch -or [string]$finalState.state -cne [string]$metadata.state -or
+        [string]$finalBaseRef.object.sha -cne [string]$metadata.currentTrustedBaseSha -or
         ($ExpectedHeadSha -and [string]$finalState.headRefOid -cne $ExpectedHeadSha) -or
         ($ExpectedBaseSha -and [string]$finalState.baseRefOid -cne $ExpectedBaseSha)) {
         throw 'PR-Head oder Basebranch hat sich waehrend der statischen Pruefung geaendert; Review neu starten.'
@@ -233,6 +288,7 @@ $metadataReport.bodyLength = ([string](Get-ReviewPropertyValue $metadata 'body' 
 $metadataReport.author = $safeAuthor
 $metadataReport.headRefName = $safeHeadRef
 $metadataReport.gitTreeMetadataComplete = [bool](Get-ReviewPropertyValue $metadata 'gitTreeMetadataComplete' $true)
+$metadataReport.patternContextHeadSha = [string](Get-ReviewPropertyValue $metadata 'patternContextHeadSha' '')
 $metadataReport.artifactAttestationStatus = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'artifactAttestationStatus' 'NOT_EVALUATED')) 40
 $metadataReport.artifactAttestationApprovalId = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'artifactAttestationApprovalId' '')) 80
 $metadataReport.state = ConvertTo-SafeReviewLabel ([string](Get-ReviewPropertyValue $metadata 'state' 'UNKNOWN')) 30
@@ -336,5 +392,14 @@ $summaryLines = @(
 
 Write-Host "PR_REVIEW_DECISION=$($analysis.decision)"
 Write-Host "PR_REVIEW_FINDINGS=$(@($analysis.findings).Count)"
+foreach ($code in @($analysis.findings | Where-Object severity -CEQ 'CRITICAL' | Select-Object -ExpandProperty code -Unique)) {
+    if ([string]$code -cmatch '\A[A-Z0-9_]{1,100}\z') { Write-Host "PR_REVIEW_BLOCKING_CODE=$code" }
+}
+foreach ($finding in @($analysis.findings | Where-Object { $_.severity -ceq 'CRITICAL' -and $_.code -ceq 'SCAN_TIMEOUT' })) {
+    if ([string]$finding.detail -cmatch '\ASCAN_TIMEOUT_PHASE=(PATTERN_NATIVE|BOUNDARY_NATIVE|BOUNDARY_ENUMERATION); SCAN_TIMEOUT_PATTERN=([A-Z_]{1,100})\z') {
+        Write-Host "PR_REVIEW_TIMEOUT_PHASE=$($Matches[1])"
+        Write-Host "PR_REVIEW_TIMEOUT_PATTERN=$($Matches[2])"
+    }
+}
 Write-Host 'FOREIGN_CODE_EXECUTED=false'
 exit 0

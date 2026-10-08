@@ -1,0 +1,17 @@
+.stm-startup-status {
+  box-sizing: border-box;
+  max-width: 44rem;
+  margin: 2rem auto;
+  padding: 1.25rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+  color: CanvasText;
+  background: Canvas;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}
+.stm-startup-status h1 { margin-top: 0; font-size: 1.5rem; }
+.stm-startup-status a { display: inline-block; padding: 0.5rem 0; }
+.stm-startup-status a:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.stm-startup-status[hidden],
+#root:not(:empty) + .stm-startup-status { display: none; }

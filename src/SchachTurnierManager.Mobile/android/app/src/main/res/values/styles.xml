@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">#2459A7</item>
+        <item name="android:windowBackground">@drawable/companion_splash</item>
+    </style>
+</resources>

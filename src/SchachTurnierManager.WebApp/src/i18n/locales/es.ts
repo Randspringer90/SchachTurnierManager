@@ -12,6 +12,7 @@ export const es: Partial<Messages> = {
   'backend.offline': 'no disponible',
 
   'language.label': 'Idioma',
+  'language.sessionOnly': 'El idioma solo se aplica a esta sesión: no se pudo guardar la selección en el navegador.',
 
   'operator.backend': 'Backend',
   'operator.tournament': 'Torneo',

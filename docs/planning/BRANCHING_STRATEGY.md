@@ -64,6 +64,15 @@ Regeln:
 - Nach dem Merge wird der Feature-Branch automatisch gelöscht (Repo-Einstellung).
 - Keine Secrets, Logs, Datenbanken, ZIPs, Dumps oder lokale Konfiguration committen.
 
+## Owner-Paketbranches
+
+`owner/STM-<BEREICH>-<NNN>-<slug>` (z. B. `owner/STM-INFRA-007-branch-policy`) ist der einzige
+Owner-Paketpfad nach `development`. Die Branch-Policy akzeptiert ihn nur mit OWNER-Autor und
+Head im kanonischen Repository. Der Name allein gibt nichts frei: Die Gate-Workflows verlangen
+weiterhin den SHA-gebundenen Owner-Review des exakten Heads. `feature/`, `fix/`, `security/`,
+`docs/` und `refactor/` sind kein Owner-Ausführungspfad. Details und Tests:
+[`OWNER_BRANCH_POLICY.md`](OWNER_BRANCH_POLICY.md).
+
 ## Sichere PR-Integrationsbranches
 
 `integration/pr-<nummer>-safe-adoption` ist ausschließlich für eine kontrollierte Übernahme

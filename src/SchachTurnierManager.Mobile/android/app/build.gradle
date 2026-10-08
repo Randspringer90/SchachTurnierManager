@@ -1,0 +1,31 @@
+import groovy.json.JsonSlurper
+
+plugins { id 'com.android.application' }
+
+def webPackage = rootProject.file('../../SchachTurnierManager.WebApp/package.json')
+def canonicalVersion = new JsonSlurper().parse(webPackage).version
+if (!(canonicalVersion instanceof String) || !(canonicalVersion ==~ /\d+\.\d+\.\d+/)) {
+    throw new GradleException('Companion needs the canonical three-part WebApp version.')
+}
+def parts = canonicalVersion.split('\\.').collect { it.toInteger() }
+if (parts[0] > 2000 || parts[1] > 9999 || parts[2] > 99) {
+    throw new GradleException('Canonical version exceeds the Android versionCode range.')
+}
+
+android {
+    namespace 'io.github.randspringer90.schachturniermanager'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'io.github.randspringer90.schachturniermanager'
+        minSdk 23
+        targetSdk 35
+        versionName canonicalVersion
+        versionCode parts[0] * 1000000 + parts[1] * 100 + parts[2]
+    }
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+// Native platform Activity/WebView only: no Capacitor, AndroidX, tracking or signing plugin.

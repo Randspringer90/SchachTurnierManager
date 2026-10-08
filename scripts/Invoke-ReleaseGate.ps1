@@ -1,12 +1,17 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [switch]$SkipPack,
+    [switch]$RequireCompleteReleaseSet,
     [switch]$NoNpmInstall,
     [switch]$NoDotnetTest
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($RequireCompleteReleaseSet -and $SkipPack) {
+    throw 'RequireCompleteReleaseSet ist mit SkipPack nicht zulaessig; die Quellstandpruefung erzeugt keine Release-Artefakte.'
+}
 
 function Invoke-NativeStep {
     param(
@@ -76,6 +81,16 @@ try {
     Assert-NoKnownBadFiles
     Write-NodeEngineHint
 
+    $dependencyReport = @()
+    Invoke-NativeStep 'Dependency supply-chain safety' {
+        $script:dependencyReport = @(pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Test-DependencySupplyChainSafety.ps1') -Root $Root 2>&1)
+        $script:dependencyReport | ForEach-Object { Write-Host $_ }
+    }
+    # PARTIAL provenance or minimum-only NuGet pins are allowed but must stay visible in the verdict.
+    $dependencyLimits = @($dependencyReport | ForEach-Object { [string]$_ } | Where-Object { $_ -match '^DEPENDENCY_(PROVENANCE=PARTIAL|NUGET_PINNING=MINIMUM_ONLY)' })
+    $lockPath = Join-Path $webApp 'package-lock.json'
+    $lockHashBefore = (Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash
+
     Invoke-NativeStep 'dotnet restore' { dotnet restore }
     Invoke-NativeStep 'dotnet build' { dotnet build }
     if (-not $NoDotnetTest) {
@@ -86,15 +101,30 @@ try {
 
     Push-Location $webApp
     try {
-        $npmInstallCommand = 'install'
+        # npm ci installs exactly the checked lockfile; npm install could rewrite it.
+        $npmInstallCommand = 'ci'
         if (-not $NoNpmInstall) {
             Invoke-NativeStep "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
         } else {
             Write-Host "[ReleaseGate] npm $npmInstallCommand übersprungen."
         }
+        # STM-FE-014: the frontend test suite guards the extracted modules and the
+        # in-app confirmation dialogs, so it has to run before `npm run build`.
+        Invoke-NativeStep 'npm test' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand run -NpmScript test }
         Invoke-NativeStep 'npm run build' { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-NpmSafe.ps1') -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
     } finally {
         Pop-Location
+    }
+
+    function Assert-LockfileUnchanged([string]$Stage) {
+        if ((Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash -ne $lockHashBefore) {
+            throw "package-lock.json wurde $Stage veraendert; von der geprueften Lockfile darf nicht abgewichen werden."
+        }
+    }
+    # Check before packaging so a deviation never reaches a package build.
+    Assert-LockfileUnchanged 'vor der Paketierung'
+    Invoke-NativeStep 'Release-Trust-Readiness' {
+        pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Test-ReleaseTrustReadiness.ps1') -Root $Root
     }
 
     if (-not $SkipPack) {
@@ -104,10 +134,22 @@ try {
     }
 
     Assert-NoKnownBadFiles
+    Assert-LockfileUnchanged 'waehrend der Paketierung'
+    if ($RequireCompleteReleaseSet) {
+        # Explicit release scope: validates the complete prepared desktop/portable
+        # set and creates its manifest. Never invoked by source-only SkipPack runs.
+        Invoke-NativeStep 'Complete release artifact trust' {
+            pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'scripts/Invoke-ReleaseTrustReadiness.ps1') -Root $Root
+        }
+    }
+    Invoke-NativeStep 'Firefox smoke ownership safety' {
+        pwsh.exe -NoLogo -NoProfile -File (Join-Path $Root 'scripts/Test-FirefoxSmokeSafety.ps1') -Root $Root
+    }
+    $limitNote = if ($dependencyLimits.Count) { ' Einschraenkung: ' + ($dependencyLimits -join '; ') + ' (keine vollstaendige Herkunftsfreigabe).' } else { '' }
     if ($SkipPack) {
-        Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests und Frontend-Build erfolgreich; Paketierung uebersprungen.'
+        Write-Host "[ReleaseGate] Gruen: Restore, Build, Tests und Frontend-Build erfolgreich; Paketierung uebersprungen.$limitNote"
     } else {
-        Write-Host '[ReleaseGate] Gruen: Restore, Build, Tests, Frontend-Build und Paketierung erfolgreich.'
+        Write-Host "[ReleaseGate] Gruen: Restore, Build, Tests, Frontend-Build und Paketierung erfolgreich.$limitNote"
     }
     git status --short
 } finally {

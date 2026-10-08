@@ -60,6 +60,37 @@ public sealed class OperationalGuardTests
     }
 
     [Fact]
+    public void CodexAdapter_ExemptsOnlyTheTwoTrackedAdapterFiles()
+    {
+        var gitignore = File.ReadAllText(FindRepositoryFile(".gitignore"));
+        var gitSafety = File.ReadAllText(FindRepositoryFile("scripts", "Test-GitCommitSafety.ps1"));
+
+        // The directory stays ignored/blocked; a real local Codex config
+        // (config.toml, auth material, session state) must never be committable.
+        Assert.Contains(".codex/*", gitignore);
+        Assert.Contains("!.codex/README.md", gitignore);
+        Assert.Contains("!.codex/config.example.toml", gitignore);
+        Assert.DoesNotContain("!.codex/config.toml", gitignore);
+
+        // The safety gate exemption must be an explicit file allowlist, never a
+        // prefix match that would let new files slip through.
+        Assert.Contains("Test-IsAllowedTrackedCodexAdapter", gitSafety);
+        Assert.Contains("'.codex/README.md', '.codex/config.example.toml'", gitSafety);
+
+        // Publish the example as documentation; real .codex state stays local.
+        // These are supported CLI settings, rather than fictitious Git permissions.
+        var exampleConfig = File.ReadAllText(FindRepositoryFile("docs", "architecture", "codex-config.example.toml"));
+        Assert.Contains("approval_policy = \"on-request\"", exampleConfig);
+        Assert.Contains("sandbox_mode = \"workspace-write\"", exampleConfig);
+        Assert.Contains("network_access = false", exampleConfig);
+        Assert.DoesNotContain("allow_no_verify =", exampleConfig);
+        Assert.DoesNotContain("allow_force_push =", exampleConfig);
+        var agentRules = File.ReadAllText(FindRepositoryFile("AGENTS.md"));
+        Assert.Contains("Kein Force-Push/History-Rewrite", agentRules);
+        Assert.Contains("scripts/Commit-If-Green.ps1", agentRules);
+    }
+
+    [Fact]
     public void SecretScripts_UseWindowsDpapiPatternAndDoNotPrintSecretValuesByDefault()
     {
         var setSecret = File.ReadAllText(FindRepositoryFile("scripts", "Set-LocalSecret.ps1"));
@@ -103,6 +134,27 @@ public sealed class OperationalGuardTests
     }
 
     [Fact]
+    public void ReleaseGate_RunsDependencySupplyChainSafetyBeforeRestore()
+    {
+        var releaseGate = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseGate.ps1"));
+        var dependencyGate = File.ReadAllText(FindRepositoryFile("scripts", "Test-DependencySupplyChainSafety.ps1"));
+
+        var dependencyGateIndex = releaseGate.IndexOf("Test-DependencySupplyChainSafety.ps1", StringComparison.Ordinal);
+        var restoreIndex = releaseGate.IndexOf("dotnet restore", StringComparison.Ordinal);
+
+        Assert.True(dependencyGateIndex >= 0, "Dependency-Safety-Gate fehlt im ReleaseGate.");
+        Assert.True(restoreIndex > dependencyGateIndex, "Dependency-Safety-Gate muss vor dotnet restore laufen.");
+        Assert.Contains("Directory.Packages.props", dependencyGate);
+        Assert.Contains("package-lock.json", dependencyGate);
+        Assert.Contains("registry\\.npmjs\\.org", dependencyGate);
+        Assert.Contains("allowedLicenses", dependencyGate);
+        Assert.Contains("reviewedLifecyclePackages", dependencyGate);
+        Assert.Contains("Offline/read-only", dependencyGate);
+        Assert.DoesNotContain("npm audit", dependencyGate, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dotnet restore", dependencyGate, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ReleaseCandidateReadiness_BundlesBuildInstallAndSafetyChecks()
     {
         var releaseScript = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseCandidateReadiness.ps1"));
@@ -111,6 +163,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("Invoke-SecretSafetyReadiness.ps1", releaseScript);
         Assert.Contains("Publish-DesktopApp.ps1", releaseScript);
         Assert.Contains("Pack-Portable.ps1 -SelfContained", releaseScript);
+        Assert.Contains("Invoke-ReleaseTrustReadiness.ps1", releaseScript);
+        Assert.Contains("RequireSignedArtifacts", releaseScript);
+        Assert.Contains("SignArtifacts", releaseScript);
         Assert.Contains("release-artifacts-manifest.txt", releaseScript);
         Assert.Contains("UPLOAD_ZIP=", releaseScript);
         Assert.Contains("New-ReleaseRunDirectory", releaseScript);
@@ -119,6 +174,66 @@ public sealed class OperationalGuardTests
         Assert.Contains("Test-Path -LiteralPath $zipPath", releaseScript);
         Assert.DoesNotContain("UPLOAD_ZIP=$zip\"", releaseScript);
         Assert.DoesNotContain("$runDirectory = & $bundleScript -RunName $RunName -CreateOnly", releaseScript);
+    }
+
+    [Fact]
+    public void ReleaseTrustScripts_AreManualFailClosedAndKeepPrivateKeysOutOfRepository()
+    {
+        var signScript = File.ReadAllText(FindRepositoryFile("scripts", "Sign-ReleaseArtifacts.ps1"));
+        var newManifest = File.ReadAllText(FindRepositoryFile("scripts", "New-ReleaseUpdateManifest.ps1"));
+        var testManifest = File.ReadAllText(FindRepositoryFile("scripts", "Test-ReleaseUpdateManifest.ps1"));
+        var trustReadiness = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseTrustReadiness.ps1"));
+        var trustContract = File.ReadAllText(FindRepositoryFile("scripts", "Test-ReleaseTrustReadiness.ps1"));
+        var validationHelper = File.ReadAllText(FindRepositoryFile("scripts", "lib", "ReleaseTrustValidation.ps1"));
+        var releaseGate = File.ReadAllText(FindRepositoryFile("scripts", "Invoke-ReleaseGate.ps1"));
+        var docs = File.ReadAllText(FindRepositoryFile("docs", "release", "SIGNING_AND_UPDATES.md"));
+        var schema = File.ReadAllText(FindRepositoryFile("docs", "release", "release-update-manifest.schema.json"));
+
+        Assert.Contains("ApproveSigning", signScript);
+        Assert.Contains("signtool.exe", signScript, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/sha1", signScript);
+        Assert.Contains("/fd", signScript);
+        Assert.Contains("SHA256", signScript);
+        Assert.Contains("Get-AuthenticodeSignature", signScript);
+        Assert.Contains("Assert-StmReleaseSignature", signScript);
+        Assert.Contains("1.3.6.1.5.5.7.3.3", validationHelper);
+        Assert.Contains("-Boundary $outputRoot", signScript);
+        Assert.Contains("Release path leaves its approved boundary.", validationHelper);
+        Assert.Contains("ReparsePoint", validationHelper);
+        Assert.DoesNotContain(".pfx", signScript, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("password", signScript, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("manual-only", newManifest);
+        Assert.Contains("Get-FileHash", newManifest);
+        Assert.Contains("Get-AuthenticodeSignature", newManifest);
+        Assert.Contains("Path-Traversal", testManifest);
+        Assert.Contains("RequireSignedArtifacts", testManifest);
+        Assert.Contains("Get-StmCheckedAuthenticodeSignature", testManifest);
+        Assert.Contains("Get-AuthenticodeSignature", validationHelper);
+        Assert.Contains("ExpectedSignerThumbprint", testManifest);
+        Assert.Contains("Assert-StmReleaseArchivePayload", testManifest);
+        Assert.Contains("Get-StmBoundedStreamSha256", validationHelper);
+        Assert.Contains("Test-ReleaseSigningValidation.ps1", trustContract);
+        Assert.Contains("SHA256 stimmt nicht", testManifest);
+        Assert.DoesNotContain("Invoke-WebRequest", newManifest);
+        Assert.DoesNotContain("Invoke-RestMethod", newManifest);
+        Assert.DoesNotContain("Invoke-WebRequest", testManifest);
+        Assert.DoesNotContain("Invoke-RestMethod", testManifest);
+
+        Assert.Contains("RequireCompleteSet", trustReadiness);
+        Assert.Contains("Assert-ValidAuthenticode", trustReadiness);
+        Assert.Contains("RELEASE_TRUST_READINESS=OK", trustReadiness);
+        Assert.Contains("RELEASE_TRUST_READINESS=OK", trustContract);
+        Assert.Contains("Path-Traversal", trustContract);
+        Assert.Contains("Invoke-ReleaseTrustReadiness.ps1", releaseGate);
+        Assert.Contains("RequireCompleteReleaseSet", releaseGate);
+        Assert.Contains("RequireCompleteReleaseSet ist mit SkipPack nicht zulaessig", releaseGate);
+
+        Assert.Contains("\"updateMode\"", schema);
+        Assert.Contains("\"manual-only\"", schema);
+        Assert.Contains("keine automatischen Downloads", docs, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Private Keys", docs);
+        Assert.Contains("kein automatischer Installer-Start", docs, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -251,7 +366,9 @@ public sealed class OperationalGuardTests
         Assert.Contains("FindRepositoryRoot", program);
         Assert.Contains("SchachTurnierManager:LogDirectory", program);
         Assert.Contains("SchachTurnierManager:FileLogging:RetainedFileCount", program);
-        Assert.Contains("directory = runtimeLogDirectory", program);
+        Assert.Contains("storage = \"local\"", program);
+        Assert.DoesNotContain("directory = runtimeLogDirectory", program);
+        Assert.DoesNotContain("databasePath = databaseFullPath", program);
         Assert.Contains("Path.Value", program);
         Assert.DoesNotContain("QueryString", program);
 

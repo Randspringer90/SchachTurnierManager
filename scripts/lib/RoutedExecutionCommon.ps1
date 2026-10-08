@@ -529,6 +529,151 @@ function Test-IntegrationApproval {
     }
 }
 
+function Resolve-RoutedRunnerInvocation {
+    <#
+    Resolve a known installed CLI to a native executable plus literal prefix arguments.
+    Never execute npm/cmd/PowerShell shims, evaluate shim text, install a package, or
+    choose a provider/model. The returned values are process data, never a shell command.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Executable)
+
+    $command = Get-Command -Name $Executable -CommandType Application,ExternalScript -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    $source = if ($null -ne $command) { [string]$command.Source } else { $null }
+    if ([string]::IsNullOrWhiteSpace($source) -and $IsWindows -and $Executable -in @('claude','codex')) {
+        # Standard per-user npm prefix only; no machine/user-specific path in the repo.
+        if ([string]::IsNullOrWhiteSpace($env:APPDATA)) { throw 'RUNNER_MISSING' }
+        $candidate = Join-Path (Join-Path $env:APPDATA 'npm') ($Executable + '.cmd')
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $source = $candidate }
+    }
+    if ([string]::IsNullOrWhiteSpace($source)) { throw 'RUNNER_MISSING' }
+
+    $source = [IO.Path]::GetFullPath($source)
+    Assert-RoutedNativePath -Path $source
+    $extension = [IO.Path]::GetExtension($source).ToLowerInvariant()
+    if ($extension -notin @('.cmd','.bat','.ps1')) {
+        if ($IsWindows -and $extension -ne '.exe') { throw 'RUNNER_NATIVE_EXECUTABLE_REQUIRED' }
+        return [pscustomobject]@{ FileName = $source; PrefixArguments = @(); Resolution = 'native' }
+    }
+
+    $runnerName = [IO.Path]::GetFileNameWithoutExtension($source).ToLowerInvariant()
+    if ($runnerName -notin @('claude','codex')) { throw 'RUNNER_UNSUPPORTED_SHIM' }
+    $prefix = Split-Path -Parent $source
+    $packageName = if ($runnerName -eq 'claude') { '@anthropic-ai/claude-code' } else { '@openai/codex' }
+    $packageRoot = Join-Path $prefix ('node_modules/' + $packageName)
+    $manifestPath = Join-Path $packageRoot 'package.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'RUNNER_PACKAGE_MISSING' }
+    Assert-RoutedNativePath -Path $manifestPath
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json -ErrorAction Stop
+    if ([string]$manifest.name -ne $packageName) { throw 'RUNNER_PACKAGE_IDENTITY_MISMATCH' }
+
+    # Only supported public package entrypoints are accepted. Arbitrary bin values
+    # from package metadata must not become executables or escape the package root.
+    $relativeEntry = if ($runnerName -eq 'claude') { 'bin/claude.exe' } else { 'bin/codex.js' }
+    $declaredEntry = if ($manifest.bin -is [string]) { [string]$manifest.bin } else {
+        if ($manifest.bin.PSObject.Properties.Name -notcontains $runnerName) { throw 'RUNNER_PACKAGE_BIN_MISSING' }
+        [string]$manifest.bin.$runnerName
+    }
+    $declaredEntry = $declaredEntry.Replace('\','/')
+    if ($declaredEntry.StartsWith('./', [StringComparison]::Ordinal)) { $declaredEntry = $declaredEntry.Substring(2) }
+    if ($declaredEntry -ne $relativeEntry) { throw 'RUNNER_PACKAGE_BIN_UNSUPPORTED' }
+    $entryPath = [IO.Path]::GetFullPath((Join-Path $packageRoot $relativeEntry))
+    $rootPath = [IO.Path]::GetFullPath($packageRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if (-not $entryPath.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) { throw 'RUNNER_PACKAGE_ENTRY_ESCAPE' }
+    if (-not (Test-Path -LiteralPath $entryPath -PathType Leaf)) { throw 'RUNNER_PACKAGE_ENTRY_MISSING' }
+
+    # A canonical npm install on this Windows host contains no symlinks. Refuse
+    # reparse-point drift rather than following an unexpected package target.
+    foreach ($path in @($manifestPath, $entryPath)) {
+        $item = Get-Item -LiteralPath $path -ErrorAction Stop
+        while ($null -ne $item) {
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'RUNNER_REPARSE_POINT_UNSUPPORTED' }
+            $item = if ($item -is [IO.FileInfo]) { $item.Directory } else { $item.Parent }
+        }
+    }
+    if ($runnerName -eq 'claude') {
+        return [pscustomobject]@{ FileName = $entryPath; PrefixArguments = @(); Resolution = 'npm-native-entry' }
+    }
+    $node = Get-Command -Name 'node' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $node) { throw 'RUNNER_NODE_MISSING' }
+    $nodePath = [IO.Path]::GetFullPath([string]$node.Source)
+    Assert-RoutedNativePath -Path $nodePath
+    if ($IsWindows -and [IO.Path]::GetExtension($nodePath) -ne '.exe') { throw 'RUNNER_NODE_NATIVE_REQUIRED' }
+    return [pscustomobject]@{ FileName = $nodePath; PrefixArguments = @($entryPath); Resolution = 'npm-node-entry' }
+}
+
+function Assert-RoutedNativePath {
+    param([Parameter(Mandatory)][string]$Path)
+    $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+    if ($item -isnot [IO.FileInfo]) { throw 'RUNNER_NATIVE_FILE_REQUIRED' }
+    while ($null -ne $item) {
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'RUNNER_REPARSE_POINT_UNSUPPORTED' }
+        $item = if ($item -is [IO.FileInfo]) { $item.Directory } else { $item.Parent }
+    }
+}
+
+function Get-RoutedAuthenticationClassification {
+    param(
+        [Parameter(Mandatory)][ValidateSet('anthropic','openai')][string]$Provider,
+        [AllowEmptyString()][string]$Text,
+        [int]$ExitCode,
+        [bool]$TimedOut = $false,
+        [bool]$HasApiOverride = $false
+    )
+    # Auth-status data is never persisted or returned: it can contain identities.
+    if ($HasApiOverride) { return 'HOLD_API_OR_CLOUD_OVERRIDE' }
+    if ($TimedOut -or $ExitCode -ne 0) { return 'HOLD_AUTH_UNVERIFIED' }
+    if ($Provider -eq 'openai') {
+        if ($Text.Trim() -ceq 'Logged in using ChatGPT') { return 'SUBSCRIPTION_AUTH_VERIFIED' }
+        return 'HOLD_AUTH_UNVERIFIED'
+    }
+    try { $auth = $Text | ConvertFrom-Json -ErrorAction Stop }
+    catch { return 'HOLD_AUTH_UNVERIFIED' }
+    if ($auth -isnot [pscustomobject]) { return 'HOLD_AUTH_UNVERIFIED' }
+    $fields = @($auth.PSObject.Properties | ForEach-Object Name)
+    if ($fields -notcontains 'loggedIn' -or
+        $fields -notcontains 'authMethod' -or
+        $auth.loggedIn -isnot [bool] -or -not $auth.loggedIn) { return 'HOLD_AUTH_UNVERIFIED' }
+    if ([string]$auth.authMethod -cin @('claude.ai','oauth_token')) { return 'SUBSCRIPTION_AUTH_VERIFIED' }
+    return 'HOLD_API_OR_CLOUD_AUTH'
+}
+
+function Get-RoutedEnvironmentOverrideClassification {
+    param(
+        [Parameter(Mandatory)][ValidateSet('anthropic','openai')][string]$Provider,
+        [AllowEmptyCollection()][string[]]$EnvironmentNames = @()
+    )
+    # Names only: never read, return or persist authentication/header/effort values.
+    $overrideNames = if ($Provider -eq 'anthropic') {
+        @('ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN','ANTHROPIC_CUSTOM_HEADERS','ANTHROPIC_BASE_URL',
+          'CLAUDE_CODE_USE_BEDROCK','CLAUDE_CODE_USE_VERTEX','CLAUDE_CODE_USE_FOUNDRY')
+    } else { @('OPENAI_API_KEY','OPENAI_BASE_URL','CODEX_API_KEY') }
+    if (@($overrideNames | Where-Object { $EnvironmentNames -contains $_ }).Count -gt 0) {
+        return 'HOLD_API_OR_CLOUD_OVERRIDE'
+    }
+    # Official Claude precedence: this environment variable overrides --effort.
+    if ($Provider -eq 'anthropic' -and $EnvironmentNames -contains 'CLAUDE_CODE_EFFORT_LEVEL') {
+        return 'HOLD_EFFORT_OVERRIDE'
+    }
+    return 'NO_ENVIRONMENT_OVERRIDE'
+}
+
+function Test-RoutedSubscriptionAuthentication {
+    param(
+        [Parameter(Mandatory)][ValidateSet('anthropic','openai')][string]$Provider,
+        [Parameter(Mandatory)][string]$Executable
+    )
+    $boundary = Get-RoutedEnvironmentOverrideClassification -Provider $Provider `
+        -EnvironmentNames @([Environment]::GetEnvironmentVariables().Keys)
+    if ($boundary -ne 'NO_ENVIRONMENT_OVERRIDE') { return $boundary }
+    $authenticationArgs = if ($Provider -eq 'anthropic') { @('auth','status','--json') } else { @('login','status') }
+    try {
+        $probe = Invoke-ExternalRunner -Executable $Executable -Arguments $authenticationArgs -PromptText '' -TimeoutSeconds 30
+        return Get-RoutedAuthenticationClassification -Provider $Provider -Text ($probe.StdOut + $probe.StdErr) -ExitCode $probe.ExitCode -TimedOut $probe.TimedOut
+    } catch { return 'HOLD_AUTH_UNVERIFIED' }
+}
+
 function Invoke-ExternalRunner {
     <#
     .SYNOPSIS
@@ -541,23 +686,17 @@ function Invoke-ExternalRunner {
         [Parameter(Mandatory)][AllowEmptyString()][string]$PromptText,
         [Parameter(Mandatory)][int]$TimeoutSeconds
     )
-    $command = Get-Command $Executable -ErrorAction SilentlyContinue
-    if ($null -eq $command) { throw "Runner nicht gefunden: $Executable" }
-    $exePath = $command.Source
-    # npm-Shims (.ps1/.cmd) ueber die zugehoerige .cmd-Datei starten.
-    if ($exePath -like '*.ps1') {
-        $cmdShim = [IO.Path]::ChangeExtension($exePath, '.cmd')
-        if (Test-Path -LiteralPath $cmdShim) { $exePath = $cmdShim }
-    }
-
+    $invocation = Resolve-RoutedRunnerInvocation -Executable $Executable
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = $exePath
-    foreach ($arg in $Arguments) { $psi.ArgumentList.Add($arg) }
+    $psi.FileName = $invocation.FileName
+    foreach ($arg in @($invocation.PrefixArguments) + $Arguments) { $psi.ArgumentList.Add($arg) }
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
+    $psi.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $psi.WorkingDirectory = Get-RoutedRepoRoot
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $psi

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>FIDE-Recherche und Kandidatenvergleich | SchachTurnierManager</title><link rel="stylesheet" href="../workflow-common/style.css"></head>
+<body><main id="screen"><a href="/">Zur Turnierverwaltung</a><h1>FIDE-Recherche und Kandidatenvergleich</h1>
+
+<p>FIDE-ID oder Name &uuml;ber die vorhandenen Adapter des Turnierservers recherchieren. Es werden keine Spielerdaten importiert, zusammengef&uuml;hrt oder &uuml;berschrieben.</p>
+<p class="notice">Eine Suche wird nur auf Klick gesendet. Der Turnierserver kann daf&uuml;r externe FIDE-Dienste abfragen. Verf&uuml;gbarkeit und Aktualit&auml;t h&auml;ngen vom dort aktiven Provider ab; eine nicht aktivierte Namenssuche wird nicht als vollst&auml;ndige FIDE-Suche dargestellt.</p>
+<button id="providers" type="button">Verf&uuml;gbare FIDE-Sucharten pr&uuml;fen</button><p id="capabilities">Noch nicht abgefragt.</p>
+<label>FIDE-ID oder Name <input id="query" type="search" minlength="2" maxlength="80" autocomplete="off"></label>
+<label><input id="fresh" type="checkbox"> Sitzungscache umgehen</label>
+<button id="search" type="button" disabled>Suche an Turnierserver senden</button><button id="cancel" type="button">Suche abbrechen</button><button id="clear" type="button">Treffer, Cache und Vergleich leeren</button>
+<p id="query-status" role="status" aria-live="polite"></p>
+<div class="scroll"><table><caption>Ergebnisse der letzten Suche</caption><thead><tr><th scope="col">Name</th><th scope="col">FIDE-ID</th><th scope="col">F&ouml;deration</th><th scope="col">Standard</th><th scope="col">Schnell</th><th scope="col">Blitz</th><th scope="col">Auswahl</th></tr></thead><tbody id="results"></tbody></table></div>
+<section id="compare-region" hidden><h2>Bis zu vier Kandidaten vergleichen</h2><div id="candidates"></div><div class="scroll"><table><caption>Reihenfolge wie in der Auswahlliste; fehlender Wert ist unbekannt</caption><thead><tr><th>Feld</th><th>Kandidat 1</th><th>Kandidat 2</th><th>Kandidat 3</th><th>Kandidat 4</th><th>Vergleich</th></tr></thead><tbody id="comparison"></tbody></table></div></section>
+<p>Maximal zehn Suchergebnisseiten bleiben f&uuml;r f&uuml;nf Minuten im Arbeitsspeicher dieses Tabs. Ein Neuladen entfernt sie. Angezeigte Abrufzeiten sind keine Garantie, dass Ratingdaten aktuell sind. Spieleridentit&auml;t vor einer sp&auml;teren &Uuml;bernahme selbst pr&uuml;fen.</p>
+<noscript>JavaScript ist f&uuml;r diese Funktion erforderlich.</noscript></main><script type="module" src="./main.mjs"></script></body></html>

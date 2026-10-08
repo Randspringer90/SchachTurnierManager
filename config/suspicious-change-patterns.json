@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "description": "Ausschliesslich defensive Erkennungsmuster. Treffer werden klassifiziert und niemals ausgefuehrt.",
-  "regexTimeoutMilliseconds": 100,
+  "regexTimeoutMilliseconds": 1000,
   "patterns": [
     {"id":"prompt-injection","category":"prompt-injection","severity":"high","appliesTo":["metadata","patch"],"pattern":"(?i)(ignor(?:e|iere|ing)|disregard).{0,80}(instruction|regel|agents\\.md|previous)|(?:reveal|zeige|gib).{0,80}(secret|token|api.?key)|(?:merge|push).{0,40}(without|ohne).{0,40}(test|review)"},
     {"id":"encoded-execution","category":"execution","severity":"critical","appliesTo":["patch"],"pattern":"(?i)encodedcommand|frombase64string\\s*\\("},

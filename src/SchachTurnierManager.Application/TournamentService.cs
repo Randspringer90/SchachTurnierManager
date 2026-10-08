@@ -45,59 +45,51 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public bool DeleteTournament(Guid tournamentId)
     {
-        var tournament = _store.Get(tournamentId);
-        if (tournament is null)
-        {
-            return false;
-        }
-
-        // Den Löschvorgang noch festhalten, bevor das Turnier verschwindet. Der append-only
-        // Audit-Spiegel (Datei) behält den Eintrag dauerhaft, auch nachdem die DB-Zeile weg ist.
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.TournamentDeleted,
-            AuditJournalSeverity.Critical,
+        return _store.Delete(tournamentId, tournament => AddAuditEntry(
+            tournament, AuditJournalAction.TournamentDeleted, AuditJournalSeverity.Critical,
             $"Turnier gelöscht: {tournament.Name}.",
-            $"Runden: {tournament.Rounds.Count}, Spieler: {tournament.Players.Count}, Audit-Einträge: {tournament.AuditJournal.Count}.");
-        _store.Save(tournament);
-        return _store.Delete(tournamentId);
+            $"Runden: {tournament.Rounds.Count}, Spieler: {tournament.Players.Count}, Audit-Einträge: {tournament.AuditJournal.Count}."));
     }
 
     public TournamentState ResetTournament(Guid tournamentId)
     {
-        var tournament = RequireTournament(tournamentId);
-        var removedRoundCount = tournament.Rounds.Count;
-        var removedAuditEntryCount = tournament.AuditJournal.RemoveAll(IsRoundRelatedAuditEntry);
-        tournament.Rounds.Clear();
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.TournamentReset,
-            AuditJournalSeverity.Warning,
-            "Turnier auf Start zurückgesetzt.",
-            $"Alle Runden, Ergebnisse, rundenbezogenen Audit-Einträge und Chess960-Startstellungen wurden entfernt. Entfernte Runden: {removedRoundCount}, entfernte Audit-Einträge: {removedAuditEntryCount}.");
-        _store.Save(tournament);
-        return tournament;
+        return _store.UpdateAtomically(tournamentId, tournament =>
+        {
+            var removedRoundCount = tournament.Rounds.Count;
+            var removedAuditEntryCount = tournament.AuditJournal.RemoveAll(IsRoundRelatedAuditEntry);
+            tournament.Rounds.Clear();
+            AddAuditEntry(
+                tournament,
+                AuditJournalAction.TournamentReset,
+                AuditJournalSeverity.Warning,
+                "Turnier auf Start zurückgesetzt.",
+                $"Alle Runden, Ergebnisse, rundenbezogenen Audit-Einträge und Chess960-Startstellungen wurden entfernt. Entfernte Runden: {removedRoundCount}, entfernte Audit-Einträge: {removedAuditEntryCount}.");
+
+            return tournament;
+        });
     }
 
     public TournamentState UpdateSettings(Guid tournamentId, TournamentSettings settings)
     {
-        var tournament = RequireTournament(tournamentId);
-        var normalized = NormalizeSettings(settings);
-
-        if (tournament.Rounds.Count > 0 && normalized.Format != tournament.Settings.Format)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException("Das Turnierformat kann nach bereits ausgelosten Runden nicht mehr geändert werden.");
-        }
+            var normalized = NormalizeSettings(settings);
 
-        tournament.Settings = normalized;
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.SettingsUpdated,
-            AuditJournalSeverity.Info,
-            "Turniereinstellungen aktualisiert.",
-            $"Format: {normalized.Format}, Runden: {normalized.PlannedRounds}, Forfeit-Policy: {normalized.ForfeitTiebreakPolicy}, ungespielte Runden/Buchholz: {normalized.UnplayedRoundBuchholzMode}");
-        _store.Save(tournament);
-        return tournament;
+            if (tournament.Rounds.Count > 0 && normalized.Format != tournament.Settings.Format)
+            {
+                throw new InvalidOperationException("Das Turnierformat kann nach bereits ausgelosten Runden nicht mehr geändert werden.");
+            }
+
+            tournament.Settings = normalized;
+            AddAuditEntry(
+                tournament,
+                AuditJournalAction.SettingsUpdated,
+                AuditJournalSeverity.Info,
+                "Turniereinstellungen aktualisiert.",
+                $"Format: {normalized.Format}, Runden: {normalized.PlannedRounds}, Forfeit-Policy: {normalized.ForfeitTiebreakPolicy}, ungespielte Runden/Buchholz: {normalized.UnplayedRoundBuchholzMode}");
+
+            return tournament;
+        });
     }
 
     public TournamentState SaveImportedTournament(TournamentState tournament, bool overwriteExisting)
@@ -106,13 +98,8 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         tournament.Name = tournament.Name.Trim();
         tournament.Settings = NormalizeSettings(tournament.Settings ?? new TournamentSettings());
 
-        if (!overwriteExisting && _store.Get(tournament.Id) is not null)
-        {
-            throw new InvalidOperationException($"Turnier {tournament.Id} existiert bereits.");
-        }
-
         AddAuditEntry(tournament, AuditJournalAction.TournamentImported, AuditJournalSeverity.Warning, "Turnier importiert.", $"OverwriteExisting: {overwriteExisting}");
-        _store.Save(tournament);
+        _store.Save(tournament, overwriteExisting);
         return tournament;
     }
 
@@ -124,53 +111,57 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public ExternalPlayerApplyResult ApplyExternalPlayer(Guid tournamentId, ExternalPlayerProfile profile, Guid? targetPlayerId, bool createIfNoTarget, bool overwriteExistingValues)
     {
-        var tournament = RequireTournament(tournamentId);
-        ExternalPlayerApplyResult result;
-
-        if (targetPlayerId is not null)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            result = _externalPlayerImport.UpdatePlayer(tournament, targetPlayerId.Value, profile, overwriteExistingValues);
-            var index = tournament.Players.FindIndex(player => player.Id == targetPlayerId.Value);
-            if (index < 0)
+            ExternalPlayerApplyResult result;
+
+            if (targetPlayerId is not null)
             {
-                throw new InvalidOperationException($"Spieler {targetPlayerId} wurde nicht gefunden.");
+                result = _externalPlayerImport.UpdatePlayer(tournament, targetPlayerId.Value, profile, overwriteExistingValues);
+                var index = tournament.Players.FindIndex(player => player.Id == targetPlayerId.Value);
+                if (index < 0)
+                {
+                    throw new InvalidOperationException($"Spieler {targetPlayerId} wurde nicht gefunden.");
+                }
+
+                var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: true);
+                EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
+                EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+                tournament.Players[index] = normalized;
+                result = result with { Player = normalized };
+            }
+            else
+            {
+                if (!createIfNoTarget)
+                {
+                    throw new InvalidOperationException("Kein Zielspieler angegeben. Wähle einen vorhandenen Teilnehmer oder erlaube das Neuanlegen.");
+                }
+
+                result = _externalPlayerImport.CreatePlayer(tournament, profile);
+                var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: false);
+                EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+                tournament.Players.Add(normalized);
+                result = result with { Player = normalized };
             }
 
-            var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: true);
-            EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
-            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
-            tournament.Players[index] = normalized;
-            result = result with { Player = normalized };
-        }
-        else
-        {
-            if (!createIfNoTarget)
-            {
-                throw new InvalidOperationException("Kein Zielspieler angegeben. Wähle einen vorhandenen Teilnehmer oder erlaube das Neuanlegen.");
-            }
+            AddAuditEntry(tournament, AuditJournalAction.ExternalPlayerApplied, AuditJournalSeverity.Info, $"Externe Spielerdaten übernommen: {result.Player.Name}.", null, playerId: result.Player.Id, playerName: result.Player.Name);
 
-            result = _externalPlayerImport.CreatePlayer(tournament, profile);
-            var normalized = NormalizePlayerForSave(tournament, result.Player, preserveExistingRank: false);
-            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
-            tournament.Players.Add(normalized);
-            result = result with { Player = normalized };
-        }
-
-        AddAuditEntry(tournament, AuditJournalAction.ExternalPlayerApplied, AuditJournalSeverity.Info, $"Externe Spielerdaten übernommen: {result.Player.Name}.", null, playerId: result.Player.Id, playerName: result.Player.Name);
-        _store.Save(tournament);
-        return result;
+            return result;
+        });
     }
 
     public Player AddPlayer(Guid tournamentId, Player player)
     {
-        var tournament = RequireTournament(tournamentId);
-        var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
-        EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
-        EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
-        tournament.Players.Add(normalized);
-        AddAuditEntry(tournament, AuditJournalAction.PlayerAdded, AuditJournalSeverity.Info, $"Spieler hinzugefügt: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
-        _store.Save(tournament);
-        return normalized;
+        return _store.UpdateAtomically(tournamentId, tournament =>
+        {
+            var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
+            EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
+            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+            tournament.Players.Add(normalized);
+            AddAuditEntry(tournament, AuditJournalAction.PlayerAdded, AuditJournalSeverity.Info, $"Spieler hinzugefügt: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
+
+            return normalized;
+        });
     }
 
     public PlayerImportPreview PreviewPlayersCsv(Guid tournamentId, string csv, bool replaceExisting)
@@ -179,43 +170,44 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
     }
     public IReadOnlyList<Player> ImportPlayersCsv(Guid tournamentId, string csv, bool replaceExisting)
     {
-        var tournament = RequireTournament(tournamentId);
-        var importedPlayers = PlayerCsvCodec.ImportPlayers(csv);
-        if (importedPlayers.Count == 0)
+        return _store.UpdateAtomically<IReadOnlyList<Player>>(tournamentId, tournament =>
         {
-            return Array.Empty<Player>();
-        }
-
-        if (replaceExisting)
-        {
-            if (tournament.Rounds.Count > 0)
+            var importedPlayers = PlayerCsvCodec.ImportPlayers(csv);
+            if (importedPlayers.Count == 0)
             {
-                throw new InvalidOperationException("Teilnehmer können nach ausgelosten Runden nicht vollständig ersetzt werden. Nutze stattdessen Ergänzen oder lege ein neues Turnier an.");
+                return Array.Empty<Player>();
             }
 
-            tournament.Players.Clear();
-        }
-
-        var added = new List<Player>();
-        foreach (var player in importedPlayers)
-        {
-            var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
-
-            // Dedupe statt Abbruch: gleiche FIDE-/DSB-ID nicht doppelt importieren.
-            // Gleiche Namen ohne ID werden ebenfalls übersprungen (gewarnt, nicht blind gelöscht).
-            if (HasExternalIdClash(tournament, normalized.FideId, normalized.NationalId, normalized.Id)
-                || tournament.Players.Any(existing => existing.Id != normalized.Id
-                    && string.Equals(existing.Name, normalized.Name, StringComparison.OrdinalIgnoreCase)))
+            if (replaceExisting)
             {
-                continue;
+                if (tournament.Rounds.Count > 0)
+                {
+                    throw new InvalidOperationException("Teilnehmer können nach ausgelosten Runden nicht vollständig ersetzt werden. Nutze stattdessen Ergänzen oder lege ein neues Turnier an.");
+                }
+
+                tournament.Players.Clear();
             }
 
-            tournament.Players.Add(normalized);
-            added.Add(normalized);
-        }
+            var added = new List<Player>();
+            foreach (var player in importedPlayers)
+            {
+                var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
 
-        _store.Save(tournament);
-        return added;
+                // Dedupe statt Abbruch: gleiche FIDE-/DSB-ID nicht doppelt importieren.
+                // Gleiche Namen ohne ID werden ebenfalls übersprungen (gewarnt, nicht blind gelöscht).
+                if (HasExternalIdClash(tournament, normalized.FideId, normalized.NationalId, normalized.Id)
+                    || tournament.Players.Any(existing => existing.Id != normalized.Id
+                        && string.Equals(existing.Name, normalized.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                tournament.Players.Add(normalized);
+                added.Add(normalized);
+            }
+
+            return added;
+        });
     }
 
     /// <summary>
@@ -246,39 +238,40 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     private IReadOnlyList<Player> MergeImportedPlayers(Guid tournamentId, IReadOnlyList<Player> importedPlayers, bool replaceExisting)
     {
-        var tournament = RequireTournament(tournamentId);
-        if (importedPlayers.Count == 0)
+        return _store.UpdateAtomically<IReadOnlyList<Player>>(tournamentId, tournament =>
         {
-            return Array.Empty<Player>();
-        }
-
-        if (replaceExisting)
-        {
-            if (tournament.Rounds.Count > 0)
+            if (importedPlayers.Count == 0)
             {
-                throw new InvalidOperationException("Teilnehmer können nach ausgelosten Runden nicht vollständig ersetzt werden. Nutze stattdessen Ergänzen oder lege ein neues Turnier an.");
+                return Array.Empty<Player>();
             }
 
-            tournament.Players.Clear();
-        }
-
-        var added = new List<Player>();
-        foreach (var player in importedPlayers)
-        {
-            var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
-            if (HasExternalIdClash(tournament, normalized.FideId, normalized.NationalId, normalized.Id)
-                || tournament.Players.Any(existing => existing.Id != normalized.Id
-                    && string.Equals(existing.Name, normalized.Name, StringComparison.OrdinalIgnoreCase)))
+            if (replaceExisting)
             {
-                continue;
+                if (tournament.Rounds.Count > 0)
+                {
+                    throw new InvalidOperationException("Teilnehmer können nach ausgelosten Runden nicht vollständig ersetzt werden. Nutze stattdessen Ergänzen oder lege ein neues Turnier an.");
+                }
+
+                tournament.Players.Clear();
             }
 
-            tournament.Players.Add(normalized);
-            added.Add(normalized);
-        }
+            var added = new List<Player>();
+            foreach (var player in importedPlayers)
+            {
+                var normalized = NormalizePlayerForSave(tournament, player, preserveExistingRank: false);
+                if (HasExternalIdClash(tournament, normalized.FideId, normalized.NationalId, normalized.Id)
+                    || tournament.Players.Any(existing => existing.Id != normalized.Id
+                        && string.Equals(existing.Name, normalized.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
 
-        _store.Save(tournament);
-        return added;
+                tournament.Players.Add(normalized);
+                added.Add(normalized);
+            }
+
+            return added;
+        });
     }
 
     public string ExportPlayersCsv(Guid tournamentId)
@@ -288,101 +281,101 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public Player UpdatePlayer(Guid tournamentId, Guid playerId, Player player)
     {
-        var tournament = RequireTournament(tournamentId);
-        var index = tournament.Players.FindIndex(p => p.Id == playerId);
-        if (index < 0)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
-        }
+            var index = tournament.Players.FindIndex(p => p.Id == playerId);
+            if (index < 0)
+            {
+                throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
+            }
 
-        var existing = tournament.Players[index];
-        var normalized = NormalizePlayerForSave(tournament, player with
-        {
-            Id = existing.Id,
-            StartingRank = player.StartingRank <= 0 ? existing.StartingRank : player.StartingRank
-        }, preserveExistingRank: true);
-        EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
-        EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
-        tournament.Players[index] = normalized;
-        AddAuditEntry(tournament, AuditJournalAction.PlayerUpdated, AuditJournalSeverity.Info, $"Spieler aktualisiert: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
-        _store.Save(tournament);
-        return normalized;
+            var existing = tournament.Players[index];
+            var normalized = NormalizePlayerForSave(tournament, player with
+            {
+                Id = existing.Id,
+                StartingRank = player.StartingRank <= 0 ? existing.StartingRank : player.StartingRank
+            }, preserveExistingRank: true);
+            EnsureUniqueExternalIds(tournament, normalized.FideId, normalized.NationalId, normalized.Id);
+            EnsureUniquePlayerName(tournament, normalized.Name, normalized.Id);
+            tournament.Players[index] = normalized;
+            AddAuditEntry(tournament, AuditJournalAction.PlayerUpdated, AuditJournalSeverity.Info, $"Spieler aktualisiert: {normalized.Name}.", null, playerId: normalized.Id, playerName: normalized.Name);
+
+            return normalized;
+        });
     }
 
     public Player SetPlayerStatus(Guid tournamentId, Guid playerId, PlayerStatus status)
     {
-        var tournament = RequireTournament(tournamentId);
-        var index = tournament.Players.FindIndex(p => p.Id == playerId);
-        if (index < 0)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
-        }
+            var index = tournament.Players.FindIndex(p => p.Id == playerId);
+            if (index < 0)
+            {
+                throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
+            }
 
-        var existing = tournament.Players[index];
-        tournament.Players[index] = existing with { Status = status };
-        AddAuditEntry(tournament, AuditJournalAction.PlayerStatusChanged, AuditJournalSeverity.Warning, $"Spielerstatus geändert: {existing.Name} -> {status}.", null, playerId: existing.Id, playerName: existing.Name);
-        _store.Save(tournament);
-        return tournament.Players[index];
+            var existing = tournament.Players[index];
+            tournament.Players[index] = existing with { Status = status };
+            AddAuditEntry(tournament, AuditJournalAction.PlayerStatusChanged, AuditJournalSeverity.Warning, $"Spielerstatus geändert: {existing.Name} -> {status}.", null, playerId: existing.Id, playerName: existing.Name);
+
+            return tournament.Players[index];
+        });
     }
 
     public Player RemovePlayer(Guid tournamentId, Guid playerId)
     {
-        var tournament = RequireTournament(tournamentId);
-        var index = tournament.Players.FindIndex(p => p.Id == playerId);
-        if (index < 0)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
-        }
+            var index = tournament.Players.FindIndex(p => p.Id == playerId);
+            if (index < 0)
+            {
+                throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
+            }
 
-        var existing = tournament.Players[index];
-        var hasPairings = tournament.Rounds
-            .SelectMany(r => r.Pairings)
-            .Any(p => p.WhitePlayerId == playerId || p.BlackPlayerId == playerId);
+            var existing = tournament.Players[index];
+            var hasPairings = tournament.Rounds
+                .SelectMany(r => r.Pairings)
+                .Any(p => p.WhitePlayerId == playerId || p.BlackPlayerId == playerId);
 
-        if (!hasPairings)
-        {
-            tournament.Players.RemoveAt(index);
-            AddAuditEntry(tournament, AuditJournalAction.PlayerRemoved, AuditJournalSeverity.Warning, $"Spieler entfernt: {existing.Name}.", "Spieler hatte noch keine Paarungen.", playerId: existing.Id, playerName: existing.Name);
-            _store.Save(tournament);
-            return existing;
-        }
+            if (!hasPairings)
+            {
+                tournament.Players.RemoveAt(index);
+                AddAuditEntry(tournament, AuditJournalAction.PlayerRemoved, AuditJournalSeverity.Warning, $"Spieler entfernt: {existing.Name}.", "Spieler hatte noch keine Paarungen.", playerId: existing.Id, playerName: existing.Name);
 
-        var withdrawn = existing with
-        {
-            Status = PlayerStatus.Withdrawn,
-            Notes = AppendNote(existing.Notes, "Automatisch zurückgezogen statt gelöscht, weil bereits Paarungen existieren.")
-        };
-        tournament.Players[index] = withdrawn;
-        AddAuditEntry(tournament, AuditJournalAction.PlayerWithdrawn, AuditJournalSeverity.Warning, $"Spieler zurückgezogen: {withdrawn.Name}.", "Entfernen war nicht möglich, weil bereits Paarungen existieren.", playerId: withdrawn.Id, playerName: withdrawn.Name);
-        _store.Save(tournament);
-        return withdrawn;
+                return existing;
+            }
+
+            var withdrawn = existing with
+            {
+                Status = PlayerStatus.Withdrawn,
+                Notes = AppendNote(existing.Notes, "Automatisch zurückgezogen statt gelöscht, weil bereits Paarungen existieren.")
+            };
+            tournament.Players[index] = withdrawn;
+            AddAuditEntry(tournament, AuditJournalAction.PlayerWithdrawn, AuditJournalSeverity.Warning, $"Spieler zurückgezogen: {withdrawn.Name}.", "Entfernen war nicht möglich, weil bereits Paarungen existieren.", playerId: withdrawn.Id, playerName: withdrawn.Name);
+
+            return withdrawn;
+        });
     }
 
     public NextRoundPreview PreviewNextRound(Guid tournamentId)
     {
-        var tournament = RequireTournament(tournamentId);
-        NextRoundPreview preview;
-        try
+        return UpdatePairingAtomically(tournamentId, "Runde-Vorschau blockiert.", tournament =>
         {
+            NextRoundPreview preview;
             preview = BuildNextRoundPreview(tournament, "preview");
-        }
-        catch (InvalidOperationException ex)
-        {
-            AuditBlockedPairingAttempt(tournament, "Runde-Vorschau blockiert.", ex.Message);
-            throw;
-        }
 
-        // Die Vorschau selbst wird nicht als Runde gespeichert; dass eine Vorschau erzeugt wurde,
-        // inklusive Forensik-Kennzahlen, gehört aber ins Audit-Journal.
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.RoundPreviewGenerated,
-            AuditJournalSeverity.Info,
-            $"Runde-Vorschau erzeugt: Runde {preview.RoundNumber}.",
-            preview.Round.Forensics?.ToSummaryLine(),
-            roundNumber: preview.RoundNumber);
-        _store.Save(tournament);
-        return preview;
+            // Die Vorschau selbst wird nicht als Runde gespeichert; dass eine Vorschau erzeugt wurde,
+            // inklusive Forensik-Kennzahlen, gehört aber ins Audit-Journal.
+            AddAuditEntry(
+                tournament,
+                AuditJournalAction.RoundPreviewGenerated,
+                AuditJournalSeverity.Info,
+                $"Runde-Vorschau erzeugt: Runde {preview.RoundNumber}.",
+                preview.Round.Forensics?.ToSummaryLine(),
+                roundNumber: preview.RoundNumber);
+
+            return preview;
+        });
     }
 
     /// <summary>
@@ -444,11 +437,10 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public TournamentRound GenerateNextRound(Guid tournamentId)
     {
-        var tournament = RequireTournament(tournamentId);
-
-        TournamentRound nextRound;
-        try
+        return UpdatePairingAtomically(tournamentId, "Auslosung blockiert.", tournament =>
         {
+
+            TournamentRound nextRound;
             EnsureCanCreateNextRound(tournament);
             nextRound = tournament.Settings.Format switch
             {
@@ -456,93 +448,88 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                 TournamentFormat.Swiss => SelectSwissStrategy(tournament).GenerateNextRound(tournament),
                 _ => throw new NotSupportedException($"Format {tournament.Settings.Format} ist im MVP noch nicht implementiert.")
             };
-        }
-        catch (InvalidOperationException ex)
-        {
-            // Blockierte Auslosungen (Rundenlimit, Round-Robin-Roster-Sperre, offene Vorrunde,
-            // zu wenige Spieler) forensisch festhalten, dann den ursprünglichen Fehler weiterreichen.
-            AuditBlockedPairingAttempt(tournament, "Auslosung blockiert.", ex.Message);
-            throw;
-        }
 
-        // Forensik aus dem Stand VOR Hinzufügen der neuen Runde (prior rounds = bisherige Runden).
-        var forensics = _forensics.Build(tournament, nextRound, "generated");
-        nextRound = WithPairingQualityAudit(tournament, nextRound) with { Forensics = forensics };
+            // Forensik aus dem Stand VOR Hinzufügen der neuen Runde (prior rounds = bisherige Runden).
+            var forensics = _forensics.Build(tournament, nextRound, "generated");
+            nextRound = WithPairingQualityAudit(tournament, nextRound) with { Forensics = forensics };
 
-        tournament.Rounds.Add(nextRound);
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.RoundGenerated,
-            AuditJournalSeverity.Info,
-            $"Runde {nextRound.RoundNumber} ausgelost.",
-            $"{nextRound.Pairings.Count} Brett(er). {forensics.ToSummaryLine()}",
-            roundNumber: nextRound.RoundNumber);
-        _store.Save(tournament);
-        return nextRound;
+            tournament.Rounds.Add(nextRound);
+            AddAuditEntry(
+                tournament,
+                AuditJournalAction.RoundGenerated,
+                AuditJournalSeverity.Info,
+                $"Runde {nextRound.RoundNumber} ausgelost.",
+                $"{nextRound.Pairings.Count} Brett(er). {forensics.ToSummaryLine()}",
+                roundNumber: nextRound.RoundNumber);
+
+            return nextRound;
+        });
     }
 
     public TournamentRound RollChess960StartPositions(Guid tournamentId, int roundNumber, bool overwriteExisting, int? seed = null)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
-        if (round.IsLocked || round.IsVerified)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException($"Runde {roundNumber} ist gesperrt oder geprüft. Startstellungen können nicht mehr geändert werden.");
-        }
-
-        var existingCount = round.Pairings.Count(pairing => pairing.Chess960StartPosition is not null);
-        if (existingCount > 0 && !overwriteExisting)
-        {
-            throw new InvalidOperationException("Für diese Runde existieren bereits Chess960-Startstellungen. Zum Überschreiben muss overwriteExisting=true gesetzt werden.");
-        }
-
-        var baseSeed = seed ?? Random.Shared.Next(1, int.MaxValue);
-        var generatedCount = 0;
-        var updatedPairings = round.Pairings
-            .OrderBy(pairing => pairing.BoardNumber)
-            .Select(pairing =>
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
+            if (round.IsLocked || round.IsVerified)
             {
-                if (pairing.IsBye)
-                {
-                    return overwriteExisting ? pairing with { Chess960StartPosition = null } : pairing;
-                }
+                throw new InvalidOperationException($"Runde {roundNumber} ist gesperrt oder geprüft. Startstellungen können nicht mehr geändert werden.");
+            }
 
-                generatedCount++;
-                var boardSeed = DeriveChess960Seed(baseSeed, roundNumber, pairing.BoardNumber);
-                return pairing with
-                {
-                    Chess960StartPosition = _chess960.GenerateRandomPosition(boardSeed),
-                    Notes = AppendNote(pairing.Notes, $"Chess960-Startstellung gewürfelt: Seed {boardSeed}.")
-                };
-            })
-            .ToList();
+            var existingCount = round.Pairings.Count(pairing => pairing.Chess960StartPosition is not null);
+            if (existingCount > 0 && !overwriteExisting)
+            {
+                throw new InvalidOperationException("Für diese Runde existieren bereits Chess960-Startstellungen. Zum Überschreiben muss overwriteExisting=true gesetzt werden.");
+            }
 
-        if (generatedCount == 0)
-        {
-            throw new InvalidOperationException($"Runde {roundNumber} enthält kein reguläres Brett für eine Chess960-Startstellung.");
-        }
-
-        var audit = round.Audit with
-        {
-            Messages = round.Audit.Messages
-                .Concat(new[]
+            var baseSeed = seed ?? Random.Shared.Next(1, int.MaxValue);
+            var generatedCount = 0;
+            var updatedPairings = round.Pairings
+                .OrderBy(pairing => pairing.BoardNumber)
+                .Select(pairing =>
                 {
-                    $"Chess960-Startstellungen für Runde {roundNumber} gewürfelt: {generatedCount} Brett(er), Basis-Seed {baseSeed}, Überschreiben: {(overwriteExisting ? "ja" : "nein")}."
+                    if (pairing.IsBye)
+                    {
+                        return overwriteExisting ? pairing with { Chess960StartPosition = null } : pairing;
+                    }
+
+                    generatedCount++;
+                    var boardSeed = DeriveChess960Seed(baseSeed, roundNumber, pairing.BoardNumber);
+                    return pairing with
+                    {
+                        Chess960StartPosition = _chess960.GenerateRandomPosition(boardSeed),
+                        Notes = AppendNote(pairing.Notes, $"Chess960-Startstellung gewürfelt: Seed {boardSeed}.")
+                    };
                 })
-                .ToList()
-        };
-        var updated = round with { Pairings = updatedPairings, Audit = audit };
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.Chess960StartPositionsRolled,
-            overwriteExisting && existingCount > 0 ? AuditJournalSeverity.Warning : AuditJournalSeverity.Info,
-            $"Chess960-Startstellungen gewürfelt: Runde {roundNumber}.",
-            $"Bretter: {generatedCount}, Basis-Seed: {baseSeed}, vorhandene überschrieben: {(overwriteExisting && existingCount > 0 ? "ja" : "nein")}.",
-            roundNumber: roundNumber);
-        _store.Save(tournament);
-        return updated;
+                .ToList();
+
+            if (generatedCount == 0)
+            {
+                throw new InvalidOperationException($"Runde {roundNumber} enthält kein reguläres Brett für eine Chess960-Startstellung.");
+            }
+
+            var audit = round.Audit with
+            {
+                Messages = round.Audit.Messages
+                    .Concat(new[]
+                    {
+                        $"Chess960-Startstellungen für Runde {roundNumber} gewürfelt: {generatedCount} Brett(er), Basis-Seed {baseSeed}, Überschreiben: {(overwriteExisting ? "ja" : "nein")}."
+                    })
+                    .ToList()
+            };
+            var updated = round with { Pairings = updatedPairings, Audit = audit };
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(
+                tournament,
+                AuditJournalAction.Chess960StartPositionsRolled,
+                overwriteExisting && existingCount > 0 ? AuditJournalSeverity.Warning : AuditJournalSeverity.Info,
+                $"Chess960-Startstellungen gewürfelt: Runde {roundNumber}.",
+                $"Bretter: {generatedCount}, Basis-Seed: {baseSeed}, vorhandene überschrieben: {(overwriteExisting && existingCount > 0 ? "ja" : "nein")}.",
+                roundNumber: roundNumber);
+
+            return updated;
+        });
     }
 
     public TournamentRound RollChess960StartPositionForBoard(
@@ -553,73 +540,75 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         int? seed = null,
         int? positionNumber = null)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
-        if (round.IsLocked || round.IsVerified)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException($"Runde {roundNumber} ist gesperrt oder geprüft. Startstellungen können nicht mehr geändert werden.");
-        }
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
+            if (round.IsLocked || round.IsVerified)
+            {
+                throw new InvalidOperationException($"Runde {roundNumber} ist gesperrt oder geprüft. Startstellungen können nicht mehr geändert werden.");
+            }
 
-        var pairing = round.Pairings.FirstOrDefault(item => item.BoardNumber == boardNumber);
-        if (pairing is null)
-        {
-            throw new InvalidOperationException($"Brett {boardNumber} existiert in Runde {roundNumber} nicht.");
-        }
+            var pairing = round.Pairings.FirstOrDefault(item => item.BoardNumber == boardNumber);
+            if (pairing is null)
+            {
+                throw new InvalidOperationException($"Brett {boardNumber} existiert in Runde {roundNumber} nicht.");
+            }
 
-        if (pairing.IsBye)
-        {
-            throw new InvalidOperationException($"Brett {boardNumber} ist spielfrei und erhält keine Chess960-Startstellung.");
-        }
+            if (pairing.IsBye)
+            {
+                throw new InvalidOperationException($"Brett {boardNumber} ist spielfrei und erhält keine Chess960-Startstellung.");
+            }
 
-        var hadExisting = pairing.Chess960StartPosition is not null;
-        if (hadExisting && !overwriteExisting)
-        {
-            throw new InvalidOperationException($"Für Brett {boardNumber} existiert bereits eine Chess960-Startstellung. Zum Überschreiben muss overwriteExisting=true gesetzt werden.");
-        }
+            var hadExisting = pairing.Chess960StartPosition is not null;
+            if (hadExisting && !overwriteExisting)
+            {
+                throw new InvalidOperationException($"Für Brett {boardNumber} existiert bereits eine Chess960-Startstellung. Zum Überschreiben muss overwriteExisting=true gesetzt werden.");
+            }
 
-        Chess960StartPosition position;
-        int? appliedSeed = null;
-        if (positionNumber.HasValue)
-        {
-            // Vom Browser/Handy vorab gewürfelte Stellung exakt übernehmen – der Service validiert den Bereich.
-            position = _chess960.FromPositionNumber(positionNumber.Value);
-        }
-        else
-        {
-            var baseSeed = seed ?? Random.Shared.Next(1, int.MaxValue);
-            appliedSeed = DeriveChess960Seed(baseSeed, roundNumber, boardNumber);
-            position = _chess960.GenerateRandomPosition(appliedSeed);
-        }
+            Chess960StartPosition position;
+            int? appliedSeed = null;
+            if (positionNumber.HasValue)
+            {
+                // Vom Browser/Handy vorab gewürfelte Stellung exakt übernehmen – der Service validiert den Bereich.
+                position = _chess960.FromPositionNumber(positionNumber.Value);
+            }
+            else
+            {
+                var baseSeed = seed ?? Random.Shared.Next(1, int.MaxValue);
+                appliedSeed = DeriveChess960Seed(baseSeed, roundNumber, boardNumber);
+                position = _chess960.GenerateRandomPosition(appliedSeed);
+            }
 
-        var noteDetail = positionNumber.HasValue
-            ? $"Chess960-Startstellung für Brett {boardNumber} gesetzt: SP {position.PositionNumber}."
-            : $"Chess960-Startstellung für Brett {boardNumber} gewürfelt: Seed {appliedSeed}.";
+            var noteDetail = positionNumber.HasValue
+                ? $"Chess960-Startstellung für Brett {boardNumber} gesetzt: SP {position.PositionNumber}."
+                : $"Chess960-Startstellung für Brett {boardNumber} gewürfelt: Seed {appliedSeed}.";
 
-        var updatedPairings = round.Pairings
-            .Select(item => item.BoardNumber == boardNumber
-                ? item with { Chess960StartPosition = position, Notes = AppendNote(item.Notes, noteDetail) }
-                : item)
-            .ToList();
+            var updatedPairings = round.Pairings
+                .Select(item => item.BoardNumber == boardNumber
+                    ? item with { Chess960StartPosition = position, Notes = AppendNote(item.Notes, noteDetail) }
+                    : item)
+                .ToList();
 
-        var audit = round.Audit with
-        {
-            Messages = round.Audit.Messages
-                .Concat(new[] { $"{noteDetail} Vorhandene überschrieben: {(hadExisting ? "ja" : "nein")}." })
-                .ToList()
-        };
-        var updated = round with { Pairings = updatedPairings, Audit = audit };
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.Chess960StartPositionsRolled,
-            hadExisting ? AuditJournalSeverity.Warning : AuditJournalSeverity.Info,
-            $"Chess960-Startstellung gewürfelt: Runde {roundNumber}, Brett {boardNumber}.",
-            $"SP {position.PositionNumber}{(appliedSeed.HasValue ? $", Seed {appliedSeed}" : string.Empty)}, vorhandene überschrieben: {(hadExisting ? "ja" : "nein")}.",
-            roundNumber: roundNumber,
-            boardNumber: boardNumber);
-        _store.Save(tournament);
-        return updated;
+            var audit = round.Audit with
+            {
+                Messages = round.Audit.Messages
+                    .Concat(new[] { $"{noteDetail} Vorhandene überschrieben: {(hadExisting ? "ja" : "nein")}." })
+                    .ToList()
+            };
+            var updated = round with { Pairings = updatedPairings, Audit = audit };
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(
+                tournament,
+                AuditJournalAction.Chess960StartPositionsRolled,
+                hadExisting ? AuditJournalSeverity.Warning : AuditJournalSeverity.Info,
+                $"Chess960-Startstellung gewürfelt: Runde {roundNumber}, Brett {boardNumber}.",
+                $"SP {position.PositionNumber}{(appliedSeed.HasValue ? $", Seed {appliedSeed}" : string.Empty)}, vorhandene überschrieben: {(hadExisting ? "ja" : "nein")}.",
+                roundNumber: roundNumber,
+                boardNumber: boardNumber);
+
+            return updated;
+        });
     }
 
     private TournamentRound WithPairingQualityAudit(TournamentState tournament, TournamentRound round)
@@ -656,163 +645,186 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             _ => "gut"
         };
     }
-    public TournamentRound RecordResult(Guid tournamentId, int roundNumber, int boardNumber, GameResultKind resultKind)
+    public TournamentRound RecordResult(
+        Guid tournamentId,
+        int roundNumber,
+        int boardNumber,
+        GameResultKind resultKind,
+        GameResultKind? expectedPreviousResult = null)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
-        EnsureRoundEditable(round);
-
-        var foundBoard = false;
-        var updatedPairings = round.Pairings
-            .Select(p =>
-            {
-                if (p.BoardNumber != boardNumber)
-                {
-                    return p;
-                }
-
-                foundBoard = true;
-                return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
-            })
-            .ToList();
-
-        if (!foundBoard)
+        if (!Enum.IsDefined(resultKind) ||
+            (expectedPreviousResult is { } expected && !Enum.IsDefined(expected)))
         {
-            throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
+            throw new InvalidOperationException("Ergebniswert oder erwarteter vorheriger Ergebniswert ist ungültig.");
         }
+        return _store.UpdateAtomically(tournamentId, tournament =>
+        {
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
+            EnsureRoundEditable(round);
 
-        var updated = WithCalculatedStatus(round with { Pairings = updatedPairings });
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(tournament, AuditJournalAction.ResultRecorded, AuditJournalSeverity.Info, $"Ergebnis eingetragen: Runde {roundNumber}, Brett {boardNumber}.", resultKind.ToString(), roundNumber: roundNumber, boardNumber: boardNumber);
-        _store.Save(tournament);
-        return updated;
+            var foundBoard = false;
+            var updatedPairings = round.Pairings
+                .Select(p =>
+                {
+                    if (p.BoardNumber != boardNumber)
+                    {
+                        return p;
+                    }
+
+                    foundBoard = true;
+                    if (expectedPreviousResult is not null && p.Result.Kind != expectedPreviousResult.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"Das Ergebnis für Runde {roundNumber}, Brett {boardNumber} wurde zwischenzeitlich geändert. " +
+                            "Bitte Turnierstand neu laden und die Korrektur erneut prüfen.");
+                    }
+                    return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
+                })
+                .ToList();
+
+            if (!foundBoard)
+            {
+                throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
+            }
+
+            var updated = WithCalculatedStatus(round with { Pairings = updatedPairings });
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(tournament, AuditJournalAction.ResultRecorded, AuditJournalSeverity.Info, $"Ergebnis eingetragen: Runde {roundNumber}, Brett {boardNumber}.", resultKind.ToString(), roundNumber: roundNumber, boardNumber: boardNumber);
+            return updated;
+        });
     }
 
     public TournamentRound OverridePairing(Guid tournamentId, int roundNumber, int boardNumber, Guid? whitePlayerId, Guid? blackPlayerId, string? notes)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
-        EnsureRoundEditable(round);
-
-        if (whitePlayerId is null && blackPlayerId is null)
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            throw new InvalidOperationException("Mindestens ein Spieler muss gesetzt sein.");
-        }
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
+            EnsureRoundEditable(round);
 
-        if (whitePlayerId is not null && blackPlayerId is not null && whitePlayerId == blackPlayerId)
-        {
-            throw new InvalidOperationException("Ein Spieler kann nicht gegen sich selbst spielen.");
-        }
-
-        ValidatePlayerCanBePaired(tournament, whitePlayerId, nameof(whitePlayerId));
-        ValidatePlayerCanBePaired(tournament, blackPlayerId, nameof(blackPlayerId));
-
-        var foundBoard = false;
-        var normalizedNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
-        var updatedPairings = round.Pairings
-            .Select(pairing =>
+            if (whitePlayerId is null && blackPlayerId is null)
             {
-                if (pairing.BoardNumber != boardNumber)
+                throw new InvalidOperationException("Mindestens ein Spieler muss gesetzt sein.");
+            }
+
+            if (whitePlayerId is not null && blackPlayerId is not null && whitePlayerId == blackPlayerId)
+            {
+                throw new InvalidOperationException("Ein Spieler kann nicht gegen sich selbst spielen.");
+            }
+
+            ValidatePlayerCanBePaired(tournament, whitePlayerId, nameof(whitePlayerId));
+            ValidatePlayerCanBePaired(tournament, blackPlayerId, nameof(blackPlayerId));
+
+            var foundBoard = false;
+            var normalizedNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            var updatedPairings = round.Pairings
+                .Select(pairing =>
                 {
-                    if (PlayerAppearsInPairing(pairing, whitePlayerId) || PlayerAppearsInPairing(pairing, blackPlayerId))
+                    if (pairing.BoardNumber != boardNumber)
                     {
-                        throw new InvalidOperationException("Ein Spieler darf in derselben Runde nicht mehrfach gepaart werden.");
+                        if (PlayerAppearsInPairing(pairing, whitePlayerId) || PlayerAppearsInPairing(pairing, blackPlayerId))
+                        {
+                            throw new InvalidOperationException("Ein Spieler darf in derselben Runde nicht mehrfach gepaart werden.");
+                        }
+
+                        return pairing;
                     }
 
-                    return pairing;
-                }
+                    foundBoard = true;
+                    if (whitePlayerId is null)
+                    {
+                        throw new InvalidOperationException("Ein Brett benötigt mindestens einen Weißspieler. Für Bye bitte Spieler als Weiß und Schwarz leer lassen.");
+                    }
 
-                foundBoard = true;
-                if (whitePlayerId is null)
-                {
-                    throw new InvalidOperationException("Ein Brett benötigt mindestens einen Weißspieler. Für Bye bitte Spieler als Weiß und Schwarz leer lassen.");
-                }
+                    var result = blackPlayerId is null ? new GameResult(GameResultKind.Bye) : GameResult.NotPlayed;
+                    return pairing with
+                    {
+                        WhitePlayerId = whitePlayerId,
+                        BlackPlayerId = blackPlayerId,
+                        Result = result,
+                        IsManualOverride = true,
+                        LastChangedAt = DateTimeOffset.UtcNow,
+                        Notes = AppendNote(pairing.Notes, normalizedNotes ?? "Manuell geänderte Paarung")
+                    };
+                })
+                .ToList();
 
-                var result = blackPlayerId is null ? new GameResult(GameResultKind.Bye) : GameResult.NotPlayed;
-                return pairing with
-                {
-                    WhitePlayerId = whitePlayerId,
-                    BlackPlayerId = blackPlayerId,
-                    Result = result,
-                    IsManualOverride = true,
-                    LastChangedAt = DateTimeOffset.UtcNow,
-                    Notes = AppendNote(pairing.Notes, normalizedNotes ?? "Manuell geänderte Paarung")
-                };
-            })
-            .ToList();
+            if (!foundBoard)
+            {
+                throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
+            }
 
-        if (!foundBoard)
-        {
-            throw new InvalidOperationException($"Brett {boardNumber} wurde in Runde {roundNumber} nicht gefunden.");
-        }
+            var audit = round.Audit with
+            {
+                Messages = round.Audit.Messages
+                    .Concat(new[] { $"Manuelle Paarungsänderung in Runde {roundNumber}, Brett {boardNumber}." })
+                    .ToList()
+            };
+            var updated = WithCalculatedStatus(round with { Pairings = updatedPairings, Audit = audit });
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(tournament, AuditJournalAction.PairingOverridden, AuditJournalSeverity.Warning, $"Paarung manuell geändert: Runde {roundNumber}, Brett {boardNumber}.", normalizedNotes, roundNumber: roundNumber, boardNumber: boardNumber, reason: normalizedNotes);
 
-        var audit = round.Audit with
-        {
-            Messages = round.Audit.Messages
-                .Concat(new[] { $"Manuelle Paarungsänderung in Runde {roundNumber}, Brett {boardNumber}." })
-                .ToList()
-        };
-        var updated = WithCalculatedStatus(round with { Pairings = updatedPairings, Audit = audit });
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(tournament, AuditJournalAction.PairingOverridden, AuditJournalSeverity.Warning, $"Paarung manuell geändert: Runde {roundNumber}, Brett {boardNumber}.", normalizedNotes, roundNumber: roundNumber, boardNumber: boardNumber, reason: normalizedNotes);
-        _store.Save(tournament);
-        return updated;
+            return updated;
+        });
     }
 
     public TournamentRound SetRoundLock(Guid tournamentId, int roundNumber, bool isLocked)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
-        var audit = round.Audit with
+        return _store.UpdateAtomically(tournamentId, tournament =>
         {
-            Messages = round.Audit.Messages
-                .Concat(new[] { isLocked ? $"Runde {roundNumber} wurde gesperrt." : $"Runde {roundNumber} wurde entsperrt." })
-                .ToList()
-        };
-        var updated = WithCalculatedStatus(round with
-        {
-            IsLocked = isLocked,
-            LockedAt = isLocked ? DateTimeOffset.UtcNow : null,
-            Audit = audit
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
+            var audit = round.Audit with
+            {
+                Messages = round.Audit.Messages
+                    .Concat(new[] { isLocked ? $"Runde {roundNumber} wurde gesperrt." : $"Runde {roundNumber} wurde entsperrt." })
+                    .ToList()
+            };
+            var updated = WithCalculatedStatus(round with
+            {
+                IsLocked = isLocked,
+                LockedAt = isLocked ? DateTimeOffset.UtcNow : null,
+                Audit = audit
+            });
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(tournament, isLocked ? AuditJournalAction.RoundLocked : AuditJournalAction.RoundUnlocked, AuditJournalSeverity.Warning, isLocked ? $"Runde {roundNumber} gesperrt." : $"Runde {roundNumber} entsperrt.", null, roundNumber: roundNumber);
+
+            return updated;
         });
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(tournament, isLocked ? AuditJournalAction.RoundLocked : AuditJournalAction.RoundUnlocked, AuditJournalSeverity.Warning, isLocked ? $"Runde {roundNumber} gesperrt." : $"Runde {roundNumber} entsperrt.", null, roundNumber: roundNumber);
-        _store.Save(tournament);
-        return updated;
     }
 
     public TournamentRound SetRoundVerified(Guid tournamentId, int roundNumber, bool isVerified)
     {
-        var tournament = RequireTournament(tournamentId);
-        var roundIndex = RequireRoundIndex(tournament, roundNumber);
-        var round = tournament.Rounds[roundIndex];
+        return _store.UpdateAtomically(tournamentId, tournament =>
+        {
+            var roundIndex = RequireRoundIndex(tournament, roundNumber);
+            var round = tournament.Rounds[roundIndex];
 
-        if (isVerified && !IsRoundComplete(round))
-        {
-            throw new InvalidOperationException($"Runde {roundNumber} kann erst geprüft werden, wenn alle Ergebnisse eingetragen sind.");
-        }
+            if (isVerified && !IsRoundComplete(round))
+            {
+                throw new InvalidOperationException($"Runde {roundNumber} kann erst geprüft werden, wenn alle Ergebnisse eingetragen sind.");
+            }
 
-        var audit = round.Audit with
-        {
-            Messages = round.Audit.Messages
-                .Concat(new[] { isVerified ? $"Runde {roundNumber} wurde als geprüft markiert." : $"Runde {roundNumber} wurde als ungeprüft markiert." })
-                .ToList()
-        };
-        var updated = WithCalculatedStatus(round with
-        {
-            IsVerified = isVerified,
-            VerifiedAt = isVerified ? DateTimeOffset.UtcNow : null,
-            IsLocked = isVerified || round.IsLocked,
-            LockedAt = isVerified ? (round.LockedAt ?? DateTimeOffset.UtcNow) : round.LockedAt,
-            Audit = audit
+            var audit = round.Audit with
+            {
+                Messages = round.Audit.Messages
+                    .Concat(new[] { isVerified ? $"Runde {roundNumber} wurde als geprüft markiert." : $"Runde {roundNumber} wurde als ungeprüft markiert." })
+                    .ToList()
+            };
+            var updated = WithCalculatedStatus(round with
+            {
+                IsVerified = isVerified,
+                VerifiedAt = isVerified ? DateTimeOffset.UtcNow : null,
+                IsLocked = isVerified || round.IsLocked,
+                LockedAt = isVerified ? (round.LockedAt ?? DateTimeOffset.UtcNow) : round.LockedAt,
+                Audit = audit
+            });
+            tournament.Rounds[roundIndex] = updated;
+            AddAuditEntry(tournament, isVerified ? AuditJournalAction.RoundVerified : AuditJournalAction.RoundUnverified, AuditJournalSeverity.Warning, isVerified ? $"Runde {roundNumber} geprüft." : $"Runde {roundNumber} als ungeprüft markiert.", null, roundNumber: roundNumber);
+
+            return updated;
         });
-        tournament.Rounds[roundIndex] = updated;
-        AddAuditEntry(tournament, isVerified ? AuditJournalAction.RoundVerified : AuditJournalAction.RoundUnverified, AuditJournalSeverity.Warning, isVerified ? $"Runde {roundNumber} geprüft." : $"Runde {roundNumber} als ungeprüft markiert.", null, roundNumber: roundNumber);
-        _store.Save(tournament);
-        return updated;
     }
 
     public IReadOnlyList<StandingRow> GetStandings(Guid tournamentId)
@@ -924,18 +936,22 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public ExportDocument ExportAuditJournalJsonl(Guid tournamentId)
     {
-        var tournament = RequireTournament(tournamentId);
-        var document = _auditExport.BuildJsonl(tournament);
-        RecordAuditExport(tournament, document.FileName, "jsonl");
-        return document;
+        return _store.UpdateAtomically(tournamentId, tournament =>
+        {
+            var document = _auditExport.BuildJsonl(tournament);
+            RecordAuditExport(tournament, document.FileName, "jsonl");
+            return document;
+        });
     }
 
     public ExportDocument ExportAuditJournalJson(Guid tournamentId)
     {
-        var tournament = RequireTournament(tournamentId);
-        var document = _auditExport.BuildJson(tournament);
-        RecordAuditExport(tournament, document.FileName, "json");
-        return document;
+        return _store.UpdateAtomically(tournamentId, tournament =>
+        {
+            var document = _auditExport.BuildJson(tournament);
+            RecordAuditExport(tournament, document.FileName, "json");
+            return document;
+        });
     }
 
     private void RecordAuditExport(TournamentState tournament, string fileName, string format)
@@ -948,26 +964,24 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             AuditJournalSeverity.Info,
             $"Audit-Bundle exportiert ({format}).",
             $"Datei: {fileName}, Einträge: {tournament.AuditJournal.Count}.");
-        _store.Save(tournament);
     }
 
-    private void AuditBlockedPairingAttempt(TournamentState tournament, string summary, string reason)
+    private TResult UpdatePairingAtomically<TResult>(Guid id, string summary, Func<TournamentState, TResult> update)
     {
-        AddAuditEntry(
-            tournament,
-            AuditJournalAction.PairingGenerationBlocked,
-            AuditJournalSeverity.Warning,
-            summary,
-            reason,
-            reason: reason);
-        try
+        try { return _store.UpdateAtomically(id, update); }
+        catch (InvalidOperationException failure)
         {
-            _store.Save(tournament);
-        }
-        catch
-        {
-            // Der Blockierungs-Audit darf den ursprünglichen Auslösefehler nie verschlucken oder
-            // durch einen Speicherfehler ersetzen. Der Aufrufer wirft die Ursache ohnehin weiter.
+            try
+            {
+                _store.UpdateAtomically(id, state =>
+                {
+                    AddAuditEntry(state, AuditJournalAction.PairingGenerationBlocked,
+                        AuditJournalSeverity.Warning, summary, failure.Message, reason: failure.Message);
+                    return true;
+                });
+            }
+            catch { /* An audit failure must not replace the original pairing error. */ }
+            throw;
         }
     }
 
@@ -1121,6 +1135,13 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
         ValidateImportedPlayers(tournament.Players);
         ValidateImportedRounds(tournament);
+        foreach (var entry in tournament.AuditJournal)
+        {
+            if (entry is null || entry.Actor is null || entry.Summary is null)
+            {
+                throw new InvalidOperationException("Importiertes Audit-Journal enthält einen leeren Eintrag oder Pflichttext.");
+            }
+        }
     }
 
     private static void ValidateImportedPlayers(IReadOnlyList<Player> players)
@@ -1141,6 +1162,11 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             if (player.Id == Guid.Empty)
             {
                 throw new InvalidOperationException($"Importierter Teilnehmer '{player.Name}' hat keine gültige ID.");
+            }
+
+            if (player.Rating is null)
+            {
+                throw new InvalidOperationException($"Importierter Teilnehmer in Zeile {index + 1} hat kein Ratingprofil.");
             }
 
             if (!ids.Add(player.Id))
@@ -1193,15 +1219,16 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             throw new InvalidOperationException($"Importiertes Turnier enthält {tournament.Rounds.Count} Runden, geplant sind aber nur {plannedRounds}.");
         }
 
+        var emptyRoundIndex = tournament.Rounds.FindIndex(round => round is null);
+        if (emptyRoundIndex >= 0)
+        {
+            throw new InvalidOperationException($"Importierte Runde {emptyRoundIndex + 1} ist leer.");
+        }
+
         var orderedRounds = tournament.Rounds.OrderBy(round => round.RoundNumber).ToArray();
         for (var index = 0; index < orderedRounds.Length; index++)
         {
             var round = orderedRounds[index];
-            if (round is null)
-            {
-                throw new InvalidOperationException($"Importierte Runde {index + 1} ist leer.");
-            }
-
             var expectedRoundNumber = index + 1;
             if (round.RoundNumber != expectedRoundNumber)
             {
@@ -1212,6 +1239,8 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             {
                 throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat keine Paarungsliste.");
             }
+
+            ValidateImportedRoundEvidence(round);
 
             var boardNumbers = new HashSet<int>();
             var roundPlayers = new HashSet<Guid>();
@@ -1225,6 +1254,16 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                 if (pairing.BoardNumber <= 0)
                 {
                     throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} enthält eine ungültige Brettnummer.");
+                }
+
+                if (pairing.Result is null || !Enum.IsDefined(pairing.Result.Kind))
+                {
+                    throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Ergebnis fehlt oder ist ungültig.");
+                }
+                if (pairing.Chess960StartPosition is { } position &&
+                    (position.WhiteBackRank is null || position.BlackBackRank is null))
+                {
+                    throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Chess960-Pflichttext fehlt.");
                 }
 
                 if (!boardNumbers.Add(pairing.BoardNumber))
@@ -1257,6 +1296,44 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                     AddImportedRoundPlayer(roundPlayers, pairing.BlackPlayerId.Value, round.RoundNumber, pairing.BoardNumber);
                 }
             }
+        }
+    }
+
+    private static void ValidateImportedRoundEvidence(TournamentRound round)
+    {
+        var audit = round.Audit;
+        if (audit is null || audit.Algorithm is null || audit.RulesetVersion is null)
+        {
+            throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat keinen vollständigen Auditstand.");
+        }
+        ValidateImportedTextList(audit.Messages);
+        ValidateImportedTextList(audit.ScoreGroups);
+        ValidateImportedTextList(audit.Floaters);
+        ValidateImportedTextList(audit.ColorNotes);
+
+        if (round.Forensics is not { } forensics) return;
+        if (forensics.Trigger is null || forensics.Format is null || forensics.Algorithm is null || forensics.QualitySeverity is null)
+        {
+            throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat unvollständige Forensiktexte.");
+        }
+        ValidateImportedTextList(forensics.ByeDecisions);
+        ValidateImportedTextList(forensics.RematchWarnings);
+        ValidateImportedTextList(forensics.ScoreGroupDeviations);
+        ValidateImportedTextList(forensics.ColorNotes);
+        ValidateImportedTextList(forensics.EngineMessages);
+        ValidateImportedTextList(forensics.Findings);
+        if (forensics.ProposedPairings is null || forensics.ProposedPairings.Any(board =>
+                board is null || board.White is null || board.Black is null))
+        {
+            throw new InvalidOperationException($"Importierte Runde {round.RoundNumber} hat eine unvollständige forensische Brettliste.");
+        }
+    }
+
+    private static void ValidateImportedTextList(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Any(value => value is null))
+        {
+            throw new InvalidOperationException("Importierte Audit-/Forensikliste fehlt oder enthält einen leeren Textwert.");
         }
     }
 

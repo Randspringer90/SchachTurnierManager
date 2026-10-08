@@ -3,7 +3,12 @@ param(
     [string]$RunName = 'STM_RUN50_ReleaseCandidateReadiness',
     [string]$BaseDirectory = 'D:\Temp',
     [switch]$BuildInstaller,
-    [switch]$AllowMissingInnoSetup
+    [switch]$AllowMissingInnoSetup,
+    [switch]$SignArtifacts,
+    [ValidatePattern('^[A-Fa-f0-9]{40,64}$')]
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer,
+    [switch]$RequireSignedArtifacts
 )
 
 Set-StrictMode -Version Latest
@@ -15,6 +20,26 @@ function ConvertTo-SafeFileName([string]$Value) {
     return $safe.Trim('_')
 }
 
+function ConvertTo-PowerShellLiteral([string]$Value) {
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+if ($SignArtifacts -and [string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+    throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+}
+if (-not [string]::IsNullOrWhiteSpace($TimestampServer) -and -not $SignArtifacts) {
+    throw '-TimestampServer ist nur zusammen mit -SignArtifacts zulaessig.'
+}
+if ($RequireSignedArtifacts -and -not $SignArtifacts) {
+    throw '-RequireSignedArtifacts verlangt in diesem Rebuild-Lauf auch -SignArtifacts.'
+}
+if ($RequireSignedArtifacts -and -not $BuildInstaller) {
+    throw '-RequireSignedArtifacts verlangt -BuildInstaller, damit die Setup-EXE mitgeprueft wird.'
+}
+if ($RequireSignedArtifacts -and $AllowMissingInnoSetup) {
+    throw '-RequireSignedArtifacts ist nicht mit -AllowMissingInnoSetup vereinbar.'
+}
+
 function New-ReleaseRunDirectory {
     param(
         [Parameter(Mandatory = $true)][string]$Name,
@@ -22,7 +47,8 @@ function New-ReleaseRunDirectory {
     )
 
     $safeName = ConvertTo-SafeFileName $Name
-    $candidate = Join-Path $DirectoryRoot ("${safeName}_$(Get-Date -Format yyyyMMdd_HHmmss)")
+    $leafName = $safeName + '_' + (Get-Date -Format yyyyMMdd_HHmmss)
+    $candidate = Join-Path $DirectoryRoot $leafName
     New-Item -ItemType Directory -Force -Path $candidate | Out-Null
     return (Resolve-Path -LiteralPath $candidate).Path
 }
@@ -55,14 +81,17 @@ function Write-ArtifactManifest {
     $lines.Add('')
 
     if (Test-Path -LiteralPath $outputRoot) {
-        $files = @(Get-ChildItem -LiteralPath $outputRoot -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in @('.zip', '.exe') } | Sort-Object FullName)
+        $files = @(Get-ChildItem -LiteralPath $outputRoot -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -in @('.zip', '.exe', '.json') } |
+            Sort-Object FullName)
         if ($files.Count -eq 0) {
-            $lines.Add('Keine ZIP-/EXE-Artefakte unter output/ gefunden.')
+            $lines.Add('Keine Release-Artefakte unter output/ gefunden.')
         }
         foreach ($file in $files) {
             $hash = Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256
             $relative = $file.FullName.Substring($outputRoot.Length).TrimStart([char]'\', [char]'/')
-            $lines.Add("$relative`t$($file.Length) bytes`tSHA256=$($hash.Hash)")
+            $separator = [char]9
+            $lines.Add($relative + $separator + $file.Length + ' bytes' + $separator + 'SHA256=' + $hash.Hash)
         }
     }
     else {
@@ -92,22 +121,36 @@ function Complete-RunBundle {
 }
 
 try {
+    $signingSuffix = ''
+    if ($SignArtifacts) {
+        $signingSuffix = " -SignArtifacts -SigningCertificateThumbprint $(ConvertTo-PowerShellLiteral $SigningCertificateThumbprint)"
+        if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+            $signingSuffix += " -TimestampServer $(ConvertTo-PowerShellLiteral $TimestampServer)"
+        }
+    }
+
     Invoke-Logged -Name 'releasegate-full' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseGate.ps1'
     Invoke-Logged -Name 'secret-safety' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-SecretSafetyReadiness.ps1'
-    Invoke-Logged -Name 'publish-desktop' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-DesktopApp.ps1'
-    Invoke-Logged -Name 'portable-selfcontained' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-Portable.ps1 -SelfContained'
+    Invoke-Logged -Name 'publish-desktop' -CommandLine ("pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-DesktopApp.ps1" + $signingSuffix)
+    Invoke-Logged -Name 'portable-selfcontained' -CommandLine ("pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-Portable.ps1 -SelfContained" + $signingSuffix)
 
     if ($BuildInstaller) {
         if ($AllowMissingInnoSetup) {
-            Invoke-Logged -Name 'installer-readiness' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-InstallerReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup'
+            Invoke-Logged -Name 'installer-readiness' -CommandLine ("pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-InstallerReadiness.ps1 -BuildInstaller -AllowMissingInnoSetup" + $signingSuffix)
         }
         else {
-            Invoke-Logged -Name 'installer-build' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -SkipPublish'
+            Invoke-Logged -Name 'installer-build' -CommandLine ("pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -SkipPublish" + $signingSuffix)
         }
     }
     else {
-        'Installer-Build uebersprungen. Fuer echten Setup-Test mit -BuildInstaller erneut ausfuehren.' | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $runDirectory 'installer-build-skipped.txt')
+        'Installer-Build uebersprungen. Fuer echten Setup-Test mit -BuildInstaller erneut ausfuehren.' |
+            Set-Content -Encoding UTF8 -LiteralPath (Join-Path $runDirectory 'installer-build-skipped.txt')
     }
+
+    $trustCommand = 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseTrustReadiness.ps1'
+    if ($BuildInstaller) { $trustCommand += ' -RequireInstaller' }
+    if ($RequireSignedArtifacts) { $trustCommand += " -RequireSignedArtifacts -ExpectedSignerThumbprint $(ConvertTo-PowerShellLiteral $SigningCertificateThumbprint)" }
+    Invoke-Logged -Name 'release-trust-readiness' -CommandLine $trustCommand
 
     Invoke-Logged -Name 'git-safety-final' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitCommitSafety.ps1'
     Complete-RunBundle

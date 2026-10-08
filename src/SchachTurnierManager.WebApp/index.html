@@ -8,10 +8,47 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/icons/stm-icon.svg" />
     <link rel="apple-touch-icon" href="/icons/stm-icon.svg" />
+    <link rel="stylesheet" href="/startup-guard.css" />
+    <script defer src="/startup-guard.js"></script>
+    <link rel="stylesheet" href="/offline-notice/style.css" />
+    <script type="module" src="/offline-notice/main.js"></script>
+    <link rel="stylesheet" href="/privacy-curtain/style.css" />
+    <script type="module" src="/privacy-curtain/main.js"></script>
     <title>SchachTurnierManager</title>
   </head>
   <body>
+    <section id="stm-offline-notice" class="stm-offline-notice" hidden>
+      <p id="stm-offline-message" role="status" aria-live="polite" aria-atomic="true"></p>
+      <button id="stm-offline-dismiss" type="button">Hinweis ausblenden</button>
+    </section>
+    <aside id="stm-privacy-controls" class="stm-privacy-controls" aria-label="Sichtschutz">
+      <button id="stm-privacy-toggle" type="button" disabled aria-controls="root" aria-expanded="true">Turnieransicht ausblenden</button>
+      <p id="stm-privacy-status" role="status" aria-live="polite">Nur ein Sichtschutz in diesem Tab, keine Zugangssperre. Andere Fenster und Downloads bleiben sichtbar.</p>
+    </aside>
     <div id="root"></div>
+    <section id="stm-startup-status" class="stm-startup-status" hidden aria-labelledby="stm-startup-heading">
+      <h1 id="stm-startup-heading">SchachTurnierManager wird gestartet.</h1>
+      <p id="stm-startup-message" role="status" aria-live="polite" aria-atomic="true">Falls diese Ansicht stehen bleibt, pr&uuml;fe die Verbindung zum Turnierrechner. Du kannst die Startseite erneut &ouml;ffnen.</p>
+      <p><a href="/">Startseite erneut &ouml;ffnen</a></p>
+    </section>
+    <noscript><section class="stm-startup-status" aria-label="JavaScript erforderlich"><h1>JavaScript ist erforderlich.</h1><p>Bitte aktiviere JavaScript f&uuml;r diese Anwendung. Ohne JavaScript kann die Turnierverwaltung nicht gestartet werden.</p></section></noscript>
+    <footer><nav aria-label="Weitere Werkzeuge"><ul>
+      <li><a href="/backup-check/index.html">Backup vor dem Import pruefen</a></li>
+      <li><a href="/backup-fingerprint/index.html">Backup-Prüfsumme</a></li>
+      <li><a href="/backup-compare/index.html">Backups vergleichen</a></li>
+      <li><a href="/fide-search/index.html">FIDE-Namenssuche (lokale Liste)</a></li>
+      <li><a href="/support-summary/index.html">Datensparsamer Supportbericht</a></li>
+      <li><a href="/connection-check/index.html">Verbindung prüfen</a></li>
+      <li><a href="/browser-check/index.html">Browser-Voraussetzungen prüfen</a></li>
+      <li><a href="/backup-duplicates/index.html">Gleiche Sicherungen erkennen</a></li>
+      <li><a href="/audit-reader/index.html">Audit-Export durchsuchen</a></li>
+      <li><a href="/live-standings/index.html">Live-Rangliste</a></li>
+      <li><a href="/backup-set/index.html">Sammelsicherung und Einzeldateien</a></li>
+      <li><a href="/fide-workbench/index.html">FIDE-Recherche und Kandidatenvergleich</a></li>
+      <li><a href="/backup-lock/index.html">Sicherungen verschlüsseln</a></li>
+      <li><a href="/backup-reader/index.html">Turniersicherung offline lesen</a></li>
+      <li><a href="/rating-review/index.html">Gespeicherte FIDE-Ratings vergleichen</a></li>
+    </ul></nav></footer>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,0 +1,6 @@
+#root[data-stm-concealed="true"] { display: none !important; }
+.stm-privacy-controls { padding: .6rem 1rem; font: 1rem/1.5 system-ui, sans-serif; color: CanvasText; background: Canvas; border-block-end: 1px solid currentColor; }
+.stm-privacy-controls button { padding: .5rem .8rem; font: inherit; }
+.stm-privacy-controls button:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.stm-privacy-controls p { margin: .35rem 0 0; }
+@media print { .stm-privacy-controls button { display: none; } }

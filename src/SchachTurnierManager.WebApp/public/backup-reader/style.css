@@ -1,0 +1,13 @@
+body { margin: 0; font: 1rem/1.55 system-ui, sans-serif; color: CanvasText; background: Canvas; }
+main { max-width: 78rem; margin: auto; padding: 1.25rem; }
+h1, h2 { line-height: 1.25; }
+label { display: block; margin: .8rem 0 .2rem; }
+input, select, button { font: inherit; max-width: 100%; box-sizing: border-box; }
+input:not([type=checkbox]), select { padding: .5rem; }
+button, .download { padding: .65rem .9rem; margin: .7rem .5rem .7rem 0; }
+.notice { border-inline-start: .3rem solid; padding-inline-start: 1rem; }
+.scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; }
+th, td { border-block-end: 1px solid; padding: .5rem; text-align: start; overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+[hidden] { display: none !important; }

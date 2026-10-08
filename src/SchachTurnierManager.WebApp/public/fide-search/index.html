@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer"><title>Lokale FIDE-Namenssuche | SchachTurnierManager</title><link rel="stylesheet" href="./style.css"></head>
+<body><main><p><a href="/">Zur Turnierverwaltung</a></p><h1>Lokale FIDE-Namenssuche</h1>
+<p>Durchsuche eine selbst gew&auml;hlte, entpackte FIDE-Standard-Ratingliste im TXT-Format nach Name, FIDE-ID und optional F&ouml;deration. Es werden keine Suchanfragen oder Dateien an FIDE gesendet.</p>
+<p class="notice">Dies ist die Offline-Suche gegen deine Datei, keine aktuelle Online-Abfrage. Aktualit&auml;t und Herkunft selbst pr&uuml;fen. Treffer werden nicht in das Turnier &uuml;bernommen. Du kannst die FIDE-ID manuell in der bestehenden Spielerfunktion verwenden.</p>
+<p><a href="https://ratings.fide.com/download_lists.phtml" target="_blank" rel="noopener noreferrer">Offizielle FIDE-Downloadseite separat &ouml;ffnen</a>. ZIP vorher selbst entpacken. Unterst&uuml;tzt werden TXT-K&ouml;pfe mit ID Number, Name, Fed und SRtng/STD; kein Rapid-only, Blitz-only, XML oder ZIP.</p>
+<label for="file">Entpackte Standard-TXT-Liste (maximal 256 MiB)</label><input id="file" type="file" accept=".txt,text/plain">
+<label for="query">Name (mindestens zwei Zeichen) oder FIDE-ID</label><input id="query" type="text" maxlength="100" autocomplete="off">
+<label for="federation">F&ouml;deration (optional, z. B. GER)</label><input id="federation" type="text" maxlength="3" autocomplete="off">
+<button id="start" type="button">Lokal suchen</button><button id="cancel" type="button" disabled>Abbrechen</button><button id="clear" type="button">Zur&uuml;cksetzen</button>
+<p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+<p>H&ouml;chstens die ersten 50 passenden Zeilen in Dateireihenfolge werden angezeigt; die Zahl weiterer Treffer bleibt sichtbar. Gleiche Namen werden nicht automatisch zusammengef&uuml;hrt.</p>
+<div class="table-wrap"><table><caption>Treffer aus der ausgew&auml;hlten Datei</caption><thead><tr><th scope="col">FIDE-ID</th><th scope="col">Name</th><th scope="col">F&ouml;deration</th><th scope="col">Standard-Rating</th><th scope="col">Titel</th></tr></thead><tbody id="rows"></tbody></table></div>
+
+<noscript><p>JavaScript ist f&uuml;r diese Funktion erforderlich.</p></noscript></main><script type="module" src="./main.js"></script></body></html>

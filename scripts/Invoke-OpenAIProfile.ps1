@@ -66,11 +66,21 @@ $decision = [ordered]@{
 }
 
 if ($DryRun) {
-    $available = $null -ne (Get-Command $provider.executable -ErrorAction SilentlyContinue)
+    $available = $false
+    try { $runner = Resolve-RoutedRunnerInvocation -Executable $provider.executable; $available = $true }
+    catch { $available = $false }
+    $decision.availabilityVerification = 'CLI_ONLY_MODEL_UNVERIFIED'
     $decision.status = if ($available) { 'DRY_RUN_OK' } else { 'DRY_RUN_RUNNER_MISSING' }
     $decision.arguments = $arguments
     $decision | ConvertTo-Json -Depth 6 -Compress
     exit ([int](-not $available) * 5)
+}
+
+$authentication = Test-RoutedSubscriptionAuthentication -Provider openai -Executable $provider.executable
+if ($authentication -ne 'SUBSCRIPTION_AUTH_VERIFIED') {
+    $decision.status = $authentication
+    $decision | ConvertTo-Json -Depth 6 -Compress
+    exit 3
 }
 
 if (-not (Test-Path -LiteralPath $PromptFile -PathType Leaf)) {

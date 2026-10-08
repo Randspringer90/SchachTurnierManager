@@ -1,6 +1,13 @@
 - 2026-07-09: ChatGPT RUN-11 Knowledge-Base-Readiness Parser-Hotfix (`scripts/Invoke-KnowledgeBaseReadiness.ps1`) -> 0.48.1.
 # KI-Prompt-Log — SchachTurnierManager
 
+- 2026-10-08: Abschlussintegration, identische Regex-Prüfung kompilieren;
+  [Prompt](prompts/20261008_1455_compiled_scanner.md),
+  [Bericht](reports/20261008_1455_compiled_scanner_REPORT.md).
+- 2026-10-08: Exakter Kontextnachweis für die erhöhte Scannerfrist;
+  [Prompt](prompts/20261008_1523_timeout_pattern_context.md),
+  [Bericht](reports/20261008_1523_timeout_pattern_context_REPORT.md).
+
 Jeder relevante KI-Lauf (Claude Code, Codex, andere) traegt sich hier ein.
 Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
@@ -45,7 +52,13 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 
 | Datum | Tool/Modell | Kurzbeschreibung | Prompt | Report |
 |---|---|---|---|---|
+| 2026-10-07 | Codex / Sol | STM-INT-002: Review, adaptation and consolidation of all open PRs; AI harness refresh; no release/artifact publication. | [Prompt](prompts/20261007_0926_codex-main-integration.md) | [Report](reports/20261007_0926_codex-main-integration_REPORT.md) |
+| 2026-10-07 | Codex / Sol-Profil | STM-SEC-005: SHA-verifizierter Textpatch-Nachweis fuer grosse PRs; unveraenderte Sicherheitsgrenzen | [Prompt](prompts/20261007_1400_codex-pr-text-evidence.md) | [Report](reports/20261007_1400_codex-pr-text-evidence_REPORT.md) |
 | 2026-10-04 | Codex / Sol-Profil, unabhaengiges Security-Review | Bestehende PRs integrieren; aktuelle Modelle zentral und versionsneutral pflegen | [Prompt](prompts/20261004_1854_all-prs-model-catalog.md) | [Modellkatalog-Zwischenabschluss](reports/20261004_1854_model-catalog_REPORT.md) |
+| 2026-07-19 | Claude Code / Opus | Finaler Integrationslauf (unterstützend): Firefox-Fix für Zurücksetzen/Löschen, Frontend-Modularisierung (`main.tsx` 4550 → 23 Zeilen), Turnierpaket-Endpunkte, Repository-/Adapter-Layout; ohne Netzwerk, daher kein Push/Merge; [Run-Metadaten](run-metadata/20260719_1648_claude-final-completion.json) | [prompts/20260719_1648_claude-final-completion.md](prompts/20260719_1648_claude-final-completion.md) | [reports/2026-07-19-final-completion-architecture-firefox-build-week.md](reports/2026-07-19-final-completion-architecture-firefox-build-week.md) |
+| 2026-07-19 | Codex CLI / OpenAI-Modell | Finale Hook-/PR-Integration, Architektur, UX, Candidate-Builds und vollständiger Git-Abschluss; [Run-Metadaten](run-metadata/20260719_1122_codex-final-build-week-integration.json) | [prompts/20260719_1122_codex-final-build-week-integration.md](prompts/20260719_1122_codex-final-build-week-integration.md) | [reports/20260719_1122_codex-final-build-week-integration_REPORT.md](reports/20260719_1122_codex-final-build-week-integration_REPORT.md) |
+| 2026-07-18 | Codex CLI / OpenAI-Modell | Build-Week-Integration, Repository-Hygiene, exakte Owner-PR-Reihenfolge und Jury-Readiness; [Run-Metadaten](run-metadata/20260718_2309_codex-build-week-integration.json) | [prompts/20260718_2309_codex-build-week-integration.md](prompts/20260718_2309_codex-build-week-integration.md) | [reports/20260718_2309_codex-build-week-integration_REPORT.md](reports/20260718_2309_codex-build-week-integration_REPORT.md) |
+| 2026-07-18 | Codex CLI / OpenAI-Modell | OpenAI Build Week: sicherer Finalisierungslauf für Competition-Audit, PR #49/STM-INFRA-008, UX/Demo, Submission-Doku und exakten Windows-/Android-Candidate; [Run-Metadaten](run-metadata/20260718_1815_codex-build-week-finalization.json) | [prompts/20260718_1815_codex-build-week-finalization.md](prompts/20260718_1815_codex-build-week-finalization.md) | [reports/20260718_1815_codex-build-week-finalization_REPORT.md](reports/20260718_1815_codex-build-week-finalization_REPORT.md) |
 | 2026-07-16 | Codex | Usage-Limit-Resume: lokalen PR-10-Zwischenstand rekonstruieren, fünffach prüfen und STM-FACH-001 sicher fertigstellen | [prompts/20260716_1415_codex-pr10-safe-adoption-resume.md](prompts/20260716_1415_codex-pr10-safe-adoption-resume.md) | [reports/2026-07-16-codex-pr10-safe-adoption.md](reports/2026-07-16-codex-pr10-safe-adoption.md) |
 | 2026-07-16 | Codex / Sol-Profil | Sichere Adoption der Contributor-PRs #9/#10, dynamisches Modellrouting, Wissensmanagement und Nightly-/Resume-Unterbau | [prompts/20260716_1128_codex-marcel-pr-adoption-routing-nightly.md](prompts/20260716_1128_codex-marcel-pr-adoption-routing-nightly.md) | [reports/2026-07-16-codex-marcel-pr-adoption-routing-nightly.md](reports/2026-07-16-codex-marcel-pr-adoption-routing-nightly.md) |
 | 2026-07-10 | Codex | Stabilisierung nach RUN-54: manuelle Aenderungen reviewen, Public-/Secret-Gates haerten, Runtime-Logging-Fixes, synthetische Fixtures, Reports, Commit/Push | [prompts/20260710_0604_codex-stabilisation-public-gate.md](prompts/20260710_0604_codex-stabilisation-public-gate.md) | [reports/20260710_0604_codex-stabilisation-public-gate_REPORT.md](reports/20260710_0604_codex-stabilisation-public-gate_REPORT.md) |
@@ -79,8 +92,15 @@ Volle Prompts liegen unter `prompts\`, Abschlussberichte unter `reports\`.
 - 2026-07-09 ChatGPT RUN-50: Release-/Betriebsunterbau mit Logging-Leveln, DPAPI-Secret-Selftest, ReleaseCandidateReadiness, Agenten-Skills und Unit-/Contract-Tests.
 
 | 2026-07-09 | ChatGPT / Reasoning-Profil | RUN-52: Kollegenpaket-Frischlauf-Test mit Checksums, Desktop-ZIP-Entpackung, Auto-Port, Health/Dashboard/API-Smoke und isoliertem Datenpfad, Version 0.52.0 | [prompts/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md](prompts/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md) | [reports/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md](reports/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md) |
+| 2026-07-09 | ChatGPT Thinking | RUN-52: Kollegenpaket-Frischlauf-Test mit Checksums, Desktop-ZIP-Entpackung, Auto-Port, Health/Dashboard/API-Smoke und isoliertem Datenpfad, Version 0.52.0 | [prompts/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md](prompts/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md) | [reports/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md](reports/2026-07-09-chatgpt-run52-colleague-fresh-run-test.md) |
+| 2026-07-15 | Codex | KFM-FLEET-CORRECTION-CODEX-SOL-FINALIZE-20260715 - BAT/CMD-Gate dokumentieren; bekannten Public-History-Blocker respektieren. | [Prompt](prompts/20260715_1236_kfm_fleet_correction_codex_sol_finalize.md) | [Report](reports/20260715_1236_kfm_fleet_correction_codex_sol_finalize_REPORT.md) |
 
 ## 2026-07-09 RUN-53 Klick-Installation
 
 Kollegenpaket nach RUN-52 um einen Doppelklick-Installationspfad, Uninstall, Shortcut-Erzeugung, Frischinstallations-Smoke-Test, Doku, Skill und Guard-Test erweitern. Keine Secrets oder externen Projektabhaengigkeiten in das Paket aufnehmen.
-| 2026-07-15 | Codex | KFM-FLEET-CORRECTION-CODEX-SOL-FINALIZE-20260715 - BAT/CMD-Gate dokumentieren; bekannten Public-History-Blocker respektieren. | [Prompt](prompts/20260715_1236_kfm_fleet_correction_codex_sol_finalize.md) | [Report](reports/20260715_1236_kfm_fleet_correction_codex_sol_finalize_REPORT.md) |
+
+> **2026-10-08 (Codex / Sol-Profil):** [Owner-Masterprompt, security-redigiert](prompts/20261008_1030_final-integration.md); [Laufbericht](reports/20261008_1030_final-integration_REPORT.md). CSV-Preview-Race, Scanner-/Integrations-PRs, SHA-gebundene KI-/CI-Freigabe, Main-Proof und Fortschrittsaudit.
+| 2026-10-08 | Codex | Finalintegration: fokussierter Scanner-Tree-Binding-Folgefix | [Prompt](prompts/20261008_1030_final-integration.md) | [Report](reports/20261008_1030_scanner_tree_binding_REPORT.md) |
+| 2026-10-08 | Codex | Finalintegration: exakte gepruefte Scanner-Kontexte | [Prompt](prompts/20261008_1120_scanner_context.md) | [Report](reports/20261008_1120_scanner_context_REPORT.md) |
+| 2026-10-08 | Codex | Finalintegration: native Scannergrenze und begrenzte Enumeration | [Prompt](prompts/20261008_1350_scanner_budget.md) | [Report](reports/20261008_1350_scanner_budget_REPORT.md) |
+| 2026-10-08 | Codex | Finalintegration: native Windows-Wurzelidentität | [Prompt](prompts/20261008_1425_windows_root_case.md) | [Report](reports/20261008_1425_windows_root_case_REPORT.md) |

@@ -1,15 +1,34 @@
+# CmdletBinding ist Absicht: ohne das nimmt PowerShell unbekannte benannte
+# Argumente stillschweigend entgegen. Test-PortablePackageGate.ps1 hat darum
+# lange in das echte output/ gebaut statt in seinen tmp-Ordner, ohne Fehler.
+[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [switch]$SelfContained,
-    [switch]$NoZip
+    [switch]$NoZip,
+
+    # Zielwurzel fuer das portable Paket. Standard ist output/ im Repo; Gates
+    # bauen damit hermetisch nach tmp/, ohne das echte Paket zu ueberschreiben.
+    [string]$OutputRoot,
+    [switch]$SignArtifacts,
+    [string]$SigningCertificateThumbprint,
+    [string]$TimestampServer
 )
 
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
 $root = Resolve-Path "$PSScriptRoot\.."
-$outputRoot = Join-Path $root "output"
+$outputRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) { Join-Path $root "output" } else { $OutputRoot }
+# The package folder below is deleted recursively, so the target must resolve to the
+# repository's own output\ or tmp\ tree (Test-PortablePackageGate uses tmp\).
+$outputRoot = [System.IO.Path]::GetFullPath([string]$outputRoot)
+$allowedRoots = @('output', 'tmp') | ForEach-Object { [System.IO.Path]::GetFullPath((Join-Path ([string]$root) $_)).TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar }
+$candidate = $outputRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+if (-not ($allowedRoots | Where-Object { $candidate.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) })) {
+    throw "OutputRoot muss innerhalb von output\ oder tmp\ des Repositorys liegen: $outputRoot"
+}
 $portableRoot = Join-Path $outputRoot "portable"
 $appOutput = Join-Path $portableRoot "app"
 $dataDir = Join-Path $portableRoot "data"
@@ -39,12 +58,32 @@ function Invoke-Checked {
 }
 
 Write-Host "[Pack-Portable] Ziel: $portableRoot"
-Remove-Item -Recurse -Force $portableRoot -ErrorAction SilentlyContinue
+# The lexical check above is not enough: a junction or symlink anywhere between the
+# allowed root (output\ or tmp\) and the delete target could redirect the recursive
+# delete outside the repository. Every existing component on that path, including the
+# allowed root itself, must therefore be a real directory.
+$allowedBase = ($allowedRoots | Where-Object { $candidate.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1).TrimEnd('\', '/')
+$cursor = [System.IO.Path]::GetFullPath($portableRoot).TrimEnd('\', '/')
+while ($true) {
+    if (Test-Path -LiteralPath $cursor) {
+        if ((Get-Item -LiteralPath $cursor -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            throw "Pfadkomponente ist ein Link/Reparse-Point; Paketziel wird nicht geloescht: $cursor"
+        }
+    }
+    if ($cursor -ieq $allowedBase) { break }
+    $parent = Split-Path -Parent $cursor
+    if ([string]::IsNullOrEmpty($parent) -or $parent -eq $cursor) { throw "Paketziel liegt nicht unter $allowedBase" }
+    $cursor = $parent.TrimEnd('\', '/')
+}
+if (Test-Path -LiteralPath $portableRoot) {
+    Remove-Item -LiteralPath $portableRoot -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path $appOutput, $dataDir | Out-Null
 
 Push-Location $webApp
 try {
-    $npmInstallCommand = "install"
+    # npm ci installs exactly the checked lockfile (STM-SEC-002); npm install could rewrite it.
+    $npmInstallCommand = "ci"
     Invoke-Checked "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
     Invoke-Checked "npm run build" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
 }
@@ -97,6 +136,28 @@ Hinweise:
 - Keine Dateien aus app\ manuell bearbeiten.
 - Für Backups im Dashboard JSON-Export verwenden.
 "@ | Set-Content -Encoding UTF8 (Join-Path $portableRoot "README-Portable.md")
+
+if ($SignArtifacts) {
+    if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint)) {
+        throw '-SignArtifacts verlangt -SigningCertificateThumbprint.'
+    }
+
+    $signArgs = @(
+        '-NoLogo','-NoProfile','-ExecutionPolicy','Bypass',
+        '-File',(Join-Path $PSScriptRoot 'Sign-ReleaseArtifacts.ps1'),
+        '-ArtifactPath',(Join-Path $appOutput 'SchachTurnierManager.WebApi.exe'),
+        '-CertificateThumbprint',$SigningCertificateThumbprint,
+        '-ApproveSigning'
+    )
+    if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+        $signArgs += @('-TimestampServer',$TimestampServer)
+    }
+
+    & pwsh.exe @signArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Sign-ReleaseArtifacts.ps1 fehlgeschlagen (ExitCode=$LASTEXITCODE)."
+    }
+}
 
 if (-not $NoZip) {
     $zipPath = Join-Path $outputRoot "SchachTurnierManager_Portable_$version.zip"

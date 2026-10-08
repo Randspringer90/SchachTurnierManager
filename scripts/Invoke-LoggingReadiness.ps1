@@ -1,3 +1,4 @@
+#requires -Version 7.0
 [CmdletBinding()]
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
@@ -9,6 +10,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib/BackgroundProcess.ps1')
 
 $bundleScript = Join-Path $PSScriptRoot 'New-RunLogBundle.ps1'
 $loggedCommandScript = Join-Path $PSScriptRoot 'Invoke-LoggedCommand.ps1'
@@ -33,7 +35,7 @@ function Resolve-UploadZipPath([string]$RunDirectory) {
 
 function Complete-RunBundle {
     $expectedUploadZip = Resolve-UploadZipPath -RunDirectory $runDirectory
-    pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $bundleScript -RunDirectory $runDirectory -RunName $RunName -RepositoryRoot $Root | Out-Null
+    pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $bundleScript -RunDirectory $runDirectory -RunName $RunName -RepositoryRoot $Root | Out-Null
     if (-not (Test-Path -LiteralPath $expectedUploadZip -PathType Leaf)) {
         throw "Upload-ZIP wurde nicht erzeugt: $expectedUploadZip"
     }
@@ -46,7 +48,7 @@ function Invoke-Logged {
         [Parameter(Mandatory = $true)][string]$CommandLine
     )
 
-    pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $loggedCommandScript `
+    pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $loggedCommandScript `
         -RunDirectory $runDirectory `
         -Name $Name `
         -WorkingDirectory $Root `
@@ -66,11 +68,15 @@ function Get-AvailableLoopbackPort {
 function Wait-HttpOk {
     param(
         [Parameter(Mandatory = $true)][string]$Url,
-        [int]$TimeoutSeconds = 45
+        [int]$TimeoutSeconds = 45,
+        [psobject]$BackgroundHandle
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
+        if ($null -ne $BackgroundHandle -and $BackgroundHandle.Process.HasExited) {
+            throw "Logging smoke exited with $($BackgroundHandle.Process.ExitCode). See $($BackgroundHandle.StderrPath)."
+        }
         try {
             $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2
             if ($response.StatusCode -eq 200) { return $response }
@@ -87,10 +93,10 @@ $runDirectory = New-LoggingRunDirectory -RunName $RunName -BaseDirectory $BaseDi
 Write-Host "RUN_DIR=$runDirectory"
 
 try {
-    Invoke-Logged -Name 'releasegate-skip-pack' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseGate.ps1 -SkipPack'
+    Invoke-Logged -Name 'releasegate-skip-pack' -CommandLine 'pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\scripts\Invoke-ReleaseGate.ps1 -SkipPack'
 
     if ($BuildDesktop -or -not (Test-Path -LiteralPath (Join-Path $Root 'output\desktop\app\SchachTurnierManager.WebApi.exe') -PathType Leaf)) {
-        Invoke-Logged -Name 'publish-desktop' -CommandLine 'pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-DesktopApp.ps1 -NoZip'
+        Invoke-Logged -Name 'publish-desktop' -CommandLine 'pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\scripts\Publish-DesktopApp.ps1 -NoZip'
     }
 
     $exe = Join-Path $Root 'output\desktop\app\SchachTurnierManager.WebApi.exe'
@@ -104,28 +110,35 @@ try {
     if ($effectivePort -le 0) { $effectivePort = Get-AvailableLoopbackPort }
     Write-Host "PORT=$effectivePort"
 
-    $env:ASPNETCORE_URLS = "http://127.0.0.1:$effectivePort"
-    $env:SchachTurnierManager__DataDirectory = $dataDirectory
-    $env:SchachTurnierManager__LogDirectory = $logDirectory
-    $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) -PassThru -WindowStyle Hidden
+    $background = $null
     try {
-        $healthResponse = Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/health" -TimeoutSeconds 45
+        $background = Start-StmBackgroundProcess -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) `
+            -LogDirectory $runDirectory -Name logging-smoke `
+            -Environment @{
+                ASPNETCORE_URLS = "http://127.0.0.1:$effectivePort"
+                SchachTurnierManager__DataDirectory = $dataDirectory
+                SchachTurnierManager__LogDirectory = $logDirectory
+            }
+        $healthResponse = Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/health" -TimeoutSeconds 45 -BackgroundHandle $background
         $health = $healthResponse.Content | ConvertFrom-Json
         if ($health.logging.file -ne 'enabled') { throw "File-Logging ist laut Health nicht aktiv: $($health.logging.file)" }
-        if ([string]$health.logging.directory -ne $logDirectory) { throw "Health meldet falschen Logordner: $($health.logging.directory)" }
+        # The public health endpoint no longer exposes absolute paths (Public-Health-Haertung).
+        # The configured log folder is proven below by the log file actually written there.
+        if ([string]$health.logging.storage -ne 'local') { throw "Health meldet keine lokale Logablage: $($health.logging.storage)" }
+        foreach ($privatePath in @($logDirectory, $dataDirectory)) {
+            if ($healthResponse.Content -match [regex]::Escape($privatePath) -or $healthResponse.Content -match [regex]::Escape($privatePath.Replace('\', '\\'))) {
+                throw 'Health gibt einen absoluten lokalen Pfad preis.'
+            }
+        }
 
-        Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/" -TimeoutSeconds 10 | Out-Null
-        Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/tournaments" -TimeoutSeconds 10 | Out-Null
-        Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/health?token=should-not-appear" -TimeoutSeconds 10 | Out-Null
+        Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/" -TimeoutSeconds 10 -BackgroundHandle $background | Out-Null
+        Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/tournaments" -TimeoutSeconds 10 -BackgroundHandle $background | Out-Null
+        Wait-HttpOk -Url "http://127.0.0.1:$effectivePort/api/health?token=should-not-appear" -TimeoutSeconds 10 -BackgroundHandle $background | Out-Null
         Start-Sleep -Milliseconds 500
     }
     finally {
-        Remove-Item Env:\ASPNETCORE_URLS -ErrorAction SilentlyContinue
-        Remove-Item Env:\SchachTurnierManager__DataDirectory -ErrorAction SilentlyContinue
-        Remove-Item Env:\SchachTurnierManager__LogDirectory -ErrorAction SilentlyContinue
-        if ($process -and -not $process.HasExited) {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            $process.WaitForExit(5000) | Out-Null
+        if ($null -ne $background) {
+            Stop-StmBackgroundProcess -Handle $background | Out-Null
         }
     }
 
