@@ -4,6 +4,18 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-08 — Ausführung und Evidenz getrennt validieren
+
+- Kontext: Ein korrekt umbenannter Argumentvektor wurde zunächst mit dem alten Splatnamen aufgerufen;17 exit0-Hosts bedeuteten NO_EXECUTION. Ein erfolgreicher Node-Lauf lieferte SPEC statt erwarteter TAP-Metadaten.
+- Lesson: Exitcode allein beweist keine Skriptausführung. Explizite NonInteractive/File-Argumente, individuelle nichtinteraktive Erfolgslogs, Hashes und exakter Quell-SHA müssen zusammenpassen; Parserkorrekturen sind keine weiteren Tests.
+- Konsequenz: Ungültigen Versuch erhalten,17 Gates tatsächlich neu ausführen, leere Host-/Promptlogs ablehnen und einzigartige Produktfälle nicht doppelt zählen.
+
+## 2026-10-08 — Branch-Erstellung besitzt eigene Rulesetwirkungen
+
+- Kontext: Die automatische RepositoryRole-Ausnahme eines release-Branch-Rulesets meldete einen noch laufenden Check bei reiner Branch-Erstellung, obwohl alle geschützten Merges später auf vollständige CI warteten.
+- Lesson: Mergechecks und Branch-Erstellungsregeln separat vorab prüfen; automatische Ausnahmen sind ebenfalls als tatsächliche Abweichung zu dokumentieren.
+- Konsequenz: Kein rückwirkendes Verschweigen oder Rulesetumbau. Reinen Doku-Transport über bereits erlaubten ungeschützten hotfix-Namen führen; geschützte development/main-Checks und exakte KI-Reviews weiter vollständig verlangen.
+
 ## 2026-10-08 — Windows-Wurzeln nativ kanonisieren
 
 - Kontext: Die Remote-CI verwendet einen anders geschriebenen Laufwerksbuchstaben
