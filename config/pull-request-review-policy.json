@@ -8,14 +8,46 @@
   "maxPatchBytes": 5242880,
   "maxMetadataTextLength": 20000,
   "blockedFileTypes": [
-    ".exe", ".dll", ".msi", ".zip", ".7z", ".rar", ".cab", ".jar",
-    ".com", ".scr", ".pif", ".sys", ".so", ".dylib", ".nupkg"
+    ".exe",
+    ".dll",
+    ".msi",
+    ".zip",
+    ".7z",
+    ".rar",
+    ".cab",
+    ".jar",
+    ".com",
+    ".scr",
+    ".pif",
+    ".sys",
+    ".so",
+    ".dylib",
+    ".nupkg"
   ],
-  "archiveFileTypes": [".zip", ".7z", ".rar", ".cab", ".jar", ".nupkg"],
+  "archiveFileTypes": [
+    ".zip",
+    ".7z",
+    ".rar",
+    ".cab",
+    ".jar",
+    ".nupkg"
+  ],
   "highRiskPaths": [
-    ".github/", "AGENTS.md", "agents/", ".agents/", ".claude/", "CODEOWNERS",
-    "config/", "scripts/", "installer/", "setup/", "Directory.Build.props",
-    "Directory.Build.targets", "NuGet.Config", ".gitmodules", ".gitattributes"
+    ".github/",
+    "AGENTS.md",
+    "agents/",
+    ".agents/",
+    ".claude/",
+    "CODEOWNERS",
+    "config/",
+    "scripts/",
+    "installer/",
+    "setup/",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "NuGet.Config",
+    ".gitmodules",
+    ".gitattributes"
   ],
   "binaryPolicy": "block-unverified",
   "archivePolicy": "block-unverified",
@@ -40,7 +72,10 @@
   "workflowPolicy": {
     "trigger": "pull_request",
     "forbidPullRequestTarget": true,
-    "maximumPermissions": ["contents:read", "pull-requests:read"],
+    "maximumPermissions": [
+      "contents:read",
+      "pull-requests:read"
+    ],
     "secretAccess": false,
     "writeAccess": false
   },
@@ -57,14 +92,267 @@
     "approvalMustMatchHeadSha": true,
     "approvalReviewerMustBeRepositoryOwner": true,
     "ownerAuthoredIntegrationRequired": true,
-    "allowedAfterApproval": ["ADAPTATION_REQUIRED", "OWNER_REVIEW_REQUIRED"],
-    "neverAllowed": ["BLOCKED_UNVERIFIED"]
+    "allowedAfterApproval": [
+      "ADAPTATION_REQUIRED",
+      "OWNER_REVIEW_REQUIRED"
+    ],
+    "neverAllowed": [
+      "BLOCKED_UNVERIFIED"
+    ]
   },
-  "riskClasses": ["LOW", "MEDIUM", "HIGH", "CRITICAL", "UNVERIFIED"],
+  "riskClasses": [
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "CRITICAL",
+    "UNVERIFIED"
+  ],
   "decisions": [
     "SAFE_FOR_ISOLATED_BUILD",
     "ADAPTATION_REQUIRED",
     "OWNER_REVIEW_REQUIRED",
     "BLOCKED_UNVERIFIED"
+  ],
+  "sourcePatternContexts": [
+    {
+      "path": "docs/ai/prompts/20260718_1815_codex-build-week-finalization.md",
+      "mode": "100644",
+      "blobSha": "05e24c58e831092921dd3aba178d0beffa290951",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "git-hook",
+          "definitionSha256": "d9608e014406fed5730599f63b8be675ddbf3ee2398c9cccd51c878f0cd258e8"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "docs/ai/prompts/20260718_2309_codex-build-week-integration.md",
+      "mode": "100644",
+      "blobSha": "f03e37efc7866f89868ee6c49addd67a86d51c94",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "git-hook",
+          "definitionSha256": "d9608e014406fed5730599f63b8be675ddbf3ee2398c9cccd51c878f0cd258e8"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "docs/ai/prompts/20260719_1648_claude-final-completion.md",
+      "mode": "100644",
+      "blobSha": "b71bd4a97afa79fb286e074b9c7db963cf724037",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "git-hook",
+          "definitionSha256": "d9608e014406fed5730599f63b8be675ddbf3ee2398c9cccd51c878f0cd258e8"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "docs/testing/CSV_PREVIEW_IDENTITY.md",
+      "mode": "100644",
+      "blobSha": "1339f53664eecd5c970b29578fa256c179c1ea1b",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "docs/testing/STARTUP_RECOVERY.md",
+      "mode": "100644",
+      "blobSha": "9161f60ea541081bd7a6c2a5143af70a9486753a",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "persistence",
+          "definitionSha256": "e0aacb511088598bccf81e88ff518a8506b7ece5b863ff05ea3a0f88dcb3a79a"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Invoke-LoggingReadiness.ps1",
+      "mode": "100644",
+      "blobSha": "a5f8ababc6fa9c15c0db7d7dc7b0622e2641388b",
+      "beforeBlobSha": "7cc5572b8ef5acca709468ff60417838d60cb7bd",
+      "beforeMode": "100644",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "security-bypass",
+          "definitionSha256": "0e65ecb1c93bb8d8abe82716aad3d32386250fb51edb6615a63650301119a5f8"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxCsvImport.ps1",
+      "mode": "100644",
+      "blobSha": "83faf51f88301d23af26e8b055a4de6aad18b622",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxDialogs.ps1",
+      "mode": "100644",
+      "blobSha": "490f6aa684ead9c94e0da74e40e47e68c88d77c5",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxIntegratedTools.ps1",
+      "mode": "100644",
+      "blobSha": "1dc125ce67b2f7d6cc8c2fd5fa1ad8b7982695e0",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxTournamentEditors.ps1",
+      "mode": "100644",
+      "blobSha": "65ede1e7e88d982ead79ab1b3bb91c5b7abcfabd",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxTournamentFlow.ps1",
+      "mode": "100644",
+      "blobSha": "a23a6d9cd48e8dd05eea7cada851c3366350b43a",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Test-DependencySupplyChainSafety.ps1",
+      "mode": "100644",
+      "blobSha": "7a551a9ca11ce322c8c4f4548953bb2647ef1ce6",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "encoded-execution",
+          "definitionSha256": "62112e880972a385b5b9a46a421395973bd58a504737391c568283f7b16d7d7f"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/lib/FirefoxSmokeCommon.ps1",
+      "mode": "100644",
+      "blobSha": "bae0ebbca8e9032b320ff79807c0684f51a67c55",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/lib/MarionetteClient.psm1",
+      "mode": "100644",
+      "blobSha": "b8d835dbbc221e860e132f290139018132bf3738",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "encoded-execution",
+          "definitionSha256": "62112e880972a385b5b9a46a421395973bd58a504737391c568283f7b16d7d7f"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "tests/scripts/current-models-background.test.mjs",
+      "mode": "100644",
+      "blobSha": "57d945f10a0c9da1cdc9e37c99687fd8eac09c85",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "dynamic-expression",
+          "definitionSha256": "746325b57351aa429205f72e3093d0f841deab6a47f3886fc988b57ba7c92f0d"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "tests/scripts/service-worker.test.mjs",
+      "mode": "100644",
+      "blobSha": "c854d9760aee34e0519d537bc4e049c2637a193f",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "patterns": [
+        {
+          "id": "persistence",
+          "definitionSha256": "e0aacb511088598bccf81e88ff518a8506b7ece5b863ff05ea3a0f88dcb3a79a"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    }
   ]
 }

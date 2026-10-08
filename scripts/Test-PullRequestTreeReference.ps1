@@ -17,6 +17,7 @@ $Repository = 'Randspringer90/SchachTurnierManager'; $BaseBranch = 'development'
 $ExpectedBaseSha = 'a' * 40; $ExpectedHeadSha = 'b' * 40
 $policies = [pscustomobject]@{ review = [pscustomobject]@{ blockedFileTypes = @(); archiveFileTypes = @() }; artifacts = @{} }
 $script:treeRequests = @(); $script:reconstructed = $false; $script:badTree = $false
+$script:completePatch = $false; $script:badCommit = $false; $script:truncatedTree = $false
 function Test-OriginMatchesReviewRepository { return $true }
 function Invoke-TrustedGhJson {
     param($Context, $Arguments)
@@ -29,19 +30,20 @@ function Invoke-TrustedGhJson {
     if ($endpoint -match '/git/commits/([0-9a-f]{40})$') {
         $sha = $Matches[1]; $tree = if ($sha -ceq $ExpectedHeadSha) { 'd' * 40 } else { 'c' * 40 }
         if ($script:badTree) { $tree = 'invalid/tree' }
+        if ($script:badCommit) { $sha = 'e' * 40 }
         return [pscustomobject]@{ sha = $sha; tree = @{ sha = $tree } }
     }
     if ($endpoint -match '/git/trees/([0-9a-f]{40})\?recursive=1$') {
         $reference = $Matches[1]; $script:treeRequests += $reference
         # Reproduce the observed GitHub contract: sha echoes a commit-ish input,
         # whereas an actual tree-ID input returns that actual tree ID.
-        return [pscustomobject]@{ sha = $reference; truncated = $false; tree = @() }
+        return [pscustomobject]@{ sha = $reference; truncated = $script:truncatedTree; tree = @() }
     }
     if ($endpoint -match '/compare/') { return [pscustomobject]@{} }
     throw 'Unexpected synthetic transport call.'
 }
 function ConvertFrom-GitHubPullRequestReviewData {
-    return [pscustomobject]@{ files = @([pscustomobject]@{ path = 'synthetic.txt'; patchAvailable = $false; patchComplete = $false }); patch = ''; treeMetadataComplete = $true }
+    return [pscustomobject]@{ files = @([pscustomobject]@{ path = 'synthetic.txt'; patchAvailable = $script:completePatch; patchComplete = $script:completePatch }); patch = ''; treeMetadataComplete = $true }
 }
 function Add-ReviewVerifiedTextPatchEvidence {
     param($ApiFiles, $Metadata, $BaseCommit, $HeadCommit, $BaseTree, $HeadTree, $Comparison,
@@ -61,4 +63,16 @@ try { $null = & $adapter } catch {
     $rejected = $true
 }
 if (-not $rejected -or $script:reconstructed -or $script:treeRequests.Count -ne 2) { throw 'Invalid tree ID was used or did not fail closed.' }
-Write-Output 'TREE_REFERENCE_ADAPTER=PASS CASES=2 NETWORK_CALLS=0 FOREIGN_CODE_EXECUTION=0'
+$script:badTree=$false; $script:completePatch=$true
+$policies.review | Add-Member sourcePatternContexts @([pscustomobject]@{path='synthetic.txt'})
+$script:treeRequests=@(); $script:reconstructed=$false
+$result=& $adapter
+if ($script:reconstructed -or $script:treeRequests.Count -ne 4 -or $result.metadata.patternContextHeadSha -cne $ExpectedHeadSha) { throw 'Complete patch context lacked actual-tree verification.' }
+foreach ($failure in @('commit','tree')) {
+    $script:badCommit=$failure -ceq 'commit'; $script:truncatedTree=$failure -ceq 'tree'
+    $expectedError=if($script:badCommit){'TEXT_EVIDENCE_COMMIT_BINDING'}else{'TEXT_EVIDENCE_TREE_BINDING'}
+    $rejected=$false
+    try { $null=& $adapter } catch { if($_.Exception.Message -cne $expectedError){throw};$rejected=$true }
+    if(-not $rejected){throw 'Incorrect commit or incomplete tree accepted.'}
+}
+Write-Output 'TREE_REFERENCE_ADAPTER=PASS CASES=5 NETWORK_CALLS=0 FOREIGN_CODE_EXECUTION=0'

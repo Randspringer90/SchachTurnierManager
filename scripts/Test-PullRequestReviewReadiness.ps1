@@ -682,7 +682,7 @@ Check (-not (Test-PullRequestMergeEligibility @directMerge)) 'Direktmerge eines 
 $focusedScratch = Assert-SafeReviewOutputPath -Path (Join-Path $repo ('output/stm-pr-focused-' + [guid]::NewGuid().ToString('N'))) -RepositoryRoot $repo
 [void][IO.Directory]::CreateDirectory($focusedScratch)
 try {
-    foreach ($focusedGate in @('Test-PullRequestTextPatchEvidence.ps1','Test-PullRequestPatternEngine.ps1','Test-PullRequestTreeReference.ps1')) {
+    foreach ($focusedGate in @('Test-PullRequestTextPatchEvidence.ps1','Test-PullRequestPatternEngine.ps1','Test-PullRequestTreeReference.ps1','Test-PullRequestPatternContext.ps1')) {
         $focusedArguments=@('-NoLogo','-NoProfile','-File',(Join-Path $PSScriptRoot $focusedGate))
         if ($focusedGate -ceq 'Test-PullRequestTextPatchEvidence.ps1') { $focusedArguments+=@('-ScratchParent',$focusedScratch) }
         & pwsh @focusedArguments
