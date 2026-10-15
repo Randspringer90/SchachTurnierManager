@@ -6,9 +6,15 @@ const CACHE_NAME = 'schach-turnier-manager-public-shell';
 const SLOTS = { a: `${CACHE_NAME}-a`, b: `${CACHE_NAME}-b` };
 const STATE_CACHE = `${CACHE_NAME}-state`;
 const LEGACY_CACHE_NAME = 'schach-turnier-manager-shell-v0.45.0';
+// Cache only shipped recovery code, never the user's selected backup bytes.
+// Keep this exact dependency closure in sync with the recovery contract tests.
+const RECOVERY_TOOLS = [
+  '/backup-reader/index.html', '/backup-reader/main.js', '/backup-reader/ui.js', '/backup-reader/core.js', '/backup-reader/style.css',
+  '/backup-lock/index.html', '/backup-lock/main.js', '/backup-lock/ui.js', '/backup-lock/core.js', '/backup-lock/style.css',
+];
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/stm-icon.svg', '/icons/stm-maskable.svg', '/startup-guard.js', '/startup-guard.css',
   '/offline-notice/main.js', '/offline-notice/state.js', '/offline-notice/ui.js', '/offline-notice/style.css',
-  '/privacy-curtain/main.js', '/privacy-curtain/controller.js', '/privacy-curtain/style.css'];
+  '/privacy-curtain/main.js', '/privacy-curtain/controller.js', '/privacy-curtain/style.css', ...RECOVERY_TOOLS];
 const internalRequest = path => new Request(new URL(path, self.location.origin).href);
 const COMPLETE_MARKER = '/__stm-shell/complete';
 
@@ -30,7 +36,8 @@ async function activeCacheName() {
 
 function resourceKind(url) {
   if (url.origin !== self.location.origin || url.search || url.hash) return null;
-  if (url.pathname === '/' || url.pathname === '/index.html') return 'html';
+  if (url.pathname === '/' || url.pathname === '/index.html'
+      || (RECOVERY_TOOLS.includes(url.pathname) && url.pathname.endsWith('.html'))) return 'html';
   if (url.pathname === '/manifest.webmanifest') return 'manifest';
   if (url.pathname === '/icons/stm-icon.svg' || url.pathname === '/icons/stm-maskable.svg') return 'svg';
   if (url.pathname === '/startup-guard.js') return 'js';
@@ -91,15 +98,16 @@ async function networkFirst(request, kind) {
   }
 }
 
-async function completedShellNavigation(request) {
+async function completedShellResource(request, kind) {
   try {
     const cache = await caches.open(await activeCacheName());
     if (await cache.match(internalRequest(COMPLETE_MARKER))) {
       const response = await cache.match(request);
-      if (publicResponse(response, 'html')) return response;
+      if (publicResponse(response, kind)) return response;
     }
   } catch { /* Unavailable storage still permits normal online navigation. */ }
-  // Never update an active HTML snapshot independently of its installed bundles.
+  // Keep recovery HTML and its unversioned modules on the installed snapshot too.
+  // Never update one of these resources independently of its installed companions.
   // Only installation and activation may replace a complete offline shell.
   try { return await fetch(request); } catch { return offlineResponse(); }
 }
@@ -185,7 +193,8 @@ self.addEventListener('fetch', event => {
   }
   const kind = resourceKind(url);
   if (!kind || (request.mode === 'navigate' && kind !== 'html')) return;
-  const response = kind === 'html' ? completedShellNavigation(request) : networkFirst(request, kind);
+  const snapshotResource = kind === 'html' || RECOVERY_TOOLS.includes(url.pathname);
+  const response = snapshotResource ? completedShellResource(request, kind) : networkFirst(request, kind);
   event.respondWith(response);
   // Register synchronously and include cache writes in the fetch event's lifetime.
   event.waitUntil(response.then(() => undefined, () => undefined));
