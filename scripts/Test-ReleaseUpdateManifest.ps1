@@ -74,15 +74,14 @@ if ([string]$manifest.updateMode -cne 'manual-only') {
     throw 'Nur updateMode=manual-only ist freigegeben; Auto-Update/Auto-Execute ist blockiert.'
 }
 
-# PowerShell 7 ConvertFrom-Json wandelt nur ISO-8601-Strings bereits in DateTime um.
-# Eine Rueckumwandlung ueber [string] waere kulturabhaengig (de-DE: Tag > 12 ungueltig).
+# PowerShell 7 ConvertFrom-Json wandelt Datumsstrings (auch zonenlose und /Date(...)/)
+# bereits in DateTime um; eine Rueckumwandlung ueber [string] ist kulturabhaengig
+# (de-DE: Tag > 12 ungueltig). Deshalb den unveraenderten JSON-String pruefen.
 $created = [DateTimeOffset]::MinValue
-$rawCreated = $manifest.createdAtUtc
-if ($rawCreated -is [datetime]) {
-    $created = [DateTimeOffset]::new($rawCreated.ToUniversalTime())
-}
-elseif (-not ([string]$rawCreated -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$' -and
-        [DateTimeOffset]::TryParse([string]$rawCreated, [Globalization.CultureInfo]::InvariantCulture,
+$createdMatch = [regex]::Match($raw, '"createdAtUtc"\s*:\s*"([^"\\]*)"')
+$rawCreated = if ($createdMatch.Success) { $createdMatch.Groups[1].Value } else { '' }
+if (-not ($rawCreated -cmatch '\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})\z' -and
+        [DateTimeOffset]::TryParse($rawCreated, [Globalization.CultureInfo]::InvariantCulture,
             [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$created))) {
     throw 'createdAtUtc ist kein gueltiger ISO-Zeitstempel.'
 }

@@ -67,11 +67,18 @@ try {
         ("[System.Globalization.CultureInfo]::CurrentCulture = 'de-DE'; & {0} -ManifestPath {1} -ArtifactRoot {2} -ExpectedVersion '9.8.7' -RequireCompleteSet -RequireInstaller; exit `$LASTEXITCODE" -f
             (& $quote (Join-Path $Root 'scripts/Test-ReleaseUpdateManifest.ps1')), (& $quote $manifestPath), (& $quote $artifactRoot))
     )
+    # Ohne verfuegbare de-DE-Kultur wuerden die Negativfaelle aus falschem Grund bestehen.
+    Invoke-ExpectedSuccess -Arguments @('-NoLogo','-NoProfile','-Command',
+        "[System.Globalization.CultureInfo]::CurrentCulture = 'de-DE'; if ([System.Globalization.CultureInfo]::CurrentCulture.Name -cne 'de-DE') { exit 1 }")
     $generatedManifest = Get-Content -Raw -LiteralPath $manifestPath
     foreach ($case in @(
             @{ Stamp = '2026-10-15T10:00:00.0000000Z'; Valid = $true },
             @{ Stamp = '2026-12-31T23:59:59Z'; Valid = $true },
+            @{ Stamp = '2026-10-15T10:00:00+02:00'; Valid = $true },
             @{ Stamp = '15.10.2026 10:00:00'; Valid = $false },
+            @{ Stamp = '2026-10-15T10:00:00'; Valid = $false },
+            @{ Stamp = '/Date(1792058400000)/'; Valid = $false },
+            @{ Stamp = '2026-10-15t10:00:00z'; Valid = $false },
             @{ Stamp = 'kein Datum'; Valid = $false })) {
         [regex]::Replace($generatedManifest, '"createdAtUtc"\s*:\s*"[^"]*"', ('"createdAtUtc": "{0}"' -f $case.Stamp)) |
             Set-Content -Encoding UTF8 -NoNewline -LiteralPath $manifestPath
