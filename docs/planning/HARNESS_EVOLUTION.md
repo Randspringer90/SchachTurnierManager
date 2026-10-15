@@ -1,6 +1,6 @@
 # Harness-Fortentwicklung - Reviewplan
 
-Ownerbeauftragter Folgeslice zur bestehenden STM-AI-001/001b/003/005/007-Struktur.
+Backlog: STM-AI-008. Folgeslice zur bestehenden STM-AI-001/001b/003/005/007-Struktur.
 Aktive Arbeit bleibt in BACKLOG.md; diese Datei ist ein Integrationsplan, kein
 zweites Statusregister. Keine Contributor-Zuweisung oder historische Done-Zeile
 wird automatisch veraendert.

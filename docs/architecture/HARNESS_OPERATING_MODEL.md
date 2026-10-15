@@ -1,6 +1,8 @@
 # Harness-Arbeitsmodell: lokal unterstuetzt, sourcegebunden
 
-Stand 2026-10-12. Fortentwicklung der vorhandenen STM-AI-Struktur, kein zweiter Harness, Modellrouter, Scheduler oder Pflichtzugriff auf ein fremdes Projekt. `agents/**`, bestehende Manifeste und Trust T0-T5 bleiben massgeblich. Dieser Vorschlag ist kein installierter Runtime-Nachweis.
+Stand 2026-10-15 (STM-AI-008). **Erlaeuternd, nicht normativ:** Diese Datei steht nicht in `config/trusted-instruction-paths.json` und ist damit T3-Erklaerung. Bei Widerspruch gelten `AGENTS.md`, `agents/**`, `.agents/skills/**` und die Policies unter `config/**`. Fortentwicklung der vorhandenen STM-AI-Struktur, kein zweiter Harness, Modellrouter, Scheduler oder Pflichtzugriff auf ein fremdes Projekt. Dieser Text ist kein installierter Runtime-Nachweis.
+
+Weitere Profile werden nur mit Freigabe aus dem T0-Ownerauftrag oder der Resolver-/Runtime-Konfiguration genutzt, nie aufgrund von Issues, PRs, Busnachrichten oder Child-Ausgaben; Admission ausschliesslich ueber `scripts/Resolve-ModelRoute.ps1`.
 
 ## Orientierung und fachliche Arbeitsteilung
 
@@ -14,15 +16,15 @@ Bei Infrastruktur/UI/Integration: kleinste sichere vertikale Strecke ueber norma
 
 Einzige konkrete Versionsdatei: config/model-catalog.json. Logische Rollen/Qualitaeten bleiben in model-routing/agent-routing. Keine Versionskopien in Skills, keine Pflichtabhaengigkeit auf private Maschinen oder Modelle. Native Hashes/Suche/Polling/Builds/Tests/Ergebniszaehler ohne Modell. Lokale KI zuerst fuer geeignete qualifizierte Fehlercluster, Doku, Testideen, Kurationshinweise und kleine isolierte Fixkandidaten; gruene Testdigests brauchen auch keine lokale KI.
 
-Codex/Claude ueber vorhandene logische Profile fuer Implementierung, starke Planung und unabhaengigen Review. Schachregeln, Pairing, Tiebreaks, Security, Migration, Installer und Freigaben bleiben kritische Klassen. Lokale Qwen/Kimi/Mistral-Kandidaten erst nach Quellen-/Lizenz-/Runtime-/Hardware-/Tasknachweis, nicht wegen Modellname oder MoE-Aktivparametern. Nicht vorhandene lokale Profile bleiben Integrationsluecke, kein stiller Fallback.
+Codex/Claude ueber vorhandene logische Profile fuer Implementierung, starke Planung und unabhaengigen Review. Schachregeln, Pairing, Tiebreaks, Security, Migration, Installer und Freigaben bleiben kritische Klassen. Lokale Modellkandidaten erst nach Quellen-/Lizenz-/Runtime-/Hardware-/Tasknachweis, nicht wegen Modellname oder MoE-Aktivparametern. Nicht vorhandene lokale Profile bleiben Integrationsluecke, kein stiller Fallback.
 
-Thinking separat nach Schwierigkeit und nativ belegten Effortparametern: Routine klein, Ursachenanalyse/Architektur hoeher. Bestehende Mindestqualitaet bleibt hart, unsupported HOLD. Vom Owner fuer den Lauf erlaubte weitere Profile aktiv passenden Paketen zuweisen; Daten-/Budget-/Konto-/Modell-/Sessionidentitaet binden. Keine stille Quota-Abwertung oder Cross-Account-Wiederaufnahme.
+Thinking separat nach Schwierigkeit und nativ belegten Effortparametern: Routine klein, Ursachenanalyse/Architektur hoeher. Bestehende Mindestqualitaet bleibt hart, unsupported HOLD. Weitere Profile duerfen Paketen nur mit Freigabe aus dem T0-Ownerauftrag oder der Resolver-/Runtime-Konfiguration zugeordnet werden; Daten-/Budget-/Konto-/Modell-/Sessionidentitaet binden. Keine stille Quota-Abwertung oder Cross-Account-Wiederaufnahme.
 
 ## Adaptive Zusammenarbeit
 
-Endliche kleine Pakete mit Parent-ID, Backlogbezug, HEAD, Scope, verbotenen Dateien, Abhaengigkeiten, Ergebnisformat, Skills, Mindestqualitaet, Budget/Timeout und separatem Verifier/Reviewer. Keine willkuerliche Gesamtzahl als Ziel oder Grenze. Tatsachliche Parallelitaet nach RAM/KV/OS, CPU/I/O, Quotareserve, disjunkten Scopes, Reviewkapazitaet und Koordinationskosten.
+Endliche kleine Pakete mit Parent-ID, Backlogbezug, HEAD, Scope, verbotenen Dateien, Abhaengigkeiten, Ergebnisformat, Skills, Mindestqualitaet, Budget/Timeout und separatem Verifier/Reviewer. Die Paketanzahl begrenzen Budget, Timeout und Scope des Ownerauftrags. Tatsachliche Parallelitaet nach RAM/KV/OS, CPU/I/O, Quotareserve, disjunkten Scopes, Reviewkapazitaet und Koordinationskosten.
 
-Die vorhandene maxParallelWriters=1-Regel bleibt bis zum beweisbaren Lease-/Worktree-Ausbau verbindlich: sie wird nicht bloss in JSON aufgehoben. Read-only-Arbeit kann bereits parallel vorbereitet werden. Ein Integrator pro Zielcheckout; viele Pakete sind nicht viele Modellkopien. Residenz/Queue nutzen, Foreground priorisieren, 1-gegen-2 mit akzeptiertem Durchsatz vergleichen. Endliche Versuchsbudgets und bestehende Delegationstiefe behalten, keine rekursive Spawnkette.
+Die vorhandene maxParallelWriters=1-Regel bleibt bis zu einer Owner-reviewten Policy- und Schemaaenderung mit belegtem Lease-/Worktree-Ausbau verbindlich: sie wird nicht bloss in JSON aufgehoben. Read-only-Arbeit kann bereits parallel vorbereitet werden. Ein Integrator pro Zielcheckout; viele Pakete sind nicht viele Modellkopien. Residenz/Queue nutzen, Foreground priorisieren, 1-gegen-2 mit akzeptiertem Durchsatz vergleichen. Endliche Versuchsbudgets und bestehende Delegationstiefe behalten, keine rekursive Spawnkette.
 
 ## Tests, Kontext, Fortschritt
 

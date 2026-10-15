@@ -16,15 +16,15 @@ description: Plant und ueberwacht Tokenbudgets fuer delegierte Teilaufgaben; Bud
 - **required-tools:** Read.
 - **forbidden-tools:** Stille Kuerzung von Anforderungen, stiller Profilwechsel, Secret-/Transkriptlesen.
 - **procedure:**
-  1. Native Hashes, Suche, Statuspolling, Builds, Testausfuehrung und Ergebniszaehler brauchen keinen Modellturn. Gruene Tests brauchen auch keine lokale KI-Auswertung.
-  2. Budget je Paket nach erwarteter Arbeit und vollstaendigem Abschluss waehlen. Delegationskontext, Verifier- und Nacharbeitskosten mitberuecksichtigen. Default ist keine Mindestverbrauchsvorgabe.
+  1. Delegieren nur bei erfuelltem `delegationGate` aus `config/task-decomposition-policy.json`, sonst selbst bearbeiten. Native Hashes, Suche, Statuspolling, Builds, Testausfuehrung und Ergebniszaehler brauchen keinen Modellturn; gruene Tests brauchen keine lokale KI-Auswertung.
+  2. Budget je Paket nach erwarteter Arbeit waehlen, hoechstens `defaults.tokenBudget` der Policy, sofern der Ownerauftrag nichts anderes festlegt. Delegationskontext, Verifier- und Nacharbeitskosten mitberuecksichtigen.
   3. Native zugeordnete Usage nutzen. Zeichen-/Laengenschaetzungen nur als Schaetzung kennzeichnen, niemals als echte Tokens, Kontingent oder gemessene Ersparnis ausgeben. Fehlende Telemetrie UNKNOWN.
   4. PASS: nur TestSummary mit Source, Gesamt/Pass/Fail/Skip, Dauer und Digest. FAIL: begrenzte FailureSummary, erst bei unklarer Ursache gezielter Rohlogausschnitt. Bereinigtes Vollprotokoll lokal mit Retention; kein Vollimport. EMPTY/UNKNOWN/fehlende Pflichtchecks nie PASS.
   5. Unveraenderte Suites nur bei relevantem Input-/Toolchain-/Environmentwechsel oder Pflichtgate wiederholen. Native asynchrone Jobs mit Job-ID/HEAD verfolgen, waehrenddessen unabhaengig arbeiten, Abschlussdigest vor Verifikationsbehauptung abwarten.
   6. Ersparnis nur gegen vergleichbare Aufgabe und gleiche Qualitaetsgates messen: akzeptierter Durchsatz, Koordinator-/Worker-/Reviewtokens und Nacharbeit. Delegation allein ist kein Sparnachweis.
   7. Bei Limit sicherer Checkpoint und BUDGET_EXCEEDED/HOLD, kein Qualitaetsdowngrade oder unvollstaendiger Ergebnis-Commit. Wiederholte Fehlversuche begrenzt ursachenbezogen eskalieren.
 - **security-controls:** Kein Downgrade kritischer Kategorien; sourcegebundene Checkpoints, keine Rohtranskripte/Secrets.
-- **verification:** `scripts/Test-RoutedExecutionReadiness.ps1` plus zielgerichtete Summary-/Budget-Negativfaelle im Folgeimplementierungsschritt.
+- **verification:** `scripts/Test-RoutedExecutionReadiness.ps1` (Budget-Test). Weitere Summary-/Budget-Negativfaelle sind als STM-AI-008-Folgeschritt im Backlog gefuehrt.
 - **outputs:** Kompakte Budget-/Usageentscheidungen; fehlende Messwerte UNKNOWN.
 - **typical-failures:** Trunkierung als Erfolg, Schaetzung als Messung, Vollimport gruener Logs, doppelte Suite ohne neuen Input.
 - **lessons-learned:** siehe `docs/knowledge/lessons-learned/`.
