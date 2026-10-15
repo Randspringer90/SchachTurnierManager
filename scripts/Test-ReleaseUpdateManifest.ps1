@@ -74,8 +74,16 @@ if ([string]$manifest.updateMode -cne 'manual-only') {
     throw 'Nur updateMode=manual-only ist freigegeben; Auto-Update/Auto-Execute ist blockiert.'
 }
 
+# PowerShell 7 ConvertFrom-Json wandelt nur ISO-8601-Strings bereits in DateTime um.
+# Eine Rueckumwandlung ueber [string] waere kulturabhaengig (de-DE: Tag > 12 ungueltig).
 $created = [DateTimeOffset]::MinValue
-if (-not [DateTimeOffset]::TryParse([string]$manifest.createdAtUtc, [ref]$created)) {
+$rawCreated = $manifest.createdAtUtc
+if ($rawCreated -is [datetime]) {
+    $created = [DateTimeOffset]::new($rawCreated.ToUniversalTime())
+}
+elseif (-not ([string]$rawCreated -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$' -and
+        [DateTimeOffset]::TryParse([string]$rawCreated, [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$created))) {
     throw 'createdAtUtc ist kein gueltiger ISO-Zeitstempel.'
 }
 if (@($manifest.artifacts).Count -lt 1) {
