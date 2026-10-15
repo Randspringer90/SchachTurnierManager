@@ -2,7 +2,9 @@
 // can quote the file content (for example `"Max" is not valid JSON`), so only the
 // location reported by the engine is kept, never any text from the message itself.
 
-const LOCATION = /\(line (\d{1,9}) column (\d{1,9})\)/;
+// Anchored: V8 appends the location at the very end; quoted file content
+// such as "(line 7 column 7)" must not be able to fake a location.
+const LOCATION = /\(line (\d{1,9}) column (\d{1,9})\)$/;
 
 function readSyntaxErrorMessage(error: unknown): string {
   if (!(error instanceof SyntaxError)) return '';

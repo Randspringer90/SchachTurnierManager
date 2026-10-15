@@ -28,6 +28,10 @@ test('line and column are reported when the engine provides them', () => {
   assert.match(describeJsonParseFailure(parseFailure('{\n  "a": 1,\n}'), 'en'), /line 3, column 1/);
 });
 
+test('file content cannot fake a location', () => {
+  assert.equal(describeJsonParseFailure(parseFailure('(line 7 column 7)'), 'de'), 'Die Datei ist kein gültiges JSON.');
+});
+
 test('empty input and non-Error values get the fixed text without location', () => {
   assert.equal(describeJsonParseFailure(parseFailure(''), 'de'), 'Die Datei ist kein gültiges JSON.');
   assert.equal(describeJsonParseFailure('SYNTHETIC_PRIVATE_DETAIL', 'en'), 'The file is not valid JSON.');
