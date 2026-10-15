@@ -11,6 +11,7 @@ import { buildAuditJournalCsv } from '../lib/auditCsv';
 import { createTournamentProjectionLoader, type TournamentProjection } from '../lib/tournamentProjection';
 import { createPlayerImportPreviewGuard } from '../lib/playerImportPreview';
 import { createTournamentEditorGuard } from '../lib/tournamentEditorGuard';
+import { describeJsonParseFailure } from '../lib/jsonParseError';
 import { LanguageSwitcher, useI18n } from '../i18n';
 import { describeApiError, healthProbeTimeoutMs, isApiTransportError, pairingRequestTimeoutMs, requestJson, requestText } from '../api/client';
 import {
@@ -1579,8 +1580,9 @@ function openRoundPrint(roundNumber: number) {
       parsed = JSON.parse(backupJson) as Tournament;
     } catch (ex) {
       // Ein defektes Backup ist kein Backendfehler - der Bediener soll die
-      // Datei pruefen, nicht den Server.
-      setError(`Backup konnte nicht gelesen werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+      // Datei pruefen, nicht den Server. Die Parsermeldung kann Dateiinhalt zitieren
+      // (STM-SEC-003), daher nur Position statt Rohtext.
+      setError(`Backup konnte nicht gelesen werden: ${describeJsonParseFailure(ex, lang)}`);
       return;
     }
 
