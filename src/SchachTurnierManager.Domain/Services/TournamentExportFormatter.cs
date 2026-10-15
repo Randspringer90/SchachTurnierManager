@@ -1008,17 +1008,9 @@ public sealed class TournamentExportFormatter
         return string.IsNullOrWhiteSpace(safe) ? "Turnier" : safe.Replace(' ', '_');
     }
 
-    private static string EscapeCsv(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var mustQuote = value.Contains(';') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
-        var escaped = value.Replace("\"", "\"\"");
-        return mustQuote ? $"\"{escaped}\"" : escaped;
-    }
+    // STM-SEC-006: apply the same formula-safe output encoding as participant CSV.
+    // TRF16 and JSON deliberately do not pass through this CSV-only helper.
+    private static string EscapeCsv(string? value) => CsvFieldEncoder.Encode(value, ';');
 
     private static string Html(string value) => WebUtility.HtmlEncode(value);
 }

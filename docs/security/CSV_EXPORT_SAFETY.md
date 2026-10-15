@@ -25,11 +25,21 @@ real Swiss-Manager acceptance test. Do not enable formulas or remove text marker
 from untrusted exported cells. Source checked 2026-10-01:
 https://owasp.org/www-community/attacks/CSV_Injection
 
+## Tournament CSV follow-up (2026-10-11)
+
+`TournamentExportFormatter` now routes the three CSV outputs (standings,
+pairings, and next-round preview) through the established `CsvFieldEncoder`.
+This protects player names, notes and preview findings. Headers, numeric cells,
+semicolon delimiters and fixed-width TRF16 remain unchanged. See
+[CSV_TOURNAMENT_EXPORT_SAFETY.md](CSV_TOURNAMENT_EXPORT_SAFETY.md).
+A scoped xUnit suite is present, but its .NET execution, complete app/Windows
+gates and independent final review are still pending. Parent DoD remains open.
+
 ## Remaining parent scope
 
-STM-SEC-006 is NOT complete: TournamentExportFormatter table/pairing/preview CSV,
-frontend audit CSV and operator-generated CSV must be inventoried and hardened in
-follow-up scopes. TRF16 is fixed-width text, not CSV: never add CSV quoting or text
+STM-SEC-006 is NOT complete: table/pairing/preview and frontend audit CSV are
+now addressed as scoped deliveries, while other operator-generated CSV surfaces,
+spreadsheet interoperability and full product inventory still need acceptance. TRF16 is fixed-width text, not CSV: never add CSV quoting or text
 prefixes to its fixed positions. No pairing or tie-break formula is changed here.
 
 ## Original submission evidence (historical)
