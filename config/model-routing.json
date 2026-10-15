@@ -24,6 +24,7 @@
   },
   "qualityClassRank": {
     "local-deterministic": 10,
+    "local-assist": 15,
     "standard-low-risk": 20,
     "strongest-implementation": 30,
     "strongest-planning": 40,
@@ -61,6 +62,14 @@
       "qualityClass": "local-deterministic",
       "allowedRisk": ["low"],
       "deterministicOnly": true
+    },
+    {
+      "id": "local-assist",
+      "displayName": "Lokal",
+      "purpose": "Read-only Zuarbeit ueber ein lokal installiertes Modell: Klassifikation, Doku-Analyse, Testideen, kleine Eingaben; nie Final- oder Fachentscheidungen",
+      "qualityClass": "local-assist",
+      "allowedRisk": ["low"],
+      "deterministicOnly": false
     },
     {
       "id": "opus",
@@ -143,6 +152,15 @@
       "profile": "sonnet",
       "minimumQualityClass": "strongest-implementation",
       "reason": "Klar abgegrenzte Implementierung kleinen oder mittleren Umfangs wird Sonnet zugeordnet."
+    },
+    {
+      "id": "local-assist-explicit",
+      "priority": 90,
+      "taskCategories": ["local-assist"],
+      "risks": ["low"],
+      "profile": "local-assist",
+      "minimumQualityClass": "local-assist",
+      "reason": "Nur ausdruecklich als local-assist markierte, risikoarme read-only Zuarbeit; andere Kategorien werden nie lokal geroutet."
     }
   ],
   "unmatchedRoute": {

@@ -5,7 +5,8 @@
   "description": "Laufzeitzuordnung logischer Profile zu lokalen, nichtinteraktiven CLI-Runtimes. Verwendet ausschliesslich vorhandene lokale Logins; persistiert keine Tokens/Secrets. Modell-Slugs sind Laufzeitdaten: die Runtime muss die Verfuegbarkeit vor Nutzung bestaetigen (kein stiller Wechsel). Proxy-Werte kommen ausschliesslich aus der Prozessumgebung und stehen nie in diesem Repo.",
   "providerPreference": {
     "anthropic": ["fabel", "opus", "sonnet"],
-    "openai": ["sol", "terra", "luna"]
+    "openai": ["sol", "terra", "luna"],
+    "ollama": ["local-assist"]
   },
   "providers": {
     "anthropic": {
@@ -37,6 +38,19 @@
         "sol": { "modelKey": "openaiSol" },
         "terra": { "modelKey": "openaiLuna" },
         "luna": { "modelKey": "openaiSol" }
+      }
+    },
+    "ollama": {
+      "executable": "ollama",
+      "versionArgs": ["--version"],
+      "invocation": {
+        "argumentTemplate": ["POST", "/api/generate"],
+        "promptViaStdin": false,
+        "readOnlyByDefault": true,
+        "comment": "Ausfuehrung ueber die Loopback-REST-API des lokalen Dienstes (scripts/Invoke-LocalModelProfile.ps1): /api/tags bestaetigt lokal gespeicherte Gewichte, Cloud-/Remote-Modelle werden abgewiesen; /api/generate mit stream=false laedt nie Modelle herunter. Modell ohne Werkzeuge, Antwort T3, nur Loopback-OLLAMA_HOST. Die Konfiguration des Ollama-Dienstes selbst liegt ausserhalb dieses Adapters."
+      },
+      "profiles": {
+        "local-assist": { "modelKey": "localGptOss20b" }
       }
     }
   },

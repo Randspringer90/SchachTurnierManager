@@ -41,7 +41,7 @@
           "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
           "displayName": { "type": "string", "minLength": 2 },
           "purpose": { "type": "string", "minLength": 10 },
-          "qualityClass": { "enum": ["strongest-planning", "strongest-implementation", "standard-low-risk", "local-deterministic", "human-required"] },
+          "qualityClass": { "enum": ["strongest-planning", "strongest-implementation", "standard-low-risk", "local-assist", "local-deterministic", "human-required"] },
           "allowedRisk": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["low", "medium", "high", "critical"] } },
           "deterministicOnly": { "type": "boolean" }
         }
@@ -63,7 +63,7 @@
           "risks": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["low", "medium", "high", "critical"] } },
           "requiresDeterministic": { "type": "boolean" },
           "profile": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-          "minimumQualityClass": { "enum": ["strongest-planning", "strongest-implementation", "standard-low-risk", "local-deterministic", "human-required"] },
+          "minimumQualityClass": { "enum": ["strongest-planning", "strongest-implementation", "standard-low-risk", "local-assist", "local-deterministic", "human-required"] },
           "reason": { "type": "string", "minLength": 10 }
         }
       }

@@ -76,7 +76,8 @@ LLM-neutral fuer Claude Code, Codex und aehnliche Tools:
   Architektur und Finalintegration, Luna fuer klar definierte grosse Implementierung,
   Terra nur fuer risikoarme deterministische Massenarbeit, Opus fuer Security,
   Schachregeln und schwierige Reviews sowie Sonnet fuer klar abgegrenzte Implementierung
-  mittleren Risikos. Qualitaet hat Vorrang vor Kosten; kritische Aufgaben werden nie
+  mittleren Risikos; das lokale Profil `local-assist` nur fuer ausdruecklich so markierte,
+  risikoarme read-only Zuarbeit. Qualitaet hat Vorrang vor Kosten; kritische Aufgaben werden nie
   automatisch herabgestuft. Die Runtime muss Profilverfuegbarkeit bestaetigen; ein
   stiller Modell- oder Profilwechsel ist verboten.
   Konkrete Modellvarianten stehen ausschliesslich in `config/model-catalog.json`.

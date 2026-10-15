@@ -143,6 +143,15 @@ try {
             Write-RoutedCheckpoint -CheckpointPath $CheckpointPath -Graph $graph -GraphHash $expectedHash -RunStatus 'RUNNING'
             continue
         }
+        # STM-AI-008: der Graph-Hash belegt Integritaet, nicht Herkunft. Ein lokales Profil
+        # wird deshalb auch bei der Ausfuehrung nur fuer explizite, risikoarme Zuarbeit akzeptiert.
+        if ($mapping.ProviderName -ceq 'ollama' -and
+            ([string]$task.category -cne 'local-assist' -or [string]$task.risk -cne 'low')) {
+            $task.status = 'BLOCKED'
+            $task | Add-Member -NotePropertyName statusReason -NotePropertyValue "Lokales Profil nur fuer Kategorie 'local-assist' mit Risiko 'low'." -Force
+            Write-RoutedCheckpoint -CheckpointPath $CheckpointPath -Graph $graph -GraphHash $expectedHash -RunStatus 'RUNNING'
+            continue
+        }
 
         $task.status = 'RUNNING'
         Write-Host "[RoutedExecution] Task $taskId -> $($mapping.ProviderName)/$profileId"
@@ -180,7 +189,13 @@ try {
             )
             Set-Content -LiteralPath $promptFile -Value ($promptParts -join "`n") -Encoding utf8NoBOM
 
-            $adapter = if ($mapping.ProviderName -eq 'anthropic') { 'Invoke-AnthropicProfile.ps1' } else { 'Invoke-OpenAIProfile.ps1' }
+            # Explizite Zuordnung: ein unbekannter Provider faellt nie still auf einen anderen Adapter zurueck.
+            $adapter = switch -CaseSensitive ($mapping.ProviderName) {
+                'anthropic' { 'Invoke-AnthropicProfile.ps1' }
+                'openai' { 'Invoke-OpenAIProfile.ps1' }
+                'ollama' { 'Invoke-LocalModelProfile.ps1' }
+                default { throw "Kein Adapter fuer Provider '$($mapping.ProviderName)'; expliziter Reroute erforderlich." }
+            }
             $adapterPath = Join-Path $PSScriptRoot $adapter
             $adapterArgs = @(
                 '-ProfileId', $profileId,
