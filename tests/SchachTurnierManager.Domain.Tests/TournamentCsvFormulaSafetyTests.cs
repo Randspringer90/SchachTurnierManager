@@ -99,6 +99,33 @@ public sealed class TournamentCsvFormulaSafetyTests
         Assert.Equal(notes, tournament.Rounds[0].Pairings[0].Notes);
     }
 
+    [Theory]
+    [InlineData(GameResultKind.WhiteForfeitWin, "'+/-")]
+    [InlineData(GameResultKind.BlackForfeitWin, "'-/+")]
+    [InlineData(GameResultKind.DoubleForfeit, "'-/-")]
+    [InlineData(GameResultKind.WhiteWin, "1-0")]
+    [InlineData(GameResultKind.BlackWin, "0-1")]
+    public void PairingsCsv_SystemResultLabels_AreTextSafeAndStable(GameResultKind kind, string expected)
+    {
+        // Forfeit labels start with + or -; spreadsheets would otherwise evaluate them.
+        var white = new Player { Id = Guid.NewGuid(), Name = "Synthetic White" };
+        var black = new Player { Id = Guid.NewGuid(), Name = "Synthetic Black" };
+        var tournament = new TournamentState { Name = "Synthetic tournament" };
+        tournament.Players.Add(white);
+        tournament.Players.Add(black);
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 1,
+            Pairings = new[] { Pairing.Game(1, white.Id, black.Id) with { Result = new GameResult(kind) } }
+        });
+
+        var rows = ReadSemicolonCsv(new TournamentExportFormatter().ExportPairingsCsv(tournament).Content);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(9, rows[1].Length);
+        Assert.Equal(expected, rows[1][4]);
+    }
+
     [Fact]
     public void PreviewCsv_ProtectsUntrustedNamesAndJoinedFindings_WithoutChangingScores()
     {

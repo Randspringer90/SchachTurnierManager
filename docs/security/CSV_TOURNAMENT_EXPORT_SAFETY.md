@@ -11,7 +11,10 @@ All three outputs now delegate every cell to the existing, already tested
 apostrophe inside a quoted cell, handles leading whitespace/control/format
 characters, doubles quotes, and contains embedded separators and newlines.
 Ordinary values and invariant numeric literals (including negative decimals)
-retain their previous representation. Export ordering, header columns and
+retain their previous representation. Intentional exception: the system result
+labels for forfeits (`+/-`, `-/+`, `-/-`) start with a formula trigger and are
+therefore emitted as text (`'+/-` etc.); `1-0`, `0-1` and `½-½` stay unchanged.
+Export ordering, header columns and
 line-ending behavior remain unchanged. Domain inputs are not modified.
 
 ## Surface inventory in scope
@@ -27,21 +30,26 @@ on a later re-save; there is no promise of universal spreadsheet roundtrip.
 Normal code consumers may see apostrophes in imported names/notes. Operators
 should use the original JSON backup for exact data preservation.
 
+Locale assumption: these files use `;` as separator (German spreadsheet
+default). A spreadsheet configured with `,` as list separator splits cells at
+commas, and a later comma segment could start with a trigger. Neutralising
+triggers after embedded separators is tracked as an STM-SEC-006 follow-up;
+until then, import with the spreadsheet's text import and `;` as separator.
+
 ## Regression tests and gates
 
 `TournamentCsvFormulaSafetyTests.cs` adds source-level xUnit cases for:
 formula-leading names, whitespace and Unicode prefixes, embedded quote/semicolon
-and multiline notes, a preview finding, numeric fields and non-mutation. A
+and multiline notes, a preview finding, forfeit result labels, numeric fields
+and non-mutation. A
 separate small CSV reader in the tests checks the expected 17/9/12 column
 layouts and text values without using the production encoder as its oracle.
 
-In the authoring environment .NET and PowerShell are not installed. The xUnit
-suite, pinned full solution build, repository safety/commit gates, real
-spreadsheet imports, and final exact-SHA GitHub CI must run later in the normal
-Codex/Windows integration workflow. A source syntax/structure check alone is
-not a claim that xUnit or any full build has passed. Keep the PR draft until
-these gates and an independent KI review succeed.
+Verification evidence (exact head SHA, local `dotnet build`/`dotnet test`,
+repository safety gates, required GitHub CI and an independent AI review) is
+recorded in the pull request. Real spreadsheet imports remain a manual
+follow-up.
 
 STM-SEC-006 as a *whole* is not marked Done: the remaining project-wide CSV
 inventory and real spreadsheet compatibility checks are still outstanding.
-The related open #124/#125 PRs are independent and must remain unchanged.
+The related #124/#125 changes are independent of this one.
