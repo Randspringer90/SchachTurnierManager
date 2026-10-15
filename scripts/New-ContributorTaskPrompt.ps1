@@ -292,7 +292,7 @@ if ($prompt -match '(?i)[A-Za-z]:\\Schach') { throw 'Sicherheitsabbruch: Owner-P
 
 # --- Ausgabe / Run-Ordner / ZIP ---
 $stamp = (Get-Date).ToString('yyyyMMdd_HHmmss')
-$base = 'D:\Temp'
+$base = & (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')
 $runDir = Join-Path $base ("STM_ContributorTaskPrompt_{0}" -f $stamp)
 $promptName = "codex-prompt-$BacklogId.md"
 

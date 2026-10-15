@@ -3,7 +3,7 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$RunName = 'STM_RUN54_RuntimeLoggingReadiness',
-    [string]$BaseDirectory = 'D:\Temp',
+    [string]$BaseDirectory = (& (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')),
     [switch]$BuildDesktop,
     [int]$Port = 0
 )
