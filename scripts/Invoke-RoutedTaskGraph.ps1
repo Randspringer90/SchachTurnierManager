@@ -143,6 +143,15 @@ try {
             Write-RoutedCheckpoint -CheckpointPath $CheckpointPath -Graph $graph -GraphHash $expectedHash -RunStatus 'RUNNING'
             continue
         }
+        # STM-AI-008: der Graph-Hash belegt Integritaet, nicht Herkunft. Ein lokales Profil
+        # wird deshalb auch bei der Ausfuehrung nur fuer explizite, risikoarme Zuarbeit akzeptiert.
+        if ($mapping.ProviderName -ceq 'ollama' -and
+            ([string]$task.category -cne 'local-assist' -or [string]$task.risk -cne 'low')) {
+            $task.status = 'BLOCKED'
+            $task | Add-Member -NotePropertyName statusReason -NotePropertyValue "Lokales Profil nur fuer Kategorie 'local-assist' mit Risiko 'low'." -Force
+            Write-RoutedCheckpoint -CheckpointPath $CheckpointPath -Graph $graph -GraphHash $expectedHash -RunStatus 'RUNNING'
+            continue
+        }
 
         $task.status = 'RUNNING'
         Write-Host "[RoutedExecution] Task $taskId -> $($mapping.ProviderName)/$profileId"

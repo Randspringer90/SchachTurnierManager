@@ -32,7 +32,7 @@
         "type": "object", "additionalProperties": false, "required": ["provider", "id"],
         "properties": {
           "provider": { "enum": ["openai", "anthropic", "ollama"] },
-          "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.\u002d][a-z0-9]+)*(?::[a-z0-9]+(?:[.\u002d][a-z0-9]+)*)?$", "maxLength": 100 }
+          "id": { "type": "string", "pattern": "^(?!.*(?:^|[:.\u002d])cloud(?:$|[:.\u002d]))[a-z][a-z0-9]*(?:[.\u002d][a-z0-9]+)*(?::[a-z0-9]+(?:[.\u002d][a-z0-9]+)*)?$", "maxLength": 100 }
         }
       }
     }

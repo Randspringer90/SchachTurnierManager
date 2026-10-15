@@ -44,10 +44,10 @@
       "executable": "ollama",
       "versionArgs": ["--version"],
       "invocation": {
-        "argumentTemplate": ["run", "{model}", "--hidethinking", "--nowordwrap"],
-        "promptViaStdin": true,
+        "argumentTemplate": ["POST", "/api/generate"],
+        "promptViaStdin": false,
         "readOnlyByDefault": true,
-        "comment": "Lokales Modell ohne Werkzeuge: Prompt via stdin, Antwort auf stdout (T3). Kein Download (nie pull), nur Loopback-OLLAMA_HOST, Verfuegbarkeit ueber 'ollama list' bestaetigt (scripts/Invoke-LocalModelProfile.ps1)."
+        "comment": "Ausfuehrung ueber die Loopback-REST-API des lokalen Dienstes (scripts/Invoke-LocalModelProfile.ps1): /api/tags bestaetigt lokal gespeicherte Gewichte, Cloud-/Remote-Modelle werden abgewiesen; /api/generate mit stream=false laedt nie Modelle herunter. Modell ohne Werkzeuge, Antwort T3, nur Loopback-OLLAMA_HOST. Die Konfiguration des Ollama-Dienstes selbst liegt ausserhalb dieses Adapters."
       },
       "profiles": {
         "local-assist": { "modelKey": "localGptOss20b" }

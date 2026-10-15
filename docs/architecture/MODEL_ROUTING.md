@@ -45,11 +45,17 @@ fail-closed, ohne Ausweichen auf Cloudprofile.
 
 Die Runtime-Zuordnung steht in `config/provider-runtime-policy.json` (Provider `ollama`),
 die Modell-ID ausschliesslich in `config/model-catalog.json`. Der Adapter
-`scripts/Invoke-LocalModelProfile.ps1` gibt dem Modell nur den Prompt via stdin, keine
-Werkzeuge; Antworten sind T3. Er laedt nie Modelle herunter, akzeptiert nur einen
-Loopback-`OLLAMA_HOST`, bestaetigt die Installation ueber `ollama list` und wertet nur
-stderr/Exitcode als Limit-/Fehlersignal, nie den Modellinhalt. Ergebnisse werden wie alle
-Child-Ausgaben von einem staerkeren Profil geprueft.
+`scripts/Invoke-LocalModelProfile.ps1` spricht ausschliesslich die Loopback-REST-API des
+lokalen Dienstes an: `/api/tags` bestaetigt lokal gespeicherte Gewichte (Cloud-/Remote-Modelle
+und Tags mit `cloud` werden abgewiesen, auch im Katalogschema), `/api/generate` mit
+`stream:false` laedt nie Modelle herunter; `/api/pull` wird nie aufgerufen. Akzeptiert werden
+nur literale Loopback-Hosts (`127.0.0.1`, `localhost`, `[::1]`, http/https). Das Modell
+erhaelt nur den Prompt, keine Werkzeuge; Antworten sind T3 und nie Limit-/Fehlersignal
+(klassifiziert wird nur der HTTP-Status). Gemessene Tokenzahlen des Dienstes landen in der
+Entscheidung. Auch der Executor akzeptiert das lokale Profil nur fuer Kategorie
+`local-assist` mit Risiko `low`. Die Konfiguration des Ollama-Dienstes selbst (Anmeldung,
+Weiterleitungen) liegt ausserhalb des Adapters. Ergebnisse werden wie alle Child-Ausgaben
+von einem staerkeren Profil geprueft.
 
 ## Pflege aktueller Generationen
 

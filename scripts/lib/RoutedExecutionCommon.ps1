@@ -88,8 +88,10 @@ function Get-ProviderRuntimePolicy {
         anthropic = 'https://platform.claude.com/docs/en/models/overview'
         ollama = 'https://ollama.com/library'
     }
-    # openai/anthropic sind immer Pflicht; weitere Provider nur, wenn ein Katalogmodell sie nutzt.
-    $requiredSources = @('openai', 'anthropic') + @($catalog.models.PSObject.Properties.Value | ForEach-Object { [string]$_.provider })
+    # openai/anthropic sind immer Pflicht; weitere Provider, wenn ein Katalogmodell sie nutzt.
+    # Jede deklarierte Quelle muss ebenfalls exakt der freigegebenen offiziellen Quelle entsprechen.
+    $requiredSources = @('openai', 'anthropic') + @($catalog.models.PSObject.Properties.Value | ForEach-Object { [string]$_.provider }) +
+        @($catalog.sources.PSObject.Properties.Name)
     foreach ($providerName in @($requiredSources | Select-Object -Unique)) {
         $declared = if ($catalog.sources.PSObject.Properties.Name -ccontains $providerName) { [string]$catalog.sources.$providerName } else { $null }
         if (-not $officialSources.ContainsKey($providerName) -or $declared -cne $officialSources[$providerName]) {
@@ -126,12 +128,41 @@ function Test-LocalModelLoopbackHost {
     Leer bedeutet Ollama-Standard 127.0.0.1:11434. Akzeptiert nur Loopback-Hosts.
     #>
     param([AllowNull()][AllowEmptyString()][string]$HostSetting)
-    if ([string]::IsNullOrWhiteSpace($HostSetting)) { return $true }
-    $value = $HostSetting.Trim()
-    if ($value -notmatch '^[A-Za-z][A-Za-z0-9+.-]*://') { $value = 'http://' + $value }
-    $uri = $null
-    if (-not [Uri]::TryCreate($value, [UriKind]::Absolute, [ref]$uri)) { return $false }
-    return $uri.Host -in @('127.0.0.1', 'localhost', '[::1]')
+    return $null -ne (Get-LocalModelEndpoint -HostSetting $HostSetting)
+}
+
+function Get-LocalModelEndpoint {
+    <#
+    Literale Pruefung statt .NET-Normalisierung: nur http/https, nur 127.0.0.1, localhost
+    oder [::1], optional Port, kein Userinfo/Pfad/Query. Liefert die Basis-URL oder $null.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$HostSetting)
+    if ([string]::IsNullOrWhiteSpace($HostSetting)) { return 'http://127.0.0.1:11434' }
+    $match = [regex]::Match($HostSetting.Trim(),
+        '\A(?:(?<scheme>https?)://)?(?<host>127\.0\.0\.1|localhost|\[::1\])(?::(?<port>\d{1,5}))?/?\z',
+        [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if (-not $match.Success) { return $null }
+    $port = if ($match.Groups['port'].Success) { [int]$match.Groups['port'].Value } else { 11434 }
+    if ($port -lt 1 -or $port -gt 65535) { return $null }
+    $scheme = if ($match.Groups['scheme'].Success) { $match.Groups['scheme'].Value.ToLowerInvariant() } else { 'http' }
+    return '{0}://{1}:{2}' -f $scheme, $match.Groups['host'].Value.ToLowerInvariant(), $port
+}
+
+function Test-LocalModelInventoryEntry {
+    <#
+    STM-AI-008: Nur lokal gespeicherte Gewichte zaehlen. Ollama-Cloudmodelle erscheinen in
+    der lokalen Liste, leiten Prompts aber an einen Fremddienst weiter.
+    #>
+    param([Parameter(Mandatory)][psobject]$Entry)
+    if ([string]$Entry.name -match '(?i)(?:^|[:.\-])cloud(?:$|[:.\-])') { return 'REMOTE_MODEL' }
+    foreach ($field in @('remote_host', 'remote_model')) {
+        if ($Entry.PSObject.Properties.Name -contains $field -and -not [string]::IsNullOrWhiteSpace([string]$Entry.$field)) {
+            return 'REMOTE_MODEL'
+        }
+    }
+    $size = 0L
+    if (-not [long]::TryParse([string]$Entry.size, [ref]$size) -or $size -lt 100MB) { return 'REMOTE_MODEL' }
+    return 'LOCAL'
 }
 
 function Get-ProfileProvider {
