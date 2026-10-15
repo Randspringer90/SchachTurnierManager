@@ -2,9 +2,9 @@
 param(
     [string]$RunDirectory,
     [string]$RunName = 'SchachTurnierManager_Run',
-    # Bevorzugt D:\Temp (Konvention auf Rechnern mit separater Datenpartition), faellt aber
-    # auf %TEMP% zurueck, wenn kein D:-Laufwerk existiert (z. B. frische/andere Maschinen).
-    [string]$BaseDirectory = $(if (Test-Path -LiteralPath 'D:\') { 'D:\Temp' } else { Join-Path $env:TEMP 'SchachTurnierManager' }),
+    # Bevorzugt D:\Temp (Konvention auf Rechnern mit Datenpartition), sonst %TEMP%;
+    # Reihenfolge und Override STM_RUN_BASE_DIRECTORY siehe lib/Get-StmRunBaseDirectory.ps1.
+    [string]$BaseDirectory = (& (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')),
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [switch]$CreateOnly,
     [switch]$IncludeFullDiff

@@ -91,6 +91,7 @@ Aktive Skripte liegen bewusst flach in diesem Ordner, weil sie sich gegenseitig 
 
 - `Invoke-LoggedCommand.ps1` – lange Befehle mit kurzer Terminalausgabe ausführen; vollständige Ausgabe landet im Run-Logordner.
 - `New-RunLogBundle.ps1` – lokalen temporären Run-Ordner anlegen bzw. Logs, Git-Status und Diff-Stat zu einem ZIP bündeln.
+- `lib/Get-StmRunBaseDirectory.ps1` – bestimmt `<Run-Basis>` für Run-Ordner und Upload-ZIPs: absolute Umgebungsvariable `STM_RUN_BASE_DIRECTORY`, sonst vorhandenes `D:\Temp`, sonst `D:\Temp` auf festem Laufwerk D:, sonst `%TEMP%\SchachTurnierManager` (STM-INFRA-005).
 - `Invoke-LoggingReadiness.ps1` – RUN-54: WebApi-Laufzeitlogs in isoliertem Daten-/Logordner pruefen, Health/Dashboard/API aufrufen und sicherstellen, dass Querystrings nicht in Logdateien landen.
 
 ## Archiv

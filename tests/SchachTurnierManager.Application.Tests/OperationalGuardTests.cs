@@ -124,11 +124,14 @@ public sealed class OperationalGuardTests
     {
         // STM-REL-001: Die D:\Temp-Konvention gilt nur auf Rechnern mit Datenpartition.
         // Auf Maschinen ohne D: muss der Default auf %TEMP% ausweichen, statt auf einen
-        // nicht existierenden Pfad zu zeigen. Der Default wird hier real ausgewertet.
+        // nicht existierenden Pfad zu zeigen. STM-INFRA-005: die Aufloesung liegt zentral
+        // in scripts/lib/Get-StmRunBaseDirectory.ps1 (Verhalten: tests/scripts/run-base-directory.test.mjs).
         var runBundle = File.ReadAllText(FindRepositoryFile("scripts", "New-RunLogBundle.ps1"));
+        var helper = File.ReadAllText(FindRepositoryFile("scripts", "lib", "Get-StmRunBaseDirectory.ps1"));
 
-        Assert.Contains("Test-Path -LiteralPath 'D:\\'", runBundle);
-        Assert.Contains("Join-Path $env:TEMP 'SchachTurnierManager'", runBundle);
+        Assert.Contains("lib/Get-StmRunBaseDirectory.ps1", runBundle);
+        Assert.Contains("[IO.Path]::GetTempPath()) 'SchachTurnierManager'", helper);
+        Assert.Contains("[IO.DriveType]::Fixed", helper);
         // Der Default darf kein hart verdrahtetes D:\Temp mehr sein.
         Assert.DoesNotContain("[string]$BaseDirectory = 'D:\\Temp',", runBundle);
     }

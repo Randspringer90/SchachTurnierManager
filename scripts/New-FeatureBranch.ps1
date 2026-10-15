@@ -4,7 +4,7 @@
 Erzeugt sicher einen Feature-/Fix-/Security-/Docs-/Refactor-Branch von aktuellem development.
 .DESCRIPTION
 Validiert Backlog-ID und Namenssegment (kein Injection-Risiko), zweigt vom aktuellen
-origin/development ab. Details werden nach D:\Temp\<RunName>_<Timestamp> geschrieben und am
+origin/development ab. Details werden nach <Run-Basis>\<RunName>_<Timestamp> geschrieben und am
 Ende zu genau einem Upload-ZIP gepackt. Oeffnet keine neuen Terminalfenster.
 .EXAMPLE
 pwsh scripts/New-FeatureBranch.ps1 -BacklogId STM-IE-001 -Name trf-export

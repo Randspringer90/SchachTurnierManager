@@ -3,7 +3,7 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$RunName = 'STM_RUN53_ClickInstallReadiness',
-    [string]$BaseDirectory = 'D:\Temp',
+    [string]$BaseDirectory = (& (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')),
     [switch]$BuildPackage,
     [switch]$BuildInstaller,
     [switch]$AllowMissingInnoSetup,

@@ -2,7 +2,7 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$RunName = 'STM_RUN52_ColleagueFreshRunTest',
-    [string]$BaseDirectory = 'D:\Temp',
+    [string]$BaseDirectory = (& (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')),
     [string]$PackageZip,
     [switch]$BuildPackage,
     [switch]$BuildInstaller,

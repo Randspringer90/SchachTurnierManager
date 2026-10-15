@@ -1,7 +1,7 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$RunName = 'STM_RUN50_ReleaseCandidateReadiness',
-    [string]$BaseDirectory = 'D:\Temp',
+    [string]$BaseDirectory = (& (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')),
     [switch]$BuildInstaller,
     [switch]$AllowMissingInnoSetup,
     [switch]$SignArtifacts,
