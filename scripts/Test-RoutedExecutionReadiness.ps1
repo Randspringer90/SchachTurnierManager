@@ -406,7 +406,8 @@ try {
                     $Log.Enqueue($key)
                     $route = if ($Routes.ContainsKey($key)) { $Routes[$key] } else { @{ Status = 404; Body = '{}' } }
                     $bytes = [Text.Encoding]::UTF8.GetBytes([string]$route.Body)
-                    $head = [Text.Encoding]::ASCII.GetBytes("HTTP/1.1 $($route.Status) X`r`nContent-Type: application/json`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n")
+                    $extra = if ($route.ContainsKey('Location')) { "Location: $($route.Location)`r`n" } else { '' }
+                    $head = [Text.Encoding]::ASCII.GetBytes("HTTP/1.1 $($route.Status) X`r`n${extra}Content-Type: application/json`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n")
                     $stream.Write($head, 0, $head.Length); $stream.Write($bytes, 0, $bytes.Length); $stream.Flush()
                 }
                 finally { $client.Dispose() }
@@ -436,6 +437,15 @@ try {
             $requests -notcontains 'POST /api/pull' -and
             ($scenario.ExpectedExit -ne 5 -or $requests -notcontains 'POST /api/generate')) "$($run.ExitCode) $($run.Output) $($requests -join ',')"
     }
+    # Weiterleitungen duerfen den Prompt nicht an einen anderen Endpunkt tragen.
+    $foreign = Start-FakeLocalModelService -Routes @{ 'POST /api/generate' = @{ Status = 200; Body = '{"response":"x","done":true}' } }
+    $redirecting = Start-FakeLocalModelService -Routes @{ 'GET /api/tags' = $tagsLocal
+        'POST /api/generate' = @{ Status = 307; Body = '{}'; Location = "http://$($foreign.HostSetting)/api/generate" } }
+    try { $run = Invoke-LocalAdapter $redirecting.HostSetting } finally { Stop-FakeLocalModelService $redirecting; Stop-FakeLocalModelService $foreign }
+    Assert-Check 'lokal-keine-weiterleitung' ($run.ExitCode -eq 5 -and @($foreign.Log.ToArray()).Count -eq 0) "$($run.ExitCode) $($run.Output)"
+    $broken = Start-FakeLocalModelService -Routes @{ 'GET /api/tags' = @{ Status = 200; Body = 'not json' } }
+    try { $run = Invoke-LocalAdapter $broken.HostSetting } finally { Stop-FakeLocalModelService $broken }
+    Assert-Check 'lokal-defekte-modellliste-hold' ($run.ExitCode -eq 5 -and $run.Output -match 'HOLD_RUNTIME_UNAVAILABLE') "$($run.ExitCode) $($run.Output)"
     $router = Get-Content -Raw -LiteralPath (Join-Path $scriptsRoot 'Invoke-RoutedTaskGraph.ps1')
     Assert-Check 'router-ohne-stillen-adapterfallback' ($router -match "'ollama' \{ 'Invoke-LocalModelProfile\.ps1' \}" -and
         $router -match 'default \{ throw "Kein Adapter fuer Provider')

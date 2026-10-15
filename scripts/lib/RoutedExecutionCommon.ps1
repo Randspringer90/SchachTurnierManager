@@ -145,7 +145,10 @@ function Get-LocalModelEndpoint {
     $port = if ($match.Groups['port'].Success) { [int]$match.Groups['port'].Value } else { 11434 }
     if ($port -lt 1 -or $port -gt 65535) { return $null }
     $scheme = if ($match.Groups['scheme'].Success) { $match.Groups['scheme'].Value.ToLowerInvariant() } else { 'http' }
-    return '{0}://{1}:{2}' -f $scheme, $match.Groups['host'].Value.ToLowerInvariant(), $port
+    # localhost wird ueber das Betriebssystem aufgeloest (hosts-Datei); daher literal festlegen.
+    $hostName = $match.Groups['host'].Value.ToLowerInvariant()
+    if ($hostName -ceq 'localhost') { $hostName = '127.0.0.1' }
+    return '{0}://{1}:{2}' -f $scheme, $hostName, $port
 }
 
 function Test-LocalModelInventoryEntry {
@@ -154,14 +157,17 @@ function Test-LocalModelInventoryEntry {
     der lokalen Liste, leiten Prompts aber an einen Fremddienst weiter.
     #>
     param([Parameter(Mandatory)][psobject]$Entry)
-    if ([string]$Entry.name -match '(?i)(?:^|[:.\-])cloud(?:$|[:.\-])') { return 'REMOTE_MODEL' }
+    $fields = @($Entry.PSObject.Properties.Name)
+    $name = if ($fields -contains 'name') { [string]$Entry.name } else { '' }
+    if ($name -match '(?i)(?:^|[:.\-])cloud(?:$|[:.\-])') { return 'REMOTE_MODEL' }
     foreach ($field in @('remote_host', 'remote_model')) {
-        if ($Entry.PSObject.Properties.Name -contains $field -and -not [string]::IsNullOrWhiteSpace([string]$Entry.$field)) {
+        if ($fields -contains $field -and -not [string]::IsNullOrWhiteSpace([string]$Entry.$field)) {
             return 'REMOTE_MODEL'
         }
     }
     $size = 0L
-    if (-not [long]::TryParse([string]$Entry.size, [ref]$size) -or $size -lt 100MB) { return 'REMOTE_MODEL' }
+    $rawSize = if ($fields -contains 'size') { [string]$Entry.size } else { '' }
+    if (-not [long]::TryParse($rawSize, [ref]$size) -or $size -lt 100MB) { return 'REMOTE_MODEL' }
     return 'LOCAL'
 }
 

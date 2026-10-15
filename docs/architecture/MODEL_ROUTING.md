@@ -53,8 +53,10 @@ nur literale Loopback-Hosts (`127.0.0.1`, `localhost`, `[::1]`, http/https). Das
 erhaelt nur den Prompt, keine Werkzeuge; Antworten sind T3 und nie Limit-/Fehlersignal
 (klassifiziert wird nur der HTTP-Status). Gemessene Tokenzahlen des Dienstes landen in der
 Entscheidung. Auch der Executor akzeptiert das lokale Profil nur fuer Kategorie
-`local-assist` mit Risiko `low`. Die Konfiguration des Ollama-Dienstes selbst (Anmeldung,
-Weiterleitungen) liegt ausserhalb des Adapters. Ergebnisse werden wie alle Child-Ausgaben
+`local-assist` mit Risiko `low`. HTTP-Weiterleitungen werden nie verfolgt, `localhost` wird literal als
+`127.0.0.1` angesprochen. Die Konfiguration des Ollama-Dienstes selbst (Anmeldung,
+Weiterleitungen) liegt ausserhalb des Adapters; ein lokaler Akteur, der zwischen
+Bestandspruefung und Ausfuehrung ein gleichnamiges Modell austauscht, bleibt Restrisiko. Ergebnisse werden wie alle Child-Ausgaben
 von einem staerkeren Profil geprueft.
 
 ## Pflege aktueller Generationen

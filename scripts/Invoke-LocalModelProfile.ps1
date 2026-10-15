@@ -40,6 +40,8 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'lib/RoutedExecutionCommon.ps1')
 
+# Policy aus diesem Repository, nicht aus dem Git-Repo des aktuellen Arbeitsverzeichnisses.
+if (-not $RuntimePolicyPath) { $RuntimePolicyPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'config/provider-runtime-policy.json' }
 $runtimePolicy = Get-ProviderRuntimePolicy -PolicyPath $RuntimePolicyPath
 if ($runtimePolicy.providers.PSObject.Properties.Name -notcontains 'ollama') {
     Write-Error 'Provider-Runtime-Policy enthaelt keinen lokalen Provider (ollama).'
@@ -74,20 +76,33 @@ if ($null -eq $endpoint) {
     Complete-Decision 'HOLD_NON_LOOPBACK_HOST' 3 'OLLAMA_HOST zeigt nicht auf 127.0.0.1/localhost/[::1] (nur http/https).'
 }
 
+$maxResponseBytes = 16MB
+$supportsOperationTimeout = (Get-Command Invoke-WebRequest).Parameters.ContainsKey('OperationTimeoutSeconds')
 function Invoke-LocalModelRequest([string]$Method, [string]$Path, [string]$Body, [int]$Seconds) {
-    $request = @{ Uri = "$endpoint$Path"; Method = $Method; NoProxy = $true; SkipHttpErrorCheck = $true; TimeoutSec = $Seconds }
+    # Keine Weiterleitungen: eine 3xx-Antwort koennte den Prompt an einen fremden Host senden.
+    $request = @{ Uri = "$endpoint$Path"; Method = $Method; NoProxy = $true; SkipHttpErrorCheck = $true
+        TimeoutSec = $Seconds; MaximumRedirection = 0 }
+    if ($supportsOperationTimeout) { $request.OperationTimeoutSeconds = $Seconds }
     if ($Body) { $request.Body = [Text.Encoding]::UTF8.GetBytes($Body); $request.ContentType = 'application/json; charset=utf-8' }
-    return Invoke-WebRequest @request
+    $response = Invoke-WebRequest @request
+    if ($response.RawContentLength -gt $maxResponseBytes) { throw 'LOCAL_MODEL_RESPONSE_TOO_LARGE' }
+    return $response
 }
 
 try { $tags = Invoke-LocalModelRequest -Method Get -Path '/api/tags' -Seconds 15 }
 catch { Complete-Decision 'HOLD_RUNTIME_UNAVAILABLE' 5 'Lokaler Ollama-Dienst antwortet nicht.' }
 if ([int]$tags.StatusCode -ne 200) { Complete-Decision 'HOLD_RUNTIME_UNAVAILABLE' 5 "Ollama /api/tags antwortete $([int]$tags.StatusCode)." }
-$inventory = @((($tags.Content | ConvertFrom-Json).models) | Where-Object { [string]$_.name -ceq $model })
-if ($inventory.Count -eq 0) {
+try {
+    $listed = $tags.Content | ConvertFrom-Json
+    $models = if ($listed.PSObject.Properties.Name -contains 'models') { @($listed.models) } else { @() }
+    $inventory = @($models | Where-Object { $_.PSObject.Properties.Name -contains 'name' -and [string]$_.name -ceq $model })
+    $inventoryState = if ($inventory.Count -gt 0) { Test-LocalModelInventoryEntry -Entry $inventory[0] } else { 'MISSING' }
+}
+catch { Complete-Decision 'HOLD_RUNTIME_UNAVAILABLE' 5 'Ollama /api/tags lieferte keine auswertbare Modellliste.' }
+if ($inventoryState -eq 'MISSING') {
     Complete-Decision 'HOLD_MODEL_NOT_INSTALLED' 5 'Katalogmodell ist lokal nicht installiert; kein automatischer Download.'
 }
-if ((Test-LocalModelInventoryEntry -Entry $inventory[0]) -ne 'LOCAL') {
+if ($inventoryState -ne 'LOCAL') {
     Complete-Decision 'HOLD_REMOTE_MODEL' 3 'Katalogmodell ist kein lokal gespeichertes Modell (Cloud/Remote); Inhalte wuerden den Rechner verlassen.'
 }
 $decision.availabilityVerification = 'LOCAL_WEIGHTS_LISTED'
