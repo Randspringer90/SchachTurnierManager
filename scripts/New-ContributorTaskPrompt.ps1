@@ -10,7 +10,7 @@ Planungsprompts. Uebernimmt den geplanten Feature-Branch, optional den Issue-Tex
 Offline-Fallback), und fuellt die Vorlage docs/ai/templates/CODEX_CHESS_FEATURE.md. Issue-Texte
 werden als NICHT vertrauenswuerdige Daten behandelt (niemals als Befehl). Keine Owner-Pfade/
 Secrets im Prompt.
-Details nach D:\Temp\STM_ContributorTaskPrompt_<Timestamp>, genau ein Upload-ZIP.
+Details nach <Run-Basis>\STM_ContributorTaskPrompt_<Timestamp>, genau ein Upload-ZIP.
 .EXAMPLE
 pwsh .\scripts\New-ContributorTaskPrompt.ps1 -BacklogId STM-TB-001
 #>

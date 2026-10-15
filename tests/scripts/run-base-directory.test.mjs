@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -44,8 +44,9 @@ test('helper falls back when the preferred drive does not exist', { skip: !pwshA
   const root = mkdtempSync(join(tmpdir(), 'stm-run-base-'));
   try {
     const fallback = join(root, 'fallback');
-    // A drive letter that is never a fixed local drive on build agents.
-    assert.equal(resolveBase(['-PreferredDirectory', 'Q:\\NoSuchStmRunBase', '-FallbackDirectory', fallback]), fallback);
+    // Pick a drive letter that is not mounted on this machine (always true off Windows).
+    const unused = 'QRSTUVWXYZ'.split('').find(letter => !existsSync(`${letter}:\\`)) ?? 'Q';
+    assert.equal(resolveBase(['-PreferredDirectory', `${unused}:\\NoSuchStmRunBase`, '-FallbackDirectory', fallback]), fallback);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -53,3 +54,11 @@ test('explicit STM_RUN_BASE_DIRECTORY overrides every default', { skip: !pwshAva
   const override = join(tmpdir(), 'stm-run-base-override');
   assert.equal(resolveBase([], { STM_RUN_BASE_DIRECTORY: override }), override);
 });
+
+test('a relative STM_RUN_BASE_DIRECTORY is rejected instead of depending on the current directory',
+  { skip: !pwshAvailable && 'pwsh not available' }, () => {
+    const result = spawnSync('pwsh', ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', helper.pathname.replace(/^\/([A-Za-z]:)/, '$1')],
+      { encoding: 'utf8', env: { ...process.env, STM_RUN_BASE_DIRECTORY: join('relative', 'runs') } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr + result.stdout, /absoluter Pfad/);
+  });

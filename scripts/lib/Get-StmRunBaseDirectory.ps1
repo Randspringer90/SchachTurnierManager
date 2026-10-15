@@ -11,13 +11,18 @@ param(
 Set-StrictMode -Version Latest
 
 $override = [Environment]::GetEnvironmentVariable('STM_RUN_BASE_DIRECTORY')
-if (-not [string]::IsNullOrWhiteSpace($override)) { return $override }
+if (-not [string]::IsNullOrWhiteSpace($override)) {
+    # Nur absolute Pfade: ein relativer Wert haenge sonst vom aktuellen Verzeichnis ab.
+    if (-not [IO.Path]::IsPathRooted($override)) { throw 'STM_RUN_BASE_DIRECTORY muss ein absoluter Pfad sein.' }
+    return [IO.Path]::GetFullPath($override)
+}
 
 if (Test-Path -LiteralPath $PreferredDirectory -PathType Container) { return $PreferredDirectory }
 
 try {
     $root = [IO.Path]::GetPathRoot($PreferredDirectory)
-    if ($IsWindows -and -not [string]::IsNullOrEmpty($root)) {
+    # [Environment]::OSVersion statt $IsWindows: auch unter Windows PowerShell 5.1 definiert.
+    if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT -and -not [string]::IsNullOrEmpty($root)) {
         $drive = [IO.DriveInfo]::new($root)
         if ($drive.IsReady -and $drive.DriveType -eq [IO.DriveType]::Fixed) { return $PreferredDirectory }
     }

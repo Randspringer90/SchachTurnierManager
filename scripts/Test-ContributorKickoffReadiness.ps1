@@ -7,7 +7,7 @@ Prueft Doku/Vorlage, Parsebarkeit, Promptgenerierung (offline, STM-SEC-006), erw
 Abwesenheit von Owner-Pfaden/Secrets, PR-Basis development, keine Rechte fuer Security/CI/Release/
 Agenten, genau ein Upload-ZIP und – mit SYNTHETISCHER Injection-Fixture – dass eingebettete
 Befehle nur als untrusted Text erscheinen und nie in Arbeitsanweisungen. Details nach
-D:\Temp\<RunName>_<Timestamp>, ein Upload-ZIP. Exit 0 = ok, 1 = Fehler.
+<Run-Basis>\<RunName>_<Timestamp>, ein Upload-ZIP. Exit 0 = ok, 1 = Fehler.
 #>
 [CmdletBinding()]
 param()
