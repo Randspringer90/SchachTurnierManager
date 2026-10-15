@@ -15,9 +15,13 @@ replayed, deleted, sent to a provider or automatically reloaded.
 
 ## Privacy and recovery limits
 
-This limits data handled by this component. React development diagnostics,
-browser tooling, other loggers and the original thrown object elsewhere remain
-outside the component's control. This is not product-wide log redaction, error
+React 19's default root handlers log the raw thrown value (message and stack)
+even in production builds. `main.tsx` therefore creates the root with
+`createPrivateRootErrorOptions(import.meta.env.DEV)`: in production the caught
+and uncaught handlers log only `UI_RENDER_FAILURE` and the recoverable handler
+only `UI_RECOVERABLE_ERROR`; the raw value is forwarded only on the local Vite
+development server. Browser tooling, other loggers and the original thrown
+object elsewhere remain outside this boundary's control. This is not product-wide log redaction, error
 suppression, anonymization or an assertion of intact database state. Removing
 payload details trades local debugging detail for a stable safe error reference.
 The existing class and reload CSS contracts are preserved.
@@ -29,11 +33,12 @@ change does not promise offline availability by itself.
 
 ## Executed verification
 
-18/18 new tests PASS, zero FAIL/SKIP, on Node 22.16.0. Against the unchanged
-boundary these tests gave 4 PASS / 14 FAIL. They compile the actual TSX with the
-already declared TypeScript package and execute its class with a small React
-element adapter. This run used the available TypeScript 5.8.3, not the pinned
-6.0.3 full app compiler. Transpilation is not a full semantic typecheck.
+21/21 tests PASS on Node 24 with the pinned WebApp TypeScript (`npm ci`), and
+`tsc --noEmit` passes. The original 18 tests gave 4 PASS / 14 FAIL against the
+unchanged boundary. They compile the actual TSX with the already declared
+TypeScript package and execute its class with a small React element adapter.
+Review follow-up added: redaction over all rendered attributes, production and
+development root handlers, and the `main.tsx` root wiring.
 
 The tests exercise normal children, unusual/hostile thrown values, state and
 render redaction, fixed diagnostic arguments, persistence uncertainty, unsaved
@@ -50,16 +55,10 @@ https://react.dev/reference/react/Component#catching-rendering-errors-with-an-er
 
 ## Publication and integration gates
 
-Base: development d168a5a12a65dd66af18829277b7dab02c4422db, whose source tree
-matches the completed main integration. Original edited files and every
-unchanged source used in the focused tests were matched against Git blob SHAs.
-This environment uses an explicit source subset, not a full repository clone.
-No existing PR, user checkout, main/development ref or security policy changes.
-No dependencies, lockfiles, product versions, releases or deployments change.
-
-Full pinned TypeScript/React/Vite, .NET, PowerShell, Windows, repository safety
-and Commit-If-Green gates are NOT_RUN here. Static self-review is not a separate
-Codex review. Keep the PR a draft until the regular exact-SHA CI and independent
-AI review complete. No approval marker or ruleset bypass is supplied by this PR.
-Canonical BACKLOG/CHANGELOG integration references still need reconciliation;
-the existing parent task remains partial and is not counted as newly Done.
+Base: development d168a5a12a65dd66af18829277b7dab02c4422db. No dependencies,
+lockfiles, product versions, releases or deployments change. Exact-SHA local
+gates, required GitHub CI and the independent AI review are recorded in the
+pull request. Other places that show raw API/parse error text in the UI
+(`api/client.ts` describeApiError, the JSON import parse message in `App.tsx`)
+are outside this change and tracked as STM-SEC-003 follow-ups; the parent task
+remains partial and is not counted as newly Done.

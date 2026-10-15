@@ -32,6 +32,7 @@ function harness() {
   }, { timeout: 1000, filename: 'compiled-ErrorBoundary.js' });
   const Boundary = module.exports.ErrorBoundary;
   return { Boundary, logs, reloads: () => reloads, forbidden: () => forbidden,
+    createOptions: module.exports.createPrivateRootErrorOptions,
     failed(error = new Error('SYNTHETIC_PRIVATE_DETAIL')) {
       const boundary = new Boundary({ children: 'normal-content' });
       boundary.state = Boundary.getDerivedStateFromError(error);
@@ -59,8 +60,28 @@ for (const [label, value] of [['Error', new Error('SYNTHETIC_PRIVATE_DETAIL')], 
     const h = harness(), boundary = h.failed(value);
     assert.equal(JSON.stringify(boundary.state), '{"hasError":true}');
     assert.doesNotMatch(normalized(boundary.render()), /SYNTHETIC_PRIVATE_DETAIL/);
+    // Attributes (title, aria-label, data-*, href) are part of the DOM too.
+    const tree = JSON.stringify(boundary.render(), (_key, item) => typeof item === 'function' ? undefined : item);
+    assert.doesNotMatch(tree, /SYNTHETIC_PRIVATE_DETAIL/);
   });
 }
+test('production root handlers log fixed references without the thrown value', () => {
+  const h = harness(), options = h.createOptions(false), error = new Error('SYNTHETIC_PRIVATE_DETAIL');
+  options.onCaughtError(error); options.onUncaughtError(error); options.onRecoverableError(error);
+  assert.deepEqual(h.logs, [['[SchachTurnierManager] UI_RENDER_FAILURE'], ['[SchachTurnierManager] UI_RENDER_FAILURE'],
+    ['[SchachTurnierManager] UI_RECOVERABLE_ERROR']]);
+  const hostile = new Proxy({}, { get() { throw Error('Read'); }, getPrototypeOf() { throw Error('Read'); } });
+  assert.doesNotThrow(() => options.onUncaughtError(hostile));
+});
+test('development root handlers forward the raw value for local debugging only', () => {
+  const h = harness(), error = new Error('SYNTHETIC_PRIVATE_DETAIL');
+  h.createOptions(true).onCaughtError(error);
+  assert.equal(h.logs.length, 1); assert.equal(h.logs[0][1], error);
+});
+test('the application root installs the private handlers with the build-time development flag', () => {
+  const main = readFileSync(new URL('../../src/SchachTurnierManager.WebApp/src/main.tsx', import.meta.url), 'utf8');
+  assert.match(main, /createRoot\([^)]*\)!?,\s*createPrivateRootErrorOptions\(import\.meta\.env\.DEV\)\)/);
+});
 test('hostile exception getters, prototype and string conversions are never consulted', () => {
   const h = harness();
   const untrusted = new Proxy({}, { get() { throw Error('Exception inspected'); }, getPrototypeOf() { throw Error('Prototype inspected'); } });

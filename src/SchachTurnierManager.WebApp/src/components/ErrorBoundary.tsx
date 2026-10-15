@@ -3,7 +3,32 @@ import React from 'react';
 // Independent bilingual fallback: the translation provider may itself have failed.
 // Exception payloads can contain names, paths or server data; never inspect them here.
 const ERROR_REFERENCE = 'UI_RENDER_FAILURE';
+const RECOVERABLE_REFERENCE = 'UI_RECOVERABLE_ERROR';
 type ErrorBoundaryProps = { children: React.ReactNode };
+
+type RootErrorOptions = {
+  onCaughtError: (error: unknown) => void;
+  onUncaughtError: (error: unknown) => void;
+  onRecoverableError: (error: unknown) => void;
+};
+
+// React 19's default root handlers log the raw thrown value (message and stack)
+// even in production builds. Replace them with fixed references; raw details
+// are only forwarded for local development diagnostics.
+export function createPrivateRootErrorOptions(developmentDiagnostics: boolean): RootErrorOptions {
+  const report = (reference: string, error: unknown): void => {
+    if (developmentDiagnostics) {
+      console.error(`[SchachTurnierManager] ${reference}`, error);
+    } else {
+      console.error(`[SchachTurnierManager] ${reference}`);
+    }
+  };
+  return {
+    onCaughtError: error => report(ERROR_REFERENCE, error),
+    onUncaughtError: error => report(ERROR_REFERENCE, error),
+    onRecoverableError: error => report(RECOVERABLE_REFERENCE, error),
+  };
+}
 type ErrorBoundaryState = { hasError: boolean };
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
