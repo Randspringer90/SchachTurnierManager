@@ -1,5 +1,6 @@
 ## Unreleased (development)
 
+- STM-AI-008: Lokales Modellprofil `local-assist` im vorhandenen Router. Erreichbar nur über die Taskkategorie `local-assist` mit Risiko low; Ollama-Adapter `scripts/Invoke-LocalModelProfile.ps1` ohne Werkzeuge, ohne Download, nur Loopback-Host, Verfügbarkeit über `ollama list`. Der Router wählt Adapter explizit und fällt bei unbekannten Providern nicht mehr still auf OpenAI zurück. Modell-ID nur im Katalog; der Versionsscan erkennt lokale Tags. Routing 17/17, RoutedExecution 47/47; realer Router-Lauf mit lokalem Modell erfolgreich.
 - STM-AI-008 (#127): Skills `model-routing`, `task-decomposition`, `token-budget-management` und der Task-Decomposer berücksichtigen geprüfte lokale Zuarbeit. Weitere Profile nur mit Freigabe aus dem Ownerauftrag oder der Resolver-/Runtime-Konfiguration, fail-closed-Regel, `minimumQualityClass` und `delegationGate` bleiben verbindlich. Neues erläuterndes Arbeitsmodell `docs/architecture/HARNESS_OPERATING_MODEL.md` (nicht normativ) und Plan `docs/planning/HARNESS_EVOLUTION.md`.
 
 ### Geprüfte Gesamtintegration 2026-10-08

@@ -86,9 +86,13 @@ function Get-ProviderRuntimePolicy {
     $officialSources = @{
         openai = 'https://developers.openai.com/api/docs/models'
         anthropic = 'https://platform.claude.com/docs/en/models/overview'
+        ollama = 'https://ollama.com/library'
     }
-    foreach ($providerName in $officialSources.Keys) {
-        if ($catalog.sources.$providerName -cne $officialSources[$providerName]) {
+    # openai/anthropic sind immer Pflicht; weitere Provider nur, wenn ein Katalogmodell sie nutzt.
+    $requiredSources = @('openai', 'anthropic') + @($catalog.models.PSObject.Properties.Value | ForEach-Object { [string]$_.provider })
+    foreach ($providerName in @($requiredSources | Select-Object -Unique)) {
+        $declared = if ($catalog.sources.PSObject.Properties.Name -ccontains $providerName) { [string]$catalog.sources.$providerName } else { $null }
+        if (-not $officialSources.ContainsKey($providerName) -or $declared -cne $officialSources[$providerName]) {
             throw "Modellkatalog: nicht freigegebene offizielle Quelle fuer $providerName."
         }
     }
@@ -114,6 +118,20 @@ function Get-ProviderRuntimePolicy {
         }
     }
     return $policy
+}
+
+function Test-LocalModelLoopbackHost {
+    <#
+    STM-AI-008: Aufgabeninhalte fuer lokale Modelle duerfen den Rechner nicht verlassen.
+    Leer bedeutet Ollama-Standard 127.0.0.1:11434. Akzeptiert nur Loopback-Hosts.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$HostSetting)
+    if ([string]::IsNullOrWhiteSpace($HostSetting)) { return $true }
+    $value = $HostSetting.Trim()
+    if ($value -notmatch '^[A-Za-z][A-Za-z0-9+.-]*://') { $value = 'http://' + $value }
+    $uri = $null
+    if (-not [Uri]::TryCreate($value, [UriKind]::Absolute, [ref]$uri)) { return $false }
+    return $uri.Host -in @('127.0.0.1', 'localhost', '[::1]')
 }
 
 function Get-ProfileProvider {

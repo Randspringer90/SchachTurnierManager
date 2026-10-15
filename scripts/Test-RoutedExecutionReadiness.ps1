@@ -357,6 +357,28 @@ try {
     $fakeSecret = 'api' + '_key = ' + 'zzz-synthetic-not-real-1234567890'
     $redacted = Get-RedactedText -Text "Log: $fakeSecret Ende" -RuntimePolicy $runtimePolicy
     Assert-Check 'log-redaktion' ($redacted -match '\[REDACTED\]' -and $redacted -notmatch 'zzz-synthetic-not-real')
+
+    # --- 22) STM-AI-008: lokales Modellprofil bleibt lokal, explizit und fail-closed ----
+    $loopbackCases = @{ '' = $true; '127.0.0.1:11434' = $true; 'http://localhost:11434' = $true; 'http://[::1]:11434' = $true
+        '0.0.0.0:11434' = $false; 'remote.example:11434' = $false; 'https://10.0.0.5:11434' = $false; '::not a host::' = $false }
+    $loopbackOk = $true
+    foreach ($case in $loopbackCases.GetEnumerator()) { if ((Test-LocalModelLoopbackHost -HostSetting $case.Key) -ne $case.Value) { $loopbackOk = $false } }
+    Assert-Check 'lokal-nur-loopback-host' $loopbackOk
+    $localMapping = Get-ProfileProvider -RuntimePolicy $runtimePolicy -ProfileId 'local-assist'
+    Assert-Check 'lokal-profil-aus-katalog' ($null -ne $localMapping -and $localMapping.ProviderName -ceq 'ollama' -and
+        -not [string]::IsNullOrWhiteSpace($localMapping.Model))
+    $remoteRun = & pwsh -NoProfile -Command "`$env:OLLAMA_HOST = 'remote.example:11434'; & '$(Join-Path $scriptsRoot 'Invoke-LocalModelProfile.ps1')' -ProfileId 'local-assist' -PromptFile 'unused' -OutputFile '$(Join-Path $workRoot 'local.out')'; exit `$LASTEXITCODE" 2>&1 | Out-String
+    Assert-Check 'lokal-fremder-host-hold' ($LASTEXITCODE -eq 3 -and $remoteRun -match 'HOLD_NON_LOOPBACK_HOST') $remoteRun
+    $pathWithoutOllama = (@($env:PATH -split [IO.Path]::PathSeparator | Where-Object {
+                $_ -and -not (Test-Path -LiteralPath (Join-Path $_ 'ollama.exe')) -and -not (Test-Path -LiteralPath (Join-Path $_ 'ollama')) })) -join [IO.Path]::PathSeparator
+    $noRunner = & pwsh -NoProfile -Command "`$env:OLLAMA_HOST = ''; `$env:PATH = '$($pathWithoutOllama.Replace("'", "''"))'; & '$(Join-Path $scriptsRoot 'Invoke-LocalModelProfile.ps1')' -ProfileId 'local-assist' -PromptFile 'unused' -OutputFile '$(Join-Path $workRoot 'local.out')' -DryRun; exit `$LASTEXITCODE" 2>&1 | Out-String
+    Assert-Check 'lokal-ohne-runtime-hold' ($LASTEXITCODE -eq 5 -and $noRunner -match 'HOLD_RUNNER_MISSING') $noRunner
+    $localAdapter = Get-Content -Raw -LiteralPath (Join-Path $scriptsRoot 'Invoke-LocalModelProfile.ps1')
+    Assert-Check 'lokal-stdout-ist-kein-limitsignal' ($localAdapter -match 'Get-RunnerOutputClassification -Text \$result\.StdErr' -and
+        $localAdapter -notmatch '(?i)\bpull\b\s*[''"]' -and $localAdapter -notmatch '(?i)--insecure')
+    $router = Get-Content -Raw -LiteralPath (Join-Path $scriptsRoot 'Invoke-RoutedTaskGraph.ps1')
+    Assert-Check 'router-ohne-stillen-adapterfallback' ($router -match "'ollama' \{ 'Invoke-LocalModelProfile\.ps1' \}" -and
+        $router -match 'default \{ throw "Kein Adapter fuer Provider')
 }
 finally {
     Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue

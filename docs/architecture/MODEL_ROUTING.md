@@ -26,12 +26,30 @@ Kanonische Quellen:
 | Terra | ausschliesslich risikoarme, deterministische Massenarbeit |
 | Opus | Security, Schachregeln, Pairing/Tie-Breaks, Release, Installer und schwierige Reviews |
 | Sonnet | klar abgegrenzte Implementierung kleinen oder mittleren Umfangs und hoechstens mittleren Risikos |
+| Lokal (`local-assist`) | read-only Zuarbeit ueber ein lokal installiertes Modell; nur Kategorie `local-assist`, nur Risiko `low` |
 
 Die Namen sind logische Ausfuehrungsprofile, keine konkreten Modell-IDs. Eine Runtime darf
 sie nur auf Modelle abbilden, welche die geforderte Qualitaetsklasse tatsaechlich erfuellen.
 Das grosse Implementierungsprofil Luna verwendet dieselbe leistungsfaehige Modellklasse
 wie Sol; nur Terra wird auf die effiziente Modellklasse abgebildet. Profilnamen sind
 keine Anbieterfamilien und rechtfertigen keine Herabstufung.
+
+### Lokales Profil (STM-AI-008)
+
+`local-assist` hat die eigene Qualitaetsklasse `local-assist` (Rang 15) und ist nur ueber
+die Regel `local-assist-explicit` erreichbar: Taskkategorie `local-assist` und Risiko `low`.
+Keine andere Kategorie wird lokal geroutet; passt fuer eine `local-assist`-Aufgabe eine
+staerkere Regel (z. B. Implementierung), gewinnt diese. Mittleres oder hoeheres Risiko
+blockiert (`BLOCKED_HUMAN_REQUIRED`), ein nicht verfuegbares lokales Profil blockiert
+fail-closed, ohne Ausweichen auf Cloudprofile.
+
+Die Runtime-Zuordnung steht in `config/provider-runtime-policy.json` (Provider `ollama`),
+die Modell-ID ausschliesslich in `config/model-catalog.json`. Der Adapter
+`scripts/Invoke-LocalModelProfile.ps1` gibt dem Modell nur den Prompt via stdin, keine
+Werkzeuge; Antworten sind T3. Er laedt nie Modelle herunter, akzeptiert nur einen
+Loopback-`OLLAMA_HOST`, bestaetigt die Installation ueber `ollama list` und wertet nur
+stderr/Exitcode als Limit-/Fehlersignal, nie den Modellinhalt. Ergebnisse werden wie alle
+Child-Ausgaben von einem staerkeren Profil geprueft.
 
 ## Pflege aktueller Generationen
 
