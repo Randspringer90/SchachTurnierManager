@@ -58,6 +58,36 @@ try {
     )
     Invoke-ExpectedSuccess -Arguments $validate
 
+    # STM-REL-002: createdAtUtc muss kulturunabhaengig geprueft werden. PowerShell 7
+    # wandelt ISO-Strings beim JSON-Import in DateTime; unter de-DE scheiterte ein
+    # Tag > 12 frueher an der kulturabhaengigen Rueckumwandlung.
+    $quote = { param([string]$Value) "'" + $Value.Replace("'", "''") + "'" }
+    $germanValidate = @(
+        '-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-Command',
+        ("[System.Globalization.CultureInfo]::CurrentCulture = 'de-DE'; & {0} -ManifestPath {1} -ArtifactRoot {2} -ExpectedVersion '9.8.7' -RequireCompleteSet -RequireInstaller; exit `$LASTEXITCODE" -f
+            (& $quote (Join-Path $Root 'scripts/Test-ReleaseUpdateManifest.ps1')), (& $quote $manifestPath), (& $quote $artifactRoot))
+    )
+    # Ohne verfuegbare de-DE-Kultur wuerden die Negativfaelle aus falschem Grund bestehen.
+    Invoke-ExpectedSuccess -Arguments @('-NoLogo','-NoProfile','-Command',
+        "[System.Globalization.CultureInfo]::CurrentCulture = 'de-DE'; if ([System.Globalization.CultureInfo]::CurrentCulture.Name -cne 'de-DE') { exit 1 }")
+    $generatedManifest = Get-Content -Raw -LiteralPath $manifestPath
+    foreach ($case in @(
+            @{ Stamp = '2026-10-15T10:00:00.0000000Z'; Valid = $true },
+            @{ Stamp = '2026-12-31T23:59:59Z'; Valid = $true },
+            @{ Stamp = '2026-10-15T10:00:00+02:00'; Valid = $true },
+            @{ Stamp = '15.10.2026 10:00:00'; Valid = $false },
+            @{ Stamp = '2026-10-15T10:00:00'; Valid = $false },
+            @{ Stamp = '/Date(1792058400000)/'; Valid = $false },
+            @{ Stamp = '2026-10-15t10:00:00z'; Valid = $false },
+            @{ Stamp = 'kein Datum'; Valid = $false })) {
+        [regex]::Replace($generatedManifest, '"createdAtUtc"\s*:\s*"[^"]*"', ('"createdAtUtc": "{0}"' -f $case.Stamp)) |
+            Set-Content -Encoding UTF8 -NoNewline -LiteralPath $manifestPath
+        foreach ($arguments in @(, $validate) + @(, $germanValidate)) {
+            if ($case.Valid) { Invoke-ExpectedSuccess -Arguments $arguments } else { Invoke-ExpectedFailure -Arguments $arguments }
+        }
+    }
+    $generatedManifest | Set-Content -Encoding UTF8 -NoNewline -LiteralPath $manifestPath
+
     # Hash-Manipulation muss fail-closed blockieren.
     Add-Content -Encoding UTF8 -LiteralPath (Join-Path $artifactRoot 'SchachTurnierManager_Desktop_9.8.7.zip') -Value 'tampered'
     Invoke-ExpectedFailure -Arguments $validate
