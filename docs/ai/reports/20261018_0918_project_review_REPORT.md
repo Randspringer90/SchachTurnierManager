@@ -17,6 +17,7 @@ Folgearbeiten; eine vollständige Betriebs- oder FIDE-Freigabe wird nicht behaup
 | Produktversion | `0.54.1`; Produktversion sowie NuGet-/npm-/SDK-Pins unverändert; neuer PowerShell-Mindeststand siehe unten |
 | Inventar | 1.138 getrackte Dateien in der Ausgangsbasis |
 | Arbeitsbranch | `fix/STM-REV-001-project-review`, Ziel `development` |
+| Pull Request | [#133](https://github.com/Randspringer90/SchachTurnierManager/pull/133), offen als Draft; Quellkorrekturen in `33a37050296f7483830ee2ffa8e2297bc88d3a5e` |
 | Auftrag | Gesamtes Projekt prüfen und einen GitHub-PR erstellen |
 | Ausführung | Aktuelle ChatGPT-Sitzung mit drei parallelen Fachreviews; anschließend getrennte Nachprüfung der Änderungen |
 | Abnahme | Review- und Quellkorrektur, kein Release-/Merge-/Installer-Nachweis |
