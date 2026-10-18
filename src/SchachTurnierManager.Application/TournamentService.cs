@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SchachTurnierManager.Domain.Models;
 using SchachTurnierManager.Domain.Services;
 
@@ -95,12 +96,52 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
     public TournamentState SaveImportedTournament(TournamentState tournament, bool overwriteExisting)
     {
         ValidateImportedTournament(tournament);
-        tournament.Name = tournament.Name.Trim();
-        tournament.Settings = NormalizeSettings(tournament.Settings ?? new TournamentSettings());
+        // Use the same snapshot serialization contract as InMemoryTournamentStore.
+        // Normalization and a refused save must never mutate the caller's backup.
+        var imported = JsonSerializer.Deserialize<TournamentState>(JsonSerializer.Serialize(tournament))
+            ?? throw new InvalidOperationException("Importierter Turniersnapshot konnte nicht kopiert werden.");
+        imported.Name = imported.Name.Trim();
+        imported.Settings = NormalizeSettings(imported.Settings);
 
-        AddAuditEntry(tournament, AuditJournalAction.TournamentImported, AuditJournalSeverity.Warning, "Turnier importiert.", $"OverwriteExisting: {overwriteExisting}");
-        _store.Save(tournament, overwriteExisting);
-        return tournament;
+        var entry = new AuditJournalEntry
+        {
+            Action = AuditJournalAction.TournamentImported,
+            Severity = AuditJournalSeverity.Warning,
+            Summary = "Turnier importiert.",
+            Details = $"OverwriteExisting: {overwriteExisting}"
+        };
+        imported.AuditJournal.Add(entry);
+        _store.Save(imported, overwriteExisting);
+
+        var mirrorWarning = MirrorAuditEntry(imported, entry);
+        if (mirrorWarning is null)
+        {
+            return imported;
+        }
+
+        try
+        {
+            return _store.UpdateAtomically(imported.Id, current =>
+            {
+                // Preserve intervening edits. An entirely replaced snapshot must not
+                // receive a warning belonging to an import it no longer contains.
+                if (current.AuditJournal.Any(saved => saved.Id == entry.Id))
+                {
+                    current.AuditJournal.Add(mirrorWarning);
+                }
+                return current;
+            });
+        }
+        catch (Exception)
+        {
+            // The import is already committed. A second failure must not report it as
+            // rejected or encourage an unsafe retry; disclose the transient warning.
+            imported.AuditJournal[^1] = mirrorWarning with
+            {
+                Summary = "Turnier gespeichert; Audit-Spiegel fehlgeschlagen, Audit-Warnung nicht gespeichert."
+            };
+            return imported;
+        }
     }
 
 
@@ -679,6 +720,7 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                             $"Das Ergebnis für Runde {roundNumber}, Brett {boardNumber} wurde zwischenzeitlich geändert. " +
                             "Bitte Turnierstand neu laden und die Korrektur erneut prüfen.");
                     }
+                    EnsureResultMatchesPairing(p, resultKind, roundNumber);
                     return p with { Result = new GameResult(resultKind), LastChangedAt = DateTimeOffset.UtcNow };
                 })
                 .ToList();
@@ -699,6 +741,11 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
     {
         return _store.UpdateAtomically(tournamentId, tournament =>
         {
+            if (!tournament.Settings.AllowManualPairingOverrides)
+            {
+                throw new InvalidOperationException("Manuelle Paarungsänderungen sind in den Turniereinstellungen deaktiviert.");
+            }
+
             var roundIndex = RequireRoundIndex(tournament, roundNumber);
             var round = tournament.Rounds[roundIndex];
             EnsureRoundEditable(round);
@@ -1037,11 +1084,11 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         MirrorAuditEntry(tournament, entry);
     }
 
-    private void MirrorAuditEntry(TournamentState tournament, AuditJournalEntry entry)
+    private AuditJournalEntry? MirrorAuditEntry(TournamentState tournament, AuditJournalEntry entry)
     {
         if (_auditSink is null)
         {
-            return;
+            return null;
         }
 
         try
@@ -1055,16 +1102,19 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
             // den Fehler sichtbar machen. Nicht erneut spiegeln, sonst Endlosschleife bei Dauerfehler.
             if (entry.Action != AuditJournalAction.AuditJournalMirrorFailed)
             {
-                tournament.AuditJournal.Add(new AuditJournalEntry
+                var warning = new AuditJournalEntry
                 {
                     Action = AuditJournalAction.AuditJournalMirrorFailed,
                     Severity = AuditJournalSeverity.Warning,
                     Actor = "System",
                     Summary = "Audit-Spiegel konnte nicht geschrieben werden.",
                     Details = ex.Message
-                });
+                };
+                tournament.AuditJournal.Add(warning);
+                return warning;
             }
         }
+        return null;
     }
 
     private static TournamentSettings NormalizeSettings(TournamentSettings settings)
@@ -1276,6 +1326,7 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
                     throw new InvalidOperationException($"Runde {round.RoundNumber}, Brett {pairing.BoardNumber}: Weißspieler fehlt.");
                 }
 
+                EnsureResultMatchesPairing(pairing, pairing.Result.Kind, round.RoundNumber);
                 var whitePlayerId = pairing.WhitePlayerId!.Value;
                 EnsureImportedPairingPlayerExists(playerIds, whitePlayerId, round.RoundNumber, pairing.BoardNumber, "Weiß");
                 AddImportedRoundPlayer(roundPlayers, whitePlayerId, round.RoundNumber, pairing.BoardNumber);
@@ -1367,6 +1418,21 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
         }
 
         return index;
+    }
+
+    private static void EnsureResultMatchesPairing(Pairing pairing, GameResultKind resultKind, int roundNumber)
+    {
+        if (pairing.WhitePlayerId is null || pairing.WhitePlayerId == Guid.Empty)
+        {
+            throw new InvalidOperationException($"Runde {roundNumber}, Brett {pairing.BoardNumber}: Weißspieler fehlt.");
+        }
+
+        if ((pairing.BlackPlayerId is null) != (resultKind == GameResultKind.Bye))
+        {
+            throw new InvalidOperationException(
+                $"Runde {roundNumber}, Brett {pairing.BoardNumber}: Bye ist nur für ein Brett ohne Schwarzspieler zulässig; " +
+                "ein solches Freilos muss als Bye gewertet werden.");
+        }
     }
 
     private static void EnsureRoundEditable(TournamentRound round)

@@ -29,15 +29,16 @@ export const defaultTournamentAssistantForm: TournamentAssistantForm = {
 export function buildTournamentAssistantRecommendation(form: TournamentAssistantForm): TournamentAssistantRecommendation {
   const playerCount = assistantNumber(form.playerCount, 12, 2, 512);
   const availableMinutes = assistantNumber(form.availableMinutes, 180, 30, 1440);
-  const boardCount = assistantNumber(form.boardCount, Math.max(1, Math.ceil(playerCount / 2)), 1, 256);
+  const boardCount = assistantNumber(form.boardCount, Math.max(1, Math.floor(playerCount / 2)), 1, 256);
   const activeChess960 = form.chess960 || form.scenario === 'chess960';
   const canRoundRobin = playerCount <= 8 && form.scenario !== 'open' && form.scenario !== 'team';
-  const formatValue = canRoundRobin && availableMinutes >= Math.max(3, playerCount - 1) * assistantScenarioRoundMinutes(form) ? 0 : 1;
-  const plannedRounds = formatValue === 0 ? Math.max(1, playerCount - 1) : recommendedSwissRounds(playerCount);
+  const roundRobinRounds = playerCount % 2 === 0 ? playerCount - 1 : playerCount;
+  const formatValue = canRoundRobin && availableMinutes >= Math.max(3, roundRobinRounds) * assistantScenarioRoundMinutes(form) ? 0 : 1;
+  const plannedRounds = formatValue === 0 ? roundRobinRounds : recommendedSwissRounds(playerCount);
   const scoringSystem = form.scenario === 'blitz' ? 0 : 0;
   const estimatedRoundMinutes = assistantScenarioRoundMinutes(form);
   const estimatedTotalMinutes = plannedRounds * estimatedRoundMinutes + 20;
-  const estimatedBoards = Math.ceil(playerCount / 2);
+  const estimatedBoards = Math.floor(playerCount / 2);
   const timeFit: TournamentAssistantRecommendation['timeFit'] = estimatedTotalMinutes <= availableMinutes
     ? 'ok'
     : estimatedTotalMinutes <= availableMinutes + 30

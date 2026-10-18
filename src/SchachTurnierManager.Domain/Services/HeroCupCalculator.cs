@@ -8,7 +8,8 @@ public sealed class HeroCupCalculator
 
     public IReadOnlyList<HeroCupRow> Calculate(TournamentState tournament)
     {
-        var players = tournament.Players.Where(p => p.IsActive).ToDictionary(p => p.Id);
+        // Historical games remain valid after an opponent pauses or withdraws.
+        var players = tournament.Players.ToDictionary(p => p.Id);
         var mutable = players.Values.ToDictionary(player => player.Id, player => new MutableHero(player, player.Twz(tournament.Settings.TwzSource)));
 
         foreach (var round in tournament.Rounds)
@@ -23,7 +24,7 @@ public sealed class HeroCupCalculator
         var minGames = Math.Max(1, tournament.Settings.HeroCupMinimumRatedGames);
 
         return mutable.Values
-            .Where(row => row.RatedGames >= minGames)
+            .Where(row => row.Player.IsActive && row.RatedGames >= minGames)
             .OrderByDescending(row => row.ActualScore - row.ExpectedScore)
             .ThenByDescending(row => row.AverageOpponentRating)
             .ThenBy(row => row.Player.StartingRank == 0 ? int.MaxValue : row.Player.StartingRank)

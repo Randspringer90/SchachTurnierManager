@@ -1,3 +1,4 @@
+#requires -Version 7.3
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
@@ -17,6 +18,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Preserve npm's native exit code even when the caller opts into native-error exceptions.
+$PSNativeCommandUseErrorActionPreference = $false
 
 function Write-Info([string]$Message) {
     Write-Host "[NpmSafe] $Message"
@@ -83,43 +86,76 @@ function Get-NpmArgumentList {
     return [string[]]$result.ToArray()
 }
 
+function New-NpmTemporaryDirectory {
+    # The directory is empty until its access is restricted. Each invocation owns
+    # a different directory, including nested invocations in the same project.
+    $directory = [IO.Directory]::CreateTempSubdirectory('stm-npm-')
+    try {
+        if ($IsWindows) {
+            $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+            try { $sid = $identity.User } finally { $identity.Dispose() }
+            $acl = [Security.AccessControl.DirectorySecurity]::new()
+            $acl.SetOwner($sid)
+            $acl.SetAccessRuleProtection($true, $false)
+            $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+                [Security.AccessControl.InheritanceFlags]::ObjectInherit
+            $rule = [Security.AccessControl.FileSystemAccessRule]::new($sid,
+                [Security.AccessControl.FileSystemRights]::FullControl, $inheritance,
+                [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)
+            $acl.AddAccessRule($rule)
+            Set-Acl -LiteralPath $directory.FullName -AclObject $acl
+        }
+        else {
+            [IO.File]::SetUnixFileMode($directory.FullName,
+                [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+        }
+        return $directory.FullName
+    }
+    catch {
+        Remove-Item -LiteralPath $directory.FullName -Recurse -Force -ErrorAction Stop
+        throw
+    }
+}
+
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
-$tmpDir = Join-Path $resolvedRoot 'tmp/npm-safe'
-New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
-$tempNpmrc = Join-Path $tmpDir 'user.npmrc'
-
-$localNpmrc = Join-Path $resolvedRoot '.secrets/local/npmrc'
-$legacyLocalNpmrc = Join-Path $resolvedRoot 'secrets/local/npmrc'
-$dpapiNpmrc = Join-Path $resolvedRoot '.secrets/local/npmrc.dpapi.txt'
-$legacyDpapiNpmrc = Join-Path $resolvedRoot 'secrets/local/npmrc.dpapi.txt'
-
-if (Test-Path -LiteralPath $localNpmrc -PathType Leaf) {
-    Write-SanitizedNpmrc -Content (Get-Content -Raw -LiteralPath $localNpmrc) -TargetPath $tempNpmrc
-    Write-Info 'lokale npmrc aus .secrets/local verwendet.'
-}
-elseif (Test-Path -LiteralPath $dpapiNpmrc -PathType Leaf) {
-    Write-SanitizedNpmrc -Content (ConvertFrom-DpapiFile $dpapiNpmrc) -TargetPath $tempNpmrc
-    Write-Info 'DPAPI-geschuetzte npmrc aus .secrets/local verwendet.'
-}
-elseif (Test-Path -LiteralPath $legacyLocalNpmrc -PathType Leaf) {
-    Write-SanitizedNpmrc -Content (Get-Content -Raw -LiteralPath $legacyLocalNpmrc) -TargetPath $tempNpmrc
-    Write-Info 'lokale npmrc aus secrets/local verwendet (Legacy-Ablage).'
-}
-elseif (Test-Path -LiteralPath $legacyDpapiNpmrc -PathType Leaf) {
-    Write-SanitizedNpmrc -Content (ConvertFrom-DpapiFile $legacyDpapiNpmrc) -TargetPath $tempNpmrc
-    Write-Info 'DPAPI-geschuetzte npmrc aus secrets/local verwendet (Legacy-Ablage).'
-}
-else {
-    '# intentionally empty: isolate npm from user/global auth config' | Set-Content -Encoding UTF8 -LiteralPath $tempNpmrc
-    Write-Info 'isolierte temporaere npmrc ohne lokale Secrets verwendet.'
-}
-
+$npmArgumentsToRun = Get-NpmArgumentList
 $oldUserConfig = $env:NPM_CONFIG_USERCONFIG
 $oldAlwaysAuth = $env:NPM_CONFIG_ALWAYS_AUTH
 $oldNpmConfigAlwaysAuth = $env:npm_config_always_auth
-$npmArgumentsToRun = Get-NpmArgumentList
+$tempDirectory = $null
 
 try {
+    $tempDirectory = New-NpmTemporaryDirectory
+    $tempNpmrc = Join-Path $tempDirectory 'user.npmrc'
+    $localNpmrc = Join-Path $resolvedRoot '.secrets/local/npmrc'
+    $legacyLocalNpmrc = Join-Path $resolvedRoot 'secrets/local/npmrc'
+    $dpapiNpmrc = Join-Path $resolvedRoot '.secrets/local/npmrc.dpapi.txt'
+    $legacyDpapiNpmrc = Join-Path $resolvedRoot 'secrets/local/npmrc.dpapi.txt'
+
+    if (Test-Path -LiteralPath $localNpmrc -PathType Leaf) {
+        Write-SanitizedNpmrc -Content (Get-Content -Raw -LiteralPath $localNpmrc) -TargetPath $tempNpmrc
+        Write-Info 'lokale npmrc aus .secrets/local verwendet.'
+    }
+    elseif (Test-Path -LiteralPath $dpapiNpmrc -PathType Leaf) {
+        Write-SanitizedNpmrc -Content (ConvertFrom-DpapiFile $dpapiNpmrc) -TargetPath $tempNpmrc
+        Write-Info 'DPAPI-geschuetzte npmrc aus .secrets/local verwendet.'
+    }
+    elseif (Test-Path -LiteralPath $legacyLocalNpmrc -PathType Leaf) {
+        Write-SanitizedNpmrc -Content (Get-Content -Raw -LiteralPath $legacyLocalNpmrc) -TargetPath $tempNpmrc
+        Write-Info 'lokale npmrc aus secrets/local verwendet (Legacy-Ablage).'
+    }
+    elseif (Test-Path -LiteralPath $legacyDpapiNpmrc -PathType Leaf) {
+        Write-SanitizedNpmrc -Content (ConvertFrom-DpapiFile $legacyDpapiNpmrc) -TargetPath $tempNpmrc
+        Write-Info 'DPAPI-geschuetzte npmrc aus secrets/local verwendet (Legacy-Ablage).'
+    }
+    else {
+        '# intentionally empty: isolate npm from user/global auth config' | Set-Content -Encoding UTF8 -LiteralPath $tempNpmrc
+        Write-Info 'isolierte temporaere npmrc ohne lokale Secrets verwendet.'
+    }
+    if (-not $IsWindows) {
+        [IO.File]::SetUnixFileMode($tempNpmrc, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite)
+    }
+
     $env:NPM_CONFIG_USERCONFIG = $tempNpmrc
     Remove-Item Env:NPM_CONFIG_ALWAYS_AUTH -ErrorAction SilentlyContinue
     Remove-Item Env:npm_config_always_auth -ErrorAction SilentlyContinue
@@ -135,7 +171,7 @@ try {
     try {
         Write-Info ("npm " + ($npmArgumentsToRun -join ' '))
         & npm @npmArgumentsToRun
-        exit $LASTEXITCODE
+        $npmExitCode = $LASTEXITCODE
     }
     finally {
         Pop-Location
@@ -145,4 +181,8 @@ finally {
     if ($null -eq $oldUserConfig) { Remove-Item Env:NPM_CONFIG_USERCONFIG -ErrorAction SilentlyContinue } else { $env:NPM_CONFIG_USERCONFIG = $oldUserConfig }
     if ($null -eq $oldAlwaysAuth) { Remove-Item Env:NPM_CONFIG_ALWAYS_AUTH -ErrorAction SilentlyContinue } else { $env:NPM_CONFIG_ALWAYS_AUTH = $oldAlwaysAuth }
     if ($null -eq $oldNpmConfigAlwaysAuth) { Remove-Item Env:npm_config_always_auth -ErrorAction SilentlyContinue } else { $env:npm_config_always_auth = $oldNpmConfigAlwaysAuth }
+    if ($null -ne $tempDirectory) {
+        Remove-Item -LiteralPath $tempDirectory -Recurse -Force -ErrorAction Stop
+    }
 }
+exit $npmExitCode

@@ -21,5 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SchachTurnierManager.Application\SchachTurnierManager.Application.csproj" />
     <ProjectReference Include="..\..\src\SchachTurnierManager.Infrastructure\SchachTurnierManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj" />
   </ItemGroup>
 </Project>

@@ -25,13 +25,13 @@ Benötigte Werkzeuge (Windows):
 |--------------|----------------------------------------------------|
 | Git          | aktuell                                             |
 | GitHub CLI   | `gh` – **optional.** Praktisch für `gh pr create`, aber PRs gehen genauso über die normale GitHub-Weboberfläche (Link erscheint direkt nach `git push` in der Konsole). Ohne `gh` einfach Teil C ohne `gh auth login` starten. |
-| PowerShell   | 7+ (`pwsh`) – die Projektskripte sind PowerShell-7  |
+| PowerShell   | **7.3+** (`pwsh`) – `Invoke-NpmSafe.ps1` benötigt die .NET-7-APIs für isolierte temporäre Konfigurationen und restriktive Dateirechte. |
 | .NET SDK     | **10.0.300+** (siehe `global.json`, `rollForward: latestFeature`) |
 | Node.js      | **22 LTS empfohlen**. Die verbindliche Mindestversion kommt aus Vite (`engines` in `node_modules/vite/package.json`, aktuell `^20.19.0 \|\| >=22.12.0`); neuere Node-Versionen sind nicht ausgeschlossen – zuletzt mit Node 24 verifiziert (2026-07-17). |
 
 > Die Versionsangaben oben sind Orientierung. **Kanonisch** sind `global.json` (.NET) und
 > das `engines`-Feld von Vite (Node). Wenn eine neuere Version funktioniert, ist sie erlaubt –
-> diese Tabelle schließt nichts aus, was die kanonischen Dateien zulassen.
+> diese Tabelle schließt nichts aus, was die kanonischen Dateien zulassen. Für den npm-Wrapper gilt zusätzlich das verbindliche `#requires -Version 7.3` im Skript; PowerShell 7.0–7.2 muss für diese Entwicklungsschritte aktualisiert werden.
 
 Installation z. B. über `winget`:
 

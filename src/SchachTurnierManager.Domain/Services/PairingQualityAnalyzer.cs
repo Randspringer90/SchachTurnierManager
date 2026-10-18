@@ -29,7 +29,7 @@ public sealed class PairingQualityAnalyzer
             .Calculate(priorTournament)
             .ToDictionary(row => row.PlayerId, row => row.Points);
 
-        var history = BuildHistory(tournament.Players, priorRounds);
+        var history = BuildHistory(tournament.Players, priorRounds, UsesPlayedGameHistory(tournament, round));
         var boardReports = new List<PairingQualityBoard>();
 
         foreach (var pairing in round.Pairings.OrderBy(pairing => pairing.BoardNumber))
@@ -137,9 +137,23 @@ public sealed class PairingQualityAnalyzer
         };
     }
 
+    private static bool UsesPlayedGameHistory(TournamentState tournament, TournamentRound round)
+    {
+        // A later strategy change must not reinterpret an already generated round.
+        // Legacy rounds without an algorithm marker use the current setting.
+        return round.Audit.Algorithm switch
+        {
+            "Swiss-FIDE-Dutch-C0403" => true,
+            "" => tournament.Settings.Format == TournamentFormat.Swiss &&
+                tournament.Settings.PairingStrategy == SwissPairingStrategyKind.FideDutch,
+            _ => false
+        };
+    }
+
     private static IReadOnlyDictionary<Guid, PairingQualityPlayerHistory> BuildHistory(
         IEnumerable<Player> players,
-        IEnumerable<TournamentRound> priorRounds)
+        IEnumerable<TournamentRound> priorRounds,
+        bool playedGamesOnly)
     {
         var histories = players.ToDictionary(player => player.Id, _ => new PairingQualityPlayerHistory());
 
@@ -159,6 +173,13 @@ public sealed class PairingQualityAnalyzer
                         byeHistory.HadBye = true;
                     }
 
+                    continue;
+                }
+
+                // FIDE C.04.2 Art. 3.4/3.5: unplayed encounters establish neither
+                // a colour nor a rematch. Optimal-V2 retains its existing semantics.
+                if (playedGamesOnly && !pairing.Result.IsOverTheBoard)
+                {
                     continue;
                 }
 
