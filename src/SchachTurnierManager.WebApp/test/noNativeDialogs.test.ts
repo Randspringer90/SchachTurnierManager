@@ -71,7 +71,7 @@ test('the confirmations that replaced the native dialogs are wired to the in-app
   const text = appShell!.text;
   assert.match(text, /setActionConfirm\(\{/, 'the shared confirmation state must exist');
   assert.match(text, /run: pairNextRound/, 'pairing despite critical findings asks through the dialog');
-  assert.match(text, /run: \(\) => rollChess960\(round, true\)/, 'overwriting Chess960 positions asks through the dialog');
+  assert.match(text, /run: \(\) => rollChess960\(round, true, token\)/, 'overwriting Chess960 positions asks through the dialog with its captured context');
 
   const roller = sources.find(file => file.path.endsWith(join('chess960', 'BoardDiceRoller.tsx')))!;
   assert.match(roller.text, /ConfirmDialog/, 'the single board overwrite also uses the in-app dialog');

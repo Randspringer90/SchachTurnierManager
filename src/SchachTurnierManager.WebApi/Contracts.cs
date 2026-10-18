@@ -88,7 +88,7 @@ public sealed record PreviewPlayersCsvRequest(string Content, bool ReplaceExisti
 /// </summary>
 public sealed record ImportPlayersFileRequest(byte[] FileBytes, bool ReplaceExisting = false);
 
-public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = true);
+public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = false);
 
 public sealed record ExternalPlayerDuplicateRequest(ExternalPlayerProfile Profile);
 

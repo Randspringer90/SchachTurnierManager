@@ -39,8 +39,9 @@ public sealed class FideDutchColourAllocator
         ChessColor initialColour)
     {
         // Reihenfolge normalisieren, damit das Ergebnis nicht von der Aufrufreihenfolge abhaengt:
-        // "hoeher gesetzt" heisst nach Art. 1.2 kleinere TPN.
-        var (higher, lower) = first.Tpn <= second.Tpn ? (first, second) : (second, first);
+        // Art. 1.2: zuerst mehr Punkte, erst bei Gleichstand die kleinere TPN.
+        var firstIsHigher = first.Points > second.Points || (first.Points == second.Points && first.Tpn <= second.Tpn);
+        var (higher, lower) = firstIsHigher ? (first, second) : (second, first);
 
         var higherPreference = higher.Preference;
         var lowerPreference = lower.Preference;

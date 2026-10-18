@@ -99,11 +99,12 @@ public sealed class FideDutchProfileBuilderTests
 
     /// <summary>
     /// C.04.2 Art. 3.4 und 3.5: Eine kampflos gewertete Runde zählt weder für die Farbfolge noch als
-    /// Begegnung — die beiden dürfen später erneut gepaart werden. Wirkung bleibt nur: Wer kampflos
-    /// die volle Siegpunktzahl bekommt, ist für ein Freilos gesperrt ([C2], Art. 2.1.2).
+    /// Begegnung — die beiden dürfen später erneut gepaart werden. Wer kampflos die volle
+    /// Siegpunktzahl bekommt, ist für ein Freilos gesperrt ([C2], Art. 2.1.2) und erhält einen
+    /// Downfloat (Art. 1.4.3).
     /// </summary>
     [Fact]
-    public void ForfeitedGame_CountsForPointsOnly_NotForColourSequenceOrRematchLock()
+    public void ForfeitedGame_DoesNotCountForColourSequenceOrRematchLock()
     {
         var tournament = CreateTournament(2);
         // Einzige Runde: 1 gewinnt kampflos gegen 2.
@@ -128,6 +129,95 @@ public sealed class FideDutchProfileBuilderTests
         Assert.Empty(loser.PlayedOpponentIds);
         Assert.True(winner.IsByeIneligible);             // [C2]: voller Punkt ohne zu spielen
         Assert.False(loser.IsByeIneligible);             // der Unterlegene bleibt freilosfaehig
+    }
+
+    [Theory]
+    [InlineData(GameResultKind.WhiteForfeitWin, 1, false)]
+    [InlineData(GameResultKind.WhiteForfeitWin, 1, true)]
+    [InlineData(GameResultKind.BlackForfeitWin, 2, false)]
+    [InlineData(GameResultKind.BlackForfeitWin, 2, true)]
+    public void ForfeitWinner_ReceivesDownfloatInCorrectHistoryWindow(GameResultKind result, int winnerTpn, bool playNextRound)
+    {
+        var tournament = CreateTournament(4);
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 1,
+            ResultStatus = RoundResultStatus.Complete,
+            Pairings = new[]
+            {
+                Pairing.Game(1, PlayerId(1), PlayerId(2)) with { Result = new GameResult(result) },
+                Pairing.Game(2, PlayerId(3), PlayerId(4)) with { Result = new GameResult(GameResultKind.WhiteWin) }
+            }
+        });
+        var loserTpn = winnerTpn == 1 ? 2 : 1;
+        if (playNextRound)
+        {
+            // Both R2 games have equal pre-round scores and therefore no new floats.
+            tournament.Rounds.Add(new TournamentRound
+            {
+                RoundNumber = 2,
+                ResultStatus = RoundResultStatus.Complete,
+                Pairings = new[]
+                {
+                    Pairing.Game(1, PlayerId(winnerTpn), PlayerId(3)) with { Result = GameResult.Draw },
+                    Pairing.Game(2, PlayerId(loserTpn), PlayerId(4)) with { Result = GameResult.Draw }
+                }
+            });
+        }
+
+        var profiles = new FideDutchProfileBuilder().Build(tournament);
+        var winner = profiles.Single(profile => profile.Tpn == winnerTpn);
+        var loser = profiles.Single(profile => profile.Tpn == loserTpn);
+
+        Assert.Equal(playNextRound ? FideFloat.None : FideFloat.Down, winner.FloatLastRound);
+        Assert.Equal(playNextRound ? FideFloat.Down : FideFloat.None, winner.FloatTwoRoundsBack);
+        Assert.Equal(FideFloat.None, loser.FloatLastRound);
+        Assert.Equal(FideFloat.None, loser.FloatTwoRoundsBack);
+        Assert.True(winner.IsByeIneligible);
+        Assert.False(loser.IsByeIneligible);
+        Assert.DoesNotContain(PlayerId(loserTpn), winner.PlayedOpponentIds);
+        Assert.DoesNotContain(1, winner.ColourByRound.Keys);
+    }
+
+    [Theory]
+    [InlineData(PlayerStatus.Withdrawn, 2)]
+    [InlineData(PlayerStatus.Withdrawn, 3)]
+    [InlineData(PlayerStatus.Paused, 2)]
+    [InlineData(PlayerStatus.Paused, 3)]
+    public void InactiveOpponent_DoesNotChangeHistoricalPointsOrFloats(PlayerStatus status, int roundCount)
+    {
+        var tournament = CreateTournament(4);
+        var schedules = new[]
+        {
+            new[] { (1, 4), (2, 3) },
+            new[] { (1, 2), (3, 4) },
+            new[] { (1, 3), (2, 4) }
+        };
+        for (var index = 0; index < roundCount; index++)
+        {
+            tournament.Rounds.Add(new TournamentRound
+            {
+                RoundNumber = index + 1,
+                ResultStatus = RoundResultStatus.Complete,
+                Pairings = schedules[index].Select((pair, board) => Pairing.Game(board + 1, PlayerId(pair.Item1), PlayerId(pair.Item2)) with
+                {
+                    Result = new GameResult(index == 0 ? GameResultKind.WhiteWin : GameResultKind.Draw)
+                }).ToList()
+            });
+        }
+        var builder = new FideDutchProfileBuilder();
+        var before = builder.Build(tournament).Single(profile => profile.Tpn == 1);
+        tournament.Players[1] = tournament.Players[1] with { Status = status };
+
+        var profiles = builder.Build(tournament);
+        var after = profiles.Single(profile => profile.Tpn == 1);
+
+        Assert.DoesNotContain(profiles, profile => profile.Tpn == 2);
+        Assert.Equal(before.Points, after.Points);
+        Assert.Equal(before.FloatLastRound, after.FloatLastRound);
+        Assert.Equal(before.FloatTwoRoundsBack, after.FloatTwoRoundsBack);
+        Assert.Equal(before.PlayedColours, after.PlayedColours);
+        Assert.Equal(before.PlayedOpponentIds.OrderBy(id => id), after.PlayedOpponentIds.OrderBy(id => id));
     }
 
     // -------------------------------------------------------------------------------------------

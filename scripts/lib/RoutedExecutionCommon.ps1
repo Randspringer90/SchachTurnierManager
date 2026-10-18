@@ -219,6 +219,18 @@ function Test-ChildOutputInjectionSuspicion {
     return @($suspicions)
 }
 
+function Test-RoutedTaskId {
+    param([AllowNull()][object]$TaskId)
+    # IDs become filenames for output, prompts, logs and quarantine. Keep existing
+    # ASCII identifiers portable to Windows, with a bounded component length.
+    if ($TaskId -isnot [string] -or
+        $TaskId -cnotmatch '\A[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}\z' -or
+        $TaskId.EndsWith('.', [StringComparison]::Ordinal)) { return $false }
+    # Windows device names remain reserved even when followed by an extension.
+    if ($TaskId -match '\A(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|\z)') { return $false }
+    return $true
+}
+
 function Test-RoutedTaskGraph {
     <#
     .SYNOPSIS
@@ -254,6 +266,10 @@ function Test-RoutedTaskGraph {
             if ($task.PSObject.Properties.Name -notcontains $field) {
                 $violations.Add("Task '$($task.taskId)': Pflichtfeld '$field' fehlt.")
             }
+        }
+        if (-not (Test-RoutedTaskId -TaskId $task.taskId)) {
+            $violations.Add('Task-ID ist kein portabler Dateiname (1-128 ASCII-Zeichen, keine Pfade oder Windows-Geraetenamen).')
+            continue
         }
         $taskId = [string]$task.taskId
         if ($ids.ContainsKey($taskId)) { $violations.Add("Task-ID doppelt: $taskId") }
@@ -476,7 +492,23 @@ function Read-RoutedCheckpoint {
         throw 'Checkpoint gehoert zu einem anderen Repository.'
     }
     if (-not $SkipHeadValidation) {
-        $branch = ([string](& git rev-parse --abbrev-ref HEAD 2>$null)).Trim()
+        $headOutput = @(& git rev-parse --verify HEAD 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $headOutput.Count -ne 1) {
+            throw 'Aktueller HEAD konnte nicht verlaesslich aufgeloest werden.'
+        }
+        $head = ([string]$headOutput[0]).Trim()
+        if ($head -cnotmatch '\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z') {
+            throw 'Git hat keinen gueltigen Commit-SHA fuer HEAD geliefert.'
+        }
+        if ($head -cne ([string]$checkpoint.head).Trim()) {
+            throw 'Checkpoint-HEAD weicht vom aktuellen Commit ab; Resume ist blockiert.'
+        }
+        $branchOutput = @(& git rev-parse --abbrev-ref HEAD 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $branchOutput.Count -ne 1 -or
+            [string]::IsNullOrWhiteSpace([string]$branchOutput[0])) {
+            throw 'Aktueller Branch konnte nicht verlaesslich aufgeloest werden.'
+        }
+        $branch = ([string]$branchOutput[0]).Trim()
         if ($branch -ne ([string]$checkpoint.branch).Trim()) {
             throw "Checkpoint-Branch '$($checkpoint.branch)' weicht vom aktuellen Branch '$branch' ab."
         }

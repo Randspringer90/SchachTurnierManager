@@ -1,5 +1,16 @@
 ## Unreleased (development)
 
+### STM-REV-001 – Gesamt-Review 2026-10-18
+
+- Ergebnis-/Brettinvarianten und deaktivierte manuelle Paarungsänderungen serverseitig durchsetzen; unzulässiges Bye aus normaler Ergebnisauswahl entfernen.
+- Backupimport standardmäßig ohne Ersetzung, ausdrückliche ziel-/inhaltsgebundene Bestätigung bei bestehenden Turnieren und Import-Audit erst nach erfolgreicher Speicherung.
+- Settings- und Chess960-Antworten an Turnier-/Dialoggeneration binden; verspätete Antworten und Finalizer verändern keine neueren Entwürfe oder Dialoge.
+- Dutch-Farbpriorität nach Punkten/TPN, Downfloat nach kampflosem Sieg, historische Punkte inaktiver Gegner sowie Heldenpokal-/Qualitätsauswertung korrigieren.
+- TWZ-Anzeige an gewählte Ratingquelle angleichen; Rundenzahl und Brettbedarf im Rundenturnier-Assistenten für ungerade Felder korrigieren.
+- npm-Konfiguration pro Aufruf isolieren und aufräumen; Routed-Checkpoints tatsächlich an HEAD binden und Task-IDs vor Pfadableitung validieren. **Tooling-Kompatibilität:** Der sichere npm-Wrapper benötigt jetzt ausdrücklich PowerShell 7.3+; Onboarding/Betriebsanleitung sind angepasst.
+- Dateilogger redigiert Whitespace und quotierte Geheimwerte einschließlich eingebetteter Quotes; SQLite-Startdiagnose erhält WAL-Dateien und empfiehlt eine gemeinsame Sicherung.
+- Review mit Regressionen, unabhängiger Nachprüfung, offenen Round-Robin-/CI-Befunden und klaren Plattformgrenzen: [Bericht](docs/ai/reports/20261018_0918_project_review_REPORT.md). Keine Änderung von Produktversion, Backupformat oder Paketversionen.
+
 
 ### Geprüfte Gesamtintegration 2026-10-08
 

@@ -10,7 +10,8 @@ import React from 'react';
 import { buildAuditJournalCsv } from '../lib/auditCsv';
 import { createTournamentProjectionLoader, type TournamentProjection } from '../lib/tournamentProjection';
 import { createPlayerImportPreviewGuard } from '../lib/playerImportPreview';
-import { createTournamentEditorGuard } from '../lib/tournamentEditorGuard';
+import { createTournamentEditorGuard, type TournamentEditorToken } from '../lib/tournamentEditorGuard';
+import { backupImportSummary, createBackupImportGuard, type BackupImportRequest } from '../lib/backupImportGuard';
 import { LanguageSwitcher, useI18n } from '../i18n';
 import { describeApiError, healthProbeTimeoutMs, isApiTransportError, pairingRequestTimeoutMs, requestJson, requestText } from '../api/client';
 import {
@@ -151,11 +152,19 @@ type ActionConfirmState = {
   cancelLabel: string;
   destructive?: boolean;
   run: () => Promise<void>;
+  onCancel?: () => void;
 };
 
 type DerivedTournamentData = {
   standings: StandingRow[]; categories: CategoryStandingTable[]; crossTable: CrossTable;
   heroCup: HeroCupRow[]; diagnostics: RoundDiagnostics[]; auditJournal: AuditJournalEntry[];
+};
+
+type BackupImportConfirmation = {
+  request: BackupImportRequest;
+  tournamentName: string;
+  existingRoundCount: number;
+  backupRoundCount: number;
 };
 
 /** STM-SEC-006: CSV exports prefix formula-like text with an apostrophe; a CSV re-import keeps it. */
@@ -190,6 +199,9 @@ export function App() {
   const [nextRoundPreview, setNextRoundPreview] = React.useState<NextRoundPreview | null>(null);
   const [isNextRoundPreviewDialogOpen, setIsNextRoundPreviewDialogOpen] = React.useState(false);
   const [chess960DialogRound, setChess960DialogRound] = React.useState<TournamentRound | null>(null);
+  const [chess960DialogToken, setChess960DialogToken] = React.useState<TournamentEditorToken | null>(null);
+  const [chess960Guard] = React.useState(() => createTournamentEditorGuard(selectedId));
+  const chess960EditorToken = chess960Guard.capture(selectedId);
   const [chess960Rolling, setChess960Rolling] = React.useState(false);
   const [chess960HasRolled, setChess960HasRolled] = React.useState(false);
   const [diceSpin, setDiceSpin] = React.useState(0);
@@ -201,6 +213,7 @@ export function App() {
   // Skriptdurchlaufs unterdruecken - dann bliebe die Aktion wirkungslos.
   const [actionConfirm, setActionConfirm] = React.useState<ActionConfirmState | null>(null);
   const [actionConfirmBusy, setActionConfirmBusy] = React.useState(false);
+  const actionConfirmInFlight = React.useRef<ActionConfirmState | null>(null);
   const [boardDiceTab, setBoardDiceTab] = React.useState<'browser' | 'qr'>('browser');
   const [laptopIp, setLaptopIp] = React.useState<string>(() => readLocalStorage('stm.laptopIp') ?? defaultLanHost());
   const [diceUrlCopied, setDiceUrlCopied] = React.useState(false);
@@ -225,6 +238,8 @@ export function App() {
     sources: ['Lokale Wissensbasis']
   }]);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
+  const [settingsEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
+  const settingsEditorToken = settingsEditorGuard.capture(selectedId);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
   const [externalQuery, setExternalQuery] = React.useState('');
   const [externalLookup, setExternalLookup] = React.useState<ExternalPlayerAggregateResult | null>(null);
@@ -240,6 +255,9 @@ export function App() {
   const [formatImportResult, setFormatImportResult] = React.useState<{ added: number; errors: string[] } | null>(null);
   const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
+  const [backupImportGuard] = React.useState(createBackupImportGuard);
+  const [backupImportPending, setBackupImportPending] = React.useState<BackupImportConfirmation | null>(null);
+  const [backupImportBusy, setBackupImportBusy] = React.useState(false);
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [playerEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
   const [pairingEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
@@ -280,16 +298,18 @@ export function App() {
     if (projectionLoader.disposed) return;
     if (projectionLoader.select(id)) {
       playerEditorGuard.select(id); pairingEditorGuard.select(id);
+      settingsEditorGuard.select(id); chess960Guard.select(id);
+      cancelBackupImport();
       setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); setPairingEdits({});
       setExternalDuplicateChecks({});
       importPreviewGuard.update({ ...importPreviewGuard.inputs, tournamentId: id });
       setImportPreview(null); setConfirmWarningImport(false);
       setPairingQualityReports({}); setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false);
-      setChess960DialogRound(null); setPendingResultChange(null); setLastResultChange(null); setBoardDiceModal(null);
+      closeChess960Dialog(); setPendingResultChange(null); setLastResultChange(null); setBoardDiceModal(null);
       setActionConfirm(null); setError(null);
     }
     setSelectedIdState(id);
-  }, [projectionLoader, importPreviewGuard, playerEditorGuard, pairingEditorGuard]);
+  }, [projectionLoader, importPreviewGuard, playerEditorGuard, pairingEditorGuard, settingsEditorGuard, chess960Guard, backupImportGuard]);
 
   const [tournamentListLoader] = React.useState(() => {
     const loader = createTournamentProjectionLoader<Tournament[]>(state => {
@@ -305,7 +325,7 @@ export function App() {
 
   React.useEffect(() => {
     projectionLoader.resume(); tournamentListLoader.resume();
-    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); playerEditorGuard.invalidate(); pairingEditorGuard.invalidate(); };
+    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); playerEditorGuard.invalidate(); pairingEditorGuard.invalidate(); settingsEditorGuard.invalidate(); chess960Guard.invalidate(); backupImportGuard.invalidate(); };
   }, [projectionLoader, tournamentListLoader, importPreviewGuard]);
 
   const loadTournaments = React.useCallback(async (): Promise<Tournament[] | null> => {
@@ -417,17 +437,21 @@ export function App() {
    * ehrlich gemacht, statt weiter "online" zu behaupten.
    */
   async function confirmActionDialog(): Promise<void> {
-    if (!actionConfirm || actionConfirmBusy) {
+    if (!actionConfirm || actionConfirmBusy || actionConfirmInFlight.current) {
       return;
     }
 
     const pending = actionConfirm;
+    actionConfirmInFlight.current = pending;
     setActionConfirmBusy(true);
     try {
       await pending.run();
     } finally {
-      setActionConfirmBusy(false);
-      setActionConfirm(null);
+      if (actionConfirmInFlight.current === pending) {
+        actionConfirmInFlight.current = null;
+        setActionConfirmBusy(false);
+      }
+      setActionConfirm(current => current === pending ? null : current);
     }
   }
 
@@ -557,7 +581,7 @@ export function App() {
     setPairingQualityReports({});
     setNextRoundPreview(null);
     setIsNextRoundPreviewDialogOpen(false);
-    setChess960DialogRound(null);
+    closeChess960Dialog();
     setPendingResultChange(null);
     setLastResultChange(null);
   }, [selectedTournament?.id]);
@@ -574,7 +598,7 @@ export function App() {
     function closeOnEscape(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
         setIsNextRoundPreviewDialogOpen(false);
-        setChess960DialogRound(null);
+        closeChess960Dialog();
         setBoardDiceModal(null);
       }
     }
@@ -739,18 +763,26 @@ export function App() {
       return;
     }
 
+    const operation = settingsEditorGuard.advance(settingsEditorToken);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
+    setSettingsForm(current => ({ ...current }));
     setError(null);
     try {
       const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/settings`, {
         method: 'PUT',
         body: JSON.stringify({ settings: formToSettings(settingsForm) })
       });
-      setSelectedId(updated.id);
+      if (!settingsEditorGuard.isCurrent(operation)) return;
+      setSettingsForm(settingsToForm(updated));
       setStatus('Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
       await refresh(updated.id);
     } catch (ex) {
-      reportActionFailure('Turniereinstellungen konnten nicht gespeichert werden', ex);
+      if (settingsEditorGuard.isCurrent(operation)) reportActionFailure('Turniereinstellungen konnten nicht gespeichert werden', ex);
     }
+  }
+
+  function updateSettingsForm(form: SettingsForm): void {
+    if (settingsEditorGuard.advance(settingsEditorToken)) setSettingsForm(form);
   }
 
   function openDestructiveDialog(action: DestructiveAction): void {
@@ -785,7 +817,7 @@ export function App() {
         const updated = await requestJson<Tournament>(`/api/tournaments/${pending.tournamentId}/reset`, { method: 'POST' });
         setNextRoundPreview(null);
         setIsNextRoundPreviewDialogOpen(false);
-        setChess960DialogRound(null);
+        closeChess960Dialog();
         setPairingQualityReports({});
         setDestructiveDialog(null);
         setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
@@ -796,7 +828,7 @@ export function App() {
       await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${pending.tournamentId}`, { method: 'DELETE' });
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
-      setChess960DialogRound(null);
+      closeChess960Dialog();
       setPairingQualityReports({});
       setDestructiveDialog(null);
       setStatus(`Turnier gelöscht: ${pending.tournamentName}.`);
@@ -816,6 +848,7 @@ export function App() {
   }
 
   function toggleTiebreak(value: number, enabled: boolean): void {
+    if (!settingsEditorGuard.advance(settingsEditorToken)) return;
     setSettingsForm(previous => {
       const without = previous.tiebreaks.filter(item => item !== value);
       const next = enabled ? [...without, value] : without;
@@ -971,15 +1004,29 @@ export function App() {
   }
 
   function openChess960Dice(round: TournamentRound) {
+    if (!selectedTournament) return;
+    const token = chess960Guard.advance(chess960EditorToken);
+    if (!token) return;
     // Aktuellsten Rundenstand aus dem geladenen Turnier nehmen (zeigt vorhandene Stellungen).
     const freshRound = selectedTournament?.rounds.find(item => item.roundNumber === round.roundNumber) ?? round;
+    setChess960DialogToken(token);
     setChess960DialogRound(freshRound);
     setChess960Rolling(false);
     setChess960HasRolled(false);
   }
 
+  function closeChess960Dialog(): void {
+    chess960Guard.invalidate();
+    setChess960DialogToken(null);
+    setChess960DialogRound(null);
+    setChess960Rolling(false);
+    setActionConfirm(null);
+  }
+
   function performChess960Roll(round: TournamentRound): void {
-    if (!selectedTournament || chess960Rolling) {
+    const token = chess960DialogToken;
+    if (!selectedTournament || chess960Rolling || !chess960Guard.isCurrent(token)
+        || token.tournamentId !== selectedTournament.id) {
       return;
     }
 
@@ -992,20 +1039,27 @@ export function App() {
         confirmLabel: 'Überschreiben',
         cancelLabel: 'Abbrechen',
         destructive: true,
-        run: () => rollChess960(round, true)
+        onCancel: () => {
+          const next = chess960Guard.advance(token);
+          if (next) setChess960DialogToken(next);
+        },
+        run: () => rollChess960(round, true, token)
       });
       return;
     }
 
-    void rollChess960(round, false);
+    void rollChess960(round, false, token);
   }
 
-  async function rollChess960(round: TournamentRound, hasExistingPositions: boolean): Promise<void> {
+  async function rollChess960(round: TournamentRound, hasExistingPositions: boolean, token = chess960DialogToken): Promise<void> {
     if (!selectedTournament || chess960Rolling) {
       return;
     }
+    const operation = chess960Guard.advance(token);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
 
     setError(null);
+    setChess960DialogToken(operation);
     setChess960Rolling(true);
     setDiceSpin(previous => previous + 1);
 
@@ -1017,6 +1071,7 @@ export function App() {
         body: JSON.stringify({ overwriteExisting: hasExistingPositions })
       });
       const [updated] = await Promise.all([rollRequest, animation]);
+      if (!chess960Guard.isCurrent(operation)) return;
       setDiceFace(Math.floor(Math.random() * diceFaceGlyphs.length));
       setChess960DialogRound(updated);
       setChess960HasRolled(true);
@@ -1024,9 +1079,9 @@ export function App() {
       setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt. Tipp: Jetzt ein lokales Backup ziehen.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(describeApiError(ex, lang));
+      if (chess960Guard.isCurrent(operation)) setError(describeApiError(ex, lang));
     } finally {
-      setChess960Rolling(false);
+      if (chess960Guard.isCurrent(operation)) setChess960Rolling(false);
     }
   }
 
@@ -1061,6 +1116,9 @@ export function App() {
     if (!selectedTournament || result === previousResult) {
       return;
     }
+    const pairing = selectedTournament.rounds.find(round => round.roundNumber === roundNumber)?.pairings
+      .find(board => board.boardNumber === boardNumber);
+    if (!pairing || pairing.isBye || result === 7) return;
     resultReturnFocusRef.current = source ?? null;
     setPendingResultChange({ tournamentId: selectedTournament.id, roundNumber, boardNumber, result, previousResult });
   }
@@ -1109,6 +1167,7 @@ export function App() {
   }
 
   function updatePairingEdit(roundNumber: number, boardNumber: number, patch: Partial<PairingEdit>): void {
+    if (!selectedTournament?.settings.allowManualPairingOverrides) return;
     const round = selectedTournament?.rounds.find(item => item.roundNumber === roundNumber);
     const pairing = round?.pairings.find(item => item.boardNumber === boardNumber);
     if (!round || !pairing) return;
@@ -1122,7 +1181,7 @@ export function App() {
   }
 
   async function saveManualPairing(round: TournamentRound, pairing: Pairing) {
-    if (!selectedTournament) {
+    if (!selectedTournament?.settings.allowManualPairingOverrides) {
       return;
     }
     const edit = pairingEdit(round, pairing);
@@ -1553,11 +1612,14 @@ function openRoundPrint(roundNumber: number) {
       return;
     }
 
+    const selection = projectionLoader.capture(selectedTournament.id);
+    if (!selection) return;
     setError(null);
     try {
       const text = await requestText(`/api/tournaments/${selectedTournament.id}/export/json`);
+      if (!projectionLoader.isCurrent(selection)) return;
       const pretty = JSON.stringify(JSON.parse(text), null, 2);
-      setBackupJson(pretty);
+      updateBackupJson(pretty);
       const now = new Date();
       const roundLabel = latestRoundNumber() === null ? 'start' : `r${latestRoundNumber()}`;
       const fileName = `${safeFileNamepart(selectedTournament.name)}_${roundLabel}_${backupTimestampSlug(now)}.json`;
@@ -1568,7 +1630,46 @@ function openRoundPrint(roundNumber: number) {
       writeLocalStorage(`stm.lastBackup.${selectedTournament.id}`, iso);
       setStatus(`✓ Lokales Backup gespeichert: ${fileName}`);
     } catch (ex) {
-      setError(`Backup konnte NICHT erstellt werden: ${describeApiError(ex, lang)}`);
+      if (projectionLoader.isCurrent(selection)) setError(`Backup konnte NICHT erstellt werden: ${describeApiError(ex, lang)}`);
+    }
+  }
+
+  function cancelBackupImport(): void {
+    backupImportGuard.invalidate();
+    setBackupImportPending(null);
+    setBackupImportBusy(false);
+  }
+
+  function updateBackupJson(value: string): void {
+    cancelBackupImport();
+    setBackupJson(value);
+  }
+
+  async function confirmBackupImport(): Promise<void> {
+    if (backupImportPending) await commitBackupImport(backupImportPending.request, true);
+  }
+
+  async function commitBackupImport(request: BackupImportRequest, overwriteExisting: boolean): Promise<void> {
+    if (!backupImportGuard.dispatch(request)) return;
+    setBackupImportBusy(true);
+    setError(null);
+    try {
+      const imported = await requestJson<Tournament>('/api/tournaments/import', {
+        method: 'POST',
+        body: JSON.stringify({ tournament: JSON.parse(request.payload), overwriteExisting })
+      });
+      if (!backupImportGuard.isCurrent(request)) return;
+      setBackupImportPending(null);
+      setSelectedId(imported.id);
+      setStatus(`Turnier importiert: ${imported.name}`);
+      await refresh(imported.id);
+    } catch (ex) {
+      if (backupImportGuard.isCurrent(request)) {
+        setBackupImportPending(null);
+        reportActionFailure('Turnier konnte nicht importiert werden', ex);
+      }
+    } finally {
+      if (backupImportGuard.finish(request)) setBackupImportBusy(false);
     }
   }
 
@@ -1584,16 +1685,33 @@ function openRoundPrint(roundNumber: number) {
       return;
     }
 
+    const summary = backupImportSummary(parsed);
+    if (!summary) {
+      setError(lang === 'en' ? 'The backup needs an unambiguous tournament ID and a rounds list.' : 'Das Backup benötigt eine eindeutige Turnier-ID und eine Rundenliste.');
+      return;
+    }
+    const request = backupImportGuard.begin(JSON.stringify(parsed));
+    if (!request) return;
+    setBackupImportPending(null);
+    setBackupImportBusy(true);
     try {
-      const imported = await requestJson<Tournament>('/api/tournaments/import', {
-        method: 'POST',
-        body: JSON.stringify({ tournament: parsed, overwriteExisting: true })
-      });
-      setSelectedId(imported.id);
-      setStatus(`Turnier importiert: ${imported.name}`);
-      await refresh(imported.id);
+      // Read current targets without changing selection or the user's draft.
+      // If a matching ID is created later, overwrite=false makes the server reject it.
+      const current = await requestJson<Tournament[]>('/api/tournaments');
+      if (!backupImportGuard.isCurrent(request)) return;
+      const existing = current.find(item => item.id.toLowerCase() === summary.id);
+      if (existing) {
+        setBackupImportPending({ request, tournamentName: existing.name,
+          existingRoundCount: existing.rounds.length, backupRoundCount: summary.roundCount });
+        setBackupImportBusy(false);
+      } else {
+        await commitBackupImport(request, false);
+      }
     } catch (ex) {
-      reportActionFailure('Turnier konnte nicht importiert werden', ex);
+      if (backupImportGuard.finish(request)) {
+        setBackupImportBusy(false);
+        reportActionFailure('Turnier konnte nicht importiert werden', ex);
+      }
     }
   }
 
@@ -1987,6 +2105,7 @@ function openRoundPrint(roundNumber: number) {
   }
   function applyAssistantRecommendation(): void {
     setFormat(assistantRecommendation.format);
+    settingsEditorGuard.invalidate();
     setSettingsForm({
       ...settingsForm,
       format: assistantRecommendation.format,
@@ -2302,6 +2421,33 @@ function openRoundPrint(roundNumber: number) {
         />
       )}
 
+      {backupImportPending && (
+        <ConfirmDialog
+          key={backupImportPending.request.generation}
+          open
+          destructive
+          title={lang === 'en' ? 'Replace the existing tournament?' : 'Vorhandenes Turnier ersetzen?'}
+          description={lang === 'en'
+            ? `The backup belongs to "${backupImportPending.tournamentName}". This tournament already exists and will be replaced completely.`
+            : `Das Backup gehört zu „${backupImportPending.tournamentName}“. Dieses Turnier ist bereits vorhanden und wird vollständig ersetzt.`}
+          consequences={lang === 'en'
+            ? [`Existing tournament: ${backupImportPending.existingRoundCount} round(s). Backup: ${backupImportPending.backupRoundCount} round(s).`,
+              'All current participants, settings, rounds, results and audit entries will be replaced by the backup. Changes made since the backup will be lost.',
+              'Create a separate backup of the current tournament before replacing it if you need to keep those changes.']
+            : [`Vorhandenes Turnier: ${backupImportPending.existingRoundCount} Runde(n). Backup: ${backupImportPending.backupRoundCount} Runde(n).`,
+              'Aktuelle Teilnehmer, Einstellungen, Runden, Ergebnisse und Audit-Einträge werden durch das Backup ersetzt. Änderungen seit der Sicherung gehen verloren.',
+              'Den aktuellen Turnierstand vor dem Ersetzen separat sichern, wenn diese Änderungen erhalten bleiben sollen.']}
+          requireTypedConfirmation={backupImportPending.tournamentName}
+          typedConfirmationLabel={lang === 'en' ? 'Type the name of the tournament to replace:' : 'Zum Ersetzen den Turniernamen exakt eingeben:'}
+          confirmLabel={lang === 'en' ? 'Replace with this backup' : 'Durch dieses Backup ersetzen'}
+          cancelLabel={lang === 'en' ? 'Cancel' : 'Abbrechen'}
+          busy={backupImportBusy}
+          busyLabel={lang === 'en' ? 'Importing…' : 'Wird importiert…'}
+          onConfirm={() => void confirmBackupImport()}
+          onCancel={cancelBackupImport}
+        />
+      )}
+
       {actionConfirm && (
         <ConfirmDialog
           open
@@ -2314,7 +2460,12 @@ function openRoundPrint(roundNumber: number) {
           busy={actionConfirmBusy}
           busyLabel={lang === 'en' ? 'Working…' : 'Wird ausgeführt…'}
           onConfirm={() => void confirmActionDialog()}
-          onCancel={() => { if (!actionConfirmBusy) { setActionConfirm(null); } }}
+          onCancel={() => {
+            if (!actionConfirmBusy && !actionConfirmInFlight.current) {
+              actionConfirm.onCancel?.();
+              setActionConfirm(current => current === actionConfirm ? null : current);
+            }
+          }}
         />
       )}
 
@@ -2372,7 +2523,7 @@ function openRoundPrint(roundNumber: number) {
         </div>
       )}
 
-      {chess960DialogRound && (
+      {chess960DialogRound && chess960Guard.isCurrent(chess960DialogToken) && chess960DialogToken.tournamentId === selectedId && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Schachwürfel Runde ${chess960DialogRound.roundNumber}`}>
           <article className="card chess960-modal">
             <div className="preview-card-header">
@@ -2421,7 +2572,7 @@ function openRoundPrint(roundNumber: number) {
             )}
             <div className="actions preview-actions">
               <button type="button" className="secondary" onClick={() => openRoundPrint(chess960DialogRound.roundNumber)} disabled={chess960PositionCount(chess960DialogRound) === 0}>Rundenblatt drucken</button>
-              <button type="button" onClick={() => setChess960DialogRound(null)} disabled={chess960Rolling}>Schließen</button>
+              <button type="button" onClick={closeChess960Dialog} disabled={chess960Rolling}>Schließen</button>
             </div>
           </article>
         </div>
@@ -2914,56 +3065,56 @@ function openRoundPrint(roundNumber: number) {
             <form onSubmit={(event) => void saveSettings(event)} className="settings-form">
               <div className="settings-grid">
                 <label>Format
-                  <select value={settingsForm.format} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, format: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                  <select value={settingsForm.format} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, format: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
                     {formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 {settingsForm.format === 1 && <label>Paarungsverfahren
-                  <select value={settingsForm.pairingStrategy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, pairingStrategy: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                  <select value={settingsForm.pairingStrategy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, pairingStrategy: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
                     {pairingStrategyOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                   <small className="field-help">Optimal V2 bleibt Standard. Die Wahl gilt ab Runde 1 und ändert bestehende Turniere nicht still.</small>
                 </label>}
                 {settingsForm.format === 1 && settingsForm.pairingStrategy === 1 && <label>Anfangsfarbe
-                  <select value={settingsForm.swissInitialColour} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, swissInitialColour: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                  <select value={settingsForm.swissInitialColour} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, swissInitialColour: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
                     {swissInitialColourOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                   <small className="field-help">Wird nur bei FIDE Dutch verwendet, wenn beide Spieler die gleiche Farberwartung haben.</small>
                 </label>}
                 <label>Punktesystem
-                  <select value={settingsForm.scoringSystem} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, scoringSystem: Number(event.target.value) })}>
+                  <select value={settingsForm.scoringSystem} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, scoringSystem: Number(event.target.value) })}>
                     {scoringOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 <label>TWZ-Quelle
-                  <select value={settingsForm.twzSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, twzSource: Number(event.target.value) })}>
+                  <select value={settingsForm.twzSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, twzSource: Number(event.target.value) })}>
                     {twzSourceOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 <label>Geplante Runden
-                  <input type="number" min="1" max="99" value={settingsForm.plannedRounds} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, plannedRounds: event.target.value })} />
+                  <input type="number" min="1" max="99" value={settingsForm.plannedRounds} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, plannedRounds: event.target.value })} />
                 </label>
                 <label>Kampflose Partien
-                  <select value={settingsForm.forfeitTiebreakPolicy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, forfeitTiebreakPolicy: Number(event.target.value) })}>
+                  <select value={settingsForm.forfeitTiebreakPolicy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, forfeitTiebreakPolicy: Number(event.target.value) })}>
                     {forfeitPolicyOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 <label>Ungespielte Runden (Buchholz)
-                  <select value={settingsForm.unplayedRoundBuchholzMode} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, unplayedRoundBuchholzMode: Number(event.target.value) })}>
+                  <select value={settingsForm.unplayedRoundBuchholzMode} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, unplayedRoundBuchholzMode: Number(event.target.value) })}>
                     {unplayedRoundBuchholzOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 <label>Senioren: Geburtsjahr oder älter
-                  <input type="number" min="1900" max="2100" value={settingsForm.seniorBirthYearOrEarlier} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, seniorBirthYearOrEarlier: event.target.value })} placeholder="z. B. 1966" />
+                  <input type="number" min="1900" max="2100" value={settingsForm.seniorBirthYearOrEarlier} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, seniorBirthYearOrEarlier: event.target.value })} placeholder="z. B. 1966" />
                 </label>
                 <label>Heldenpokal: Mindestpartien
-                  <input type="number" min="1" max="99" value={settingsForm.heroCupMinimumRatedGames} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, heroCupMinimumRatedGames: event.target.value })} />
+                  <input type="number" min="1" max="99" value={settingsForm.heroCupMinimumRatedGames} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, heroCupMinimumRatedGames: event.target.value })} />
                 </label>
               </div>
               <p className="muted">Im FIDE-Modus gilt die Einstellung „Kampflose Partien“ zuerst: Zählt sie den realen Gegner für Buchholz, wird kein zusätzlicher Dummy erzeugt. Offene Ergebnisse werden nicht vorzeitig gewertet.</p>
               <div className="checkbox-row">
-                <label className="checkbox"><input type="checkbox" checked={settingsForm.countByeAsWin} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, countByeAsWin: event.target.checked })} /> Bye als Sieg zählen</label>
-                <label className="checkbox"><input type="checkbox" checked={settingsForm.allowManualPairingOverrides} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, allowManualPairingOverrides: event.target.checked })} /> manuelle Paarungen erlauben</label>
+                <label className="checkbox"><input type="checkbox" checked={settingsForm.countByeAsWin} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, countByeAsWin: event.target.checked })} /> Bye als Sieg zählen</label>
+                <label className="checkbox"><input type="checkbox" checked={settingsForm.allowManualPairingOverrides} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, allowManualPairingOverrides: event.target.checked })} /> manuelle Paarungen erlauben</label>
               </div>
               <div className="tiebreak-editor">
                 <strong>Wertungskette</strong>
@@ -2972,8 +3123,8 @@ function openRoundPrint(roundNumber: number) {
                   {settingsForm.tiebreaks.map((value, index) => (
                     <div key={`${value}-${index}`} className="tiebreak-item">
                       <span>{index + 1}. {tiebreakLabel(value)}</span>
-                      <button type="button" className="small secondary" onClick={() => setSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, -1) })} disabled={index === 0}>↑</button>
-                      <button type="button" className="small secondary" onClick={() => setSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, 1) })} disabled={index === settingsForm.tiebreaks.length - 1}>↓</button>
+                      <button type="button" className="small secondary" onClick={() => updateSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, -1) })} disabled={index === 0}>↑</button>
+                      <button type="button" className="small secondary" onClick={() => updateSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, 1) })} disabled={index === settingsForm.tiebreaks.length - 1}>↓</button>
                       <button type="button" className="small danger" onClick={() => toggleTiebreak(value, false)} disabled={value === 99 && settingsForm.tiebreaks.length === 1}>Entfernen</button>
                     </div>
                   ))}
@@ -3109,7 +3260,7 @@ function openRoundPrint(roundNumber: number) {
                       <td className="col-name">{player.name}</td>
                       <td className="col-club">{player.club ?? '—'}</td>
                       <td>{player.fideId ?? '—'}</td>
-                      <td>{twzOf(player)}</td>
+                      <td>{twzOf(player, selectedTournament?.settings.twzSource)}</td>
                       <td>{player.birthYear ?? '—'}</td>
                       <td>{approximateAgeLabel(player.birthYear)}</td>
                       <td>{genderLabel(player.gender, lang === 'en')}</td>
@@ -3388,6 +3539,7 @@ function openRoundPrint(roundNumber: number) {
                       {round.pairings.map(pairing => {
                         const edit = pairingEdit(round, pairing);
                         const roundClosed = round.isLocked || round.isVerified;
+                        const manualPairingDisabled = roundClosed || !selectedTournament.settings.allowManualPairingOverrides;
                         return (
                           <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
                             <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
@@ -3400,7 +3552,7 @@ function openRoundPrint(roundNumber: number) {
                                 disabled={pairing.isBye || roundClosed}
                                 aria-label={`${t('rounds.result')}: ${t('rounds.round')} ${round.roundNumber}, ${t('rounds.board')} ${pairing.boardNumber}`}
                               >
-                                {resultOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
+                                {resultOptions.filter(option => pairing.isBye || option.value !== 7).map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
                               </select>
                               <small>{resultLabel(pairing.result.kind, lang === 'en')}</small>
                             </td>
@@ -3408,16 +3560,16 @@ function openRoundPrint(roundNumber: number) {
                               <details className="manual-pairing-disclosure">
                                 <summary>{lang === 'en' ? 'Advanced override' : 'Erweiterte Korrektur'}</summary>
                                 <div className="manual-pairing">
-                                <select aria-label={lang === 'en' ? 'Override white player' : 'Weißspieler manuell wählen'} value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={roundClosed}>
+                                <select aria-label={lang === 'en' ? 'Override white player' : 'Weißspieler manuell wählen'} value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={manualPairingDisabled}>
                                   <option value="">{lang === 'en' ? 'Select White' : 'Weiß wählen'}</option>
                                   {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                                 </select>
-                                <select aria-label={lang === 'en' ? 'Override black player or bye' : 'Schwarzspieler oder spielfrei manuell wählen'} value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={roundClosed}>
+                                <select aria-label={lang === 'en' ? 'Override black player or bye' : 'Schwarzspieler oder spielfrei manuell wählen'} value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={manualPairingDisabled}>
                                   <option value="">{lang === 'en' ? 'Black / leave empty for bye' : 'Schwarz/Bye leer'}</option>
                                   {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                                 </select>
-                                <input aria-label={lang === 'en' ? 'Override reason' : 'Grund der manuellen Korrektur'} value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder={lang === 'en' ? 'Reason' : 'Notiz'} disabled={roundClosed} />
-                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={roundClosed || !edit.whitePlayerId}>{lang === 'en' ? 'Save override' : 'Paarung speichern'}</button>
+                                <input aria-label={lang === 'en' ? 'Override reason' : 'Grund der manuellen Korrektur'} value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder={lang === 'en' ? 'Reason' : 'Notiz'} disabled={manualPairingDisabled} />
+                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={manualPairingDisabled || !edit.whitePlayerId}>{lang === 'en' ? 'Save override' : 'Paarung speichern'}</button>
                                 </div>
                               </details>
                             </td>
@@ -3856,10 +4008,10 @@ function openRoundPrint(roundNumber: number) {
               </section>
               <section>
                 <h4>JSON-Backup</h4>
-                <textarea value={backupJson} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setBackupJson(event.target.value)} rows={7} placeholder="Backup-JSON hier einfügen oder exportieren" />
+                <textarea value={backupJson} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => updateBackupJson(event.target.value)} rows={7} placeholder="Backup-JSON hier einfügen oder exportieren" />
                 <div className="actions">
                   <button type="button" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup exportieren</button>
-                  <button type="button" className="secondary" onClick={() => void importTournamentJson()} disabled={!backupJson.trim()}>Backup importieren</button>
+                  <button type="button" className="secondary" onClick={() => void importTournamentJson()} disabled={!backupJson.trim() || backupImportBusy || backupImportPending !== null}>{backupImportBusy ? 'Backup wird geprüft/importiert …' : 'Backup importieren'}</button>
                 </div>
               </section>
               <section>

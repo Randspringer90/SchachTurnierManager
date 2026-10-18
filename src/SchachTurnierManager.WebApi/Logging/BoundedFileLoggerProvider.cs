@@ -121,8 +121,7 @@ public sealed class BoundedFileLoggerProvider : ILoggerProvider
         var safe = value;
         foreach (var marker in new[] { "password", "passwd", "pwd", "secret", "token", "api_key", "apikey", "access_token", "refresh_token" })
         {
-            safe = RedactKeyValue(safe, marker + "=");
-            safe = RedactKeyValue(safe, marker + ":");
+            safe = RedactKeyValue(safe, marker);
         }
 
         return safe;
@@ -139,11 +138,71 @@ public sealed class BoundedFileLoggerProvider : ILoggerProvider
                 return value;
             }
 
-            var valueStart = index + marker.Length;
-            var valueEnd = valueStart;
-            while (valueEnd < value.Length && !char.IsWhiteSpace(value[valueEnd]) && value[valueEnd] is not ';' and not '&' and not ',')
+            searchIndex = index + marker.Length;
+            if (index > 0 && (char.IsLetterOrDigit(value[index - 1]) || value[index - 1] == '_'))
             {
-                valueEnd++;
+                continue;
+            }
+
+            var separatorIndex = searchIndex;
+            if (separatorIndex < value.Length && value[separatorIndex] is '\"' or '\'')
+            {
+                if (index == 0 || value[index - 1] != value[separatorIndex])
+                {
+                    continue;
+                }
+
+                separatorIndex++;
+            }
+
+            while (separatorIndex < value.Length && char.IsWhiteSpace(value[separatorIndex]))
+            {
+                separatorIndex++;
+            }
+
+            if (separatorIndex >= value.Length || value[separatorIndex] is not '=' and not ':')
+            {
+                continue;
+            }
+
+            var valueStart = separatorIndex + 1;
+            while (valueStart < value.Length && char.IsWhiteSpace(value[valueStart]))
+            {
+                valueStart++;
+            }
+
+            if (valueStart >= value.Length)
+            {
+                return value;
+            }
+
+            var quote = value[valueStart] is '\"' or '\'' ? value[valueStart++] : '\0';
+            var valueEnd = valueStart;
+            if (quote != '\0')
+            {
+                // Quoted secrets may contain spaces, delimiters and escaped quotes.
+                while (valueEnd < value.Length)
+                {
+                    if (value[valueEnd] == quote)
+                    {
+                        if (valueEnd + 1 < value.Length && value[valueEnd + 1] == quote)
+                        {
+                            valueEnd += 2;
+                            continue;
+                        }
+
+                        break;
+                    }
+
+                    valueEnd += value[valueEnd] == '\\' && valueEnd + 1 < value.Length ? 2 : 1;
+                }
+            }
+            else
+            {
+                while (valueEnd < value.Length && !char.IsWhiteSpace(value[valueEnd]) && value[valueEnd] is not ';' and not '&' and not ',' and not '}' and not ']')
+                {
+                    valueEnd++;
+                }
             }
 
             value = value[..valueStart] + "***" + value[valueEnd..];

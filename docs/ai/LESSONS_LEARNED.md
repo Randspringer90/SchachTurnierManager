@@ -4,6 +4,15 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-18 — Fachinvarianten und Grenzen mit Gegenbeispielen prüfen
+
+- Ein gültiger Enumwert ist noch kein gültiger Spielzustand. Ergebnis und Brettbesetzung gemeinsam vor Mutation, Importnormalisierung und Audit prüfen.
+- Historische Gegner bleiben Teil einer Wertung, auch wenn sie heute inaktiv sind. Aktuelle Teilnahmeberechtigung und vergangene Punkt-/Farb-/Gegnerhistorie getrennt berechnen.
+- Bestätigungen und asynchrone Antworten brauchen Ziel-, Inhalts- und Generationsbindung. Auch A→B→A, Schließen, neue Eingaben und alte Finalizer sind eigenständige Regressionen.
+- Temporäre Zugangsdaten brauchen einen vollständigen Lifecycle: restriktive Anlage pro Invocation, Cleanup auch vor Prozessstart sowie Isolation paralleler Aufrufe. Keine echten Werte für Tests verwenden.
+- Ein erfolgreicher Exitcode ohne vollständiges Testergebnis ist kein Abnahmenachweis. Neue Tests zuerst gegen den Fehler ausführen und wiederholte Suitefälle nur einmal zählen.
+- Unabhängiger Review fand einen zusätzlichen Quote-Escape-Fall im Logger; gezieltes RED→GREEN ergänzte den ersten Fix. Kompatibilitätskritische Rundenturnierpläne und CI-Trust-Root bleiben ausdrücklich eigene Folgearbeiten.
+
 ## 2026-10-08 — Ausführung und Evidenz getrennt validieren
 
 - Kontext: Ein korrekt umbenannter Argumentvektor wurde zunächst mit dem alten Splatnamen aufgerufen;17 exit0-Hosts bedeuteten NO_EXECUTION. Ein erfolgreicher Node-Lauf lieferte SPEC statt erwarteter TAP-Metadaten.
