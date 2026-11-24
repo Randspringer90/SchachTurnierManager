@@ -17,7 +17,8 @@ public sealed class ArmageddonBiddingService
     {
         if (whiteCandidateBid < TimeSpan.Zero || blackCandidateBid < TimeSpan.Zero)
         {
-            throw new ArgumentOutOfRangeException(nameof(whiteCandidateBid), "Gebotszeiten dürfen nicht negativ sein.");
+            throw new ArgumentOutOfRangeException(nameof(whiteCandidateBid), "Gebotszeiten dürfen nicht negativ sein.")
+                .WithErrorCode("ARMAGEDDON_BID_NEGATIVE");
         }
 
         if (whiteCandidateBid == blackCandidateBid)

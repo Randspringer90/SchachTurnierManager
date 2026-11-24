@@ -1,7 +1,7 @@
 # Contributor-Security – SchachTurnierManager
 
 > Sicherheitsregeln für alle Mitwirkenden (Menschen **und** KI-Agenten). Verbindlich.
-> Ergänzt `AGENTS.md` (Repo-Root) und den Skill `.agents/skills/repository-security.md`.
+> Ergänzt `AGENTS.md` (Repo-Root) und den Skill `.agents/skills/repository-security/SKILL.md`.
 
 ## Repository-Sichtbarkeit
 

@@ -47,7 +47,8 @@ public sealed class TournamentExportFormatter
             : tournament.Rounds.Where(r => r.RoundNumber == roundNumber.Value).ToList();
         if (roundNumber is not null && rounds.Count == 0)
         {
-            throw new InvalidOperationException($"Runde {roundNumber.Value} wurde nicht gefunden.");
+            throw new InvalidOperationException($"Runde {roundNumber.Value} wurde nicht gefunden.")
+                .WithErrorCode("ROUND_NOT_FOUND");
         }
 
         var players = tournament.Players.ToDictionary(p => p.Id, p => p.Name);
@@ -866,7 +867,8 @@ public sealed class TournamentExportFormatter
         if (value.Length > width)
         {
             throw new InvalidOperationException(
-                $"TRF16-Wert '{value}' ueberschreitet die zulaessige Feldbreite {width}.");
+                $"TRF16-Wert '{value}' ueberschreitet die zulaessige Feldbreite {width}.")
+                .WithErrorCode("TRF_FIELD_TOO_WIDE");
         }
 
         return value.PadLeft(width);
@@ -986,7 +988,8 @@ public sealed class TournamentExportFormatter
             if (_content.Length > position - 1)
             {
                 throw new InvalidOperationException(
-                    $"TRF16-Feld an Position {position} wuerde durch ein zu langes vorheriges Feld ueberschrieben (aktuelle Laenge {_content.Length}).");
+                    $"TRF16-Feld an Position {position} wuerde durch ein zu langes vorheriges Feld ueberschrieben (aktuelle Laenge {_content.Length}).")
+                    .WithErrorCode("TRF_FIELD_OVERLAP");
             }
 
             while (_content.Length < position - 1)
@@ -1008,17 +1011,9 @@ public sealed class TournamentExportFormatter
         return string.IsNullOrWhiteSpace(safe) ? "Turnier" : safe.Replace(' ', '_');
     }
 
-    private static string EscapeCsv(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var mustQuote = value.Contains(';') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
-        var escaped = value.Replace("\"", "\"\"");
-        return mustQuote ? $"\"{escaped}\"" : escaped;
-    }
+    // STM-SEC-006: apply the same formula-safe output encoding as participant CSV.
+    // TRF16 and JSON deliberately do not pass through this CSV-only helper.
+    private static string EscapeCsv(string? value) => CsvFieldEncoder.Encode(value, ';');
 
     private static string Html(string value) => WebUtility.HtmlEncode(value);
 }

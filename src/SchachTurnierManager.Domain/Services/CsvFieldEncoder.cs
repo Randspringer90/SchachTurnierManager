@@ -1,5 +1,7 @@
 using System.Globalization;
 
+using SchachTurnierManager.Domain.Models;
+
 namespace SchachTurnierManager.Domain.Services;
 
 /// <summary>
@@ -13,7 +15,8 @@ public static class CsvFieldEncoder
     {
         if (separator is not (';' or ','))
         {
-            throw new ArgumentOutOfRangeException(nameof(separator));
+            throw new ArgumentOutOfRangeException(nameof(separator))
+                .WithErrorCode("CSV_SEPARATOR_INVALID");
         }
 
         if (string.IsNullOrEmpty(value))

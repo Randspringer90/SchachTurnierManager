@@ -76,10 +76,11 @@ Describe 'Generator (offline, deterministisch)' {
         ($out -join "`n") | Should -Match 'Issue: #0'
     }
     It 'WhatIf erzeugt keine Ausgaben' {
-        $before = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
+        $runBase = & (Join-Path $RepoRoot 'scripts/lib/Get-StmRunBaseDirectory.ps1')
+        $before = @(Get-ChildItem $runBase -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
         $readyBase = (& git rev-parse refs/remotes/origin/development).Trim()
         $out = & pwsh -NoProfile -File $Gen -BacklogId STM-SEC-006 -BaseSha $readyBase -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
-        $after = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
+        $after = @(Get-ChildItem $runBase -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
         ($out -join "`n") | Should -Match '\[WhatIf\]'
         $after | Should -Be $before
     }

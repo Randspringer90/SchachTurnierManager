@@ -7,7 +7,9 @@ import { describeApiError, requestJson } from '../../api/client';
 import { BoardDiceRoller } from '../../components/chess960/BoardDiceRoller';
 import type { BoardDiceParams } from '../../lib/chess960';
 import type { Tournament } from '../../api/contracts';
+import { LanguageSwitcher, useI18n } from '../../i18n';
 export function MobileDicePage({ params }: { params: BoardDiceParams }): React.ReactElement {
+  const { t } = useI18n();
   const [tournament, setTournament] = React.useState<Tournament | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -35,27 +37,28 @@ export function MobileDicePage({ params }: { params: BoardDiceParams }): React.R
   return (
     <div className="mobile-dice">
       <header className="mobile-dice-header">
-        <p className="eyebrow">Schachwürfel · Chess960</p>
-        <h1>{tournament?.name ?? 'Turnier wird geladen …'}</h1>
-        <p className="muted">Runde {params.roundNumber} · Brett {params.boardNumber}</p>
+        <LanguageSwitcher />
+        <p className="eyebrow">{t('dice.heading')}</p>
+        <h1>{tournament?.name ?? t('dice.loadingTournament')}</h1>
+        <p className="muted">{t('dice.roundBoard', { round: params.roundNumber, board: params.boardNumber })}</p>
       </header>
 
-      {loading && <p className="muted">Lädt …</p>}
+      {loading && <p className="muted">{t('dice.loading')}</p>}
       {error && <p className="board-dice-error">⚠ {error}</p>}
 
       {!loading && !error && (!round || !pairing) && (
-        <p className="board-dice-error">Dieses Brett wurde nicht gefunden. Bitte am Laptop prüfen, ob Runde und Brett existieren.</p>
+        <p className="board-dice-error">{t('dice.boardMissing')}</p>
       )}
 
       {pairing && round && (
         <>
           <p className="mobile-dice-pairing">
-            <strong>{playerName(pairing.whitePlayerId)}</strong> – {pairing.isBye ? 'spielfrei' : <strong>{playerName(pairing.blackPlayerId)}</strong>}
+            <strong>{playerName(pairing.whitePlayerId)}</strong> – {pairing.isBye ? t('dice.bye') : <strong>{playerName(pairing.blackPlayerId)}</strong>}
           </p>
           {pairing.isBye ? (
-            <p className="board-dice-error">Spielfreies Brett – keine Startstellung nötig.</p>
+            <p className="board-dice-error">{t('dice.byeNoPosition')}</p>
           ) : round.isLocked || round.isVerified ? (
-            <p className="board-dice-error">Runde ist gesperrt/geprüft. Startstellung kann nicht mehr geändert werden.</p>
+            <p className="board-dice-error">{t('dice.locked')}</p>
           ) : (
             <BoardDiceRoller
               tournamentId={params.tournamentId}
@@ -68,7 +71,7 @@ export function MobileDicePage({ params }: { params: BoardDiceParams }): React.R
           )}
         </>
       )}
-      <p className="mobile-dice-foot muted">Funktioniert nur im gleichen WLAN/Hotspot wie der Laptop.</p>
+      <p className="mobile-dice-foot muted">{t('dice.networkNotice')}</p>
     </div>
   );
 }

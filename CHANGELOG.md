@@ -1,5 +1,36 @@
 ## Unreleased (development)
 
+### Konsolidierung und Aktualisierung 2026-11-24 – lokaler Kandidat, noch nicht gemergt
+
+- Übernahme des geprüften Kandidaten vom 2026-10-28 (PRs #124/#126/#127/#128/#130/#131/#132/#133) nach unabhängigem statischem Security-Review; Offline-Wiederherstellungswerkzeuge aus PR #129 (sichere Übernahme von #125) nach unabhängigem READY-Review des exakten Heads übernommen.
+- Aktualisierung auf .NET SDK 11 / `net11.0`, EF Core 11.0.0, Node.js 26 LTS, Vite 8.3.8, React 19.3.1 und aktuelle GitHub-Action-Releases (per Commit-SHA gepinnt). TypeScript bleibt auf 6.0.3, weil Testhilfen die JavaScript-Compiler-API nutzen, die TypeScript 7 nicht mehr bereitstellt. npm audit: 0 bekannte Schwachstellen (vorher 4 hoch).
+- NuGet nur mit Signaturprüfung und Paketinhaber-Allowlist (`NuGet.Config`), acht NuGet-Lockfiles, `--locked-mode` in der CI; Restore mit leerem Paketcache geprüft.
+- STM-FACH-007: Ergebniskorrekturen erzeugen ein eigenes Audit-Ereignis `ResultCorrected` mit altem und neuem Ergebnis sowie optionalem Grund; Warnung, wenn Folgerunden bereits mit dem alten Ergebnis gepaart wurden (Paarungen bleiben, Wertung wird neu berechnet); Zeitstempelbindung erkennt zwischenzeitliche Änderungen; Doppelklick-Schutz im Bestätigungsdialog.
+- Log-Redaktion schwärzt wieder zusammengesetzte Schlüssel wie `clientSecret`, `apiToken`, `auth_token` (Regression des Kandidaten behoben, mit Tests).
+- `AGENTS.md` neu gegliedert (Freigaben, Vertrauenszonen, Paketquellen, Aktualitätsregel), Claude-Adapter auf reine Verweise reduziert; Architekturprüfung `docs/architecture/ARCHITECTURE_REVIEW_2026-11-24.md` und ADR-0001 bis ADR-0005 ergänzt.
+- Geprüft: .NET 1043 Tests, Frontend 174, i18n 53, Backup 80, Node-Suite 1932 (4 plattformbedingt übersprungen), TypeScript- und Vite-Build. Browser-End-to-End-, Installer-, Geräte- und CI-Nachweise für diesen Stand stehen aus.
+
+### Lokaler Integrationskandidat 2026-10-28 – noch nicht übernommen
+
+- Stabile optionale Regelfehlercodes für englische Bedienmeldungen ergänzt; Exceptiontypen, Originaldetails und HTTP-Status erhalten. Reale Speicher-Erfolgsmeldung zuerst fehlerhaft reproduziert, DE/EN-Bedienmeldungen korrigiert; native Prüfung bestätigt unveränderte gespeicherte Ergebnisse und erhaltene ungespeicherte Entwürfe.
+
+- Deutsch/Englisch als bestätigten Sprachumfang konsolidiert; Bestätigungsdialoge verwenden übersetzte Sicherheitslabels. Zusätzliche neue Katalogentwürfe aus dem Kandidaten entfernt. Chess960-Feldreihenfolge bleibt auch bei bestehender RTL-Vorschau von a nach h.
+- Testadapter4.0.1/Analyzer2.2.0 nach statischer Paket-/Signaturprüfung samt exakten Locks übernommen; .NET1026PASS und Build ohne Warnungen. Produktversion unverändert.
+
+- Nachtrag 2026-10-29: Lokale Wissenshilfe vollständig für ihre acht bestehenden Themen in DE/EN, mit aktuellen Queue-/LAN-Hinweisen und erhaltenen Sprachentwürfen. Teilfehler der sechs gelesenen Turnierprojektionen werden über vorhandenes Polling oder bewusste Wiederholung behoben; keine zusätzliche Hintergrundstruktur.
+- Node-Patch 24.22.2 nach Herstellerprüfung übernommen; npm 11.19.1 unverändert. CI-Node-Versionsdatei auf den tatsächlich vorhandenen Repositorypfad korrigiert und mit einem Kontrakttest gebunden. Produktversion bleibt 0.54.1.
+
+- Kontrollierte, attributierte Reconciliation der PRs #124/#126/#127/#128/#130/#131/#132/#133; #125/#129 bleiben durch statische Befunde gesperrt. Keine fremden Heads überschrieben.
+- Rundenturniere speichern einen versionierten Plan; Rating-/Namensänderungen verschieben Folgerunden nicht. Alle vorhandenen Legacyrunden werden vor Rekonstruktion verglichen.
+- Dauerhafte lokale Ergebnisqueue mit SQLite-Idempotenz, Replay, Lost-ACK-Behandlung und sichtbaren Konflikten; Mehrfensterabgleich erhält ungespeicherte Eingaben.
+- Fehlerausgaben und Backup-Parsefehler redigiert; CSV-Formeln neutralisiert; strukturierte CLI-/REST-Fehler von erfolgreichem Antwortinhalt getrennt.
+- Projektgebundene Toolchain-/Dependency-/Actions-Pins samt Locks aktualisiert; Paketmanager-Installskripte explizit unterdrückt, erforderliche geprüfte Projektprüfungen weiter aktiv.
+- FIDE-Namenssuche gegen ausdrücklich lokal geladene offizielle TXT-Liste; bestätigte Feldübernahme mit Audit und Schutz vor veralteten Zielspielern.
+- Serverseitige Host-/Origin-/LAN-Grenzen ergänzt; exponierter Vite-Proxy geschlossen, alle regulären Dev-Starts auf Loopback. Bisheriger anonymer HTTP-LAN-Entwicklungsweg erfordert künftig sichere Authentisierung/TLS.
+- Native SQLite-Engine auf3.54.1 gebunden; aktuelle signierte portable Git-/PowerShell-/Firefox-Werkzeuge für Tests, keine globale Installation.
+- Skillpfade vereinheitlicht, Laufverzeichnis-Fallback konsolidiert, Installations-/Deinstallationsziele und Shortcut-Ownership abgesichert.
+- Native Offline-/Mehrfenstertests, synthetische Lastmessung und isolierte Windows-Klickinstallation bestanden. Unabhängiger Review, technische Workeraufnahme, finaler CI-/Merge- und vollständiger DoD-Nachweis stehen aus. Produktversion unverändert.
+
 
 ### Geprüfte Gesamtintegration 2026-10-08
 

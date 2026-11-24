@@ -124,11 +124,14 @@ public sealed class OperationalGuardTests
     {
         // STM-REL-001: Die D:\Temp-Konvention gilt nur auf Rechnern mit Datenpartition.
         // Auf Maschinen ohne D: muss der Default auf %TEMP% ausweichen, statt auf einen
-        // nicht existierenden Pfad zu zeigen. Der Default wird hier real ausgewertet.
+        // nicht existierenden Pfad zu zeigen. STM-INFRA-005: die Aufloesung liegt zentral
+        // in scripts/lib/Get-StmRunBaseDirectory.ps1 (Verhalten: tests/scripts/run-base-directory.test.mjs).
         var runBundle = File.ReadAllText(FindRepositoryFile("scripts", "New-RunLogBundle.ps1"));
+        var helper = File.ReadAllText(FindRepositoryFile("scripts", "lib", "Get-StmRunBaseDirectory.ps1"));
 
-        Assert.Contains("Test-Path -LiteralPath 'D:\\'", runBundle);
-        Assert.Contains("Join-Path $env:TEMP 'SchachTurnierManager'", runBundle);
+        Assert.Contains("lib/Get-StmRunBaseDirectory.ps1", runBundle);
+        Assert.Contains("[IO.Path]::GetTempPath()) 'SchachTurnierManager'", helper);
+        Assert.Contains("[IO.DriveType]::Fixed", helper);
         // Der Default darf kein hart verdrahtetes D:\Temp mehr sein.
         Assert.DoesNotContain("[string]$BaseDirectory = 'D:\\Temp',", runBundle);
     }
@@ -239,9 +242,9 @@ public sealed class OperationalGuardTests
     [Fact]
     public void AgentSkills_DocumentReleaseLoggingAndSecurityOwnership()
     {
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "release-operations.md")));
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "logging-observability.md")));
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "repository-security.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "release-operations", "SKILL.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "logging-observability", "SKILL.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "repository-security", "SKILL.md")));
         Assert.True(File.Exists(FindRepositoryFile("docs", "architecture", "RELEASE_OPERATIONS.md")));
     }
 
@@ -276,7 +279,7 @@ public sealed class OperationalGuardTests
         Assert.Contains("%LocalAppData%\\SchachTurnierManager", docs);
         Assert.Contains(".secrets/local/", docs);
         Assert.Contains("DPAPI", docs);
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-installation.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-installation", "SKILL.md")));
     }
 
 
@@ -306,7 +309,7 @@ public sealed class OperationalGuardTests
         Assert.Contains("frischen Ordner", docs);
         Assert.Contains("isolierten Testdatenordner", docs);
         Assert.Contains("DPAPI-Secrets", docs);
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-fresh-run.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "colleague-fresh-run", "SKILL.md")));
     }
 
     [Fact]
@@ -343,7 +346,7 @@ public sealed class OperationalGuardTests
         Assert.Contains("%LocalAppData%\\Programs\\SchachTurnierManager", docs);
         Assert.Contains("Startmenue-Shortcut", docs);
         Assert.Contains("DPAPI-Secrets", docs);
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "click-installation.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "click-installation", "SKILL.md")));
     }
 
 
@@ -402,7 +405,7 @@ public sealed class OperationalGuardTests
         Assert.Contains("README.md", cleanGenerated);
         Assert.True(File.Exists(FindRepositoryFile("logs", "README.md")));
         Assert.True(File.Exists(FindRepositoryFile("logs", ".gitkeep")));
-        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "runtime-logging.md")));
+        Assert.True(File.Exists(FindRepositoryFile(".agents", "skills", "runtime-logging", "SKILL.md")));
         Assert.True(File.Exists(FindRepositoryFile("docs", "architecture", "RUNTIME_LOGGING.md")));
     }
 

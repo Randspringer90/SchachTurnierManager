@@ -7,7 +7,7 @@ Prueft Doku/Vorlage, Parsebarkeit, Promptgenerierung (offline, STM-SEC-006), erw
 Abwesenheit von Owner-Pfaden/Secrets, PR-Basis development, keine Rechte fuer Security/CI/Release/
 Agenten, genau ein Upload-ZIP und – mit SYNTHETISCHER Injection-Fixture – dass eingebettete
 Befehle nur als untrusted Text erscheinen und nie in Arbeitsanweisungen. Details nach
-D:\Temp\<RunName>_<Timestamp>, ein Upload-ZIP. Exit 0 = ok, 1 = Fehler.
+<Run-Basis>\<RunName>_<Timestamp>, ein Upload-ZIP. Exit 0 = ok, 1 = Fehler.
 #>
 [CmdletBinding()]
 param()
@@ -121,9 +121,10 @@ $extText = if ($extPrompt -and (Test-Path -LiteralPath $extPrompt)) { Get-Conten
 Check ($extText.Contains('.github/workflows/**') -and $extText.Contains('src/SchachTurnierManager.WebApi/**')) 'Eigene Verbote ergaenzen die Standardverbote, ersetzen sie aber nicht'
 Check ($extText.Contains('src/SchachTurnierManager.Domain/**') -and $extText.Contains('src/SchachTurnierManager.WebApp/src/**')) 'Eigene erlaubte Pfade ergaenzen die Standardpfade'
 
-$before = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
+$runBase = & (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')
+$before = @(Get-ChildItem $runBase -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
 $wOut = & pwsh -NoProfile -File $gen -BacklogId 'STM-SEC-006' -BaseSha $readyBaseSha -BranchName 'security/STM-SEC-006-csv-formula-injection' -Offline -WhatIf 2>&1
-$after = @(Get-ChildItem 'D:\Temp' -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
+$after = @(Get-ChildItem $runBase -Directory -Filter 'STM_ContributorTaskPrompt_*' -ErrorAction SilentlyContinue).Count
 Check (($wOut -join "`n") -match '\[WhatIf\]') 'WhatIf-Modus erkennbar'
 Check ($before -eq $after) 'WhatIf erzeugt keine neuen Ausgaben'
 

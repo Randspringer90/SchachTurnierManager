@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Synthetischer Operator-Smoke fuer den Turniertag. Startet (optional) ein isoliertes
     Backend, faehrt die wichtigsten Turniertag-Workflows durch und faehrt es sauber herunter.
@@ -159,8 +159,8 @@ try {
         # Directory.Build.props redirects BaseOutputPath to tmp\dotnet-bin\<project>\.
         # The legacy src\**\bin path is still probed so older checkouts keep working.
         $dllCandidates = @(
-            (Join-Path $root 'tmp\dotnet-bin\SchachTurnierManager.WebApi\Release\net10.0\SchachTurnierManager.WebApi.dll'),
-            (Join-Path $root 'src\SchachTurnierManager.WebApi\bin\Release\net10.0\SchachTurnierManager.WebApi.dll')
+            (Join-Path $root 'tmp\dotnet-bin\SchachTurnierManager.WebApi\Release\net11.0\SchachTurnierManager.WebApi.dll'),
+            (Join-Path $root 'src\SchachTurnierManager.WebApi\bin\Release\net11.0\SchachTurnierManager.WebApi.dll')
         )
         Write-Host "[Smoke] Baue WebApi (Release), damit kein veraltetes Binary getestet wird ..." -ForegroundColor Yellow
         & dotnet build (Join-Path $root 'src\SchachTurnierManager.WebApi') -c Release -v minimal

@@ -94,7 +94,7 @@ try { Get-ProviderRuntimePolicy -PolicyPath (Join-Path $missingSchemaRoot 'provi
 catch { $missingSchemaRejected = $_.Exception.Message -match 'provider-runtime-policy.schema.json' }
 Assert-CatalogCheck 'missing-schema-fails-closed' $missingSchemaRejected
 
-$versionPin = '(?i)\b(?:gpt[- ]\d+(?:[.\-]\d+)*(?:[- ](?:sol|luna|terra|astra))?|claude[- ](?:opus|sonnet|haiku|fable)[- ]\d+(?:[.\-]\d+)*|(?:Fable|Fabel|Opus|Sol|Luna|Terra|Sonnet|ChatGPT)\s+\d+(?:\.\d+)*)(?![A-Za-z0-9])'
+$versionPin = '(?i)\b(?:gpt[- ]\d+(?:[.\-]\d+)*(?:[- ](?:sol|luna|terra|astra))?|claude[- ](?:opus|sonnet|haiku|fable)[- ]\d+(?:[.\-]\d+)*|(?:Fable|Fabel|Opus|Sol|Luna|Terra|Sonnet|ChatGPT)\s+\d+(?:\.\d+)*|gpt-oss[:\- ]\d+b)(?![A-Za-z0-9])'
 $duplicates = @()
 foreach ($relative in (& git -C $repo ls-files)) {
     if ($relative -ceq 'config/model-catalog.json' -or [IO.Path]::GetExtension($relative) -notin '.md','.json','.ps1','.yml','.yaml','.toml','.txt','.mjs','.js','.ts','.tsx') { continue }

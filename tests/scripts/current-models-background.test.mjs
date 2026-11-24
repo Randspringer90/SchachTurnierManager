@@ -39,10 +39,16 @@ test('Codex retains explicit readonly sandbox', () => {
   assert.ok(!args.some(arg => /danger|bypass/.test(arg)));
 });
 test('explicit model is in both actual invocation templates', () => {
-  for (const provider of Object.values(policy.providers)) {
+  for (const provider of [policy.providers.openai, policy.providers.anthropic]) {
     assert.equal(provider.invocation.argumentTemplate[provider.invocation.argumentTemplate.indexOf('--model') + 1], '{model}');
     assert.equal(provider.invocation.promptViaStdin, true);
   }
+});
+
+test('local model uses the catalogued loopback adapter without a CLI or download template', () => {
+  assert.deepEqual(policy.providers.ollama.invocation.argumentTemplate, ['POST', '/api/generate']);
+  assert.equal(policy.providers.ollama.invocation.promptViaStdin, false);
+  assert.equal(policy.providers.ollama.profiles['local-assist'].modelKey, 'localGptOss20b');
 });
 
 // These are SOURCE CONTRACT checks, not execution of PowerShell or a Windows GUI test.

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.analyzers" PrivateAssets="all" />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -21,5 +22,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SchachTurnierManager.Application\SchachTurnierManager.Application.csproj" />
     <ProjectReference Include="..\..\src\SchachTurnierManager.Infrastructure\SchachTurnierManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\SchachTurnierManager.WebApi\SchachTurnierManager.WebApi.csproj" />
   </ItemGroup>
 </Project>

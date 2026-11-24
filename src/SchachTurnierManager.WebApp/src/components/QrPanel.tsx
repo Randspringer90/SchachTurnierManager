@@ -2,7 +2,9 @@
 // Extracted from main.tsx (STM-FE-014).
 import React from 'react';
 import { encodeText, Ecl } from '../qrcodegen';
+import { useI18n } from '../i18n';
 export function QrPanel({ url }: { url: string }): React.ReactElement {
+  const { t } = useI18n();
   const rendered = React.useMemo(() => {
     try {
       const qr = encodeText(url, Ecl.Medium);
@@ -23,7 +25,7 @@ export function QrPanel({ url }: { url: string }): React.ReactElement {
   }, [url]);
 
   if (!rendered.ok) {
-    return <p className="board-dice-error">QR-Code konnte für diese URL nicht erzeugt werden. Bitte die URL unten manuell am Handy eintippen.</p>;
+    return <p className="board-dice-error">{t('dice.qrError')}</p>;
   }
 
   return (
@@ -31,7 +33,7 @@ export function QrPanel({ url }: { url: string }): React.ReactElement {
       className="qr-svg"
       viewBox={`0 0 ${rendered.dimension} ${rendered.dimension}`}
       role="img"
-      aria-label="QR-Code zur lokalen Würfelseite"
+      aria-label={t('dice.qrLabel')}
       shapeRendering="crispEdges"
     >
       <rect width={rendered.dimension} height={rendered.dimension} fill="#ffffff" />

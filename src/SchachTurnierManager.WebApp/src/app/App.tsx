@@ -10,7 +10,12 @@ import React from 'react';
 import { buildAuditJournalCsv } from '../lib/auditCsv';
 import { createTournamentProjectionLoader, type TournamentProjection } from '../lib/tournamentProjection';
 import { createPlayerImportPreviewGuard } from '../lib/playerImportPreview';
-import { createTournamentEditorGuard } from '../lib/tournamentEditorGuard';
+import { createTournamentEditorGuard, type TournamentEditorToken } from '../lib/tournamentEditorGuard';
+import { backupImportSummary, createBackupImportGuard, type BackupImportRequest } from '../lib/backupImportGuard';
+import { describeJsonParseFailure } from '../lib/jsonParseError';
+import { captureResultEntry, createIndexedDbResultQueueStore, type QueuedResultEntry } from '../lib/offlineResultQueue';
+import { OfflineResultQueuePanel } from '../components/OfflineResultQueuePanel';
+import { FideLookupPanel } from '../components/FideLookupPanel';
 import { LanguageSwitcher, useI18n } from '../i18n';
 import { describeApiError, healthProbeTimeoutMs, isApiTransportError, pairingRequestTimeoutMs, requestJson, requestText } from '../api/client';
 import {
@@ -27,9 +32,9 @@ import { ChessDie } from '../components/chess960/ChessDie';
 import { BoardDiceRoller } from '../components/chess960/BoardDiceRoller';
 import { canDispatchDestructiveAction, selectNextTournamentId } from '../lib/destructiveActions';
 import { assistantNumber, recommendedSwissRounds, assistantScenarioRoundMinutes } from '../lib/assistant';
-import { buildLocalKnowledgeAnswer, knowledgeQuickQuestions, localKnowledgeBase } from '../lib/knowledge';
+import { buildLocalKnowledgeAnswer, getLocalKnowledgeBase } from '../lib/knowledge';
 import { assistantScenarioOptions, defaultTournamentAssistantForm, buildTournamentAssistantRecommendation } from '../lib/tournamentAssistant';
-import { chess960BackRankFromNumber, chess960PieceFace, defaultLanHost, diceFaceGlyphs, diceFaceNames } from '../lib/chess960';
+import { chess960BackRankFromNumber, chess960PieceFace, defaultLanHost, diceFaceGlyphs } from '../lib/chess960';
 import { mainTabs, isMainTab } from './navigation';
 import type { MainTab } from './navigation';
 import {
@@ -41,6 +46,7 @@ import {
   externalSourceOptions,
   forfeitPolicyOptions,
   formatOptions,
+  optionLabel,
   genderOptions,
   isBuildWeekDemoTournament,
   pairingStrategyOptions,
@@ -151,11 +157,19 @@ type ActionConfirmState = {
   cancelLabel: string;
   destructive?: boolean;
   run: () => Promise<void>;
+  onCancel?: () => void;
 };
 
 type DerivedTournamentData = {
   standings: StandingRow[]; categories: CategoryStandingTable[]; crossTable: CrossTable;
   heroCup: HeroCupRow[]; diagnostics: RoundDiagnostics[]; auditJournal: AuditJournalEntry[];
+};
+
+type BackupImportConfirmation = {
+  request: BackupImportRequest;
+  tournamentName: string;
+  existingRoundCount: number;
+  backupRoundCount: number;
 };
 
 /** STM-SEC-006: CSV exports prefix formula-like text with an apostrophe; a CSV re-import keeps it. */
@@ -167,6 +181,8 @@ function csvReimportNote(lang: string): string {
 
 export function App() {
   const { t, lang } = useI18n();
+  const localKnowledgeBase = getLocalKnowledgeBase(lang);
+  const knowledgeQuickQuestions = localKnowledgeBase.quickQuestions;
   const [health, setHealth] = React.useState<Health | null>(null);
   const [backendReadiness, setBackendReadiness] = React.useState<BackendReadiness>('starting');
   // Zaehlt nur die Neustarts der Bereitschaftspruefung ("Erneut versuchen"),
@@ -190,6 +206,9 @@ export function App() {
   const [nextRoundPreview, setNextRoundPreview] = React.useState<NextRoundPreview | null>(null);
   const [isNextRoundPreviewDialogOpen, setIsNextRoundPreviewDialogOpen] = React.useState(false);
   const [chess960DialogRound, setChess960DialogRound] = React.useState<TournamentRound | null>(null);
+  const [chess960DialogToken, setChess960DialogToken] = React.useState<TournamentEditorToken | null>(null);
+  const [chess960Guard] = React.useState(() => createTournamentEditorGuard(selectedId));
+  const chess960EditorToken = chess960Guard.capture(selectedId);
   const [chess960Rolling, setChess960Rolling] = React.useState(false);
   const [chess960HasRolled, setChess960HasRolled] = React.useState(false);
   const [diceSpin, setDiceSpin] = React.useState(0);
@@ -201,6 +220,7 @@ export function App() {
   // Skriptdurchlaufs unterdruecken - dann bliebe die Aktion wirkungslos.
   const [actionConfirm, setActionConfirm] = React.useState<ActionConfirmState | null>(null);
   const [actionConfirmBusy, setActionConfirmBusy] = React.useState(false);
+  const actionConfirmInFlight = React.useRef<ActionConfirmState | null>(null);
   const [boardDiceTab, setBoardDiceTab] = React.useState<'browser' | 'qr'>('browser');
   const [laptopIp, setLaptopIp] = React.useState<string>(() => readLocalStorage('stm.laptopIp') ?? defaultLanHost());
   const [diceUrlCopied, setDiceUrlCopied] = React.useState(false);
@@ -216,15 +236,14 @@ export function App() {
   const [participantSearch, setParticipantSearch] = React.useState('');
   const [showAdvancedStandings, setShowAdvancedStandings] = React.useState(false);
   const [assistantForm, setAssistantForm] = React.useState<TournamentAssistantForm>(defaultTournamentAssistantForm);
-  const assistantRecommendation = React.useMemo(() => buildTournamentAssistantRecommendation(assistantForm), [assistantForm]);
-  const [knowledgeChatInput, setKnowledgeChatInput] = React.useState('Wie starte ich ein Turnier?');
-  const [knowledgeChatMessages, setKnowledgeChatMessages] = React.useState<KnowledgeChatMessage[]>(() => [{
-    id: 'knowledge-welcome',
-    role: 'assistant',
-    text: 'Ich bin die lokale Turnierhilfe. Frag mich zu Turnierstart, Auslosung, Wertungen, Backup, QR/Handy, Import/Export oder KI-Datenschutz. Ich nutze nur lokale Regeln und sende keine Daten an externe Anbieter.',
-    sources: ['Lokale Wissensbasis']
-  }]);
+  const assistantRecommendation = React.useMemo(() => buildTournamentAssistantRecommendation(assistantForm, lang === 'en'), [assistantForm, lang]);
+  const [knowledgeChatInput, setKnowledgeChatInput] = React.useState('');
+  const [knowledgeChatMessages, setKnowledgeChatMessages] = React.useState<KnowledgeChatMessage[]>([]);
   const [settingsForm, setSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
+  const [newTournamentSettingsForm, setNewTournamentSettingsForm] = React.useState<SettingsForm>(emptySettingsForm);
+  const settingsSource = React.useRef({ id: '', form: emptySettingsForm });
+  const [settingsEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
+  const settingsEditorToken = settingsEditorGuard.capture(selectedId);
   const [playerForm, setPlayerForm] = React.useState<PlayerForm>(emptyPlayerForm);
   const [externalQuery, setExternalQuery] = React.useState('');
   const [externalLookup, setExternalLookup] = React.useState<ExternalPlayerAggregateResult | null>(null);
@@ -240,15 +259,25 @@ export function App() {
   const [formatImportResult, setFormatImportResult] = React.useState<{ added: number; errors: string[] } | null>(null);
   const [confirmWarningImport, setConfirmWarningImport] = React.useState(false);
   const [backupJson, setBackupJson] = React.useState('');
+  const [backupImportGuard] = React.useState(createBackupImportGuard);
+  const [backupImportPending, setBackupImportPending] = React.useState<BackupImportConfirmation | null>(null);
+  const [backupImportBusy, setBackupImportBusy] = React.useState(false);
   const [pairingEdits, setPairingEdits] = React.useState<Record<string, PairingEdit>>({});
   const [playerEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
   const [pairingEditorGuard] = React.useState(() => createTournamentEditorGuard(selectedId));
   const playerEditorToken = playerEditorGuard.capture(selectedId);
   const pairingEditorToken = pairingEditorGuard.capture(selectedId);
-  const [pendingResultChange, setPendingResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
+  const [pendingResultChange, setPendingResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number; queueEntry?: QueuedResultEntry } | null>(null);
+  // STM-FACH-007: optional operator reason for a correction. Free text never enters the browser result queue.
+  const [correctionReason, setCorrectionReason] = React.useState('');
+  const [resultQueueStore] = React.useState(createIndexedDbResultQueueStore);
+  const [localQueueEnabled, setLocalQueueEnabled] = React.useState(false);
   const [lastResultChange, setLastResultChange] = React.useState<{ tournamentId: string; roundNumber: number; boardNumber: number; result: number; previousResult: number } | null>(null);
   const createTournamentInFlight = React.useRef(false);
   const resultConfirmButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  // Single-flight guard: a double click must not send the same result twice.
+  const resultSavingRef = React.useRef(false);
+  const [resultSaving, setResultSaving] = React.useState(false);
   const resultReturnFocusRef = React.useRef<HTMLElement | null>(null);
   const [status, setStatus] = React.useState('Bereit.');
   const [error, setError] = React.useState<string | null>(null);
@@ -280,16 +309,18 @@ export function App() {
     if (projectionLoader.disposed) return;
     if (projectionLoader.select(id)) {
       playerEditorGuard.select(id); pairingEditorGuard.select(id);
+      settingsEditorGuard.select(id); chess960Guard.select(id);
+      cancelBackupImport();
       setEditingPlayerId(null); setPlayerForm(emptyPlayerForm); setPairingEdits({});
       setExternalDuplicateChecks({});
       importPreviewGuard.update({ ...importPreviewGuard.inputs, tournamentId: id });
       setImportPreview(null); setConfirmWarningImport(false);
       setPairingQualityReports({}); setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false);
-      setChess960DialogRound(null); setPendingResultChange(null); setLastResultChange(null); setBoardDiceModal(null);
+      closeChess960Dialog(); setPendingResultChange(null); setLastResultChange(null); setBoardDiceModal(null);
       setActionConfirm(null); setError(null);
     }
     setSelectedIdState(id);
-  }, [projectionLoader, importPreviewGuard, playerEditorGuard, pairingEditorGuard]);
+  }, [projectionLoader, importPreviewGuard, playerEditorGuard, pairingEditorGuard, settingsEditorGuard, chess960Guard, backupImportGuard]);
 
   const [tournamentListLoader] = React.useState(() => {
     const loader = createTournamentProjectionLoader<Tournament[]>(state => {
@@ -305,7 +336,7 @@ export function App() {
 
   React.useEffect(() => {
     projectionLoader.resume(); tournamentListLoader.resume();
-    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); playerEditorGuard.invalidate(); pairingEditorGuard.invalidate(); };
+    return () => { projectionLoader.dispose(); tournamentListLoader.dispose(); importPreviewGuard.invalidate(); playerEditorGuard.invalidate(); pairingEditorGuard.invalidate(); settingsEditorGuard.invalidate(); chess960Guard.invalidate(); backupImportGuard.invalidate(); };
   }, [projectionLoader, tournamentListLoader, importPreviewGuard]);
 
   const loadTournaments = React.useCallback(async (): Promise<Tournament[] | null> => {
@@ -379,6 +410,13 @@ export function App() {
       if (succeeded) {
         try {
           await loadTournaments();
+          // Retry only a failed read, using this existing healthy-poll cadence.
+          // Ready/loading projections and all editor drafts stay untouched.
+          if (!cancelled && projectionLoader.phase === 'error' && projectionLoader.selectedId) {
+            await loadDerived(projectionLoader.selectedId).catch(() => {
+              // The atomic loader publishes its own visible error/retry state.
+            });
+          }
         } catch (ex) {
           if (!cancelled) {
             setError(describeApiError(ex, lang));
@@ -398,8 +436,17 @@ export function App() {
         clearTimeout(timer);
       }
     };
-  }, [loadTournaments, lang, readinessProbeGeneration]);
+  }, [loadTournaments, loadDerived, projectionLoader, lang, readinessProbeGeneration]);
 
+  async function retryDerivedProjection(): Promise<void> {
+    const id = selectedTournament?.id;
+    if (!id || projectionLoader.selectedId !== id || projectionLoader.phase !== 'error') return;
+    // load() marks itself loading synchronously, before another click can run.
+    await loadDerived(id).catch(() => {
+      // Keep projection failures separate from unrelated action errors.
+      // Its localized status and retry control remain visible on failure.
+    });
+  }
   /** "Erneut versuchen" - neuer Startversuch ohne Browserneustart. */
   function retryBackendReadiness(): void {
     setBackendReadiness('starting');
@@ -417,17 +464,21 @@ export function App() {
    * ehrlich gemacht, statt weiter "online" zu behaupten.
    */
   async function confirmActionDialog(): Promise<void> {
-    if (!actionConfirm || actionConfirmBusy) {
+    if (!actionConfirm || actionConfirmBusy || actionConfirmInFlight.current) {
       return;
     }
 
     const pending = actionConfirm;
+    actionConfirmInFlight.current = pending;
     setActionConfirmBusy(true);
     try {
       await pending.run();
     } finally {
-      setActionConfirmBusy(false);
-      setActionConfirm(null);
+      if (actionConfirmInFlight.current === pending) {
+        actionConfirmInFlight.current = null;
+        setActionConfirmBusy(false);
+      }
+      setActionConfirm(current => current === pending ? null : current);
     }
   }
 
@@ -481,7 +532,7 @@ export function App() {
         });
       })
       .catch((err: unknown) => {
-        console.warn('PWA-Serviceworker konnte nicht registriert werden.', err);
+        console.warn(t('workflow.couldNotRegisterThePWAServiceWorker'), err);
         if (!isCancelled) {
           setPwaStatus('error');
         }
@@ -496,15 +547,23 @@ export function App() {
 
   React.useEffect(() => {
     if (selectedTournament?.id) {
-      loadDerived(selectedTournament.id).catch((err: unknown) => setError(describeApiError(err, lang)));
+      loadDerived(selectedTournament.id).catch(() => {
+        // Projection errors have their own localized status and retry control.
+      });
     }
-  }, [loadDerived, selectedTournament?.id]);
+  }, [loadDerived, selectedTournament?.id, JSON.stringify(selectedTournament)]);
 
   React.useEffect(() => {
-    setSettingsForm(settingsToForm(selectedTournament));
-  }, [selectedTournament?.id]);
+    const next = settingsToForm(selectedTournament);
+    const previous = settingsSource.current;
+    const id = selectedTournament?.id ?? '';
+    setSettingsForm(current => previous.id !== id || JSON.stringify(current) === JSON.stringify(previous.form) ? next : current);
+    settingsSource.current = { id, form: next };
+  }, [selectedTournament?.id, JSON.stringify(selectedTournament?.settings)]);
 
   React.useEffect(() => {
+    // A new or closed confirmation never inherits the reason typed for another board.
+    setCorrectionReason('');
     if (!pendingResultChange) {
       return;
     }
@@ -557,7 +616,7 @@ export function App() {
     setPairingQualityReports({});
     setNextRoundPreview(null);
     setIsNextRoundPreviewDialogOpen(false);
-    setChess960DialogRound(null);
+    closeChess960Dialog();
     setPendingResultChange(null);
     setLastResultChange(null);
   }, [selectedTournament?.id]);
@@ -574,7 +633,7 @@ export function App() {
     function closeOnEscape(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
         setIsNextRoundPreviewDialogOpen(false);
-        setChess960DialogRound(null);
+        closeChess960Dialog();
         setBoardDiceModal(null);
       }
     }
@@ -585,7 +644,7 @@ export function App() {
 
   async function installPwa(): Promise<void> {
     if (!pwaInstallPrompt) {
-      setStatus('Der Browser bietet aktuell keinen Installationsdialog an. Nutze ggf. das Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“.');
+      setStatus(t('workflow.theBrowserDoesNotCurrentlyOfferAn'));
       return;
     }
 
@@ -617,7 +676,7 @@ export function App() {
         body: JSON.stringify({
           name: newTournamentName.trim(),
           settings: {
-            ...formToSettings(emptySettingsForm),
+            ...formToSettings(newTournamentSettingsForm),
             format,
             pairingStrategy: format === 1 ? pairingStrategy : 0,
             swissInitialColour: format === 1 && pairingStrategy === 1 ? swissInitialColour : 1
@@ -627,10 +686,10 @@ export function App() {
       setSelectedId(created.id);
       setIsCreateTournamentOpen(false);
       setActiveMainTab('overview');
-      setStatus(lang === 'en' ? `Tournament created: ${created.name}` : `Turnier angelegt: ${created.name}`);
+      setStatus(lang === 'en' ? `Tournament created: ${created.name}` : t('workflow.tournamentCreated', { p0: created.name }));
       await refresh(created.id);
     } catch (ex) {
-      reportActionFailure(lang === 'en' ? 'Tournament could not be created' : 'Turnier konnte nicht angelegt werden', ex);
+      reportActionFailure(lang === 'en' ? 'Tournament could not be created' : t('workflow.couldNotCreateTournament'), ex);
     } finally {
       createTournamentInFlight.current = false;
       setCreatingTournament(false);
@@ -648,13 +707,13 @@ export function App() {
       setActiveMainTab('overview');
       setStatus(lang === 'en'
         ? 'The existing synthetic demo was opened unchanged. To start over, delete it (with confirmation) and create the demo again.'
-        : 'Das vorhandene synthetische Demo-Turnier wurde unverändert geöffnet. Für einen Neustart es zuerst (mit Bestätigung) löschen und das Demo erneut anlegen.');
+        : t('workflow.openedTheExistingSyntheticDemoWithoutChanges'));
       return;
     }
 
     setDemoBusy(true);
     setError(null);
-    setStatus(lang === 'en' ? 'Creating the synthetic demo locally …' : 'Synthetisches Demo-Turnier wird lokal angelegt …');
+    setStatus(lang === 'en' ? 'Creating the synthetic demo locally …' : t('workflow.creatingASyntheticDemoLocally'));
     let createdDemoId: string | null = null;
     try {
       const created = await requestJson<Tournament>('/api/tournaments', {
@@ -718,7 +777,7 @@ export function App() {
       await refresh(created.id);
       setStatus(lang === 'en'
         ? 'Demo ready: eight synthetic players, one completed round and FIDE Dutch. The next round is ready to pair.'
-        : 'Demo bereit: acht synthetische Spieler, eine abgeschlossene Runde und FIDE-Dutch. Die nächste Runde kann ausgelost werden.');
+        : t('workflow.demoReadyEightSyntheticPlayersOneCompleted'));
     } catch (ex) {
       if (createdDemoId) {
         try {
@@ -727,7 +786,7 @@ export function App() {
           // Keep the original failure visible. A partial demo can still be removed in Administration.
         }
       }
-      setError(`${lang === 'en' ? 'The demo could not be created completely' : 'Demo-Turnier konnte nicht vollständig angelegt werden'}: ${describeApiError(ex, lang)}`);
+      setError(`${lang === 'en' ? 'The demo could not be created completely' : t('workflow.couldNotFinishCreatingTheDemoTournament')}: ${describeApiError(ex, lang)}`);
     } finally {
       setDemoBusy(false);
     }
@@ -739,18 +798,26 @@ export function App() {
       return;
     }
 
+    const operation = settingsEditorGuard.advance(settingsEditorToken);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
+    setSettingsForm(current => ({ ...current }));
     setError(null);
     try {
       const updated = await requestJson<Tournament>(`/api/tournaments/${selectedTournament.id}/settings`, {
         method: 'PUT',
         body: JSON.stringify({ settings: formToSettings(settingsForm) })
       });
-      setSelectedId(updated.id);
-      setStatus('Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
+      if (!settingsEditorGuard.isCurrent(operation)) return;
+      setSettingsForm(settingsToForm(updated));
+      setStatus(lang === 'en' ? 'Tournament settings saved. Standings and tie-breaks recalculated.' : 'Turniereinstellungen gespeichert. Tabelle und Wertungen wurden neu berechnet.');
       await refresh(updated.id);
     } catch (ex) {
-      reportActionFailure('Turniereinstellungen konnten nicht gespeichert werden', ex);
+      if (settingsEditorGuard.isCurrent(operation)) reportActionFailure(t('workflow.couldNotSaveTournamentSettings'), ex);
     }
+  }
+
+  function updateSettingsForm(form: SettingsForm): void {
+    if (settingsEditorGuard.advance(settingsEditorToken)) setSettingsForm(form);
   }
 
   function openDestructiveDialog(action: DestructiveAction): void {
@@ -785,10 +852,10 @@ export function App() {
         const updated = await requestJson<Tournament>(`/api/tournaments/${pending.tournamentId}/reset`, { method: 'POST' });
         setNextRoundPreview(null);
         setIsNextRoundPreviewDialogOpen(false);
-        setChess960DialogRound(null);
+        closeChess960Dialog();
         setPairingQualityReports({});
         setDestructiveDialog(null);
-        setStatus(`Turnier zurückgesetzt: ${updated.name}. Teilnehmer und Einstellungen wurden behalten.`);
+        setStatus(t('workflow.tournamentResetParticipantsAndSettingsWereKept', { p0: updated.name }));
         await refresh(updated.id);
         return;
       }
@@ -796,10 +863,10 @@ export function App() {
       await requestJson<{ deleted: boolean; id: string }>(`/api/tournaments/${pending.tournamentId}`, { method: 'DELETE' });
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
-      setChess960DialogRound(null);
+      closeChess960Dialog();
       setPairingQualityReports({});
       setDestructiveDialog(null);
-      setStatus(`Turnier gelöscht: ${pending.tournamentName}.`);
+      setStatus(t('workflow.tournamentDeleted', { p0: pending.tournamentName }));
 
       const data = await loadTournaments();
       if (!data) return;
@@ -808,7 +875,7 @@ export function App() {
       await loadDerived(nextId);
     } catch (ex) {
       const message = describeApiError(ex, lang);
-      const prefix = pending.action === 'reset' ? 'Zurücksetzen fehlgeschlagen' : 'Löschen fehlgeschlagen';
+      const prefix = pending.action === 'reset' ? t('workflow.resetFailed') : t('workflow.deleteFailed');
       // Keep the dialog open so the operator sees the backend error in context
       // instead of losing it behind a closed modal.
       setDestructiveDialog({ ...pending, busy: false, error: `${prefix}: ${message}` });
@@ -816,6 +883,7 @@ export function App() {
   }
 
   function toggleTiebreak(value: number, enabled: boolean): void {
+    if (!settingsEditorGuard.advance(settingsEditorToken)) return;
     setSettingsForm(previous => {
       const without = previous.tiebreaks.filter(item => item !== value);
       const next = enabled ? [...without, value] : without;
@@ -840,11 +908,11 @@ export function App() {
       if (editingPlayerId) {
         await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${editingPlayerId}`, { method: 'PUT', body });
         if (!playerEditorGuard.isCurrent(operation)) return;
-        setStatus('Teilnehmer aktualisiert.');
+        setStatus(lang === 'en' ? 'Participant updated.' : 'Teilnehmer aktualisiert.');
       } else {
         await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players`, { method: 'POST', body });
         if (!playerEditorGuard.isCurrent(operation)) return;
-        setStatus('Teilnehmer gespeichert.');
+        setStatus(lang === 'en' ? 'Participant saved.' : 'Teilnehmer gespeichert.');
       }
 
       playerEditorGuard.invalidate();
@@ -868,7 +936,7 @@ export function App() {
     try {
       await requestJson<Player>(`/api/tournaments/${selectedTournament.id}/players/${player.id}`, { method: 'DELETE' });
       if (!projectionLoader.isCurrent(captured)) return;
-      setStatus('Teilnehmer gelöscht oder zurückgezogen.');
+      setStatus(t('workflow.participantDeletedOrWithdrawn'));
       if (editingPlayerId === player.id && playerEditorGuard.isCurrent(editor)) {
         playerEditorGuard.invalidate();
         setEditingPlayerId(null);
@@ -876,7 +944,7 @@ export function App() {
       }
       await refresh(selectedTournament.id);
     } catch (ex) {
-      if (projectionLoader.isCurrent(captured)) reportActionFailure(`Teilnehmer ${player.name} konnte nicht entfernt werden`, ex);
+      if (projectionLoader.isCurrent(captured)) reportActionFailure(t('workflow.couldNotRemoveParticipant', { p0: player.name }), ex);
     }
   }
 
@@ -891,10 +959,10 @@ export function App() {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus })
       });
-      setStatus(`Status für ${player.name} geändert.`);
+      setStatus(t('workflow.statusChangedFor', { p0: player.name }));
       await refresh(selectedTournament.id);
     } catch (ex) {
-      reportActionFailure(`Status für ${player.name} konnte nicht geändert werden`, ex);
+      reportActionFailure(t('workflow.couldNotChangeStatusFor', { p0: player.name }), ex);
     }
   }
 
@@ -913,7 +981,7 @@ export function App() {
       setIsNextRoundPreviewDialogOpen(true);
       setStatus(lang === 'en'
         ? `Pairing preview for round ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity, true)}.`
-        : `Auslosungsvorschau Runde ${preview.roundNumber}: ${preview.pairingQuality.qualityScore}/100 · ${pairingQualitySeverityLabel(preview.pairingQuality.severity)}.`);
+        : t('workflow.roundPairingPreview100', { p0: preview.roundNumber, p1: preview.pairingQuality.qualityScore, p2: pairingQualitySeverityLabel(preview.pairingQuality.severity) }));
     } catch (ex) {
       if (!projectionLoader.isCurrent(captured)) return;
       reportActionFailure(lang === 'en' ? 'Pairing preview failed' : 'Auslosungsvorschau fehlgeschlagen', ex);
@@ -929,13 +997,13 @@ export function App() {
     // aus. Die Rueckfrage laeuft darum ueber den In-App-Dialog.
     if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
       setActionConfirm({
-        title: lang === 'en' ? 'Pair the round despite critical findings?' : 'Runde trotz kritischer Hinweise auslosen?',
+        title: lang === 'en' ? 'Pair the round despite critical findings?' : t('workflow.pairTheRoundDespiteCriticalNotices'),
         description: lang === 'en'
           ? 'The preview contains critical findings. In small tournaments, rematches or score-group deviations may be unavoidable.'
-          : 'Die Vorschau enthält kritische Hinweise. Bei kleinen Turnieren können Rematches/Scoregruppen-Abweichungen unvermeidbar sein.',
+          : t('workflow.thePreviewContainsCriticalNoticesRematchesOr'),
         consequences: nextRoundPreview.pairingQuality.findings.slice(0, 5),
-        confirmLabel: lang === 'en' ? 'Pair anyway' : 'Trotzdem auslosen',
-        cancelLabel: lang === 'en' ? 'Cancel' : 'Abbrechen',
+        confirmLabel: t('safety.pairAnyway'),
+        cancelLabel: t('common.cancel'),
         run: pairNextRound
       });
       return;
@@ -952,7 +1020,7 @@ export function App() {
     setError(null);
     try {
       const created = await requestJson<TournamentRound>(`/api/tournaments/${selectedTournament.id}/pairings/next-round`, { method: 'POST', timeoutMs: pairingRequestTimeoutMs });
-      setStatus(lang === 'en' ? 'New round paired. Tip: create a local backup now.' : 'Neue Runde ausgelost. Tipp: Jetzt ein lokales Backup ziehen.');
+      setStatus(lang === 'en' ? 'New round paired. Tip: create a local backup now.' : t('workflow.newRoundPairedExportALocalBackup'));
       setBackupRecommended(true);
       setNextRoundPreview(null);
       setIsNextRoundPreviewDialogOpen(false);
@@ -971,41 +1039,62 @@ export function App() {
   }
 
   function openChess960Dice(round: TournamentRound) {
+    if (!selectedTournament) return;
+    const token = chess960Guard.advance(chess960EditorToken);
+    if (!token) return;
     // Aktuellsten Rundenstand aus dem geladenen Turnier nehmen (zeigt vorhandene Stellungen).
     const freshRound = selectedTournament?.rounds.find(item => item.roundNumber === round.roundNumber) ?? round;
+    setChess960DialogToken(token);
     setChess960DialogRound(freshRound);
     setChess960Rolling(false);
     setChess960HasRolled(false);
   }
 
+  function closeChess960Dialog(): void {
+    chess960Guard.invalidate();
+    setChess960DialogToken(null);
+    setChess960DialogRound(null);
+    setChess960Rolling(false);
+    setActionConfirm(null);
+  }
+
   function performChess960Roll(round: TournamentRound): void {
-    if (!selectedTournament || chess960Rolling) {
+    const token = chess960DialogToken;
+    if (!selectedTournament || chess960Rolling || !chess960Guard.isCurrent(token)
+        || token.tournamentId !== selectedTournament.id) {
       return;
     }
 
     const existingCount = round.pairings.filter(pairing => pairing.chess960StartPosition).length;
     if (existingCount > 0) {
       setActionConfirm({
-        title: 'Vorhandene Startstellungen überschreiben?',
-        description: `Für Runde ${round.roundNumber} sind bereits ${existingCount} Startstellung(en) gespeichert.`,
-        consequences: ['Alle bisherigen Chess960-Startstellungen dieser Runde werden ersetzt.'],
-        confirmLabel: 'Überschreiben',
+        title: t('workflow.replaceExistingStartingPositions'),
+        description: t('workflow.roundAlreadyHasSavedStartingPositionS', { p0: round.roundNumber, p1: existingCount }),
+        consequences: [t('workflow.allExistingChess960StartingPositionsForThis')],
+        confirmLabel: t('workflow.replace'),
         cancelLabel: 'Abbrechen',
         destructive: true,
-        run: () => rollChess960(round, true)
+        onCancel: () => {
+          const next = chess960Guard.advance(token);
+          if (next) setChess960DialogToken(next);
+        },
+        run: () => rollChess960(round, true, token)
       });
       return;
     }
 
-    void rollChess960(round, false);
+    void rollChess960(round, false, token);
   }
 
-  async function rollChess960(round: TournamentRound, hasExistingPositions: boolean): Promise<void> {
+  async function rollChess960(round: TournamentRound, hasExistingPositions: boolean, token = chess960DialogToken): Promise<void> {
     if (!selectedTournament || chess960Rolling) {
       return;
     }
+    const operation = chess960Guard.advance(token);
+    if (!operation || operation.tournamentId !== selectedTournament.id) return;
 
     setError(null);
+    setChess960DialogToken(operation);
     setChess960Rolling(true);
     setDiceSpin(previous => previous + 1);
 
@@ -1017,42 +1106,89 @@ export function App() {
         body: JSON.stringify({ overwriteExisting: hasExistingPositions })
       });
       const [updated] = await Promise.all([rollRequest, animation]);
+      if (!chess960Guard.isCurrent(operation)) return;
       setDiceFace(Math.floor(Math.random() * diceFaceGlyphs.length));
       setChess960DialogRound(updated);
       setChess960HasRolled(true);
       setBackupRecommended(true);
-      setStatus(`Chess960-Startstellungen für Runde ${updated.roundNumber} gewürfelt. Tipp: Jetzt ein lokales Backup ziehen.`);
+      setStatus(t('workflow.chess960StartingPositionsRolledForRoundExport', { p0: updated.roundNumber }));
       await refresh(selectedTournament.id);
     } catch (ex) {
-      setError(describeApiError(ex, lang));
+      if (chess960Guard.isCurrent(operation)) setError(describeApiError(ex, lang));
     } finally {
-      setChess960Rolling(false);
+      if (chess960Guard.isCurrent(operation)) setChess960Rolling(false);
     }
   }
 
-  async function recordResult(tournamentId: string, roundNumber: number, boardNumber: number, result: number, expectedPreviousResult: number): Promise<boolean> {
+  async function recordResult(tournamentId: string, roundNumber: number, boardNumber: number, result: number, expectedPreviousResult: number,
+    captured?: QueuedResultEntry): Promise<'saved' | 'queued' | false> {
     if (!selectedTournament || selectedTournament.id !== tournamentId) {
       setError(lang === 'en'
         ? 'The selected tournament changed. Reload the board and confirm the result again.'
-        : 'Das ausgewählte Turnier hat gewechselt. Brett neu laden und Ergebnis erneut bestätigen.');
+        : t('workflow.theSelectedTournamentHasChangedReloadThe'));
       return false;
     }
     setError(null);
     setStatus(lang === 'en'
       ? `Saving result for round ${roundNumber}, board ${boardNumber} …`
-      : `Speichere Ergebnis Runde ${roundNumber}, Brett ${boardNumber} …`);
+      : t('workflow.savingResultForRoundBoard', { p0: roundNumber, p1: boardNumber }));
+    let persisted = false;
+    let sent = false;
     try {
-      await requestJson<TournamentRound>(`/api/tournaments/${tournamentId}/results`, {
+      const pairing = selectedTournament.rounds.find(round => round.roundNumber === roundNumber)?.pairings.find(pair => pair.boardNumber === boardNumber);
+      if (!pairing) throw new Error(lang === 'en' ? 'Board no longer exists.' : t('workflow.theBoardNoLongerExists'));
+      const entry = captured ?? captureResultEntry(tournamentId, selectedTournament.resultQueueEpoch, roundNumber, pairing, result, expectedPreviousResult);
+      if (localQueueEnabled) {
+        await resultQueueStore.add(entry);
+        persisted = true;
+        window.dispatchEvent(new Event('stm-result-queue-changed'));
+      }
+      await requestJson<TournamentRound>(`/api/tournaments/${tournamentId}/queued-results`, {
         method: 'POST',
-        body: JSON.stringify({ roundNumber, boardNumber, result, expectedPreviousResult })
+        body: JSON.stringify(entry.mutation)
       });
+      sent = true;
+      if (persisted) { await resultQueueStore.remove(entry.id); window.dispatchEvent(new Event('stm-result-queue-changed')); }
       await refresh(tournamentId);
       setStatus(lang === 'en'
         ? `✓ Result saved: round ${roundNumber}, board ${boardNumber}.`
-        : `✓ Ergebnis gespeichert: Runde ${roundNumber}, Brett ${boardNumber}.`);
-      return true;
+        : t('workflow.resultSavedRoundBoard', { p0: roundNumber, p1: boardNumber }));
+      return 'saved';
     } catch (ex) {
-      setError(`${lang === 'en' ? `Result for round ${roundNumber}, board ${boardNumber} could not be saved` : `Ergebnis Runde ${roundNumber}, Brett ${boardNumber} konnte NICHT gespeichert werden`}: ${describeApiError(ex, lang)}`);
+      if (persisted && !sent && isApiTransportError(ex)) {
+        setStatus(lang === 'en' ? 'Result queued in this browser. Synchronize it when the server is available; it is not yet confirmed.'
+          : t('workflow.resultKeptInThisBrowserSyncWhen'));
+        return 'queued';
+      }
+      if (sent) setStatus(lang === 'en' ? 'Server acknowledged the result. Reload before entering it again.' : t('workflow.theServerConfirmedTheResultReloadBefore'));
+      setError(`${lang === 'en' ? `Result for round ${roundNumber}, board ${boardNumber} could not be saved` : t('workflow.couldNOTSaveResultForRoundBoard', { p0: roundNumber, p1: boardNumber })}: ${describeApiError(ex, lang)}`);
+      return false;
+    }
+  }
+
+  // Corrections with a reason are sent online only (direct endpoint, guarded by the expected previous
+  // result) so that the free-text reason is never persisted in browser storage.
+  async function recordCorrection(tournamentId: string, roundNumber: number, boardNumber: number, result: number,
+    expectedPreviousResult: number, reason: string, expectedLastChangedAt: string | null): Promise<'saved' | false> {
+    if (!selectedTournament || selectedTournament.id !== tournamentId) {
+      setError(lang === 'en'
+        ? 'The selected tournament changed. Reload the board and confirm the result again.'
+        : t('workflow.theSelectedTournamentHasChangedReloadThe'));
+      return false;
+    }
+    setError(null);
+    try {
+      await requestJson<TournamentRound>(`/api/tournaments/${tournamentId}/rounds/${roundNumber}/boards/${boardNumber}/result`, {
+        method: 'POST',
+        // expectedLastChangedAt also detects a change that was reverted in between (A -> B -> A).
+        body: JSON.stringify({ result, expectedPreviousResult, correctionReason: Array.from(reason).slice(0, 500).join(''),
+          ...(expectedLastChangedAt ? { expectedLastChangedAt } : {}) })
+      });
+      await refresh(tournamentId);
+      setStatus(t('result.correctedRoundBoard', { p0: roundNumber, p1: boardNumber }));
+      return 'saved';
+    } catch (ex) {
+      setError(`${lang === 'en' ? `Result for round ${roundNumber}, board ${boardNumber} could not be saved` : t('workflow.couldNOTSaveResultForRoundBoard', { p0: roundNumber, p1: boardNumber })}: ${describeApiError(ex, lang)}`);
       return false;
     }
   }
@@ -1061,8 +1197,17 @@ export function App() {
     if (!selectedTournament || result === previousResult) {
       return;
     }
+    const pairing = selectedTournament.rounds.find(round => round.roundNumber === roundNumber)?.pairings
+      .find(board => board.boardNumber === boardNumber);
+    if (!pairing || pairing.isBye || result === 7) return;
     resultReturnFocusRef.current = source ?? null;
-    setPendingResultChange({ tournamentId: selectedTournament.id, roundNumber, boardNumber, result, previousResult });
+    try {
+      setPendingResultChange({ tournamentId: selectedTournament.id, roundNumber, boardNumber, result, previousResult,
+        queueEntry: captureResultEntry(selectedTournament.id, selectedTournament.resultQueueEpoch, roundNumber, pairing, result, previousResult) });
+    } catch {
+      setError(lang === 'en' ? 'The result could not be prepared safely. Update this browser and try again.'
+        : t('workflow.couldNotSafelyPrepareTheResultReload'));
+    }
   }
 
   function closeResultConfirmation(): void {
@@ -1074,11 +1219,25 @@ export function App() {
     if (!pendingResultChange) {
       return;
     }
-    const change = pendingResultChange;
-    const saved = await recordResult(change.tournamentId, change.roundNumber, change.boardNumber, change.result, change.previousResult);
-    if (saved) {
-      setLastResultChange(change);
-      closeResultConfirmation();
+    if (resultSavingRef.current) {
+      return;
+    }
+    resultSavingRef.current = true;
+    setResultSaving(true);
+    try {
+      const change = pendingResultChange;
+      const reason = correctionReason.trim();
+      const saved = change.previousResult !== 0 && reason
+        ? await recordCorrection(change.tournamentId, change.roundNumber, change.boardNumber, change.result, change.previousResult, reason,
+            change.queueEntry?.mutation.expectedLastChangedAt ?? null)
+        : await recordResult(change.tournamentId, change.roundNumber, change.boardNumber, change.result, change.previousResult, change.queueEntry);
+      if (saved) {
+        setLastResultChange(saved === 'queued' ? null : change);
+        closeResultConfirmation();
+      }
+    } finally {
+      resultSavingRef.current = false;
+      setResultSaving(false);
     }
   }
 
@@ -1087,11 +1246,12 @@ export function App() {
       return;
     }
     const undo = lastResultChange;
-    if (await recordResult(undo.tournamentId, undo.roundNumber, undo.boardNumber, undo.previousResult, undo.result)) {
+    const saved = await recordResult(undo.tournamentId, undo.roundNumber, undo.boardNumber, undo.previousResult, undo.result);
+    if (saved) {
       setLastResultChange(null);
-      setStatus(lang === 'en'
+      if (saved === 'saved') setStatus(lang === 'en'
         ? `Result correction undone: round ${undo.roundNumber}, board ${undo.boardNumber}.`
-        : `Ergebniskorrektur rückgängig gemacht: Runde ${undo.roundNumber}, Brett ${undo.boardNumber}.`);
+        : t('workflow.resultCorrectionUndoneRoundBoard', { p0: undo.roundNumber, p1: undo.boardNumber }));
     }
   }
 
@@ -1109,6 +1269,7 @@ export function App() {
   }
 
   function updatePairingEdit(roundNumber: number, boardNumber: number, patch: Partial<PairingEdit>): void {
+    if (!selectedTournament?.settings.allowManualPairingOverrides) return;
     const round = selectedTournament?.rounds.find(item => item.roundNumber === roundNumber);
     const pairing = round?.pairings.find(item => item.boardNumber === boardNumber);
     if (!round || !pairing) return;
@@ -1122,7 +1283,7 @@ export function App() {
   }
 
   async function saveManualPairing(round: TournamentRound, pairing: Pairing) {
-    if (!selectedTournament) {
+    if (!selectedTournament?.settings.allowManualPairingOverrides) {
       return;
     }
     const edit = pairingEdit(round, pairing);
@@ -1140,7 +1301,7 @@ export function App() {
         })
       });
       if (!pairingEditorGuard.isCurrent(operation)) return;
-      setStatus(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} manuell gespeichert.`);
+      setStatus(t('workflow.manualPairingSavedForRoundBoard', { p0: round.roundNumber, p1: pairing.boardNumber }));
       pairingEditorGuard.invalidate();
       setPairingEdits(previous => {
         const copy = { ...previous };
@@ -1149,7 +1310,7 @@ export function App() {
       });
       await refresh(selectedTournament.id);
     } catch (ex) {
-      if (pairingEditorGuard.isCurrent(operation)) reportActionFailure(`Paarung Runde ${round.roundNumber}, Brett ${pairing.boardNumber} konnte nicht gespeichert werden`, ex);
+      if (pairingEditorGuard.isCurrent(operation)) reportActionFailure(t('workflow.couldNotSavePairingForRoundBoard', { p0: round.roundNumber, p1: pairing.boardNumber }), ex);
     }
   }
 
@@ -1163,10 +1324,10 @@ export function App() {
         method: 'PATCH',
         body: JSON.stringify({ isLocked })
       });
-      setStatus(isLocked ? `Runde ${round.roundNumber} gesperrt.` : `Runde ${round.roundNumber} entsperrt.`);
+      setStatus(isLocked ? t('workflow.roundLocked', { p0: round.roundNumber }) : t('workflow.roundUnlocked', { p0: round.roundNumber }));
       await refresh(selectedTournament.id);
     } catch (ex) {
-      reportActionFailure(`Runde ${round.roundNumber} konnte nicht ${isLocked ? 'gesperrt' : 'entsperrt'} werden`, ex);
+      reportActionFailure(t('workflow.couldNotChangeTheLockStateOf', { p0: round.roundNumber }), ex);
     }
   }
 
@@ -1180,10 +1341,10 @@ export function App() {
         method: 'PATCH',
         body: JSON.stringify({ isVerified })
       });
-      setStatus(isVerified ? `Runde ${round.roundNumber} geprüft.` : `Runde ${round.roundNumber} wieder geöffnet.`);
+      setStatus(isVerified ? t('workflow.roundReviewed', { p0: round.roundNumber }) : t('workflow.roundReopened', { p0: round.roundNumber }));
       await refresh(selectedTournament.id);
     } catch (ex) {
-      reportActionFailure(`Prüfstatus für Runde ${round.roundNumber} konnte nicht geändert werden`, ex);
+      reportActionFailure(t('workflow.couldNotChangeReviewStatusForRound', { p0: round.roundNumber }), ex);
     }
   }
 
@@ -1192,7 +1353,7 @@ export function App() {
     setError(null);
     const query = externalQuery.trim();
     if (!query) {
-      setError('Bitte einen Namen oder eine FIDE-ID eingeben.');
+      setError(t('workflow.enterANameOrAFIDEID'));
       return;
     }
 
@@ -1201,9 +1362,9 @@ export function App() {
       const result = await requestJson<ExternalPlayerAggregateResult>(`/api/external-players/search-all?query=${encodeURIComponent(query)}`);
       setExternalLookup(result);
       setExternalDuplicateChecks({});
-      setStatus(result.message);
+      setStatus(lang === 'en' ? `${result.players.length} player(s) found. Source availability is shown below.` : result.message);
     } catch (ex) {
-      setError(`Spielersuche fehlgeschlagen: ${describeApiError(ex, lang)}`);
+      setError(`${lang === 'en' ? 'Player search failed' : 'Spielersuche fehlgeschlagen'}: ${describeApiError(ex, lang)}`);
     } finally {
       setExternalSearching(false);
     }
@@ -1213,7 +1374,7 @@ export function App() {
     if (!playerEditorGuard.advance(playerEditorToken)) return;
     setPlayerForm(applyExternalProfileToForm(profile));
     setEditingPlayerId(null);
-    setStatus(`${profile.name} aus ${externalSourceLabel(profile.source)} in das Teilnehmerformular übernommen.`);
+    setStatus(t('workflow.appliedFromToTheParticipantForm', { p0: profile.name, p1: externalSourceLabel(profile.source) }));
   }
 
   // Findet einen bereits im aktuellen Turnier vorhandenen Teilnehmer mit gleicher FIDE-/DSB-ID.
@@ -1236,12 +1397,12 @@ export function App() {
     if (!playerEditorGuard.advance(playerEditorToken)) return;
     setEditingPlayerId(player.id);
     setPlayerForm(playerToForm(player));
-    setStatus(`Vorhandenen Teilnehmer ${player.name} zum Bearbeiten geladen.`);
+    setStatus(lang === 'en' ? `Existing participant ${player.name} loaded for editing.` : `Vorhandenen Teilnehmer ${player.name} zum Bearbeiten geladen.`);
   }
 
   async function checkExternalDuplicates(profile: ExternalPlayerProfile): Promise<ExternalPlayerDuplicateCheck | null> {
     if (!selectedTournament) {
-      setError('Bitte zuerst ein Turnier auswählen.');
+      setError(t('workflow.selectATournamentFirst'));
       return null;
     }
 
@@ -1256,18 +1417,18 @@ export function App() {
       if (!projectionLoader.isCurrent(captured)) return null;
       setExternalDuplicateChecks(previous => ({ ...previous, [externalProfileKey(profile)]: duplicateCheck }));
       setStatus(duplicateCheck.hasLikelyDuplicate
-        ? `${duplicateCheck.matches.length} mögliche Dublette(n) für ${profile.name} gefunden.`
-        : `Keine sichere Dublette für ${profile.name} gefunden.`);
+        ? t('workflow.foundPossibleDuplicateSFor', { p0: duplicateCheck.matches.length, p1: profile.name })
+        : t('workflow.noReliableDuplicateFoundFor', { p0: profile.name }));
       return duplicateCheck;
     } catch (ex) {
-      if (projectionLoader.isCurrent(captured)) reportActionFailure(`Dublettenprüfung für ${profile.name} fehlgeschlagen`, ex);
+      if (projectionLoader.isCurrent(captured)) reportActionFailure(t('workflow.duplicateCheckFailedFor', { p0: profile.name }), ex);
       return null;
     }
   }
 
   async function applyExternalProfile(profile: ExternalPlayerProfile, targetPlayerId?: string, overwriteExistingValues = false): Promise<void> {
     if (!selectedTournament) {
-      setError('Bitte zuerst ein Turnier auswählen.');
+      setError(t('workflow.selectATournamentFirst'));
       return;
     }
 
@@ -1290,7 +1451,7 @@ export function App() {
       playerEditorGuard.invalidate();
       setEditingPlayerId(result.player.id);
       setPlayerForm(playerToForm(result.player));
-      setStatus(`${result.message} Geänderte Felder: ${result.changedFields.length ? result.changedFields.join(', ') : 'keine'}.`);
+      setStatus(t('workflow.changedFields', { p0: lang === 'en' ? (result.created ? 'Participant created.' : result.updated ? 'Participant updated.' : 'Participant unchanged.') : result.message, p1: result.changedFields.length ? result.changedFields.join(', ') : t('workflow.none') }));
       await refresh(selectedTournament.id);
     } catch (ex) {
       if (playerEditorGuard.isCurrent(operation)) setError(describeApiError(ex, lang));
@@ -1302,7 +1463,7 @@ export function App() {
     updateReplacePlayers(false);
     setImportPreview(null);
     setConfirmWarningImport(false);
-    setStatus('CSV-Beispielvorlage eingefügt. Bitte Daten anpassen und danach Import prüfen.');
+    setStatus(t('workflow.cSVTemplateInsertedAdjustTheDataThen'));
   }
 
   function updateCsvContent(content: string): void {
@@ -1317,7 +1478,7 @@ export function App() {
 
   async function previewPlayersImport() {
     if (!selectedTournament) {
-      setError('Bitte zuerst ein Turnier auswählen.');
+      setError(t('workflow.selectATournamentFirst'));
       return;
     }
 
@@ -1333,11 +1494,11 @@ export function App() {
       if (!importPreviewGuard.accept(request, preview)) return;
       setImportPreview(preview);
       setConfirmWarningImport(false);
-      const blockerText = preview.hasBlockingIssues ? ' Blockierende Probleme müssen vor dem Import behoben werden.' : '';
-      setStatus(`CSV geprüft: ${preview.totalRows} Zeilen · ${preview.importableRows} importierbar · ${preview.warningRows} Warnung(en) · ${preview.blockingRows} blockiert.${blockerText}`);
+      const blockerText = preview.hasBlockingIssues ? ' ' + t('workflow.blockingIssuesMustBeResolvedBeforeImport') : '';
+      setStatus(t('workflow.cSVCheckedRowsImportableWarningSBlocked', { p0: preview.totalRows, p1: preview.importableRows, p2: preview.warningRows, p3: preview.blockingRows, p4: blockerText }));
     } catch (ex) {
       if (!importPreviewGuard.isCurrent(request)) return;
-      reportActionFailure('CSV konnte nicht geprüft werden', ex);
+      reportActionFailure(t('workflow.couldNotCheckCSV'), ex);
     }
   }
 
@@ -1347,7 +1508,7 @@ export function App() {
 
   async function loadPairingQuality(roundNumber: number) {
     if (!selectedTournament) {
-      setError('Bitte zuerst ein Turnier auswählen.');
+      setError(t('workflow.selectATournamentFirst'));
       return;
     }
 
@@ -1360,10 +1521,10 @@ export function App() {
       setPairingQualityReports(previous => ({ ...previous, [roundNumber]: report }));
       setStatus(lang === 'en'
         ? `Pairing quality for round ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity, true)}.`
-        : `Pairing-Qualität Runde ${roundNumber}: ${report.qualityScore}/100 · ${pairingQualitySeverityLabel(report.severity)}.`);
+        : t('workflow.pairingQualityForRound100', { p0: roundNumber, p1: report.qualityScore, p2: pairingQualitySeverityLabel(report.severity) }));
     } catch (ex) {
       if (!projectionLoader.isCurrent(captured)) return;
-      reportActionFailure(`Pairing-Qualität für Runde ${roundNumber} konnte nicht geladen werden`, ex);
+      reportActionFailure(t('workflow.couldNotLoadPairingQualityForRound', { p0: roundNumber }), ex);
     }
   }
   async function importPlayers() {
@@ -1373,22 +1534,22 @@ export function App() {
 
     const identity = { tournamentId: selectedTournament.id, content: csvContent, replaceExisting: replacePlayers };
     if (!importPreview || !importPreviewGuard.matches(identity, importPreview)) {
-      setError('Bitte CSV zuerst prüfen.');
+      setError(t('workflow.checkTheCSVFirst'));
       return;
     }
 
     if (importPreview.replaceExisting !== replacePlayers) {
-      setError('Die Importoption wurde seit der Vorschau geändert. Bitte CSV erneut prüfen.');
+      setError(t('workflow.theImportOptionHasChangedSinceThe'));
       return;
     }
 
     if (importPreview.hasBlockingIssues) {
-      setError('CSV enthält blockierende Probleme. Bitte zuerst korrigieren und erneut prüfen.');
+      setError(t('workflow.theCSVContainsBlockingIssuesCorrectThem'));
       return;
     }
 
     if (importPreview.warningRows > 0 && !confirmWarningImport) {
-      setError('CSV enthält Warnungen oder mögliche Dubletten. Bitte Warnungen bewusst bestätigen oder CSV korrigieren und erneut prüfen.');
+      setError(t('workflow.theCSVContainsWarningsOrPossibleDuplicates'));
       return;
     }
 
@@ -1404,11 +1565,11 @@ export function App() {
         body: JSON.stringify({ content: identity.content, replaceExisting: identity.replaceExisting })
       });
       if (!selection || !projectionLoader.isCurrent(selection)) return;
-      setStatus(`${imported.length} Teilnehmer importiert.`);
+      setStatus(lang === 'en' ? `${imported.length} participant(s) imported.` : `${imported.length} Teilnehmer importiert.`);
       await refresh(identity.tournamentId);
     } catch (ex) {
       if (!selection || !projectionLoader.isCurrent(selection)) return;
-      reportActionFailure('Teilnehmerimport fehlgeschlagen', ex);
+      reportActionFailure(lang === 'en' ? 'Participant import failed' : 'Teilnehmerimport fehlgeschlagen', ex);
     }
   }
 
@@ -1421,9 +1582,9 @@ export function App() {
     try {
       const csv = await requestText(`/api/tournaments/${selectedTournament.id}/players/export.csv`);
       downloadText(`${selectedTournament.name}-teilnehmer.csv`, csv, 'text/csv;charset=utf-8');
-      setStatus('Teilnehmerliste als CSV exportiert.');
+      setStatus(lang === 'en' ? 'Participant list exported as CSV.' : 'Teilnehmerliste als CSV exportiert.');
     } catch (ex) {
-      reportActionFailure('Teilnehmerexport fehlgeschlagen', ex);
+      reportActionFailure(lang === 'en' ? 'Participant export failed' : 'Teilnehmerexport fehlgeschlagen', ex);
     }
   }
 
@@ -1449,10 +1610,12 @@ export function App() {
         { method: 'POST', body: JSON.stringify({ fileBytes: base64, replaceExisting: replacePlayers }) }
       );
       setFormatImportResult({ added: outcome.added.length, errors: outcome.formatErrors });
-      setStatus(`${outcome.added.length} Teilnehmer importiert${outcome.formatErrors.length > 0 ? ` · ${outcome.formatErrors.length} Hinweis(e)` : ''}.`);
+      setStatus(lang === 'en'
+        ? `${outcome.added.length} participant(s) imported${outcome.formatErrors.length > 0 ? ` · ${outcome.formatErrors.length} notice(s)` : ''}.`
+        : `${outcome.added.length} Teilnehmer importiert${outcome.formatErrors.length > 0 ? ` · ${outcome.formatErrors.length} Hinweis(e)` : ''}.`);
       await refresh(selectedTournament.id);
     } catch (ex) {
-      reportActionFailure(`Datei ${file.name} konnte nicht importiert werden`, ex);
+      reportActionFailure(t('workflow.couldNotImportFile', { p0: file.name }), ex);
     }
   }
 
@@ -1508,7 +1671,7 @@ export function App() {
   function openLatestRoundPrint() {
     const roundNumber = latestRoundNumber();
     if (roundNumber === null) {
-      setError('Es gibt noch keine Runde für den Rundenaushang.');
+      setError(t('workflow.noRoundIsAvailableToPrintYet'));
       return;
     }
     openRoundPrint(roundNumber);
@@ -1517,7 +1680,7 @@ export function App() {
   function openLatestPairingsCsv() {
     const roundNumber = latestRoundNumber();
     if (!selectedTournament || roundNumber === null) {
-      setError('Es gibt noch keine Runde für den Paarungsexport.');
+      setError(t('workflow.noRoundIsAvailableForPairingExport'));
       return;
     }
     window.open(`/api/tournaments/${selectedTournament.id}/pairings/export.csv?roundNumber=${roundNumber}`, '_blank', 'noopener,noreferrer');
@@ -1553,11 +1716,14 @@ function openRoundPrint(roundNumber: number) {
       return;
     }
 
+    const selection = projectionLoader.capture(selectedTournament.id);
+    if (!selection) return;
     setError(null);
     try {
       const text = await requestText(`/api/tournaments/${selectedTournament.id}/export/json`);
+      if (!projectionLoader.isCurrent(selection)) return;
       const pretty = JSON.stringify(JSON.parse(text), null, 2);
-      setBackupJson(pretty);
+      updateBackupJson(pretty);
       const now = new Date();
       const roundLabel = latestRoundNumber() === null ? 'start' : `r${latestRoundNumber()}`;
       const fileName = `${safeFileNamepart(selectedTournament.name)}_${roundLabel}_${backupTimestampSlug(now)}.json`;
@@ -1566,9 +1732,48 @@ function openRoundPrint(roundNumber: number) {
       setLastBackupAt(iso);
       setBackupRecommended(false);
       writeLocalStorage(`stm.lastBackup.${selectedTournament.id}`, iso);
-      setStatus(`✓ Lokales Backup gespeichert: ${fileName}`);
+      setStatus(lang === 'en' ? `✓ Local backup saved: ${fileName}` : `✓ Lokales Backup gespeichert: ${fileName}`);
     } catch (ex) {
-      setError(`Backup konnte NICHT erstellt werden: ${describeApiError(ex, lang)}`);
+      if (projectionLoader.isCurrent(selection)) setError(t('workflow.couldNOTCreateBackup', { p0: describeApiError(ex, lang) }));
+    }
+  }
+
+  function cancelBackupImport(): void {
+    backupImportGuard.invalidate();
+    setBackupImportPending(null);
+    setBackupImportBusy(false);
+  }
+
+  function updateBackupJson(value: string): void {
+    cancelBackupImport();
+    setBackupJson(value);
+  }
+
+  async function confirmBackupImport(): Promise<void> {
+    if (backupImportPending) await commitBackupImport(backupImportPending.request, true);
+  }
+
+  async function commitBackupImport(request: BackupImportRequest, overwriteExisting: boolean): Promise<void> {
+    if (!backupImportGuard.dispatch(request)) return;
+    setBackupImportBusy(true);
+    setError(null);
+    try {
+      const imported = await requestJson<Tournament>('/api/tournaments/import', {
+        method: 'POST',
+        body: JSON.stringify({ tournament: JSON.parse(request.payload), overwriteExisting })
+      });
+      if (!backupImportGuard.isCurrent(request)) return;
+      setBackupImportPending(null);
+      setSelectedId(imported.id);
+      setStatus(t('workflow.tournamentImported', { p0: imported.name }));
+      await refresh(imported.id);
+    } catch (ex) {
+      if (backupImportGuard.isCurrent(request)) {
+        setBackupImportPending(null);
+        reportActionFailure(t('workflow.couldNotImportTournament'), ex);
+      }
+    } finally {
+      if (backupImportGuard.finish(request)) setBackupImportBusy(false);
     }
   }
 
@@ -1580,20 +1785,37 @@ function openRoundPrint(roundNumber: number) {
     } catch (ex) {
       // Ein defektes Backup ist kein Backendfehler - der Bediener soll die
       // Datei pruefen, nicht den Server.
-      setError(`Backup konnte nicht gelesen werden: ${ex instanceof Error ? ex.message : String(ex)}`);
+      setError(t('workflow.couldNotReadBackup', { p0: describeJsonParseFailure(ex, lang) }));
       return;
     }
 
+    const summary = backupImportSummary(parsed);
+    if (!summary) {
+      setError(lang === 'en' ? 'The backup needs an unambiguous tournament ID and a rounds list.' : t('workflow.theBackupNeedsAnUnambiguousTournamentID'));
+      return;
+    }
+    const request = backupImportGuard.begin(JSON.stringify(parsed));
+    if (!request) return;
+    setBackupImportPending(null);
+    setBackupImportBusy(true);
     try {
-      const imported = await requestJson<Tournament>('/api/tournaments/import', {
-        method: 'POST',
-        body: JSON.stringify({ tournament: parsed, overwriteExisting: true })
-      });
-      setSelectedId(imported.id);
-      setStatus(`Turnier importiert: ${imported.name}`);
-      await refresh(imported.id);
+      // Read current targets without changing selection or the user's draft.
+      // If a matching ID is created later, overwrite=false makes the server reject it.
+      const current = await requestJson<Tournament[]>('/api/tournaments');
+      if (!backupImportGuard.isCurrent(request)) return;
+      const existing = current.find(item => item.id.toLowerCase() === summary.id);
+      if (existing) {
+        setBackupImportPending({ request, tournamentName: existing.name,
+          existingRoundCount: existing.rounds.length, backupRoundCount: summary.roundCount });
+        setBackupImportBusy(false);
+      } else {
+        await commitBackupImport(request, false);
+      }
     } catch (ex) {
-      reportActionFailure('Turnier konnte nicht importiert werden', ex);
+      if (backupImportGuard.finish(request)) {
+        setBackupImportBusy(false);
+        reportActionFailure(t('workflow.couldNotImportTournament'), ex);
+      }
     }
   }
 
@@ -1606,7 +1828,7 @@ function openRoundPrint(roundNumber: number) {
 
   function chess960Display(pairing: Pairing): string {
     if (!pairing.chess960StartPosition) {
-      return pairing.isBye ? 'spielfrei' : 'noch nicht gewürfelt';
+      return pairing.isBye ? 'spielfrei' : t('workflow.notRolledYet');
     }
 
     return `${pairing.chess960StartPosition.whiteBackRank} · SP ${pairing.chess960StartPosition.positionNumber}`;
@@ -1672,23 +1894,23 @@ function openRoundPrint(roundNumber: number) {
           black: board.black,
           resultLabel: board.resultLabel,
           note: board.note,
-          kind: board.isOpen ? 'offen' : board.isForfeit ? 'kampflos' : 'Hinweis'
+          kind: board.isOpen ? 'offen' : board.isForfeit ? t('workflow.forfeit') : t('workflow.notice')
         })))
       .slice(0, 12);
   }
 
   function resultReviewStatusLabel(): string {
     if (!selectedTournament || selectedTournament.rounds.length === 0) {
-      return 'noch keine Runde';
+      return t('workflow.noRoundYet');
     }
     if (totalOpenBoardCount() > 0) {
       return 'offene Ergebnisse';
     }
     if (unverifiedCompleteRoundCount() > 0) {
-      return 'Prüfung offen';
+      return t('workflow.reviewPending');
     }
     if (diagnosticWarningCount() > 0) {
-      return 'Hinweise prüfen';
+      return t('workflow.reviewNotices');
     }
     return 'bereit';
   }
@@ -1699,10 +1921,10 @@ function openRoundPrint(roundNumber: number) {
       return label;
     }
     switch (label) {
-      case 'noch keine Runde': return 'no round yet';
+      case t('workflow.noRoundYet'): return 'no round yet';
       case 'offene Ergebnisse': return 'open results';
-      case 'Prüfung offen': return 'review pending';
-      case 'Hinweise prüfen': return 'review notices';
+      case t('workflow.reviewPending'): return 'review pending';
+      case t('workflow.reviewNotices'): return 'review notices';
       case 'bereit': return 'ready';
       default: return label;
     }
@@ -1746,22 +1968,22 @@ function openRoundPrint(roundNumber: number) {
           countsForBuchholz: board.countsForBuchholz,
           countsForDirectAndSonneborn: board.countsForDirectAndSonneborn,
           countsForPerformance: board.countsForPerformance,
-          kind: board.note.toLowerCase().includes('bye') || board.note.toLowerCase().includes('spielfrei') || board.black.toLowerCase().includes('spielfrei') ? 'Bye/spielfrei' : 'kampflos'
+          kind: board.note.toLowerCase().includes('bye') || board.note.toLowerCase().includes('spielfrei') || board.black.toLowerCase().includes('spielfrei') ? t('workflow.byeNoGame') : t('workflow.forfeit')
         })))
       .slice(0, 20);
   }
 
   function byeForfeitAuditStatusLabel(): string {
     if (!selectedTournament || selectedTournament.rounds.length === 0) {
-      return 'noch keine Runde';
+      return t('workflow.noRoundYet');
     }
     if (totalForfeitBoardCount() > 0) {
-      return 'kampflos prüfen';
+      return t('workflow.reviewForfeits2');
     }
     if (totalByeBoardCount() > 0) {
       return 'Bye sichtbar';
     }
-    return 'keine Fälle';
+    return t('workflow.noCases');
   }
 
   function byeForfeitAuditStatusDisplayLabel(): string {
@@ -1770,20 +1992,20 @@ function openRoundPrint(roundNumber: number) {
       return label;
     }
     switch (label) {
-      case 'noch keine Runde': return 'no round yet';
-      case 'kampflos prüfen': return 'review forfeits';
+      case t('workflow.noRoundYet'): return 'no round yet';
+      case t('workflow.reviewForfeits2'): return 'review forfeits';
       case 'Bye sichtbar': return 'bye visible';
-      case 'keine Fälle': return 'no cases';
+      case t('workflow.noCases'): return 'no cases';
       default: return label;
     }
   }
 
   function byeForfeitAuditStatusClass(): string {
     const label = byeForfeitAuditStatusLabel();
-    if (label === 'keine Fälle') {
+    if (label === t('workflow.noCases')) {
       return 'bye-forfeit-status ok';
     }
-    if (label === 'kampflos prüfen') {
+    if (label === t('workflow.reviewForfeits2')) {
       return 'bye-forfeit-status warn';
     }
     return 'bye-forfeit-status info';
@@ -1814,13 +2036,13 @@ function openRoundPrint(roundNumber: number) {
     if (unverifiedRounds > 0) {
       issues.push(lang === 'en'
         ? `${unverifiedRounds} completed round(s) are not marked as reviewed.`
-        : `${unverifiedRounds} vollständige Runde(n) sind noch nicht als geprüft markiert.`);
+        : t('workflow.completeRoundSHaveNotBeenMarked', { p0: unverifiedRounds }));
     }
 
     if (nextRoundPreview?.pairingQuality.hasCriticalIssues) {
       issues.push(lang === 'en'
         ? 'The current pairing preview contains critical notes. This can be unavoidable in small events; pair the round only after a deliberate review.'
-        : 'Die aktuelle Auslosungsvorschau enthält kritische Hinweise. Bei kleinen Turnieren kann das unvermeidbar sein; nach bewusster Prüfung darf trotzdem ausgelost werden.');
+        : t('workflow.thePairingPreviewContainsCriticalNoticesThis'));
     }
 
     return issues;
@@ -1830,22 +2052,22 @@ function openRoundPrint(roundNumber: number) {
     const issues: string[] = [];
 
     if (!selectedTournament) {
-      issues.push(lang === 'en' ? 'No tournament selected.' : 'Kein Turnier ausgewählt.');
+      issues.push(lang === 'en' ? 'No tournament selected.' : t('workflow.noTournamentSelected'));
       return issues;
     }
 
     if (!currentProjection) {
-      issues.push(lang === 'en' ? 'Current tournament data must finish loading before pairing.' : 'Vor der Auslosung müssen die aktuellen Turnierdaten vollständig geladen sein.');
+      issues.push(lang === 'en' ? 'Current tournament data must finish loading before pairing.' : t('workflow.theCurrentTournamentDataMustBeFully'));
     }
 
     const activePlayers = activePlayerCount();
     if (activePlayers < 2) {
-      issues.push(lang === 'en' ? 'At least two active players are required to create pairings.' : 'Für eine Auslosung werden mindestens zwei aktive Spieler benötigt.');
+      issues.push(lang === 'en' ? 'At least two active players are required to create pairings.' : t('workflow.atLeastTwoActivePlayersAreNeeded'));
     }
 
     const openResults = pairingReadinessOpenResultCount();
     if (openResults > 0) {
-      issues.push(lang === 'en' ? `${openResults} open result(s) must be resolved before pairing the next round.` : `${openResults} offene Ergebnis(se) müssen vor der nächsten Auslosung geklärt werden.`);
+      issues.push(lang === 'en' ? `${openResults} open result(s) must be resolved before pairing the next round.` : t('workflow.resolvePendingResultSBeforeTheNext', { p0: openResults }));
     }
 
     if (selectedTournament.rounds.length >= selectedTournament.settings.plannedRounds) {
@@ -1857,7 +2079,7 @@ function openRoundPrint(roundNumber: number) {
 
   function pairingReadinessStatusLabel(): string {
     if (!selectedTournament) {
-      return lang === 'en' ? 'no tournament' : 'kein Turnier';
+      return lang === 'en' ? 'no tournament' : t('workflow.noTournament');
     }
 
     if (pairingReadinessBlockingIssues().length > 0) {
@@ -1865,7 +2087,7 @@ function openRoundPrint(roundNumber: number) {
     }
 
     if (pairingReadinessUnverifiedRoundCount() > 0 || nextRoundPreview?.pairingQuality.hasCriticalIssues) {
-      return lang === 'en' ? 'review' : 'prüfen';
+      return lang === 'en' ? 'review' : t('workflow.review2');
     }
 
     return lang === 'en' ? 'ready' : 'bereit';
@@ -1906,7 +2128,7 @@ function openRoundPrint(roundNumber: number) {
     if (current === 0) {
       return lang === 'en' ? `none yet · ${planned} planned` : `noch keine · geplant ${planned}`;
     }
-    return lang === 'en' ? `Round ${current} of ${planned}` : `Runde ${current} von ${planned}`;
+    return lang === 'en' ? `Round ${current} of ${planned}` : t('workflow.roundOf', { p0: current, p1: planned });
   }
 
   type OperatorStep = {
@@ -1921,21 +2143,21 @@ function openRoundPrint(roundNumber: number) {
     if (!selectedTournament) {
       return {
         tone: 'neutral',
-        title: lang === 'en' ? 'Create or select a tournament' : 'Turnier anlegen oder auswählen',
-        detail: lang === 'en' ? 'Create a tournament or choose one from the list.' : 'Links ein Turnier anlegen oder aus der Liste wählen.'
+        title: lang === 'en' ? 'Create or select a tournament' : t('workflow.createOrSelectATournament'),
+        detail: lang === 'en' ? 'Create a tournament or choose one from the list.' : t('workflow.createATournamentOnTheLeftOr')
       };
     }
 
     if (!currentProjection) {
-      return {tone:'neutral', title:lang === 'en' ? 'Tournament data is loading' : 'Turnierdaten werden geladen',
-        detail:lang === 'en' ? 'Pairing readiness is shown once the current data is available.' : 'Die Auslosungsbereitschaft wird nach dem Laden der aktuellen Daten angezeigt.'};
+      return {tone:'neutral', title:lang === 'en' ? 'Tournament data is loading' : t('workflow.loadingTournamentData'),
+        detail:lang === 'en' ? 'Pairing readiness is shown once the current data is available.' : t('workflow.pairingReadinessAppearsAfterTheCurrentData')};
     }
 
     if (activePlayerCount() < 2) {
       return {
         tone: 'warn',
         title: lang === 'en' ? 'Add participants' : 'Teilnehmer erfassen',
-        detail: lang === 'en' ? `At least two active players are required (${activePlayerCount()} now).` : `Mindestens zwei aktive Spieler nötig (aktuell ${activePlayerCount()}). Manuell oder per CSV/FIDE-Suche.`
+        detail: lang === 'en' ? `At least two active players are required (${activePlayerCount()} now).` : t('workflow.atLeastTwoActivePlayersAreNeeded2', { p0: activePlayerCount() })
       };
     }
 
@@ -1946,7 +2168,7 @@ function openRoundPrint(roundNumber: number) {
       return {
         tone: 'ok',
         title: t('rounds.firstTitle'),
-        detail: lang === 'en' ? 'Review the preview, then create the pairings.' : 'Vorschau ansehen, prüfen, dann auslosen.',
+        detail: lang === 'en' ? 'Review the preview, then create the pairings.' : t('workflow.viewAndReviewThePreviewThenPair'),
         actionLabel: t('rounds.preview'),
         action: () => void previewNextRound()
       };
@@ -1957,8 +2179,8 @@ function openRoundPrint(roundNumber: number) {
       return {
         tone: 'danger',
         title: lang === 'en' ? `Enter results (${openResults} open)` : `Ergebnisse eintragen (${openResults} offen)`,
-        detail: lang === 'en' ? `Round ${latestRoundNumber()} is active. Complete every board before pairing the next round.` : `Runde ${latestRoundNumber()} läuft. Erst wenn alle Bretter ein Ergebnis haben, lässt sich die nächste Runde auslosen.`,
-        actionLabel: lang === 'en' ? 'Print round sheet' : 'Rundenblatt drucken',
+        detail: lang === 'en' ? `Round ${latestRoundNumber()} is active. Complete every board before pairing the next round.` : t('workflow.roundIsInProgressEveryBoardNeeds', { p0: latestRoundNumber() ?? '—' }),
+        actionLabel: lang === 'en' ? 'Print round sheet' : t('workflow.printRoundSheet'),
         action: () => openLatestRoundPrint()
       };
     }
@@ -1966,20 +2188,20 @@ function openRoundPrint(roundNumber: number) {
     if (rounds >= planned) {
       return {
         tone: 'ok',
-        title: lang === 'en' ? 'Review final standings' : 'Abschluss / Tabelle prüfen',
-        detail: lang === 'en' ? `All ${planned} planned rounds are complete. Review, print and back up the final standings.` : `Alle ${planned} geplanten Runden sind gespielt. Finale Tabelle prüfen, drucken und Abschluss-Backup ziehen.`,
-        actionLabel: lang === 'en' ? 'Tournament print view' : 'Turnier-Druckansicht',
+        title: lang === 'en' ? 'Review final standings' : t('workflow.finishReviewStandings'),
+        detail: lang === 'en' ? `All ${planned} planned rounds are complete. Review, print and back up the final standings.` : t('workflow.allPlannedRoundsHaveBeenPlayedReview', { p0: planned }),
+        actionLabel: lang === 'en' ? 'Tournament print view' : t('workflow.tournamentPrintView'),
         action: () => openTournamentExport('print/html')
       };
     }
 
     const unverified = pairingReadinessUnverifiedRoundCount();
     const detail = unverified > 0
-      ? (lang === 'en' ? `All results are entered. ${unverified} complete round(s) are not marked reviewed.` : `Alle Ergebnisse eingetragen. ${unverified} vollständige Runde(n) noch nicht als geprüft markiert.`)
-      : (lang === 'en' ? 'All results are entered. Review the preview, then pair the next round.' : 'Alle Ergebnisse eingetragen. Vorschau ansehen, prüfen, dann auslosen.');
+      ? (lang === 'en' ? `All results are entered. ${unverified} complete round(s) are not marked reviewed.` : t('workflow.allResultsEnteredCompleteRoundSHave', { p0: unverified }))
+      : (lang === 'en' ? 'All results are entered. Review the preview, then pair the next round.' : t('workflow.allResultsEnteredReviewThePreviewThen'));
     return {
       tone: unverified > 0 ? 'warn' : 'ok',
-      title: lang === 'en' ? `Preview / pair round ${rounds + 1}` : `Vorschau erzeugen / Runde ${rounds + 1} auslosen`,
+      title: lang === 'en' ? `Preview / pair round ${rounds + 1}` : t('workflow.createPreviewPairRound', { p0: rounds + 1 }),
       detail,
       actionLabel: t('rounds.preview'),
       action: () => void previewNextRound()
@@ -1987,23 +2209,24 @@ function openRoundPrint(roundNumber: number) {
   }
   function applyAssistantRecommendation(): void {
     setFormat(assistantRecommendation.format);
-    setSettingsForm({
-      ...settingsForm,
+    setNewTournamentSettingsForm({
+      ...newTournamentSettingsForm,
       format: assistantRecommendation.format,
       scoringSystem: assistantRecommendation.scoringSystem,
       plannedRounds: assistantRecommendation.plannedRounds.toString(),
       tiebreaks: assistantRecommendation.format === 0 ? [4, 0, 1, 99] : defaultTiebreaks
     });
-    setNewTournamentName(`${assistantScenarioOptions.find(option => option.value === assistantForm.scenario)?.label ?? 'Turnier'} ${new Date().getFullYear()}`);
-    setStatus('Assistenten-Empfehlung in Neuanlage und Einstellungen übernommen. Bei bestehendem Turnier bitte Einstellungen speichern.');
+    setNewTournamentName(`${optionLabel(assistantScenarioOptions.find(option => option.value === assistantForm.scenario), lang === 'en')} ${new Date().getFullYear()}`);
+    setStatus(t('workflow.assistantRecommendationAppliedToTheNewTournament'));
     setActiveMainTab('admin');
+    setIsCreateTournamentOpen(true);
   }
 
 
   function askKnowledgeChat(questionOverride?: string): void {
     const question = (questionOverride ?? knowledgeChatInput).trim();
     if (!question) {
-      setError('Bitte eine Frage für die lokale Turnierhilfe eingeben.');
+      setError(t('workflow.enterAQuestionForLocalTournamentHelp'));
       return;
     }
 
@@ -2013,10 +2236,10 @@ function openRoundPrint(roundNumber: number) {
       text: question,
       sources: []
     };
-    const answer = buildLocalKnowledgeAnswer(question, selectedTournament, assistantRecommendation);
+    const answer = buildLocalKnowledgeAnswer(question, selectedTournament, assistantRecommendation, lang);
     setKnowledgeChatMessages(previous => [...previous, userMessage, answer]);
     setKnowledgeChatInput('');
-    setStatus('Lokale Turnierhilfe hat geantwortet. Keine externen KI-Dienste verwendet.');
+    setStatus(t('workflow.localTournamentHelpHasAnsweredNoExternal'));
   }
 
   function correctionJournalItems() {
@@ -2036,13 +2259,13 @@ function openRoundPrint(roundNumber: number) {
     for (const player of selectedTournament.players.filter(player => player.status !== 0)) {
       items.push({
         key: `player-status-${player.id}`,
-        scope: 'Teilnehmer',
+        scope: t('nav.participants'),
         severity: 'warning',
         title: lang === 'en'
           ? `${player.name} is ${statusLabel(player.status, true).toLowerCase()}`
           : `${player.name} ist ${statusLabel(player.status).toLowerCase()}`,
         detail: `${player.name}${player.club ? ` · ${player.club}` : ''}${player.notes ? ` · ${player.notes}` : ''}`,
-        action: 'Teilnehmerstatus vor der nächsten Auslosung und vor Aushängen bewusst prüfen.'
+        action: t('workflow.reviewParticipantStatusBeforeTheNextPairing')
       });
     }
 
@@ -2054,31 +2277,31 @@ function openRoundPrint(roundNumber: number) {
       if (round.isLocked) {
         items.push({
           key: `round-locked-${round.roundNumber}`,
-          scope: 'Runde',
+          scope: t('operator.round'),
           severity: 'info',
-          title: `Runde ${round.roundNumber} ist gesperrt`,
+          title: t('workflow.roundIsLocked', { p0: round.roundNumber }),
           detail: `${roundStatus} · ${round.pairings.length} Brett(er)`,
-          action: 'Gesperrte Runde nur für bewusste Turnierleiter-Korrekturen wieder öffnen.'
+          action: t('workflow.unlockARoundOnlyForDeliberateTournament')
         });
       }
 
       if (round.isVerified) {
         items.push({
           key: `round-verified-${round.roundNumber}`,
-          scope: 'Runde',
+          scope: t('operator.round'),
           severity: 'info',
-          title: `Runde ${round.roundNumber} ist geprüft`,
+          title: t('workflow.roundIsReviewed', { p0: round.roundNumber }),
           detail: `${roundStatus} · ${round.pairings.length} Brett(er)`,
-          action: 'Geprüfte Runde vor Änderungen nur nach Rücksprache/Turnierleiterentscheidung öffnen.'
+          action: t('workflow.reopenAReviewedRoundOnlyAfterConsultation')
         });
       } else if (round.pairings.length > 0 && openBoards === 0) {
         items.push({
           key: `round-unverified-${round.roundNumber}`,
-          scope: 'Runde',
+          scope: t('operator.round'),
           severity: 'warning',
-          title: `Runde ${round.roundNumber} ist vollständig, aber nicht geprüft`,
+          title: t('workflow.roundIsCompleteButNotReviewed', { p0: round.roundNumber }),
           detail: `${roundStatus} · keine offenen Bretter laut Diagnose`,
-          action: 'Vor nächster Auslosung Ergebniszettel prüfen und Runde als geprüft markieren.'
+          action: t('workflow.checkResultSheetsAndMarkTheRound')
         });
       }
 
@@ -2087,25 +2310,25 @@ function openRoundPrint(roundNumber: number) {
         const lowerResult = resultText.toLowerCase();
         const whiteName = playerNameById(pairing.whitePlayerId);
         const blackName = pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId);
-        const hasSpecialResult = pairing.isBye || lowerResult.includes('kampflos') || lowerResult.includes('bye') || lowerResult.includes('spielfrei');
+        const hasSpecialResult = pairing.isBye || lowerResult.includes(t('workflow.forfeit')) || lowerResult.includes('bye') || lowerResult.includes('spielfrei');
 
         if (pairing.isManualOverride) {
           items.push({
             key: `manual-pairing-${round.roundNumber}-${pairing.boardNumber}`,
-            scope: 'Paarung',
+            scope: t('workflow.pairing'),
             severity: 'critical',
-            title: `Manuelle Paarung R${round.roundNumber}/B${pairing.boardNumber}`,
+            title: t('workflow.manualPairingRB', { p0: round.roundNumber, p1: pairing.boardNumber }),
             detail: `${whiteName} – ${blackName}${pairing.notes ? ` · ${pairing.notes}` : ''}`,
-            action: 'Manuelle Paarung vor Veröffentlichung, Auslosung und Export gegen Turnierleiterentscheidung prüfen.'
+            action: t('workflow.checkManualPairingsAgainstTheTournamentDirector')
           });
         }
 
         if (hasSpecialResult) {
           items.push({
             key: `special-result-${round.roundNumber}-${pairing.boardNumber}`,
-            scope: 'Ergebnis',
+            scope: t('rounds.result'),
             severity: pairing.isBye ? 'info' : 'warning',
-            title: `${pairing.isBye ? 'Bye/spielfrei' : 'Sonderergebnis'} R${round.roundNumber}/B${pairing.boardNumber}`,
+            title: `${pairing.isBye ? t('workflow.byeNoGame') : 'Sonderergebnis'} R${round.roundNumber}/B${pairing.boardNumber}`,
             detail: `${whiteName} – ${blackName} · ${resultText}`,
             action: 'Wertungsauswirkung in Bye-/Kampflos-Audit und Tabelle kontrollieren.'
           });
@@ -2128,12 +2351,12 @@ function openRoundPrint(roundNumber: number) {
         ? 'warning'
         : 'ready';
   const correctionJournalStatusLabel = !selectedTournament
-    ? 'kein Turnier'
+    ? t('workflow.noTournament')
     : correctionJournalCriticalCount > 0
-      ? 'kritisch'
+      ? t('workflow.critical')
       : correctionJournalWarningCount > 0
-        ? 'prüfen'
-        : 'unauffällig';
+        ? t('workflow.review2')
+        : t('workflow.noIssues');
 
   const readinessNotice = describeReadiness(backendReadiness, lang);
   // Waehrend der Startphase bleiben schreibende Aktionen gesperrt: ein Klick in
@@ -2153,14 +2376,14 @@ function openRoundPrint(roundNumber: number) {
           {health && <span className="ok">{health.app} {health.version}: {health.status}</span>}
           {!health && backendReadiness === 'starting' && <span>{t('backend.checking')}</span>}
           {!health && backendReadiness === 'unreachable' && <span className="error">{t('backend.offline')}</span>}
-          {health?.database && <small>Lokale Datenbank: {health.database}</small>}
+          {health?.database && <small>{t('workflow.localDatabase')} {health.database}</small>}
           <LanguageSwitcher />
           <button type="button" className="small secondary theme-toggle" onClick={() => setTheme(previous => previous === 'dark' ? 'light' : 'dark')} aria-pressed={theme === 'light'}>
             {theme === 'dark' ? t('theme.light') : t('theme.dark')}
           </button>
           <div className={`pwa-status ${pwaStatus}`}>
-            <span>{pwaStatusLabel(pwaStatus)}</span>
-            {pwaInstallPrompt && <button type="button" className="small secondary" onClick={() => void installPwa()}>Installieren</button>}
+            <span>{pwaStatusLabel(pwaStatus, lang === 'en')}</span>
+            {pwaInstallPrompt && <button type="button" className="small secondary" onClick={() => void installPwa()}>{t('workflow.install')}</button>}
           </div>
         </div>
       </header>
@@ -2180,10 +2403,15 @@ function openRoundPrint(roundNumber: number) {
       <section className="status-line" role="status" aria-live="polite" aria-atomic="true">
         <span>{status}</span>
         {selectedTournament && !currentProjection && <span aria-busy={projection.phase === 'loading'}>{projection.phase === 'error'
-          ? (lang === 'en' ? 'Tournament data could not be loaded.' : 'Turnierdaten konnten nicht geladen werden.')
-          : (lang === 'en' ? 'Loading current tournament data…' : 'Aktuelle Turnierdaten werden geladen…')}</span>}
+          ? (lang === 'en' ? 'Tournament data could not be loaded.' : t('workflow.couldNotLoadTournamentData'))
+          : (lang === 'en' ? 'Loading current tournament data…' : t('workflow.loadingCurrentTournamentData'))}</span>}
+        {selectedTournament && projection.id === selectedTournament.id && projection.phase === 'error' && (
+          <button type="button" className="small secondary derived-retry" onClick={() => void retryDerivedProjection()}>{t('workflow.retryTournamentData')}</button>
+        )}
         {error && <strong className="error" role="alert">{error}</strong>}
       </section>
+
+      <OfflineResultQueuePanel store={resultQueueStore} tournaments={tournaments} lang={lang} onRefresh={() => refresh()} />
 
       {selectedTournament && (() => {
         const step = nextOperatorStep();
@@ -2221,7 +2449,7 @@ function openRoundPrint(roundNumber: number) {
                 className={outdoorMode ? '' : 'secondary'}
                 aria-pressed={outdoorMode}
                 onClick={() => setOutdoorMode(previous => !previous)}
-                title={lang === 'en' ? 'Larger text and controls with stronger contrast for outdoor use. Stored locally.' : 'Größere Schrift, größere Buttons und höherer Kontrast für den Einsatz draußen. Wird lokal gespeichert.'}
+                title={lang === 'en' ? 'Larger text and controls with stronger contrast for outdoor use. Stored locally.' : t('workflow.largerTextAndButtonsWithHigherContrast')}
               >
                 {outdoorMode ? (lang === 'en' ? '☀ Tournament mode ON' : '☀ Turniertag-Modus AN') : (lang === 'en' ? '☀ Tournament mode OFF' : '☀ Turniertag-Modus AUS')}
               </button>
@@ -2230,7 +2458,7 @@ function openRoundPrint(roundNumber: number) {
                 className={backupRecommended ? '' : 'secondary'}
                 onClick={() => void exportTournamentJson()}
                 disabled={!selectedTournament}
-                title={lang === 'en' ? 'Downloads a local JSON snapshot with tournament name, round and timestamp. No cloud.' : 'Lädt einen lokalen JSON-Snapshot mit Turniername, Runde und Zeitstempel herunter. Keine Cloud.'}
+                title={lang === 'en' ? 'Downloads a local JSON snapshot with tournament name, round and timestamp. No cloud.' : t('workflow.downloadsALocalJSONSnapshotWithTournament')}
               >
                 {lang === 'en' ? '💾 Create backup now' : '💾 Jetzt Backup erstellen'}
               </button>
@@ -2242,29 +2470,21 @@ function openRoundPrint(roundNumber: number) {
       {destructiveDialog?.action === 'reset' && (
         <ConfirmDialog
           open
-          title={lang === 'en' ? 'Reset tournament?' : 'Turnier zurücksetzen?'}
+          title={lang === 'en' ? 'Reset tournament?' : t('workflow.resetTournament2')}
           description={
             lang === 'en'
               ? `Reset "${destructiveDialog.tournamentName}" back to its starting state?`
-              : `Turnier „${destructiveDialog.tournamentName}“ wirklich auf Start zurücksetzen?`
+              : t('workflow.resetTournamentToItsStartingState', { p0: destructiveDialog.tournamentName })
           }
-          consequences={
-            lang === 'en'
-              ? [
-                  'Participants and settings are kept.',
-                  'All rounds, results and Chess960 starting positions are removed.',
-                  'Recommendation: create a backup first.'
-                ]
-              : [
-                  'Teilnehmer und Einstellungen bleiben erhalten.',
-                  'Alle Runden, Ergebnisse und Chess960-Startstellungen werden entfernt.',
-                  'Empfehlung: vorher ein Backup erstellen.'
-                ]
-          }
-          confirmLabel={lang === 'en' ? 'Reset tournament' : 'Turnier zurücksetzen'}
-          cancelLabel={lang === 'en' ? 'Cancel' : 'Abbrechen'}
+          consequences={[
+            t('safety.keepParticipantsSettings'),
+            t('workflow.allRoundsResultsAndChess960StartingPositions'),
+            t('safety.backupBeforeAction')
+          ]}
+          confirmLabel={lang === 'en' ? 'Reset tournament' : t('workflow.resetTournament')}
+          cancelLabel={t('common.cancel')}
           busy={destructiveDialog.busy}
-          busyLabel={lang === 'en' ? 'Resetting…' : 'Wird zurückgesetzt…'}
+          busyLabel={lang === 'en' ? 'Resetting…' : t('workflow.resetting')}
           errorMessage={destructiveDialog.error}
           onConfirm={() => void confirmDestructiveDialog()}
           onCancel={closeDestructiveDialog}
@@ -2275,30 +2495,49 @@ function openRoundPrint(roundNumber: number) {
         <ConfirmDialog
           open
           destructive
-          title={lang === 'en' ? 'Delete tournament permanently?' : 'Turnier endgültig löschen?'}
+          title={lang === 'en' ? 'Delete tournament permanently?' : t('workflow.permanentlyDeleteTournament')}
           description={
             lang === 'en'
               ? `"${destructiveDialog.tournamentName}" including all participants, rounds and results will be removed from the local database. This cannot be undone and is not the same as resetting.`
-              : `„${destructiveDialog.tournamentName}“ wird mit allen Teilnehmern, Runden und Ergebnissen endgültig aus der lokalen Datenbank entfernt. Das lässt sich nicht rückgängig machen und ist nicht dasselbe wie Zurücksetzen.`
+              : t('workflow.andAllItsParticipantsRoundsAndResults', { p0: destructiveDialog.tournamentName })
           }
-          consequences={
-            lang === 'en'
-              ? ['Recommendation: create a backup first.']
-              : ['Empfehlung: vorher ein Backup erstellen.']
-          }
+          consequences={[t('safety.backupBeforeAction')]}
           requireTypedConfirmation={destructiveDialog.tournamentName}
-          typedConfirmationLabel={
-            lang === 'en'
-              ? 'Type the tournament name exactly to confirm:'
-              : 'Zur Sicherheit den Turniernamen exakt eingeben:'
-          }
-          confirmLabel={lang === 'en' ? 'Delete tournament' : 'Turnier löschen'}
-          cancelLabel={lang === 'en' ? 'Cancel' : 'Abbrechen'}
+          typedConfirmationLabel={t('safety.typeExactTournamentName')}
+          confirmLabel={lang === 'en' ? 'Delete tournament' : t('workflow.deleteTournament')}
+          cancelLabel={t('common.cancel')}
           busy={destructiveDialog.busy}
-          busyLabel={lang === 'en' ? 'Deleting…' : 'Wird gelöscht…'}
+          busyLabel={lang === 'en' ? 'Deleting…' : t('workflow.deleting')}
           errorMessage={destructiveDialog.error}
           onConfirm={() => void confirmDestructiveDialog()}
           onCancel={closeDestructiveDialog}
+        />
+      )}
+
+      {backupImportPending && (
+        <ConfirmDialog
+          key={backupImportPending.request.generation}
+          open
+          destructive
+          title={lang === 'en' ? 'Replace the existing tournament?' : t('workflow.replaceExistingTournament')}
+          description={lang === 'en'
+            ? `The backup belongs to "${backupImportPending.tournamentName}". This tournament already exists and will be replaced completely.`
+            : t('workflow.thisBackupBelongsToTheExistingTournament', { p0: backupImportPending.tournamentName })}
+          consequences={lang === 'en'
+            ? [`Existing tournament: ${backupImportPending.existingRoundCount} round(s). Backup: ${backupImportPending.backupRoundCount} round(s).`,
+              'All current participants, settings, rounds, results and audit entries will be replaced by the backup. Changes made since the backup will be lost.',
+              'Create a separate backup of the current tournament before replacing it if you need to keep those changes.']
+            : [t('workflow.existingTournamentRoundSBackupRoundS', { p0: backupImportPending.existingRoundCount, p1: backupImportPending.backupRoundCount }),
+              t('workflow.theBackupReplacesCurrentParticipantsSettingsRounds'),
+              t('workflow.exportTheCurrentTournamentSeparatelyBeforeReplacement')]}
+          requireTypedConfirmation={backupImportPending.tournamentName}
+          typedConfirmationLabel={t('safety.typeExactTournamentName')}
+          confirmLabel={t('safety.replaceWithBackup')}
+          cancelLabel={t('common.cancel')}
+          busy={backupImportBusy}
+          busyLabel={t('safety.importing')}
+          onConfirm={() => void confirmBackupImport()}
+          onCancel={cancelBackupImport}
         />
       )}
 
@@ -2312,19 +2551,24 @@ function openRoundPrint(roundNumber: number) {
           confirmLabel={actionConfirm.confirmLabel}
           cancelLabel={actionConfirm.cancelLabel}
           busy={actionConfirmBusy}
-          busyLabel={lang === 'en' ? 'Working…' : 'Wird ausgeführt…'}
+          busyLabel={lang === 'en' ? 'Working…' : t('workflow.working')}
           onConfirm={() => void confirmActionDialog()}
-          onCancel={() => { if (!actionConfirmBusy) { setActionConfirm(null); } }}
+          onCancel={() => {
+            if (!actionConfirmBusy && !actionConfirmInFlight.current) {
+              actionConfirm.onCancel?.();
+              setActionConfirm(current => current === actionConfirm ? null : current);
+            }
+          }}
         />
       )}
 
       {nextRoundPreview && isNextRoundPreviewDialogOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}>
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : t('workflow.roundPairingPreview', { p0: nextRoundPreview.roundNumber })}>
           <article className={`card preview-card preview-modal ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
             <div className="preview-card-header">
               <div>
-                <p className="eyebrow">{lang === 'en' ? 'Preview · not saved yet' : 'Popup-Vorschau · noch nicht gespeichert'}</p>
-                <h3>{lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}</h3>
+                <p className="eyebrow">{lang === 'en' ? 'Preview · not saved yet' : t('workflow.popupPreviewNotSavedYet')}</p>
+                <h3>{lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : t('workflow.roundPairingPreview', { p0: nextRoundPreview.roundNumber })}</h3>
                 <p className="muted">{nextRoundPreview.summary}</p>
               </div>
               <div className="preview-score">
@@ -2333,7 +2577,7 @@ function openRoundPrint(roundNumber: number) {
               </div>
             </div>
             <div className="preview-metrics">
-              <span>{nextRoundPreview.boardCount} {lang === 'en' ? 'boards' : 'Bretter'}</span>
+              <span>{nextRoundPreview.boardCount} {lang === 'en' ? 'boards' : t('workflow.boards2')}</span>
               <span>{nextRoundPreview.pairingQuality.rematchCount} Rematches</span>
               <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} {lang === 'en' ? 'score-group findings' : 'Scoregruppen-Hinweise'}</span>
               <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} {lang === 'en' ? 'colour-sequence risks' : 'Farbfolge-Risiken'}</span>
@@ -2341,14 +2585,14 @@ function openRoundPrint(roundNumber: number) {
             </div>
             {nextRoundPreview.pairingQuality.hasCriticalIssues && (
               <div className="preview-warning critical">
-                <strong>{lang === 'en' ? 'Review findings without automatically blocking:' : 'Hinweise prüfen, aber nicht automatisch blockieren:'}</strong> {lang === 'en' ? 'In small tournaments, rematches and score-group deviations can be unavoidable.' : 'Bei kleinen Turnieren sind Rematches und Scoregruppen-Abweichungen häufig unvermeidbar.'}
+                <strong>{lang === 'en' ? 'Review findings without automatically blocking:' : t('workflow.reviewNoticesWithoutAutomaticallyBlockingPairing')}</strong> {lang === 'en' ? 'In small tournaments, rematches and score-group deviations can be unavoidable.' : t('workflow.rematchesAndScoreGroupDeviationsAreOften')}
               </div>
             )}
             {nextRoundPreview.messages.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.messages.map((message, index) => <li key={`preview-modal-message-${index}`}>{message}</li>)}</ul>}
             {nextRoundPreview.pairingQuality.findings.length > 0 && <ul className="message-list preview-message-list">{nextRoundPreview.pairingQuality.findings.map((finding, index) => <li key={`preview-modal-quality-${index}`}>{finding}</li>)}</ul>}
             <div className="table-scroll compact preview-pairings preview-modal-table">
               <table>
-                <thead><tr><th>{lang === 'en' ? 'Board' : 'Brett'}</th><th>{lang === 'en' ? 'White' : 'Weiß'}</th><th>{lang === 'en' ? 'Black' : 'Schwarz'}</th><th>{lang === 'en' ? 'Score before round' : 'Score vor Runde'}</th><th>{lang === 'en' ? 'Findings' : 'Hinweise'}</th></tr></thead>
+                <thead><tr><th>{lang === 'en' ? 'Board' : t('rounds.board')}</th><th>{lang === 'en' ? 'White' : t('rounds.white')}</th><th>{lang === 'en' ? 'Black' : t('rounds.black')}</th><th>{lang === 'en' ? 'Score before round' : t('workflow.scoreBeforeRound')}</th><th>{lang === 'en' ? 'Findings' : t('workflow.notices')}</th></tr></thead>
                 <tbody>
                   {nextRoundPreview.pairingQuality.boards.map(board => (
                     <tr key={`preview-modal-board-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
@@ -2363,48 +2607,48 @@ function openRoundPrint(roundNumber: number) {
               </table>
             </div>
             <div className="actions preview-actions">
-              <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Pair this round now' : 'Diese Runde jetzt auslosen'}</button>
-              <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>{lang === 'en' ? 'Open print view' : 'Druckansicht öffnen'}</button>
-              <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>{lang === 'en' ? 'Export CSV' : 'CSV exportieren'}</button>
-              <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(false)}>{lang === 'en' ? 'Close' : 'Schließen'}</button>
+              <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Pair this round now' : t('workflow.pairThisRoundNow')}</button>
+              <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>{lang === 'en' ? 'Open print view' : t('workflow.openPrintView')}</button>
+              <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>{lang === 'en' ? 'Export CSV' : t('workflow.exportCSV')}</button>
+              <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(false)}>{lang === 'en' ? 'Close' : t('common.close')}</button>
             </div>
           </article>
         </div>
       )}
 
-      {chess960DialogRound && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Schachwürfel Runde ${chess960DialogRound.roundNumber}`}>
+      {chess960DialogRound && chess960Guard.isCurrent(chess960DialogToken) && chess960DialogToken.tournamentId === selectedId && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t('workflow.chessDiceRound2', { p0: chess960DialogRound.roundNumber })}>
           <article className="card chess960-modal">
             <div className="preview-card-header">
               <div>
-                <p className="eyebrow">Schachwürfel · Chess960</p>
-                <h3>Schachwürfel Runde {chess960DialogRound.roundNumber}</h3>
-                <p className="muted">Pro regulärem Brett wird eine gültige Chess960-Startstellung ausgewürfelt (Läufer verschiedenfarbig, König zwischen den Türmen). Sie wird am Brett gespeichert und bleibt nach Reload/Backup erhalten.</p>
+                <p className="eyebrow">{t('workflow.chessDiceChess960')}</p>
+                <h3>{t('workflow.chessDiceRound')} {chess960DialogRound.roundNumber}</h3>
+                <p className="muted">{t('workflow.eachRegularBoardReceivesALegalRandom')}</p>
               </div>
               <div className="preview-score">
                 <strong>{chess960PositionCount(chess960DialogRound)}</strong>
-                <span>von {chess960GameBoardCount(chess960DialogRound)} Brettern</span>
+                <span>{t('workflow.of')} {chess960GameBoardCount(chess960DialogRound)} {t('workflow.boards')}</span>
               </div>
             </div>
 
             <ChessDie rolling={chess960Rolling} spin={diceSpin} face={diceFace} />
             <p className="dice-result-line">
               {chess960Rolling
-                ? 'Der Würfel rollt …'
+                ? t('workflow.rollingTheDice')
                 : chess960HasRolled
-                  ? `Gewürfelt: ${diceFaceNames[diceFace]} ${diceFaceGlyphs[diceFace]} · ${chess960PositionCount(chess960DialogRound)} gültige Startstellung(en) gespeichert.`
-                  : 'Bereit zum Würfeln. Eine komplette Chess960-Auslosung pro Brett wird erzeugt.'}
+                  ? t('workflow.rolledLegalStartingPositionSSaved', { p0: [t('dice.king'), t('dice.queen'), t('dice.rook'), t('dice.bishop'), t('dice.knight'), t('dice.pawn')][diceFace], p1: diceFaceGlyphs[diceFace], p2: chess960PositionCount(chess960DialogRound) })
+                  : t('workflow.readyToRollACompleteChess960Starting')}
             </p>
             <div className="dice-modal-actions">
               <button type="button" onClick={() => void performChess960Roll(chess960DialogRound)} disabled={chess960Rolling || chess960DialogRound.isLocked || chess960DialogRound.isVerified || chess960GameBoardCount(chess960DialogRound) === 0}>
-                {chess960Rolling ? 'Würfelt …' : chess960PositionCount(chess960DialogRound) > 0 ? '🎲 Neu würfeln' : '🎲 Würfeln'}
+                {chess960Rolling ? t('workflow.rolling') : chess960PositionCount(chess960DialogRound) > 0 ? t('workflow.rollAgain') : t('workflow.roll')}
               </button>
             </div>
 
             {chess960PositionCount(chess960DialogRound) > 0 && (
               <div className="table-scroll compact chess960-modal-table">
                 <table>
-                  <thead><tr><th>Brett</th><th>Paarung</th><th>Startstellung Weiß</th><th>Startstellung Schwarz</th><th>ID / Seed</th></tr></thead>
+                  <thead><tr><th>{t('rounds.board')}</th><th>{t('workflow.pairing')}</th><th>{t('workflow.whiteStartingPosition')}</th><th>{t('workflow.blackStartingPosition')}</th><th>ID / Seed</th></tr></thead>
                   <tbody>
                     {chess960DialogRound.pairings.map(pairing => (
                       <tr key={`chess960-modal-${chess960DialogRound.roundNumber}-${pairing.boardNumber}`}>
@@ -2420,8 +2664,8 @@ function openRoundPrint(roundNumber: number) {
               </div>
             )}
             <div className="actions preview-actions">
-              <button type="button" className="secondary" onClick={() => openRoundPrint(chess960DialogRound.roundNumber)} disabled={chess960PositionCount(chess960DialogRound) === 0}>Rundenblatt drucken</button>
-              <button type="button" onClick={() => setChess960DialogRound(null)} disabled={chess960Rolling}>Schließen</button>
+              <button type="button" className="secondary" onClick={() => openRoundPrint(chess960DialogRound.roundNumber)} disabled={chess960PositionCount(chess960DialogRound) === 0}>{t('workflow.printRoundSheet')}</button>
+              <button type="button" onClick={closeChess960Dialog} disabled={chess960Rolling}>{t('common.close')}</button>
             </div>
           </article>
         </div>
@@ -2439,30 +2683,30 @@ function openRoundPrint(roundNumber: number) {
         const diceUrl = `http://${host}${port}/?dice=${selectedTournament.id}&round=${round.roundNumber}&board=${pairing.boardNumber}`;
         const hostIsLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
         return (
-          <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Würfeln Brett ${pairing.boardNumber}`} onClick={() => setBoardDiceModal(null)}>
+          <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t('workflow.rollBoard', { p0: pairing.boardNumber })} onClick={() => setBoardDiceModal(null)}>
             <article className="card chess960-modal board-dice-modal" onClick={(event: React.MouseEvent) => event.stopPropagation()}>
               <div className="preview-card-header">
                 <div>
-                  <p className="eyebrow">Schachwürfel · Chess960 · Einzelbrett</p>
+                  <p className="eyebrow">{t('workflow.chessDiceChess960SingleBoard')}</p>
                   <h3>{selectedTournament.name}</h3>
-                  <p className="muted">Runde {round.roundNumber} · Brett {pairing.boardNumber}</p>
-                  <p className="board-dice-pairing"><strong>{playerNameById(pairing.whitePlayerId)}</strong> – {pairing.isBye ? 'spielfrei' : <strong>{playerNameById(pairing.blackPlayerId)}</strong>}</p>
+                  <p className="muted">{t('operator.round')} {round.roundNumber} {t('workflow.board')} {pairing.boardNumber}</p>
+                  <p className="board-dice-pairing"><strong>{playerNameById(pairing.whitePlayerId)}</strong> – {pairing.isBye ? t('dice.bye') : <strong>{playerNameById(pairing.blackPlayerId)}</strong>}</p>
                 </div>
-                <button type="button" className="secondary" onClick={() => setBoardDiceModal(null)}>Schließen</button>
+                <button type="button" className="secondary" onClick={() => setBoardDiceModal(null)}>{t('common.close')}</button>
               </div>
 
               {pairing.chess960StartPosition
-                ? <p className="board-dice-warning">⚠ Bereits gespeichert: {pairing.chess960StartPosition.whiteBackRank} · SP {pairing.chess960StartPosition.positionNumber}. Neu würfeln überschreibt diese Stellung nach Rückfrage.</p>
-                : <p className="muted">Für dieses Brett ist noch keine Startstellung gespeichert.</p>}
+                ? <p className="board-dice-warning">{t('workflow.alreadySaved')} {pairing.chess960StartPosition.whiteBackRank} · SP {pairing.chess960StartPosition.positionNumber}{t('workflow.rollingAgainReplacesThisPositionAfterConfirmation')}</p>
+                : <p className="muted">{t('workflow.noStartingPositionHasBeenSavedFor')}</p>}
 
               <div className="tab-bar board-dice-tabs">
-                <button type="button" className={`tab-button${boardDiceTab === 'browser' ? ' active' : ''}`} onClick={() => setBoardDiceTab('browser')}>Browser würfeln</button>
-                <button type="button" className={`tab-button${boardDiceTab === 'qr' ? ' active' : ''}`} onClick={() => setBoardDiceTab('qr')}>QR / Handy</button>
+                <button type="button" className={`tab-button${boardDiceTab === 'browser' ? ' active' : ''}`} onClick={() => setBoardDiceTab('browser')}>{t('workflow.rollInBrowser')}</button>
+                <button type="button" className={`tab-button${boardDiceTab === 'qr' ? ' active' : ''}`} onClick={() => setBoardDiceTab('qr')}>{t('workflow.qRMobile')}</button>
               </div>
 
               {boardDiceTab === 'browser' && (
                 roundClosed
-                  ? <p className="board-dice-error">Runde ist gesperrt/geprüft – keine Änderung der Startstellung möglich.</p>
+                  ? <p className="board-dice-error">{t('workflow.theRoundIsLockedOrReviewedIts')}</p>
                   : <BoardDiceRoller
                       tournamentId={selectedTournament.id}
                       roundNumber={round.roundNumber}
@@ -2475,20 +2719,18 @@ function openRoundPrint(roundNumber: number) {
 
               {boardDiceTab === 'qr' && (
                 <div className="qr-tab">
-                  <p className="muted">Teilnehmer/Schiedsrichter können dieses Brett am Handy auswürfeln. Funktioniert nur im gleichen WLAN/Hotspot wie der Laptop.</p>
+                  <p className="muted">{t('workflow.playersOrArbitersCanRollThisBoard')}</p>
                   <div className="qr-tab-grid">
                     <div className="qr-tab-code"><QrPanel url={diceUrl} /></div>
                     <div className="qr-tab-info">
-                      <label className="qr-ip-label">
-                        Laptop-IP im WLAN/Hotspot
-                        <input
+                      <label className="qr-ip-label">{t('workflow.laptopIPOnTheLocalNetwork')} <input
                           type="text"
                           value={laptopIp}
-                          placeholder="z. B. 192.168.0.42"
+                          placeholder={t('dice.ipExample')}
                           onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setLaptopIp(event.target.value); setDiceUrlCopied(false); }}
                         />
                       </label>
-                      {hostIsLocal && <p className="board-dice-warning">⚠ Aktuell zeigt die URL auf „{host}". Auf dem Handy zeigt <code>localhost</code> auf das Handy selbst. Bitte die LAN-IP des Laptops eintragen (Windows: <code>ipconfig</code> → IPv4-Adresse).</p>}
+                      {hostIsLocal && <p className="board-dice-warning">{t('workflow.theURLCurrentlyPointsTo')}{host}{t('workflow.onAPhone')} <code>localhost</code> {t('workflow.pointsToThePhoneItselfEnterThe')} <code>ipconfig</code> {t('workflow.iPv4Address')}</p>}
                       <div className="qr-url-row">
                         <code className="qr-url">{diceUrl}</code>
                         <button
@@ -2497,12 +2739,13 @@ function openRoundPrint(roundNumber: number) {
                           onClick={() => {
                             void navigator.clipboard?.writeText(diceUrl).then(() => setDiceUrlCopied(true)).catch(() => setDiceUrlCopied(false));
                           }}
-                        >{diceUrlCopied ? '✓ Kopiert' : 'URL kopieren'}</button>
+                        >{diceUrlCopied ? t('dice.copied') : t('dice.copyUrl')}</button>
                       </div>
                       <ul className="qr-hints muted">
-                        <li>Handy und Laptop im selben WLAN/Hotspot.</li>
-                        <li>Eine evtl. Windows-Firewall kann den Zugriff auf Port {window.location.port || '5173'} blockieren – dann am Laptop würfeln.</li>
-                        <li>Gleichzeitiges Würfeln (Laptop + Handy) überschreibt nur nach Rückfrage; die zuletzt gespeicherte Stellung gilt.</li>
+                        <li>{t('dice.networkNotice')}</li>
+                        <li>{t('workflow.phoneAndLaptopMustUseTheSame')}</li>
+                        <li>{t('workflow.aWindowsFirewallMayBlockAccessTo')} {window.location.port || '5173'} {t('workflow.inThatCaseRollOnTheLaptop')}</li>
+                        <li>{t('workflow.concurrentRollsLaptopAndPhoneRequireConfirmation')}</li>
                       </ul>
                     </div>
                   </div>
@@ -2544,7 +2787,7 @@ function openRoundPrint(roundNumber: number) {
                   </label>
                   <p className="muted">{lang === 'en'
                     ? 'Optimal V2 remains the proven default. FIDE Dutch uses the implemented Dutch criteria and creates a detailed audit note; this is not FIDE certification.'
-                    : 'Optimal V2 bleibt der bewährte Standard. FIDE Dutch nutzt die implementierten Dutch-Kriterien und erzeugt einen detaillierten Audit-Hinweis; dies ist keine FIDE-Zertifizierung.'}</p>
+                    : t('workflow.optimalV2RemainsTheDefaultFIDEDutch')}</p>
                   {pairingStrategy === 1 && (
                     <label>{t('tournaments.initialColour')}
                       <select value={swissInitialColour} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSwissInitialColour(Number(event.target.value))}>
@@ -2575,7 +2818,7 @@ function openRoundPrint(roundNumber: number) {
                 className={tournament.id === selectedTournament?.id ? 'selected' : ''}
                 onClick={() => setSelectedId(tournament.id)}
               >
-                {tournament.name}<small>{tournament.players.length} {lang === 'en' ? 'players' : 'Teilnehmer'} · {tournament.rounds.length} {lang === 'en' ? 'rounds' : 'Runden'}</small>
+                {tournament.name}<small>{tournament.players.length} {lang === 'en' ? 'players' : t('nav.participants')} · {tournament.rounds.length} {lang === 'en' ? 'rounds' : t('workflow.rounds')}</small>
               </button>
             ))}
           </div>
@@ -2585,7 +2828,7 @@ function openRoundPrint(roundNumber: number) {
           <div className="panel-header">
             <div>
               <h2>{selectedTournament?.name ?? t('tournaments.noSelection')}</h2>
-              <p>{selectedTournament ? `${selectedTournament.players.length} ${lang === 'en' ? 'players' : 'Teilnehmer'} · ${selectedTournament.rounds.length} ${lang === 'en' ? 'rounds' : 'Runden'}` : (lang === 'en' ? 'Create a tournament first.' : 'Lege zuerst ein Turnier an.')}</p>
+              <p>{selectedTournament ? `${selectedTournament.players.length} ${lang === 'en' ? 'players' : t('nav.participants')} · ${selectedTournament.rounds.length} ${lang === 'en' ? 'rounds' : t('workflow.rounds')}` : (lang === 'en' ? 'Create a tournament first.' : t('workflow.createATournamentFirst'))}</p>
             </div>
             {activeMainTab === 'rounds' && <div className="actions">
               <button type="button" className="secondary" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>{t('rounds.preview')}</button>
@@ -2652,22 +2895,20 @@ function openRoundPrint(roundNumber: number) {
                     );
                   })()}
                   <details className="operator-checklist">
-                    <summary>✅ Vor-Ort-Checkliste &amp; Laptop-Hinweise</summary>
+                    <summary>{t('workflow.venueChecklistLaptopAdvice')}</summary>
                     <div className="operator-checklist-body">
                       <ul>
-                        <li>Backend grün (Chip „Backend“ oben muss <strong>online</strong> sein)</li>
-                        <li>Backup ziehen, bevor Runde 1 ausgelost wird</li>
-                        <li>Teilnehmerliste prüfen (Anzahl, Namen, FIDE-ID)</li>
-                        <li>Wasser / Schatten / Sonnenschutz bereitstellen</li>
-                        <li>Rundenblatt der aktuellen Runde drucken</li>
-                        <li>Chess960 würfeln (falls Chess960-Turnier)</li>
-                        <li>Ergebnisse nach jeder Runde sofort eintragen und Speicher-Bestätigung abwarten</li>
-                        <li>Backup nach jeder Runde ziehen</li>
+                        <li>{t('workflow.backendReadyTheBackendIndicatorAboveMust')} <strong>{t('backend.online')}</strong> sein)</li>
+                        <li>{t('workflow.exportABackupBeforePairingRound1')}</li>
+                        <li>{t('workflow.checkParticipantsCountNamesFIDEIDs')}</li>
+                        <li>{t('workflow.provideWaterShadeAndSunProtection')}</li>
+                        <li>{t('workflow.printTheCurrentRoundSheet')}</li>
+                        <li>{t('workflow.rollChess960PositionsForAChess960Tournament')}</li>
+                        <li>{t('workflow.enterResultsAfterEachRoundAndWait')}</li>
+                        <li>{t('workflow.exportABackupAfterEachRound')}</li>
                       </ul>
                       <p className="operator-power-note">
-                        <strong>Strom &amp; Energie:</strong> Laptop am Netzteil betreiben · Energiesparen und Bildschirmsperre vermeiden ·
-                        Browser-Tab offen lassen · das Backend-Fenster NICHT schließen.
-                      </p>
+                        <strong>{t('workflow.power')}</strong> {t('workflow.connectTheLaptopToMainsPowerPrevent')} </p>
                     </div>
                   </details>
                 </>
@@ -2699,74 +2940,70 @@ function openRoundPrint(roundNumber: number) {
             <article className="card assistant-card">
               <div className="assistant-header">
                 <div>
-                  <p className="eyebrow">Turnierassistent · lokal &amp; ohne KI-API</p>
-                  <h3>Welches Format passt?</h3>
-                  <p className="muted">Der Assistent empfiehlt auf Basis von Teilnehmerzahl, Zeit, Brettern und Szenario eine robuste Turnier-Konfiguration. Er sendet keine Daten an externe Dienste.</p>
+                  <p className="eyebrow">{t('workflow.tournamentAssistantLocalWithoutAnAIAPI')}</p>
+                  <h3>{t('workflow.whichFormatFits')}</h3>
+                  <p className="muted">{t('workflow.theAssistantRecommendsTournamentSettingsBasedOn')}</p>
                 </div>
                 <div className={`assistant-fit ${assistantRecommendation.timeFit}`}>
                   <strong>{assistantRecommendation.timeFitLabel}</strong>
-                  <span>{assistantRecommendation.estimatedTotalMinutes} Min. geschätzt</span>
+                  <span>{assistantRecommendation.estimatedTotalMinutes} {t('workflow.estimatedMinutes')}</span>
                 </div>
               </div>
               <div className="assistant-grid">
                 <section className="assistant-form">
-                  <label>Szenario
-                    <select value={assistantForm.scenario} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setAssistantForm({ ...assistantForm, scenario: event.target.value as TournamentAssistantScenario })}>
-                      {assistantScenarioOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  <label>{t('workflow.scenario')} <select value={assistantForm.scenario} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setAssistantForm({ ...assistantForm, scenario: event.target.value as TournamentAssistantScenario })}>
+                      {assistantScenarioOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                     </select>
                   </label>
-                  <p className="muted">{assistantScenarioOptions.find(option => option.value === assistantForm.scenario)?.description}</p>
+                  <p className="muted">{((option) => lang === 'en' ? option?.descriptionEn : option?.description)(assistantScenarioOptions.find(option => option.value === assistantForm.scenario))}</p>
                   <div className="settings-grid compact">
-                    <label>Teilnehmer
-                      <input type="number" min="2" max="512" value={assistantForm.playerCount} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, playerCount: event.target.value })} />
+                    <label>{t('nav.participants')} <input type="number" min="2" max="512" value={assistantForm.playerCount} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, playerCount: event.target.value })} />
                     </label>
-                    <label>Zeit in Minuten
-                      <input type="number" min="30" max="1440" value={assistantForm.availableMinutes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, availableMinutes: event.target.value })} />
+                    <label>{t('workflow.timeInMinutes')} <input type="number" min="30" max="1440" value={assistantForm.availableMinutes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, availableMinutes: event.target.value })} />
                     </label>
-                    <label>Bretter
-                      <input type="number" min="1" max="256" value={assistantForm.boardCount} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, boardCount: event.target.value })} />
+                    <label>{t('workflow.boards2')} <input type="number" min="1" max="256" value={assistantForm.boardCount} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, boardCount: event.target.value })} />
                     </label>
                   </div>
                   <div className="checkbox-row">
-                    <label className="checkbox"><input type="checkbox" checked={assistantForm.rated} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, rated: event.target.checked })} /> gewertetes Turnier geplant</label>
+                    <label className="checkbox"><input type="checkbox" checked={assistantForm.rated} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, rated: event.target.checked })} /> {t('workflow.ratedTournamentPlanned')}</label>
                     <label className="checkbox"><input type="checkbox" checked={assistantForm.chess960} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, chess960: event.target.checked })} /> Chess960/Freestyle</label>
-                    <label className="checkbox"><input type="checkbox" checked={assistantForm.needsQr} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, needsQr: event.target.checked })} /> QR/Handy am Brett nutzen</label>
+                    <label className="checkbox"><input type="checkbox" checked={assistantForm.needsQr} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setAssistantForm({ ...assistantForm, needsQr: event.target.checked })} /> {t('workflow.useQRMobileAtTheBoard')}</label>
                   </div>
                   <div className="actions">
-                    <button type="button" onClick={applyAssistantRecommendation}>Empfehlung übernehmen</button>
-                    <button type="button" className="secondary" onClick={() => downloadText(`turnierassistent-${backupTimestampSlug(new Date())}.txt`, assistantRecommendation.handoffPrompt, 'text/plain;charset=utf-8')}>Prompt/Plan exportieren</button>
+                    <button type="button" onClick={applyAssistantRecommendation}>{t('workflow.applyRecommendation')}</button>
+                    <button type="button" className="secondary" onClick={() => downloadText(`turnierassistent-${backupTimestampSlug(new Date())}.txt`, assistantRecommendation.handoffPrompt, 'text/plain;charset=utf-8')}>{t('workflow.exportPromptPlan')}</button>
                   </div>
                 </section>
                 <section className="assistant-result">
                   <h4>{assistantRecommendation.title}</h4>
                   <div className="overview-grid assistant-metrics">
-                    <div><span>Format</span><strong>{assistantRecommendation.formatLabel}</strong></div>
-                    <div><span>Runden</span><strong>{assistantRecommendation.plannedRounds}</strong></div>
-                    <div><span>Bretter</span><strong>{assistantRecommendation.estimatedBoards}</strong></div>
-                    <div><span>Punkte</span><strong>{assistantRecommendation.scoringLabel}</strong></div>
+                    <div><span>{t('tournaments.format')}</span><strong>{assistantRecommendation.formatLabel}</strong></div>
+                    <div><span>{t('workflow.rounds')}</span><strong>{assistantRecommendation.plannedRounds}</strong></div>
+                    <div><span>{t('workflow.boards2')}</span><strong>{assistantRecommendation.estimatedBoards}</strong></div>
+                    <div><span>{t('standings.points')}</span><strong>{assistantRecommendation.scoringLabel}</strong></div>
                   </div>
                   {assistantRecommendation.warnings.length > 0 && (
                     <div className="assistant-warning">
-                      <strong>Prüfen</strong>
+                      <strong>{t('workflow.review')}</strong>
                       <ul>{assistantRecommendation.warnings.map((warning, index) => <li key={`assistant-warning-${index}`}>{warning}</li>)}</ul>
                     </div>
                   )}
                   <div className="assistant-columns">
                     <section>
-                      <strong>Setup-Schritte</strong>
+                      <strong>{t('workflow.setupSteps')}</strong>
                       <ol>{assistantRecommendation.setupSteps.map((step, index) => <li key={`assistant-step-${index}`}>{step}</li>)}</ol>
                     </section>
                     <section>
-                      <strong>Turniertag-Check</strong>
+                      <strong>{t('workflow.tournamentDayChecklist')}</strong>
                       <ul>{assistantRecommendation.operatorChecklist.map((item, index) => <li key={`assistant-check-${index}`}>{item}</li>)}</ul>
                     </section>
                     <section>
-                      <strong>Export/Veröffentlichung</strong>
+                      <strong>{t('workflow.exportPublication')}</strong>
                       <ul>{assistantRecommendation.exportPlan.map((item, index) => <li key={`assistant-export-${index}`}>{item}</li>)}</ul>
                     </section>
                   </div>
                   <details className="audit-box assistant-handoff">
-                    <summary>Handoff-Prompt anzeigen</summary>
+                    <summary>{t('workflow.showHandoffPrompt')}</summary>
                     <p>{assistantRecommendation.handoffPrompt}</p>
                   </details>
                 </section>
@@ -2774,12 +3011,12 @@ function openRoundPrint(roundNumber: number) {
               <section className="knowledge-chat-card">
                 <div className="assistant-header compact-header">
                   <div>
-                    <p className="eyebrow">Lokale Chat-Hilfe · RUN-10/11 Fundament</p>
-                    <h4>Frag die Turnierhilfe</h4>
-                    <p className="muted">Regelbasierte Wissensbasis für Bedienung, Pairing, Wertung, Backup und Datenschutz. Keine Provider-Anbindung, keine externen Requests, keine Secrets.</p>
-                    <small className="knowledge-source-meta">Wissensbasis {localKnowledgeBase.sourceVersion} · Stand {localKnowledgeBase.sourceUpdated}</small>
+                    <p className="eyebrow">{t('workflow.localHelpChatRUN1011Foundation')}</p>
+                    <h4>{t('workflow.askTournamentHelp')}</h4>
+                    <p className="muted">{t('workflow.ruleBasedKnowledgeBaseForOperationPairing')}</p>
+                    <small className="knowledge-source-meta">{t('workflow.knowledgeBase')} {localKnowledgeBase.sourceVersion} {t('workflow.updated')} {localKnowledgeBase.sourceUpdated}</small>
                   </div>
-                  <span className="knowledge-privacy-pill" title={localKnowledgeBase.privacyNotice}>offline/lokal</span>
+                  <span className="knowledge-privacy-pill" title={localKnowledgeBase.privacyNotice}>{t('workflow.offlineLocal')}</span>
                 </div>
                 <div className="knowledge-quick-actions">
                   {knowledgeQuickQuestions.map(question => (
@@ -2787,11 +3024,12 @@ function openRoundPrint(roundNumber: number) {
                   ))}
                 </div>
                 <div className="knowledge-chat-log" aria-live="polite">
+                  {knowledgeChatMessages.length === 0 && <p className="knowledge-welcome">{t('knowledge.welcome')}</p>}
                   {knowledgeChatMessages.map(message => (
                     <article key={message.id} className={`knowledge-message ${message.role}`}>
-                      <strong>{message.role === 'user' ? 'Du' : 'Turnierhilfe'}</strong>
+                      <strong>{message.role === 'user' ? t('knowledge.you') : t('knowledge.help')}</strong>
                       {message.text.split('\n').map((line, index) => line ? <p key={`${message.id}-${index}`}>{line}</p> : <br key={`${message.id}-${index}`} />)}
-                      {message.sources.length > 0 && <small>Quellen: {message.sources.join(' · ')}</small>}
+                      {message.sources.length > 0 && <small>{t('workflow.sources')} {message.sources.join(' · ')}</small>}
                     </article>
                   ))}
                 </div>
@@ -2806,10 +3044,10 @@ function openRoundPrint(roundNumber: number) {
                         askKnowledgeChat();
                       }
                     }}
-                    placeholder="Frage stellen, z.B. Was muss ich nach Runde 3 tun?"
+                    placeholder={t('workflow.askAQuestionEGWhatShould')}
                   />
-                  <button type="button" onClick={() => askKnowledgeChat()} disabled={!knowledgeChatInput.trim()}>Antwort</button>
-                  <button type="button" className="secondary" onClick={() => downloadText(`lokale-turnierhilfe-${backupTimestampSlug(new Date())}.txt`, knowledgeChatMessages.map(message => `${message.role === 'user' ? 'Du' : 'Turnierhilfe'}:\n${message.text}`).join('\n\n---\n\n'), 'text/plain;charset=utf-8')}>Chat exportieren</button>
+                  <button type="button" onClick={() => askKnowledgeChat()} disabled={!knowledgeChatInput.trim()}>{t('workflow.answer')}</button>
+                  <button type="button" className="secondary" disabled={knowledgeChatMessages.length === 0} onClick={() => downloadText(`lokale-turnierhilfe-${backupTimestampSlug(new Date())}.txt`, knowledgeChatMessages.map(message => `${message.role === 'user' ? t('knowledge.you') : t('knowledge.help')}:\n${message.text}`).join('\n\n---\n\n'), 'text/plain;charset=utf-8')}>{t('workflow.exportChat')}</button>
                 </div>
               </section>
             </article>
@@ -2821,16 +3059,26 @@ function openRoundPrint(roundNumber: number) {
                 <p className="eyebrow">{t('result.confirmEyebrow')}</p>
                 <h3 id="result-confirm-title">{t('result.confirmTitle')}</h3>
                 <p>{t('rounds.round')} {pendingResultChange.roundNumber}, {t('rounds.board')} {pendingResultChange.boardNumber}: <strong>{resultLabel(pendingResultChange.previousResult, lang === 'en')}</strong> → <strong>{resultLabel(pendingResultChange.result, lang === 'en')}</strong></p>
+                {pendingResultChange.previousResult !== 0 && (
+                  <label className="correction-reason">{t('result.correctionReasonLabel')}
+                    <textarea value={correctionReason} maxLength={500} rows={2}
+                      onChange={event => setCorrectionReason(event.target.value)} aria-describedby="correction-reason-hint" />
+                    <small id="correction-reason-hint">{t('result.correctionReasonHint')}</small>
+                  </label>
+                )}
+                <label><input type="checkbox" checked={localQueueEnabled} onChange={event => setLocalQueueEnabled(event.target.checked)} />
+                  {lang === 'en' ? 'Keep this result in this browser until the server acknowledges it (up to 200 entries).'
+                    : t('workflow.keepTheResultInThisBrowserUntil')}</label>
               </div>
               <div className="actions">
                 <button type="button" className="secondary" onClick={closeResultConfirmation}>{t('common.cancel')}</button>
-                <button ref={resultConfirmButtonRef} type="button" onClick={() => void confirmResultChange()}>{t('result.save')}</button>
+                <button ref={resultConfirmButtonRef} type="button" disabled={resultSaving} aria-busy={resultSaving} onClick={() => void confirmResultChange()}>{t('result.save')}</button>
               </div>
             </article>
           )}
           {activeMainTab === 'rounds' && !pendingResultChange && lastResultChange && (
             <div className="undo-bar" role="status">
-              <span>{lang === 'en' ? `Result saved: round ${lastResultChange.roundNumber}, board ${lastResultChange.boardNumber}.` : `Ergebnis gespeichert: Runde ${lastResultChange.roundNumber}, Brett ${lastResultChange.boardNumber}.`}</span>
+              <span>{lang === 'en' ? `Result saved: round ${lastResultChange.roundNumber}, board ${lastResultChange.boardNumber}.` : t('workflow.resultSavedRoundBoard2', { p0: lastResultChange.roundNumber, p1: lastResultChange.boardNumber })}</span>
               <button type="button" className="small secondary" onClick={() => void undoLastResultChange()}>{t('result.undo')}</button>
             </div>
           )}
@@ -2839,8 +3087,8 @@ function openRoundPrint(roundNumber: number) {
             <article className={`card preview-card ${pairingQualitySeverityClass(nextRoundPreview.pairingQuality.severity)}`}>
               <div className="preview-card-header">
                 <div>
-                  <p className="eyebrow">{lang === 'en' ? 'Preview · not saved yet' : 'Vorschau · noch nicht gespeichert'}</p>
-                  <h3>{lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : `Auslosungsvorschau Runde ${nextRoundPreview.roundNumber}`}</h3>
+                  <p className="eyebrow">{lang === 'en' ? 'Preview · not saved yet' : t('workflow.previewNotSavedYet')}</p>
+                  <h3>{lang === 'en' ? `Pairing preview for round ${nextRoundPreview.roundNumber}` : t('workflow.roundPairingPreview', { p0: nextRoundPreview.roundNumber })}</h3>
                   <p className="muted">{lang === 'en' ? 'Review the proposed boards and quality score before creating the round.' : nextRoundPreview.summary}</p>
                 </div>
                 <div className="preview-score">
@@ -2849,14 +3097,14 @@ function openRoundPrint(roundNumber: number) {
                 </div>
               </div>
               <div className="preview-metrics">
-                <span>{nextRoundPreview.boardCount} {lang === 'en' ? 'boards' : 'Bretter'}</span>
+                <span>{nextRoundPreview.boardCount} {lang === 'en' ? 'boards' : t('workflow.boards2')}</span>
                 <span>{nextRoundPreview.pairingQuality.rematchCount} Rematches</span>
                 <span>{nextRoundPreview.pairingQuality.crossScoreGroupPairingCount} {lang === 'en' ? 'cross-score-group pairings' : 'Scoregruppen-Abweichungen'}</span>
                 <span>{nextRoundPreview.pairingQuality.thirdSameColorRiskCount} {lang === 'en' ? 'colour-sequence risks' : 'Farbfolge-Risiken'}</span>
                 <span>{nextRoundPreview.pairingQuality.byeCount} Bye</span>
               </div>
-              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>{lang === 'en' ? 'Critical preview:' : 'Kritische Vorschau:'}</strong> {lang === 'en' ? 'Review pairings, rematches and colour sequences. Some constraints can be unavoidable in small events.' : 'Bitte Paarungen, Rematches und Farbfolge prüfen. Bei kleinen Turnieren kann das unvermeidbar sein; nach Bestätigung darf trotzdem ausgelost werden.'}</div>}
-              {!nextRoundPreview.isSavable && <div className="preview-warning critical"><strong>{lang === 'en' ? 'Cannot be saved:' : 'Nicht speicherbar:'}</strong> {lang === 'en' ? 'This preview cannot be accepted. Review the technical notes.' : 'Diese Vorschau darf nicht übernommen werden. Bitte Hinweise prüfen.'}</div>}
+              {nextRoundPreview.pairingQuality.hasCriticalIssues && <div className="preview-warning critical"><strong>{lang === 'en' ? 'Critical preview:' : 'Kritische Vorschau:'}</strong> {lang === 'en' ? 'Review pairings, rematches and colour sequences. Some constraints can be unavoidable in small events.' : t('workflow.checkPairingsRematchesAndColourSequencesSome')}</div>}
+              {!nextRoundPreview.isSavable && <div className="preview-warning critical"><strong>{lang === 'en' ? 'Cannot be saved:' : 'Nicht speicherbar:'}</strong> {lang === 'en' ? 'This preview cannot be accepted. Review the technical notes.' : t('workflow.thisPreviewCannotBeAppliedReviewThe')}</div>}
               {(nextRoundPreview.messages.length > 0 || nextRoundPreview.pairingQuality.findings.length > 0) && (
                 <details className="preview-audit-notes">
                   <summary>{lang === 'en' ? 'Technical pairing notes' : 'Technische Paarungshinweise'}</summary>
@@ -2866,7 +3114,7 @@ function openRoundPrint(roundNumber: number) {
               )}
               <div className="table-scroll compact preview-pairings">
                 <table>
-                  <thead><tr><th>{t('rounds.board')}</th><th>{t('rounds.white')}</th><th>{t('rounds.black')}</th><th>{lang === 'en' ? 'Score before round' : 'Score vor Runde'}</th><th>{lang === 'en' ? 'Notes' : 'Hinweise'}</th></tr></thead>
+                  <thead><tr><th>{t('rounds.board')}</th><th>{t('rounds.white')}</th><th>{t('rounds.black')}</th><th>{lang === 'en' ? 'Score before round' : t('workflow.scoreBeforeRound')}</th><th>{lang === 'en' ? 'Notes' : t('workflow.notices')}</th></tr></thead>
                   <tbody>
                     {nextRoundPreview.pairingQuality.boards.map(board => (
                       <tr key={`preview-board-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
@@ -2883,108 +3131,98 @@ function openRoundPrint(roundNumber: number) {
               <details className="audit-box preview-audit">
                 <summary>{lang === 'en' ? 'Show preview audit' : 'Audit der Vorschau anzeigen'}</summary>
                 <div className="audit-grid">
-                  <section><strong>{lang === 'en' ? 'Notes' : 'Hinweise'}</strong><ul>{nextRoundPreview.round.audit.messages.map((message, index) => <li key={`preview-audit-message-${index}`}>{message}</li>)}</ul></section>
-                  <section><strong>{lang === 'en' ? 'Score groups' : 'Scoregruppen'}</strong><ul>{nextRoundPreview.round.audit.scoreGroups.map((message, index) => <li key={`preview-audit-score-${index}`}>{message}</li>)}</ul></section>
-                  <section><strong>Floater</strong><ul>{nextRoundPreview.round.audit.floaters.length === 0 ? <li>keine</li> : nextRoundPreview.round.audit.floaters.map((message, index) => <li key={`preview-audit-floater-${index}`}>{message}</li>)}</ul></section>
-                  <section><strong>{lang === 'en' ? 'Colours' : 'Farben'}</strong><ul>{nextRoundPreview.round.audit.colorNotes.map((message, index) => <li key={`preview-audit-color-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{lang === 'en' ? 'Notes' : t('workflow.notices')}</strong><ul>{nextRoundPreview.round.audit.messages.map((message, index) => <li key={`preview-audit-message-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{lang === 'en' ? 'Score groups' : t('workflow.scoreGroups')}</strong><ul>{nextRoundPreview.round.audit.scoreGroups.map((message, index) => <li key={`preview-audit-score-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{t('workflow.floater')}</strong><ul>{nextRoundPreview.round.audit.floaters.length === 0 ? <li>{t('workflow.none')}</li> : nextRoundPreview.round.audit.floaters.map((message, index) => <li key={`preview-audit-floater-${index}`}>{message}</li>)}</ul></section>
+                  <section><strong>{lang === 'en' ? 'Colours' : t('workflow.colours')}</strong><ul>{nextRoundPreview.round.audit.colorNotes.map((message, index) => <li key={`preview-audit-color-${index}`}>{message}</li>)}</ul></section>
                 </div>
               </details>
               <div className="actions preview-actions">
-                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Create this round' : 'Diese Runde jetzt auslosen'}</button>
-                <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>{lang === 'en' ? 'Open print view' : 'Druckansicht öffnen'}</button>
-                <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>{lang === 'en' ? 'Export CSV' : 'CSV exportieren'}</button>
-                <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(true)}>{lang === 'en' ? 'Open dialog' : 'Als Popup öffnen'}</button>
-                <button type="button" className="secondary" onClick={() => { setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false); }}>{lang === 'en' ? 'Close preview' : 'Vorschau schließen'}</button>
+                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Create this round' : t('workflow.pairThisRoundNow')}</button>
+                <button type="button" className="secondary" onClick={openNextRoundPreviewPrint}>{lang === 'en' ? 'Open print view' : t('workflow.openPrintView')}</button>
+                <button type="button" className="secondary" onClick={openNextRoundPreviewCsv}>{lang === 'en' ? 'Export CSV' : t('workflow.exportCSV')}</button>
+                <button type="button" className="secondary" onClick={() => setIsNextRoundPreviewDialogOpen(true)}>{lang === 'en' ? 'Open dialog' : t('workflow.openAsPopup')}</button>
+                <button type="button" className="secondary" onClick={() => { setNextRoundPreview(null); setIsNextRoundPreviewDialogOpen(false); }}>{lang === 'en' ? 'Close preview' : t('workflow.closePreview')}</button>
               </div>
             </article>
           )}
           {activeMainTab === 'admin' && (
             <article className="card admin-danger-card">
-              <h3>Gefährliche Aktionen</h3>
-              <p className="muted">Zurücksetzen behält Teilnehmer und Einstellungen, löscht aber alle Runden, Ergebnisse und Chess960-Startstellungen. Löschen entfernt das gesamte Turnier und verlangt die exakte Eingabe des Turniernamens.</p>
+              <h3>{t('workflow.dangerousActions')}</h3>
+              <p className="muted">{t('workflow.resetKeepsParticipantsAndSettingsButRemoves')}</p>
               <div className="actions">
-                <button type="button" className="secondary" onClick={() => openDestructiveDialog('reset')} disabled={!selectedTournament}>Turnier zurücksetzen</button>
-                <button type="button" className="danger" onClick={() => openDestructiveDialog('delete')} disabled={!selectedTournament}>Turnier löschen</button>
+                <button type="button" className="secondary" onClick={() => openDestructiveDialog('reset')} disabled={!selectedTournament}>{t('workflow.resetTournament')}</button>
+                <button type="button" className="danger" onClick={() => openDestructiveDialog('delete')} disabled={!selectedTournament}>{t('workflow.deleteTournament')}</button>
               </div>
             </article>
           )}
           {activeMainTab === 'admin' && (
           <article className="card settings-card">
-            <h3>Turniereinstellungen</h3>
+            <h3>{t('workflow.tournamentSettings')}</h3>
             <form onSubmit={(event) => void saveSettings(event)} className="settings-form">
               <div className="settings-grid">
-                <label>Format
-                  <select value={settingsForm.format} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, format: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
-                    {formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <label>{t('tournaments.format')} <select value={settingsForm.format} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, format: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                    {formatOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
                 </label>
-                {settingsForm.format === 1 && <label>Paarungsverfahren
-                  <select value={settingsForm.pairingStrategy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, pairingStrategy: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
-                    {pairingStrategyOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {settingsForm.format === 1 && <label>{t('tournaments.pairing')} <select value={settingsForm.pairingStrategy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, pairingStrategy: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                    {pairingStrategyOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
-                  <small className="field-help">Optimal V2 bleibt Standard. Die Wahl gilt ab Runde 1 und ändert bestehende Turniere nicht still.</small>
+                  <small className="field-help">{t('workflow.optimalV2RemainsTheDefaultTheSelection')}</small>
                 </label>}
-                {settingsForm.format === 1 && settingsForm.pairingStrategy === 1 && <label>Anfangsfarbe
-                  <select value={settingsForm.swissInitialColour} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, swissInitialColour: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
-                    {swissInitialColourOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {settingsForm.format === 1 && settingsForm.pairingStrategy === 1 && <label>{t('workflow.initialColour')} <select value={settingsForm.swissInitialColour} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, swissInitialColour: Number(event.target.value) })} disabled={(selectedTournament?.rounds.length ?? 0) > 0}>
+                    {swissInitialColourOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
-                  <small className="field-help">Wird nur bei FIDE Dutch verwendet, wenn beide Spieler die gleiche Farberwartung haben.</small>
+                  <small className="field-help">{t('workflow.usedOnlyForFIDEDutchWhenBoth')}</small>
                 </label>}
-                <label>Punktesystem
-                  <select value={settingsForm.scoringSystem} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, scoringSystem: Number(event.target.value) })}>
-                    {scoringOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <label>{t('workflow.scoringSystem')} <select value={settingsForm.scoringSystem} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, scoringSystem: Number(event.target.value) })}>
+                    {scoringOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
                 </label>
-                <label>TWZ-Quelle
-                  <select value={settingsForm.twzSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, twzSource: Number(event.target.value) })}>
-                    {twzSourceOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <label>{t('workflow.tournamentRatingSource')} <select value={settingsForm.twzSource} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, twzSource: Number(event.target.value) })}>
+                    {twzSourceOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
                 </label>
-                <label>Geplante Runden
-                  <input type="number" min="1" max="99" value={settingsForm.plannedRounds} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, plannedRounds: event.target.value })} />
+                <label>{t('workflow.plannedRounds')} <input type="number" min="1" max="99" value={settingsForm.plannedRounds} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, plannedRounds: event.target.value })} />
                 </label>
-                <label>Kampflose Partien
-                  <select value={settingsForm.forfeitTiebreakPolicy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, forfeitTiebreakPolicy: Number(event.target.value) })}>
-                    {forfeitPolicyOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <label>{t('workflow.forfeits')} <select value={settingsForm.forfeitTiebreakPolicy} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, forfeitTiebreakPolicy: Number(event.target.value) })}>
+                    {forfeitPolicyOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
                 </label>
-                <label>Ungespielte Runden (Buchholz)
-                  <select value={settingsForm.unplayedRoundBuchholzMode} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSettingsForm({ ...settingsForm, unplayedRoundBuchholzMode: Number(event.target.value) })}>
-                    {unplayedRoundBuchholzOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <label>{t('workflow.unplayedRoundsBuchholz')} <select value={settingsForm.unplayedRoundBuchholzMode} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updateSettingsForm({ ...settingsForm, unplayedRoundBuchholzMode: Number(event.target.value) })}>
+                    {unplayedRoundBuchholzOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang === 'en')}</option>)}
                   </select>
                 </label>
-                <label>Senioren: Geburtsjahr oder älter
-                  <input type="number" min="1900" max="2100" value={settingsForm.seniorBirthYearOrEarlier} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, seniorBirthYearOrEarlier: event.target.value })} placeholder="z. B. 1966" />
+                <label>{t('workflow.seniorsBirthYearOrEarlier')} <input type="number" min="1900" max="2100" value={settingsForm.seniorBirthYearOrEarlier} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, seniorBirthYearOrEarlier: event.target.value })} placeholder="z. B. 1966" />
                 </label>
-                <label>Heldenpokal: Mindestpartien
-                  <input type="number" min="1" max="99" value={settingsForm.heroCupMinimumRatedGames} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, heroCupMinimumRatedGames: event.target.value })} />
+                <label>{t('workflow.heroCupMinimumGames')} <input type="number" min="1" max="99" value={settingsForm.heroCupMinimumRatedGames} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, heroCupMinimumRatedGames: event.target.value })} />
                 </label>
               </div>
-              <p className="muted">Im FIDE-Modus gilt die Einstellung „Kampflose Partien“ zuerst: Zählt sie den realen Gegner für Buchholz, wird kein zusätzlicher Dummy erzeugt. Offene Ergebnisse werden nicht vorzeitig gewertet.</p>
+              <p className="muted">{t('workflow.inFIDEModeTheForfeitPolicyTakes')}</p>
               <div className="checkbox-row">
-                <label className="checkbox"><input type="checkbox" checked={settingsForm.countByeAsWin} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, countByeAsWin: event.target.checked })} /> Bye als Sieg zählen</label>
-                <label className="checkbox"><input type="checkbox" checked={settingsForm.allowManualPairingOverrides} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSettingsForm({ ...settingsForm, allowManualPairingOverrides: event.target.checked })} /> manuelle Paarungen erlauben</label>
+                <label className="checkbox"><input type="checkbox" checked={settingsForm.countByeAsWin} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, countByeAsWin: event.target.checked })} /> {t('workflow.countAByeAsAWin')}</label>
+                <label className="checkbox"><input type="checkbox" checked={settingsForm.allowManualPairingOverrides} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateSettingsForm({ ...settingsForm, allowManualPairingOverrides: event.target.checked })} /> {t('workflow.allowManualPairings')}</label>
               </div>
               <div className="tiebreak-editor">
-                <strong>Wertungskette</strong>
-                <p className="muted">Die Reihenfolge entscheidet nach Punkten über die Platzierung. Startnummer bleibt als letzter Notanker enthalten.</p>
+                <strong>{t('workflow.tieBreakOrder')}</strong>
+                <p className="muted">{t('workflow.afterPointsTieBreaksAreAppliedIn')}</p>
                 <div className="tiebreak-list">
                   {settingsForm.tiebreaks.map((value, index) => (
                     <div key={`${value}-${index}`} className="tiebreak-item">
-                      <span>{index + 1}. {tiebreakLabel(value)}</span>
-                      <button type="button" className="small secondary" onClick={() => setSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, -1) })} disabled={index === 0}>↑</button>
-                      <button type="button" className="small secondary" onClick={() => setSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, 1) })} disabled={index === settingsForm.tiebreaks.length - 1}>↓</button>
-                      <button type="button" className="small danger" onClick={() => toggleTiebreak(value, false)} disabled={value === 99 && settingsForm.tiebreaks.length === 1}>Entfernen</button>
+                      <span>{index + 1}. {tiebreakLabel(value, lang === 'en')}</span>
+                      <button type="button" className="small secondary" onClick={() => updateSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, -1) })} disabled={index === 0}>↑</button>
+                      <button type="button" className="small secondary" onClick={() => updateSettingsForm({ ...settingsForm, tiebreaks: moveTiebreak(settingsForm.tiebreaks, index, 1) })} disabled={index === settingsForm.tiebreaks.length - 1}>↓</button>
+                      <button type="button" className="small danger" onClick={() => toggleTiebreak(value, false)} disabled={value === 99 && settingsForm.tiebreaks.length === 1}>{t('workflow.remove')}</button>
                     </div>
                   ))}
                 </div>
                 <div className="tiebreak-add">
                   {tiebreakOptions.filter(option => !settingsForm.tiebreaks.includes(option.value)).map(option => (
-                    <button key={option.value} type="button" className="small" onClick={() => toggleTiebreak(option.value, true)}>+ {option.label}</button>
+                    <button key={option.value} type="button" className="small" onClick={() => toggleTiebreak(option.value, true)}>+ {optionLabel(option, lang === 'en')}</button>
                   ))}
                 </div>
               </div>
-              <button type="submit" disabled={!selectedTournament}>Einstellungen speichern</button>
+              <button type="submit" disabled={!selectedTournament}>{t('workflow.saveSettings')}</button>
             </form>
           </article>
           )}
@@ -2992,46 +3230,46 @@ function openRoundPrint(roundNumber: number) {
           {activeMainTab === 'participants' && (
           <div className={showAdvancedStandings ? 'grid two' : 'grid'}>
             <article className="card external-lookup-card">
-              <h3>{lang === 'en' ? 'Find a player' : 'Spieler suchen'}</h3>
-              <p className="muted">{lang === 'en' ? 'Available sources are checked together. FIDE ID lookup is active; prepared but inactive sources are labelled clearly.' : 'Eine Suche – alle verfügbaren Quellen werden automatisch geprüft und Treffer zusammengeführt. FIDE-ID-Abruf ist aktiv; DSB/DeWIS und ThSB sind vorbereitet und werden klar als „aktuell nicht aktiv" markiert.'}</p>
+              <h3>{lang === 'en' ? 'Find a player' : t('workflow.findPlayer')}</h3>
+              <p className="muted">{lang === 'en' ? 'Available sources are checked together. FIDE ID lookup is active; prepared but inactive sources are labelled clearly.' : t('workflow.oneSearchChecksAllAvailableSourcesAnd')}</p>
               <form onSubmit={(event) => void searchExternalPlayers(event)} className="external-lookup-form single">
                 <input aria-label={lang === 'en' ? 'Player name or FIDE ID' : 'Spielername oder FIDE-ID'} value={externalQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setExternalQuery(event.target.value)} placeholder={lang === 'en' ? 'Name or FIDE ID' : 'Name oder FIDE-ID (z. B. 99900123)'} />
-                <button type="submit" disabled={externalSearching}>{externalSearching ? (lang === 'en' ? 'Searching …' : 'Suche läuft …') : (lang === 'en' ? 'Find player' : 'Spieler suchen')}</button>
+                <button type="submit" disabled={externalSearching}>{externalSearching ? (lang === 'en' ? 'Searching …' : t('workflow.searching')) : (lang === 'en' ? 'Find player' : t('workflow.findPlayer'))}</button>
               </form>
               {externalLookup && (
                 <div className="lookup-results">
-                  <strong>{externalLookup.message}</strong>
+                  <strong>{lang === 'en' ? `${externalLookup.players.length} player(s) found. Source availability is shown below.` : externalLookup.message}</strong>
                   {externalLookup.sources.length > 0 && (
                     <ul className="source-status-list">
                       {externalLookup.sources.map(source => (
                         <li key={source.source} className={source.isActive ? 'source-active' : 'source-prepared'}>
-                          <span className="source-badge">{source.isActive ? 'durchsucht' : 'vorbereitet'}</span>
+                          <span className="source-badge">{source.isActive ? (lang === 'en' ? 'active' : 'aktiv') : (lang === 'en' ? 'prepared' : 'vorbereitet')}</span>
                           <strong>{source.sourceName}</strong>
-                          {source.isActive ? ` · ${source.count} Treffer` : ' · aktuell nicht aktiv'}
+                          {source.isActive ? (source.status === 3 ? (lang === 'en' ? ' · temporarily unavailable' : ' · vorübergehend nicht verfügbar') : ` · ${source.count} ${lang === 'en' ? 'match(es)' : 'Treffer'}`) : ' ' + t('workflow.currentlyInactive')}
                         </li>
                       ))}
                     </ul>
                   )}
-                  {externalLookup.players.length === 0 && <p className="muted">Keine übernehmbaren Treffer. {externalLookup.mode === 'name' ? 'Tipp: FIDE-ID eingeben für direkten Abruf.' : ''}</p>}
+                  {externalLookup.players.length === 0 && <p className="muted">{t('workflow.noResultsAvailableToApply')} {externalLookup.mode === 'name' ? t('workflow.enterAFIDEIDForADirect') : ''}</p>}
                   {externalLookup.players.map(profile => {
                     const existingParticipant = existingParticipantForProfile(profile);
                     return (
                     <div key={`${profile.source}-${profile.externalId}`} className={`lookup-result${existingParticipant ? ' lookup-result-existing' : ''}`}>
                       <div>
-                        <strong>{profile.name}{existingParticipant && <span className="participant-badge">bereits im Turnier</span>}</strong>
-                        <small>{profile.fideId ? `FIDE ${profile.fideId}` : profile.externalId} · {profile.federation ?? profile.country ?? 'ohne Verband'} · Elo {profile.elo ?? '—'} · DWZ {profile.dwz ?? '—'} · {profile.birthYear ?? 'Jahr ?'}</small>
-                        {profile.profileUrl && <small><a href={profile.profileUrl} target="_blank" rel="noreferrer">Profil öffnen</a></small>}
+                        <strong>{profile.name}{existingParticipant && <span className="participant-badge">{t('workflow.alreadyInTournament')}</span>}</strong>
+                        <small>{profile.fideId ? `FIDE ${profile.fideId}` : profile.externalId} · {profile.federation ?? profile.country ?? (lang === 'en' ? 'no federation' : 'ohne Verband')} · Elo {profile.elo ?? '—'} · DWZ {profile.dwz ?? '—'} · {profile.birthYear ?? (lang === 'en' ? 'year ?' : 'Jahr ?')}</small>
+                        {profile.profileUrl && <small><a href={profile.profileUrl} target="_blank" rel="noreferrer">{t('workflow.openProfile')}</a></small>}
                         {externalDuplicateChecks[externalProfileKey(profile)] && (
                           <div className="duplicate-box">
-                            <strong>{externalDuplicateChecks[externalProfileKey(profile)].hasLikelyDuplicate ? 'Mögliche Dubletten' : 'Keine sichere Dublette'}</strong>
-                            {externalDuplicateChecks[externalProfileKey(profile)].matches.length === 0 && <small>Kein bestehender Teilnehmer passt sicher zu diesem externen Treffer.</small>}
+                            <strong>{externalDuplicateChecks[externalProfileKey(profile)].hasLikelyDuplicate ? t('workflow.possibleDuplicates') : t('workflow.noReliableDuplicate')}</strong>
+                            {externalDuplicateChecks[externalProfileKey(profile)].matches.length === 0 && <small>{t('workflow.noExistingParticipantIsAReliableMatch')}</small>}
                             {externalDuplicateChecks[externalProfileKey(profile)].matches.map(match => (
                               <div key={`${profile.source}-${profile.externalId}-${match.playerId}`} className="duplicate-match">
-                                <span>{match.playerName} · {duplicateKindLabel(match.kind)} · Score {match.score}</span>
+                                <span>{match.playerName} · {duplicateKindLabel(match.kind, lang === 'en')} · Score {match.score}</span>
                                 <small>{match.reason}</small>
                                 <div className="actions">
-                                  <button type="button" className="small" onClick={() => void applyExternalProfile(profile, match.playerId, false)}>Teilnehmer ergänzen</button>
-                                  <button type="button" className="small secondary" onClick={() => void applyExternalProfile(profile, match.playerId, true)}>mit externen Daten überschreiben</button>
+                                  <button type="button" className="small" onClick={() => void applyExternalProfile(profile, match.playerId, false)}>{t('workflow.fillMissingParticipantData')}</button>
+                                  <button type="button" className="small secondary" onClick={() => void applyExternalProfile(profile, match.playerId, true)}>{t('workflow.replaceWithExternalData')}</button>
                                 </div>
                               </div>
                             ))}
@@ -3039,12 +3277,12 @@ function openRoundPrint(roundNumber: number) {
                         )}
                       </div>
                       <div className="lookup-actions">
-                        <button type="button" className="small" onClick={() => applyExternalPlayer(profile)}>Ins Formular</button>
-                        <button type="button" className="small secondary" onClick={() => void checkExternalDuplicates(profile)} disabled={!selectedTournament}>Dubletten prüfen</button>
+                        <button type="button" className="small" onClick={() => applyExternalPlayer(profile)}>{t('workflow.useInForm')}</button>
+                        <button type="button" className="small secondary" onClick={() => void checkExternalDuplicates(profile)} disabled={!selectedTournament}>{t('workflow.checkDuplicates')}</button>
                         {existingParticipant ? (
-                          <button type="button" className="small secondary" onClick={() => editExistingFromProfile(existingParticipant)}>Vorhandenen öffnen/bearbeiten</button>
+                          <button type="button" className="small secondary" onClick={() => editExistingFromProfile(existingParticipant)}>{t('workflow.openEditExistingParticipant')}</button>
                         ) : (
-                          <button type="button" className="small" onClick={() => void applyExternalProfile(profile)} disabled={!selectedTournament}>Als neuen Teilnehmer speichern</button>
+                          <button type="button" className="small" onClick={() => void applyExternalProfile(profile)} disabled={!selectedTournament}>{t('workflow.saveAsNewParticipant')}</button>
                         )}
                       </div>
                     </div>
@@ -3054,6 +3292,7 @@ function openRoundPrint(roundNumber: number) {
               )}
             </article>
 
+            <FideLookupPanel tournament={selectedTournament} lang={lang} onApplied={async () => { await refresh(selectedId); }} />
             <article className="card">
               <h3>{editingPlayerId ? (lang === 'en' ? 'Edit participant' : 'Teilnehmer bearbeiten') : (lang === 'en' ? 'Add participant' : 'Teilnehmer erfassen')}</h3>
               <form onSubmit={(event) => void savePlayer(event)} className="player-form wide">
@@ -3095,13 +3334,13 @@ function openRoundPrint(roundNumber: number) {
             </div>
             <div className="table-scroll participant-scroll">
               <table className="participant-table">
-                <thead><tr><th>#</th><th>{t('standings.name')}</th><th>{lang === 'en' ? 'Club' : 'Verein'}</th><th>FIDE</th><th>TWZ/DWZ</th><th>{lang === 'en' ? 'Year' : 'Jg.'}</th><th>{lang === 'en' ? 'Age' : 'Alter ca.'}</th><th>{lang === 'en' ? 'Category' : 'Kat.'}</th><th>{t('rounds.status')}</th><th>{lang === 'en' ? 'Actions' : 'Aktion'}</th></tr></thead>
+                <thead><tr><th>#</th><th>{t('standings.name')}</th><th>{lang === 'en' ? 'Club' : 'Verein'}</th><th>FIDE</th><th>TWZ/DWZ</th><th>{lang === 'en' ? 'Year' : 'Jg.'}</th><th>{lang === 'en' ? 'Age' : 'Alter ca.'}</th><th>{lang === 'en' ? 'Category' : 'Kat.'}</th><th>{t('rounds.status')}</th><th>{lang === 'en' ? 'Actions' : t('workflow.action')}</th></tr></thead>
                 <tbody>
                   {(selectedTournament?.players.length ?? 0) === 0 && (
                     <tr><td colSpan={10} className="muted">{lang === 'en' ? 'No participants yet.' : 'Noch keine Teilnehmer erfasst.'}</td></tr>
                   )}
                   {(selectedTournament?.players.length ?? 0) > 0 && visiblePlayers.length === 0 && (
-                    <tr><td colSpan={10} className="muted">{lang === 'en' ? 'No participants match the filter.' : 'Keine Teilnehmer passen zum Filter.'}</td></tr>
+                    <tr><td colSpan={10} className="muted">{lang === 'en' ? 'No participants match the filter.' : t('workflow.noParticipantsMatchTheFilter')}</td></tr>
                   )}
                   {visiblePlayers.map(player => (
                     <tr key={player.id} className={player.status === 2 ? 'muted-row' : ''}>
@@ -3109,7 +3348,7 @@ function openRoundPrint(roundNumber: number) {
                       <td className="col-name">{player.name}</td>
                       <td className="col-club">{player.club ?? '—'}</td>
                       <td>{player.fideId ?? '—'}</td>
-                      <td>{twzOf(player)}</td>
+                      <td>{twzOf(player, selectedTournament?.settings.twzSource)}</td>
                       <td>{player.birthYear ?? '—'}</td>
                       <td>{approximateAgeLabel(player.birthYear)}</td>
                       <td>{genderLabel(player.gender, lang === 'en')}</td>
@@ -3117,7 +3356,7 @@ function openRoundPrint(roundNumber: number) {
                       <td className="actions col-actions">
                         <button type="button" className="small" onClick={() => editPlayer(player)}>{t('common.edit')}</button>
                         {player.status === 0
-                          ? <button type="button" className="small" onClick={() => void setPlayerStatus(player, 2)}>{lang === 'en' ? 'Withdraw' : 'Zurückziehen'}</button>
+                          ? <button type="button" className="small" onClick={() => void setPlayerStatus(player, 2)}>{lang === 'en' ? 'Withdraw' : t('workflow.withdraw')}</button>
                           : <button type="button" className="small" onClick={() => void setPlayerStatus(player, 0)}>{lang === 'en' ? 'Activate' : 'Aktivieren'}</button>}
                         <button type="button" className="small danger" onClick={() => void deleteOrWithdrawPlayer(player)}>{t('common.delete')}</button>
                       </td>
@@ -3160,7 +3399,7 @@ function openRoundPrint(roundNumber: number) {
               <h3>{lang === 'en' ? 'Hero Cup' : 'Heldenpokal'}</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>{lang === 'en' ? 'Rank' : 'Rang'}</th><th>Name</th><th>{lang === 'en' ? 'Above expectation' : 'Über Erwartung'}</th><th>{lang === 'en' ? 'Actual' : 'Ist'}</th><th>{lang === 'en' ? 'Expected' : 'Erwartet'}</th><th>{lang === 'en' ? 'Avg. opponents' : 'Ø Gegner'}</th></tr></thead>
+                  <thead><tr><th>{lang === 'en' ? 'Rank' : 'Rang'}</th><th>{t('standings.name')}</th><th>{lang === 'en' ? 'Above expectation' : t('workflow.aboveExpectation')}</th><th>{lang === 'en' ? 'Actual' : 'Ist'}</th><th>{lang === 'en' ? 'Expected' : 'Erwartet'}</th><th>{lang === 'en' ? 'Avg. opponents' : 'Ø Gegner'}</th></tr></thead>
                   <tbody>
                     {heroCup.map(row => (
                       <tr key={row.playerId}>
@@ -3206,7 +3445,7 @@ function openRoundPrint(roundNumber: number) {
             <div className="table-scroll">
               <table className="cross-table">
                 <thead>
-                  <tr><th>{lang === 'en' ? 'Player' : 'Spieler'}</th>{crossTable?.players.map(player => <th key={player.playerId}>{player.rank}</th>)}<th>{lang === 'en' ? 'Pts.' : 'Pkt.'}</th></tr>
+                  <tr><th>{lang === 'en' ? 'Player' : t('workflow.player')}</th>{crossTable?.players.map(player => <th key={player.playerId}>{player.rank}</th>)}<th>{lang === 'en' ? 'Pts.' : 'Pkt.'}</th></tr>
                 </thead>
                 <tbody>
                   {crossTable?.rows.map(row => (
@@ -3264,7 +3503,7 @@ function openRoundPrint(roundNumber: number) {
                 <div className="round-header">
                   <div>
                     <h4>{t('rounds.round')} {round.roundNumber}</h4>
-                    <p className="muted">{t('rounds.status')}: {roundStatusLabel(round.resultStatus, lang === 'en')}{round.isLocked ? ` · ${lang === 'en' ? 'locked' : 'gesperrt'}` : ''}{round.isVerified ? ` · ${lang === 'en' ? 'reviewed' : 'geprüft'}` : ''}</p>
+                    <p className="muted">{t('rounds.status')}: {roundStatusLabel(round.resultStatus, lang === 'en')}{round.isLocked ? ` · ${lang === 'en' ? 'locked' : 'gesperrt'}` : ''}{round.isVerified ? ` · ${lang === 'en' ? 'reviewed' : t('workflow.reviewed')}` : ''}</p>
                   </div>
                   <div className="actions">
                     <button type="button" className="small" onClick={() => void setRoundLock(round, !round.isLocked)} disabled={round.isVerified}>{round.isLocked ? t('rounds.unlock') : t('rounds.lock')}</button>
@@ -3276,19 +3515,19 @@ function openRoundPrint(roundNumber: number) {
                     <summary>{round.audit.algorithm} · {round.audit.rulesetVersion}</summary>
                     <div className="audit-grid">
                       <section>
-                        <strong>Hinweise</strong>
+                        <strong>{t('workflow.notices')}</strong>
                         <ul>{round.audit.messages.map((message, index) => <li key={`m-${index}`}>{message}</li>)}</ul>
                       </section>
                       <section>
-                        <strong>Scoregruppen</strong>
+                        <strong>{t('workflow.scoreGroups')}</strong>
                         <ul>{round.audit.scoreGroups.map((message, index) => <li key={`s-${index}`}>{message}</li>)}</ul>
                       </section>
                       <section>
-                        <strong>Floater</strong>
-                        <ul>{round.audit.floaters.length === 0 ? <li>keine</li> : round.audit.floaters.map((message, index) => <li key={`f-${index}`}>{message}</li>)}</ul>
+                        <strong>{t('workflow.floater')}</strong>
+                        <ul>{round.audit.floaters.length === 0 ? <li>{t('workflow.none')}</li> : round.audit.floaters.map((message, index) => <li key={`f-${index}`}>{message}</li>)}</ul>
                       </section>
                       <section>
-                        <strong>Farben</strong>
+                        <strong>{t('workflow.colours')}</strong>
                         <ul>{round.audit.colorNotes.map((message, index) => <li key={`c-${index}`}>{message}</li>)}</ul>
                       </section>
                     </div>
@@ -3296,12 +3535,12 @@ function openRoundPrint(roundNumber: number) {
                 )}
                 {diagnosticsFor(round.roundNumber) && (
                   <details className="diagnostics-box" open={diagnosticsFor(round.roundNumber)?.warnings.length !== 0}>
-                    <summary>Rundenprüfung · {diagnosticsFor(round.roundNumber)?.openBoards ?? 0} offen · {diagnosticsFor(round.roundNumber)?.forfeitBoards ?? 0} kampflos · {diagnosticsFor(round.roundNumber)?.byeBoards ?? 0} Bye</summary>
-                    {(diagnosticsFor(round.roundNumber)?.warnings.length ?? 0) === 0 && <p className="ok">Keine Warnungen.</p>}
+                    <summary>{t('workflow.roundReview')} {diagnosticsFor(round.roundNumber)?.openBoards ?? 0} {t('workflow.open')} {diagnosticsFor(round.roundNumber)?.forfeitBoards ?? 0} {t('workflow.forfeits2')} {diagnosticsFor(round.roundNumber)?.byeBoards ?? 0} Bye</summary>
+                    {(diagnosticsFor(round.roundNumber)?.warnings.length ?? 0) === 0 && <p className="ok">{t('workflow.noWarnings')}</p>}
                     <ul>{diagnosticsFor(round.roundNumber)?.warnings.map((warning, index) => <li key={`w-${round.roundNumber}-${index}`}>{warning}</li>)}</ul>
                     <div className="table-scroll compact">
                       <table>
-                        <thead><tr><th>Brett</th><th>Ergebnis</th><th>BH</th><th>SB/Direkt</th><th>TPR</th><th>Hinweis</th></tr></thead>
+                        <thead><tr><th>{t('rounds.board')}</th><th>{t('rounds.result')}</th><th>BH</th><th>{t('workflow.sBDirectEncounter')}</th><th>TPR</th><th>{t('workflow.notice')}</th></tr></thead>
                         <tbody>
                           {diagnosticsFor(round.roundNumber)?.boards.map(board => (
                             <tr key={`d-${round.roundNumber}-${board.boardNumber}`} className={board.isForfeit ? 'manual-row' : board.isOpen ? 'warning-row' : ''}>
@@ -3319,25 +3558,25 @@ function openRoundPrint(roundNumber: number) {
                   </details>
                 )}
                 <details className={`quality-box ${pairingQualityFor(round.roundNumber) ? pairingQualitySeverityClass(pairingQualityFor(round.roundNumber)!.severity) : 'quality-empty'}`}>
-                  <summary>{lang === 'en' ? 'Advanced: pairing quality' : 'Erweitert: Pairing-Qualität'}</summary>
+                  <summary>{lang === 'en' ? 'Advanced: pairing quality' : t('workflow.advancedPairingQuality')}</summary>
                   <div className="quality-header">
                     <div>
-                      <strong>{lang === 'en' ? 'Pairing quality' : 'Pairing-Qualität'}</strong>
+                      <strong>{lang === 'en' ? 'Pairing quality' : t('workflow.pairingQuality')}</strong>
                       {pairingQualityFor(round.roundNumber)
                         ? <span>{pairingQualityFor(round.roundNumber)!.qualityScore}/100 · {pairingQualitySeverityLabel(pairingQualityFor(round.roundNumber)!.severity, lang === 'en')}</span>
-                        : <span>{lang === 'en' ? 'not calculated yet' : 'noch nicht berechnet'}</span>}
+                        : <span>{lang === 'en' ? 'not calculated yet' : t('workflow.notCalculatedYet')}</span>}
                     </div>
-                    <button type="button" className="small secondary" onClick={() => void loadPairingQuality(round.roundNumber)}>{lang === 'en' ? 'Check quality' : 'Qualität prüfen'}</button>
+                    <button type="button" className="small secondary" onClick={() => void loadPairingQuality(round.roundNumber)}>{lang === 'en' ? 'Check quality' : t('workflow.checkQuality')}</button>
                   </div>
                   {pairingQualityFor(round.roundNumber) && (
                     <details open={pairingQualityFor(round.roundNumber)!.severity >= 2}>
-                      <summary>{pairingQualityFor(round.roundNumber)!.findingCount} Hinweis(e) · {pairingQualityFor(round.roundNumber)!.rematchCount} Rematch · {pairingQualityFor(round.roundNumber)!.crossScoreGroupPairingCount} Scoregruppen-Abweichung(en) · {pairingQualityFor(round.roundNumber)!.thirdSameColorRiskCount} Farbfolge-Risiko/Risiken</summary>
+                      <summary>{pairingQualityFor(round.roundNumber)!.findingCount} {t('workflow.noticeS')} {pairingQualityFor(round.roundNumber)!.rematchCount} Rematch · {pairingQualityFor(round.roundNumber)!.crossScoreGroupPairingCount} {t('workflow.scoreGroupDeviationS')} {pairingQualityFor(round.roundNumber)!.thirdSameColorRiskCount} {t('workflow.colourSequenceRiskS')}</summary>
                       <ul className="message-list">
                         {pairingQualityFor(round.roundNumber)!.findings.map((finding, index) => <li key={`quality-finding-${round.roundNumber}-${index}`}>{finding}</li>)}
                       </ul>
                       <div className="table-scroll compact">
                         <table>
-                          <thead><tr><th>Brett</th><th>Paarung</th><th>Score vor Runde</th><th>Hinweise</th></tr></thead>
+                          <thead><tr><th>{t('rounds.board')}</th><th>{t('workflow.pairing')}</th><th>{t('workflow.scoreBeforeRound')}</th><th>{t('workflow.notices')}</th></tr></thead>
                           <tbody>
                             {pairingQualityFor(round.roundNumber)!.boards.map(board => (
                               <tr key={`quality-board-${round.roundNumber}-${board.boardNumber}`} className={board.isRematch ? 'quality-board-critical' : board.wouldGiveWhiteThirdSameColor || board.wouldGiveBlackThirdSameColor ? 'quality-board-warning' : board.isCrossScoreGroupPairing || board.isBye ? 'quality-board-notice' : ''}>
@@ -3354,26 +3593,26 @@ function openRoundPrint(roundNumber: number) {
                   )}
                 </details>
                 <details className="chess960-dice-panel">
-                  <summary>{lang === 'en' ? 'Advanced: Chess960 starting positions' : 'Erweitert: Schachwürfel / Chess960'}</summary>
+                  <summary>{lang === 'en' ? 'Advanced: Chess960 starting positions' : t('workflow.advancedChessDiceChess960')}</summary>
                   <div className="chess960-dice-header">
                     <div>
-                      <strong>{lang === 'en' ? 'Chess960 starting positions' : 'Schachwürfel / Chess960'}</strong>
-                      <span>{chess960PositionCount(round)} {lang === 'en' ? `of ${chess960GameBoardCount(round)} regular boards have a starting position.` : `von ${chess960GameBoardCount(round)} regulären Brettern haben eine Startstellung.`}</span>
+                      <strong>{lang === 'en' ? 'Chess960 starting positions' : t('workflow.chessDiceChess9602')}</strong>
+                      <span>{chess960PositionCount(round)} {lang === 'en' ? `of ${chess960GameBoardCount(round)} regular boards have a starting position.` : t('workflow.ofRegularBoardsHaveAStartingPosition', { p0: chess960GameBoardCount(round) })}</span>
                     </div>
-                    <button type="button" className="secondary" onClick={() => openChess960Dice(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>{lang === 'en' ? '🎲 Open Chess960 dice' : '🎲 Schachwürfel öffnen'}</button>
+                    <button type="button" className="secondary" onClick={() => openChess960Dice(round)} disabled={round.isLocked || round.isVerified || chess960GameBoardCount(round) === 0}>{lang === 'en' ? '🎲 Open Chess960 dice' : t('workflow.openChessDice')}</button>
                   </div>
                   {chess960PositionCount(round) > 0 && (
                     <div className="table-scroll compact chess960-table">
                       <table>
-                        <thead><tr><th>{lang === 'en' ? 'Board' : 'Brett'}</th><th>{lang === 'en' ? 'Pairing' : 'Paarung'}</th><th>{lang === 'en' ? 'Starting position' : 'Startstellung'}</th><th>ID / Seed</th><th>{lang === 'en' ? 'Action' : 'Aktion'}</th></tr></thead>
+                        <thead><tr><th>{lang === 'en' ? 'Board' : t('rounds.board')}</th><th>{lang === 'en' ? 'Pairing' : t('workflow.pairing')}</th><th>{lang === 'en' ? 'Starting position' : 'Startstellung'}</th><th>ID / Seed</th><th>{lang === 'en' ? 'Action' : t('workflow.action')}</th></tr></thead>
                         <tbody>
                           {round.pairings.map(pairing => (
                             <tr key={`chess960-${round.roundNumber}-${pairing.boardNumber}`}>
                               <td>{pairing.boardNumber}</td>
-                              <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? 'spielfrei' : playerNameById(pairing.blackPlayerId)}</td>
+                              <td>{playerNameById(pairing.whitePlayerId)} – {pairing.isBye ? t('dice.bye') : playerNameById(pairing.blackPlayerId)}</td>
                               <td><strong>{chess960Display(pairing)}</strong></td>
                               <td>{pairing.chess960StartPosition ? `SP ${pairing.chess960StartPosition.positionNumber}${chess960SeedDisplay(pairing) ? ` · ${chess960SeedDisplay(pairing)}` : ''}` : '—'}</td>
-                              <td>{!pairing.isBye && <button type="button" className="small board-dice-button" title={lang === 'en' ? `Roll Chess960 for board ${pairing.boardNumber}` : `Chess960 für Brett ${pairing.boardNumber} würfeln`} onClick={() => openBoardDice(round.roundNumber, pairing.boardNumber)} disabled={round.isLocked || round.isVerified}>{lang === 'en' ? '🎲 Roll' : '🎲 Würfeln'}</button>}</td>
+                              <td>{!pairing.isBye && <button type="button" className="small board-dice-button" title={lang === 'en' ? `Roll Chess960 for board ${pairing.boardNumber}` : t('workflow.rollChess960ForBoard', { p0: pairing.boardNumber })} onClick={() => openBoardDice(round.roundNumber, pairing.boardNumber)} disabled={round.isLocked || round.isVerified}>{lang === 'en' ? '🎲 Roll' : t('workflow.roll')}</button>}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -3388,9 +3627,10 @@ function openRoundPrint(roundNumber: number) {
                       {round.pairings.map(pairing => {
                         const edit = pairingEdit(round, pairing);
                         const roundClosed = round.isLocked || round.isVerified;
+                        const manualPairingDisabled = roundClosed || !selectedTournament.settings.allowManualPairingOverrides;
                         return (
                           <tr key={`${round.roundNumber}-${pairing.boardNumber}`} className={pairing.isManualOverride ? 'manual-row' : ''}>
-                            <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>manuell</small> : null}</td>
+                            <td>{pairing.boardNumber}{pairing.isManualOverride ? <small>{t('workflow.manual')}</small> : null}</td>
                             <td>{playerNameById(pairing.whitePlayerId)}</td>
                             <td>{pairing.isBye ? t('rounds.bye') : playerNameById(pairing.blackPlayerId)}</td>
                             <td>
@@ -3400,7 +3640,7 @@ function openRoundPrint(roundNumber: number) {
                                 disabled={pairing.isBye || roundClosed}
                                 aria-label={`${t('rounds.result')}: ${t('rounds.round')} ${round.roundNumber}, ${t('rounds.board')} ${pairing.boardNumber}`}
                               >
-                                {resultOptions.map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
+                                {resultOptions.filter(option => pairing.isBye || option.value !== 7).map(option => <option key={option.value} value={option.value}>{lang === 'en' ? option.labelEn : option.label}</option>)}
                               </select>
                               <small>{resultLabel(pairing.result.kind, lang === 'en')}</small>
                             </td>
@@ -3408,16 +3648,16 @@ function openRoundPrint(roundNumber: number) {
                               <details className="manual-pairing-disclosure">
                                 <summary>{lang === 'en' ? 'Advanced override' : 'Erweiterte Korrektur'}</summary>
                                 <div className="manual-pairing">
-                                <select aria-label={lang === 'en' ? 'Override white player' : 'Weißspieler manuell wählen'} value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={roundClosed}>
-                                  <option value="">{lang === 'en' ? 'Select White' : 'Weiß wählen'}</option>
+                                <select aria-label={lang === 'en' ? 'Override white player' : t('workflow.selectWhiteManually')} value={edit.whitePlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { whitePlayerId: event.target.value })} disabled={manualPairingDisabled}>
+                                  <option value="">{lang === 'en' ? 'Select White' : t('workflow.selectWhite')}</option>
                                   {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                                 </select>
-                                <select aria-label={lang === 'en' ? 'Override black player or bye' : 'Schwarzspieler oder spielfrei manuell wählen'} value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={roundClosed}>
+                                <select aria-label={lang === 'en' ? 'Override black player or bye' : t('workflow.selectBlackOrAByeManually')} value={edit.blackPlayerId} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { blackPlayerId: event.target.value })} disabled={manualPairingDisabled}>
                                   <option value="">{lang === 'en' ? 'Black / leave empty for bye' : 'Schwarz/Bye leer'}</option>
                                   {selectedTournament.players.filter(player => player.status === 0).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                                 </select>
-                                <input aria-label={lang === 'en' ? 'Override reason' : 'Grund der manuellen Korrektur'} value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder={lang === 'en' ? 'Reason' : 'Notiz'} disabled={roundClosed} />
-                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={roundClosed || !edit.whitePlayerId}>{lang === 'en' ? 'Save override' : 'Paarung speichern'}</button>
+                                <input aria-label={lang === 'en' ? 'Override reason' : 'Grund der manuellen Korrektur'} value={edit.notes} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updatePairingEdit(round.roundNumber, pairing.boardNumber, { notes: event.target.value })} placeholder={lang === 'en' ? 'Reason' : 'Notiz'} disabled={manualPairingDisabled} />
+                                <button type="button" className="small" onClick={() => void saveManualPairing(round, pairing)} disabled={manualPairingDisabled || !edit.whitePlayerId}>{lang === 'en' ? 'Save override' : t('workflow.savePairing')}</button>
                                 </div>
                               </details>
                             </td>
@@ -3452,23 +3692,23 @@ function openRoundPrint(roundNumber: number) {
               <div className="pairing-readiness-header">
                 <div>
                   <h3>{lang === 'en' ? 'Pairing readiness' : 'Auslosungsfreigabe'}</h3>
-                  <p className="muted">{lang === 'en' ? 'Check results, round review and preview quality before pairing the next round.' : 'Prüft vor der nächsten Auslosung, ob Ergebnisse, Rundenprüfung und Vorschauqualität zusammenpassen.'}</p>
+                  <p className="muted">{lang === 'en' ? 'Check results, round review and preview quality before pairing the next round.' : t('workflow.checksResultsRoundReviewsAndPreviewQuality')}</p>
                 </div>
                 <span className={pairingReadinessStatusClass()}>{pairingReadinessStatusLabel()}</span>
               </div>
 
               <div className="pairing-readiness-metrics">
                 <div><strong>{pairingReadinessOpenResultCount()}</strong><span>{lang === 'en' ? 'open results' : 'offene Ergebnisse'}</span></div>
-                <div><strong>{pairingReadinessUnverifiedRoundCount()}</strong><span>{lang === 'en' ? 'unreviewed rounds' : 'ungeprüfte Runden'}</span></div>
-                <div><strong>{selectedTournament?.players.filter(player => player.status === 0).length ?? 0}</strong><span>{lang === 'en' ? 'active players' : 'aktive Spieler'}</span></div>
-                <div><strong>{nextRoundPreview ? nextRoundPreview.pairingQuality.qualityScore : '—'}</strong><span>{lang === 'en' ? 'preview quality' : 'Vorschauqualität'}</span></div>
+                <div><strong>{pairingReadinessUnverifiedRoundCount()}</strong><span>{lang === 'en' ? 'unreviewed rounds' : t('workflow.unreviewedRounds')}</span></div>
+                <div><strong>{selectedTournament?.players.filter(player => player.status === 0).length ?? 0}</strong><span>{lang === 'en' ? 'active players' : t('workflow.activePlayers')}</span></div>
+                <div><strong>{nextRoundPreview ? nextRoundPreview.pairingQuality.qualityScore : '—'}</strong><span>{lang === 'en' ? 'preview quality' : t('workflow.previewQuality')}</span></div>
               </div>
 
               {pairingReadinessIssues().length === 0 ? (
-                <div className="pairing-readiness-ok"><strong>{lang === 'en' ? 'Ready:' : 'Bereit:'}</strong> {lang === 'en' ? 'No blocking issues are visible for the next pairing.' : 'Es sind keine blockierenden Punkte für die nächste Auslosung sichtbar.'}</div>
+                <div className="pairing-readiness-ok"><strong>{lang === 'en' ? 'Ready:' : 'Bereit:'}</strong> {lang === 'en' ? 'No blocking issues are visible for the next pairing.' : t('workflow.noBlockingIssuesAreVisibleForThe')}</div>
               ) : (
                 <div className="pairing-readiness-warning">
-                  <strong>{lang === 'en' ? 'Review before pairing the next round:' : 'Vor der nächsten Auslosung prüfen:'}</strong>
+                  <strong>{lang === 'en' ? 'Review before pairing the next round:' : t('workflow.reviewBeforeTheNextPairing')}</strong>
                   <ul>
                     {pairingReadinessIssues().map((issue, index) => <li key={index}>{issue}</li>)}
                   </ul>
@@ -3477,12 +3717,12 @@ function openRoundPrint(roundNumber: number) {
 
               <div className="pairing-readiness-actions">
                 <button type="button" onClick={() => void previewNextRound()} disabled={!pairingReadinessCanCreatePreview()}>{lang === 'en' ? 'Create pairing preview' : 'Auslosungsvorschau erzeugen'}</button>
-                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Pair next round' : 'Nächste Runde auslosen'}</button>
-                <button type="button" className="secondary" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : 'Aktuelle Runde drucken'}</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Open tournament report' : 'Turnierbericht öffnen'}</button>
+                <button type="button" onClick={() => void generateRound()} disabled={!pairingReadinessCanGenerateRound()}>{lang === 'en' ? 'Pair next round' : t('rounds.pairNext')}</button>
+                <button type="button" className="secondary" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : t('workflow.printCurrentRound')}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Open tournament report' : t('workflow.openTournamentReport')}</button>
               </div>
 
-              <p className="muted small">{lang === 'en' ? 'This panel is the tournament director’s deliberate check before the next round.' : 'Hinweis: Diese Freigabe ergänzt die bestehenden Aktionen im Kopfbereich. Sie ist als bewusster Turnierleiter-Check vor der nächsten Runde gedacht.'}</p>
+              <p className="muted small">{lang === 'en' ? 'This panel is the tournament director’s deliberate check before the next round.' : t('workflow.thisSupplementsTheActionsInTheHeader')}</p>
             </article>
           )}
 
@@ -3491,29 +3731,29 @@ function openRoundPrint(roundNumber: number) {
               <div className="bye-forfeit-header">
                 <div>
                   <h3>{lang === 'en' ? 'Bye and forfeit audit' : 'Bye- und Kampflos-Audit'}</h3>
-                  <p className="muted">{lang === 'en' ? 'Shows byes and forfeits with their tie-break impact before standings, exports or the next pairing.' : 'Macht spielfreie und kampflose Bretter inklusive Wertungswirkung sichtbar. Das hilft vor Tabelle, Export und nächster Auslosung.'}</p>
+                  <p className="muted">{lang === 'en' ? 'Shows byes and forfeits with their tie-break impact before standings, exports or the next pairing.' : t('workflow.showsByesAndForfeitsWithTheirEffect')}</p>
                 </div>
                 <span className={byeForfeitAuditStatusClass()}>{byeForfeitAuditStatusDisplayLabel()}</span>
               </div>
 
               <div className="bye-forfeit-metrics">
-                <div><strong>{totalByeBoardCount()}</strong><span>Bye/spielfrei</span></div>
-                <div><strong>{totalForfeitBoardCount()}</strong><span>kampflos</span></div>
-                <div><strong>{byeForfeitAffectedRoundCount()}</strong><span>betroffene Runden</span></div>
-                <div><strong>{byeForfeitRows().length}</strong><span>sichtbare Fälle</span></div>
+                <div><strong>{totalByeBoardCount()}</strong><span>{t('workflow.byeNoGame')}</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>{t('workflow.forfeit')}</span></div>
+                <div><strong>{byeForfeitAffectedRoundCount()}</strong><span>{t('workflow.affectedRounds')}</span></div>
+                <div><strong>{byeForfeitRows().length}</strong><span>{t('workflow.visibleCases')}</span></div>
               </div>
 
-              {!selectedTournament && <p className="muted">Bitte zuerst ein Turnier auswählen.</p>}
-              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="bye-forfeit-empty">Noch keine Runde vorhanden. Bye- und Kampflos-Fälle werden nach der ersten Auslosung angezeigt.</div>}
-              {selectedTournament && selectedTournament.rounds.length > 0 && byeForfeitRows().length === 0 && <div className="bye-forfeit-ok">Keine Bye- oder kampflosen Bretter in den aktuellen Diagnosen gefunden.</div>}
-              {totalForfeitBoardCount() > 0 && <div className="bye-forfeit-warning"><strong>Kampflos-Fälle prüfen:</strong> Bitte vor Veröffentlichung kontrollieren, ob Buchholz, Sonneborn-Berger, Direktwertung und Performance korrekt behandelt werden.</div>}
-              {totalByeBoardCount() > 0 && <div className="bye-forfeit-warning info"><strong>Bye/spielfrei vorhanden:</strong> Aushänge und Exporte sollten eindeutig zeigen, wer spielfrei war und wie dies gewertet wurde.</div>}
+              {!selectedTournament && <p className="muted">{t('workflow.selectATournamentFirst')}</p>}
+              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="bye-forfeit-empty">{t('workflow.noRoundYetByesAndForfeitsAppear')}</div>}
+              {selectedTournament && selectedTournament.rounds.length > 0 && byeForfeitRows().length === 0 && <div className="bye-forfeit-ok">{t('workflow.noByesOrForfeitsFoundInThe')}</div>}
+              {totalForfeitBoardCount() > 0 && <div className="bye-forfeit-warning"><strong>{t('workflow.reviewForfeits')}</strong> {t('workflow.beforePublicationCheckThatBuchholzSonnebornBerger')}</div>}
+              {totalByeBoardCount() > 0 && <div className="bye-forfeit-warning info"><strong>{t('workflow.byesPresent')}</strong> {t('workflow.postedResultsAndExportsShouldClearlyIdentify')}</div>}
 
               {byeForfeitRows().length > 0 && (
                 <div className="table-wrap bye-forfeit-table-wrap">
                   <table>
                     <thead>
-                      <tr><th>Runde</th><th>Brett</th><th>Weiß</th><th>Schwarz</th><th>Art</th><th>Ergebnis</th><th>BH</th><th>Direkt/SB</th><th>Perf.</th><th>Hinweis</th></tr>
+                      <tr><th>{t('operator.round')}</th><th>{t('rounds.board')}</th><th>{t('rounds.white')}</th><th>{t('rounds.black')}</th><th>{t('workflow.type')}</th><th>{t('rounds.result')}</th><th>BH</th><th>{t('workflow.directSB')}</th><th>Perf.</th><th>{t('workflow.notice')}</th></tr>
                     </thead>
                     <tbody>
                       {byeForfeitRows().map(row => (
@@ -3536,9 +3776,9 @@ function openRoundPrint(roundNumber: number) {
               )}
 
               <div className="bye-forfeit-actions">
-                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Aktuelle Runde drucken</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Paarungen CSV</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
+                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{t('workflow.printCurrentRound')}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>{t('workflow.pairingsCSV')}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{t('workflow.openTournamentReport')}</button>
               </div>
             </article>
           )}
@@ -3548,32 +3788,32 @@ function openRoundPrint(roundNumber: number) {
               <div className="result-review-header">
                 <div>
                   <h3>{lang === 'en' ? 'Round completion checklist' : 'Rundenabschluss-Checkliste'}</h3>
-                  <p className="muted">{lang === 'en' ? 'Checks open results, forfeits, unreviewed rounds and diagnostic findings before publishing or pairing again.' : 'Prüft offene Ergebnisse, kampflose Bretter, ungeprüfte Runden und Diagnosehinweise vor Aushang oder nächster Auslosung.'}</p>
+                  <p className="muted">{lang === 'en' ? 'Checks open results, forfeits, unreviewed rounds and diagnostic findings before publishing or pairing again.' : t('workflow.checksPendingResultsForfeitsUnreviewedRoundsAnd')}</p>
                 </div>
                 <span className={resultReviewStatusClass()}>{resultReviewStatusDisplayLabel()}</span>
               </div>
 
               <div className="result-review-metrics">
-                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>{lang === 'en' ? 'rounds' : 'Runden'}</span></div>
-                <div><strong>{completedRoundCount()}</strong><span>{lang === 'en' ? 'complete' : 'vollständig'}</span></div>
+                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>{lang === 'en' ? 'rounds' : t('workflow.rounds')}</span></div>
+                <div><strong>{completedRoundCount()}</strong><span>{lang === 'en' ? 'complete' : t('workflow.complete')}</span></div>
                 <div><strong>{totalOpenBoardCount()}</strong><span>{lang === 'en' ? 'open' : 'offen'}</span></div>
-                <div><strong>{totalForfeitBoardCount()}</strong><span>{lang === 'en' ? 'forfeits' : 'kampflos'}</span></div>
-                <div><strong>{unverifiedCompleteRoundCount()}</strong><span>{lang === 'en' ? 'unreviewed' : 'ungeprüft'}</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>{lang === 'en' ? 'forfeits' : t('workflow.forfeit')}</span></div>
+                <div><strong>{unverifiedCompleteRoundCount()}</strong><span>{lang === 'en' ? 'unreviewed' : t('workflow.unreviewed')}</span></div>
                 <div><strong>{lockedRoundCount()}</strong><span>{lang === 'en' ? 'locked' : 'gesperrt'}</span></div>
-                <div><strong>{diagnosticWarningCount()}</strong><span>{lang === 'en' ? 'findings' : 'Hinweise'}</span></div>
+                <div><strong>{diagnosticWarningCount()}</strong><span>{lang === 'en' ? 'findings' : t('workflow.notices')}</span></div>
               </div>
 
-              {!selectedTournament && <p className="muted">{lang === 'en' ? 'Select a tournament first.' : 'Bitte zuerst ein Turnier auswählen.'}</p>}
-              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="result-review-empty">{lang === 'en' ? 'No round has been paired yet. The checklist activates once pairings exist.' : 'Noch keine Runde ausgelost. Die Checkliste wird aktiv, sobald Paarungen vorhanden sind.'}</div>}
-              {selectedTournament && selectedTournament.rounds.length > 0 && totalOpenBoardCount() === 0 && unverifiedCompleteRoundCount() === 0 && diagnosticWarningCount() === 0 && <div className="result-review-ok">{lang === 'en' ? 'All known rounds are complete, reviewed or free of diagnostic warnings. The tournament report is ready.' : 'Alle bekannten Runden sind vollständig, geprüft oder ohne Diagnosewarnung. Der Turnierbericht kann veröffentlicht werden.'}</div>}
-              {totalOpenBoardCount() > 0 && <div className="result-review-warning danger"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Enter every open board before standings, publication or the next pairing.' : 'Vor Tabelle, Aushang oder nächster Auslosung bitte alle offenen Bretter erfassen.'}</div>}
-              {unverifiedCompleteRoundCount() > 0 && totalOpenBoardCount() === 0 && <div className="result-review-warning"><strong>{lang === 'en' ? 'Review pending:' : 'Prüfung offen:'}</strong> {lang === 'en' ? 'At least one complete round has not been marked as reviewed.' : 'Mindestens eine vollständige Runde ist noch nicht als geprüft markiert.'}</div>}
+              {!selectedTournament && <p className="muted">{lang === 'en' ? 'Select a tournament first.' : t('workflow.selectATournamentFirst')}</p>}
+              {selectedTournament && selectedTournament.rounds.length === 0 && <div className="result-review-empty">{lang === 'en' ? 'No round has been paired yet. The checklist activates once pairings exist.' : t('workflow.noRoundPairedYetTheChecklistBecomes')}</div>}
+              {selectedTournament && selectedTournament.rounds.length > 0 && totalOpenBoardCount() === 0 && unverifiedCompleteRoundCount() === 0 && diagnosticWarningCount() === 0 && <div className="result-review-ok">{lang === 'en' ? 'All known rounds are complete, reviewed or free of diagnostic warnings. The tournament report is ready.' : t('workflow.allKnownRoundsAreCompleteReviewedOr')}</div>}
+              {totalOpenBoardCount() > 0 && <div className="result-review-warning danger"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Enter every open board before standings, publication or the next pairing.' : t('workflow.enterAllPendingBoardResultsBeforeStandings')}</div>}
+              {unverifiedCompleteRoundCount() > 0 && totalOpenBoardCount() === 0 && <div className="result-review-warning"><strong>{lang === 'en' ? 'Review pending:' : t('workflow.reviewPending2')}</strong> {lang === 'en' ? 'At least one complete round has not been marked as reviewed.' : t('workflow.atLeastOneCompletedRoundHasNot')}</div>}
 
               {resultReviewRows().length > 0 && (
                 <div className="table-wrap result-review-table-wrap">
                   <table>
                     <thead>
-                      <tr><th>{lang === 'en' ? 'Round' : 'Runde'}</th><th>{lang === 'en' ? 'Board' : 'Brett'}</th><th>{lang === 'en' ? 'White' : 'Weiß'}</th><th>{lang === 'en' ? 'Black' : 'Schwarz'}</th><th>Status</th><th>{lang === 'en' ? 'Finding' : 'Hinweis'}</th></tr>
+                      <tr><th>{lang === 'en' ? 'Round' : t('operator.round')}</th><th>{lang === 'en' ? 'Board' : t('rounds.board')}</th><th>{lang === 'en' ? 'White' : t('rounds.white')}</th><th>{lang === 'en' ? 'Black' : t('rounds.black')}</th><th>{t('rounds.status')}</th><th>{lang === 'en' ? 'Finding' : t('workflow.notice')}</th></tr>
                     </thead>
                     <tbody>
                       {resultReviewRows().map(row => (
@@ -3582,7 +3822,7 @@ function openRoundPrint(roundNumber: number) {
                           <td>{row.boardNumber}</td>
                           <td>{row.white}</td>
                           <td>{row.black}</td>
-                          <td><span className={`result-review-chip ${row.kind === 'offen' ? 'danger' : row.kind === 'kampflos' ? 'warn' : ''}`}>{row.kind}</span></td>
+                          <td><span className={`result-review-chip ${row.kind === 'offen' ? 'danger' : row.kind === t('workflow.forfeit') ? 'warn' : ''}`}>{row.kind}</span></td>
                           <td>{row.note || row.resultLabel}</td>
                         </tr>
                       ))}
@@ -3592,8 +3832,8 @@ function openRoundPrint(roundNumber: number) {
               )}
 
               <div className="result-review-actions">
-                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : 'Aktuelle Runde drucken'}</button>
-                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Open tournament report' : 'Turnierbericht öffnen'}</button>
+                <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : t('workflow.printCurrentRound')}</button>
+                <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Open tournament report' : t('workflow.openTournamentReport')}</button>
                 <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Standings CSV' : 'Tabelle CSV'}</button>
               </div>
             </article>
@@ -3603,44 +3843,44 @@ function openRoundPrint(roundNumber: number) {
           <article className="card correction-journal-card">
             <div className="card-heading-row">
               <div>
-                <h3>Korrektur- und Eingriffsübersicht</h3>
-                <p className="muted">Zeigt manuelle Paarungen, gesperrte/geprüfte Runden, inaktive Teilnehmer und Sonderergebnisse als Turnierleiter-Prüfliste.</p>
+                <h3>{t('workflow.correctionsAndInterventions')}</h3>
+                <p className="muted">{t('workflow.tournamentDirectorChecklistOfManualPairingsLocked')}</p>
               </div>
               <span className={`status-pill ${correctionJournalStatusClass}`}>{correctionJournalStatusLabel}</span>
             </div>
             <div className="review-metrics correction-metrics">
-              <div><strong>{correctionJournal.length}</strong><span>Einträge</span></div>
-              <div><strong>{correctionJournalCriticalCount}</strong><span>kritisch</span></div>
-              <div><strong>{correctionJournalWarningCount}</strong><span>prüfen</span></div>
+              <div><strong>{correctionJournal.length}</strong><span>{t('workflow.entries')}</span></div>
+              <div><strong>{correctionJournalCriticalCount}</strong><span>{t('workflow.critical')}</span></div>
+              <div><strong>{correctionJournalWarningCount}</strong><span>{t('workflow.review2')}</span></div>
               <div><strong>{correctionJournalInfoCount}</strong><span>Info</span></div>
             </div>
-            {!selectedTournament && <p className="muted">Bitte zuerst ein Turnier auswählen.</p>}
+            {!selectedTournament && <p className="muted">{t('workflow.selectATournamentFirst')}</p>}
             {selectedTournament && correctionJournal.length === 0 && (
-              <div className="notice success">Keine manuellen Eingriffe, Sonderergebnisse oder offenen Prüfpunkte erkannt.</div>
+              <div className="notice success">{t('workflow.noManualInterventionsSpecialResultsOrPending')}</div>
             )}
             {selectedTournament && correctionJournalCriticalCount > 0 && (
-              <div className="notice danger">Kritische Eingriffe erkannt: Manuelle Paarungen vor Aushang oder nächster Auslosung bewusst prüfen.</div>
+              <div className="notice danger">{t('workflow.criticalInterventionsFoundReviewManualPairingsBefore')}</div>
             )}
             {selectedTournament && correctionJournalWarningCount > 0 && (
-              <div className="notice warning">Prüfpunkte vorhanden: Teilnehmerstatus, ungeprüfte Runden oder Sonderergebnisse kontrollieren.</div>
+              <div className="notice warning">{t('workflow.reviewItemsFoundCheckParticipantStatusUnreviewed')}</div>
             )}
             {selectedTournament && correctionJournal.length > 0 && (
               <div className="table-scroll compact correction-journal-table">
                 <table>
                   <thead>
                     <tr>
-                      <th>Bereich</th>
-                      <th>Status</th>
-                      <th>Eintrag</th>
-                      <th>Details</th>
-                      <th>Aktion</th>
+                      <th>{t('workflow.area')}</th>
+                      <th>{t('rounds.status')}</th>
+                      <th>{t('workflow.entry')}</th>
+                      <th>{t('workflow.details')}</th>
+                      <th>{t('workflow.action')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {correctionJournal.map(item => (
                       <tr key={item.key} className={`journal-row ${item.severity}`}>
                         <td>{item.scope}</td>
-                        <td><span className={`status-pill ${item.severity === 'critical' ? 'blocked' : item.severity === 'warning' ? 'warning' : 'ready'}`}>{item.severity === 'critical' ? 'kritisch' : item.severity === 'warning' ? 'prüfen' : 'Info'}</span></td>
+                        <td><span className={`status-pill ${item.severity === 'critical' ? 'blocked' : item.severity === 'warning' ? 'warning' : 'ready'}`}>{item.severity === 'critical' ? t('workflow.critical') : item.severity === 'warning' ? t('workflow.review2') : 'Info'}</span></td>
                         <td>{item.title}</td>
                         <td>{item.detail}</td>
                         <td>{item.action}</td>
@@ -3651,9 +3891,9 @@ function openRoundPrint(roundNumber: number) {
               </div>
             )}
             <div className="actions">
-              <button type="button" onClick={() => openLatestRoundPrint()} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>Letzte Runde drucken</button>
-              <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnierbericht öffnen</button>
-              <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Paarungen CSV</button>
+              <button type="button" onClick={() => openLatestRoundPrint()} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{t('workflow.printLastRound')}</button>
+              <button type="button" className="secondary" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{t('workflow.openTournamentReport')}</button>
+              <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>{t('workflow.pairingsCSV')}</button>
             </div>
           </article>
           )}
@@ -3663,29 +3903,29 @@ function openRoundPrint(roundNumber: number) {
               <div className="export-center-header">
                 <div>
                   <h3>{lang === 'en' ? 'Tournament director export centre' : 'Turnierleiter-Exportcenter'}</h3>
-                  <p className="muted">{lang === 'en' ? 'Local printouts, standings, pairings, previews and backups in one place.' : 'Schnellzugriff auf Aushänge, Tabellen, Paarungen, Vorschau und Backup. Ideal vor, während und nach einer Runde.'}</p>
+                  <p className="muted">{lang === 'en' ? 'Local printouts, standings, pairings, previews and backups in one place.' : t('workflow.quickAccessToPostingsStandingsPairingsPreview')}</p>
                 </div>
                 <span className="export-center-badge">RUN-15 · v0.49</span>
               </div>
 
               <div className="export-center-metrics">
-                <div><strong>{selectedTournament?.players.length ?? 0}</strong><span>{lang === 'en' ? 'players' : 'Teilnehmer'}</span></div>
+                <div><strong>{selectedTournament?.players.length ?? 0}</strong><span>{lang === 'en' ? 'players' : t('nav.participants')}</span></div>
                 <div><strong>{activePlayerCount()}</strong><span>{lang === 'en' ? 'active' : 'aktiv'}</span></div>
                 <div><strong>{inactivePlayerCount()}</strong><span>{lang === 'en' ? 'inactive' : 'inaktiv'}</span></div>
-                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>{lang === 'en' ? 'rounds' : 'Runden'}</span></div>
+                <div><strong>{selectedTournament?.rounds.length ?? 0}</strong><span>{lang === 'en' ? 'rounds' : t('workflow.rounds')}</span></div>
                 <div><strong>{totalOpenBoardCount()}</strong><span>{lang === 'en' ? 'open boards' : 'offene Bretter'}</span></div>
-                <div><strong>{totalForfeitBoardCount()}</strong><span>{lang === 'en' ? 'forfeits' : 'kampflos'}</span></div>
+                <div><strong>{totalForfeitBoardCount()}</strong><span>{lang === 'en' ? 'forfeits' : t('workflow.forfeit')}</span></div>
               </div>
 
-              {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Review open boards before publishing final standings.' : 'Vor Finaltabellen oder Veröffentlichungen bitte offene Bretter prüfen.'}</div>}
-              {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>{lang === 'en' ? 'Critical preview:' : 'Kritische Vorschau:'}</strong> {lang === 'en' ? 'Review pairing findings before publishing or committing the round.' : 'Pairing-Hinweise vor Aushang oder Auslosung prüfen.'}</div>}
+              {totalOpenBoardCount() > 0 && <div className="export-center-warning"><strong>{lang === 'en' ? 'Open results:' : 'Offene Ergebnisse:'}</strong> {lang === 'en' ? 'Review open boards before publishing final standings.' : t('workflow.checkPendingResultsBeforeFinalStandingsOr')}</div>}
+              {nextRoundPreview?.pairingQuality.hasCriticalIssues && <div className="export-center-warning critical"><strong>{lang === 'en' ? 'Critical preview:' : 'Kritische Vorschau:'}</strong> {lang === 'en' ? 'Review pairing findings before publishing or committing the round.' : t('workflow.reviewPairingNoticesBeforePostingOrPairing')}</div>}
 
               <div className="export-center-grid">
                 <section>
-                  <h4>{lang === 'en' ? 'Printouts' : 'Aushänge'}</h4>
+                  <h4>{lang === 'en' ? 'Printouts' : t('workflow.postings')}</h4>
                   <div className="export-center-actions">
                     <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{lang === 'en' ? 'Full tournament print view' : 'Gesamt-Druckansicht'}</button>
-                    <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : 'Aktuelle Runde drucken'}</button>
+                    <button type="button" onClick={openLatestRoundPrint} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Print current round' : t('workflow.printCurrentRound')}</button>
                     <button type="button" onClick={openNextRoundPreviewPrint} disabled={!selectedTournament || activePlayerCount() < 2}>{lang === 'en' ? 'Print preview' : 'Vorschau drucken'}</button>
                   </div>
                 </section>
@@ -3698,13 +3938,13 @@ function openRoundPrint(roundNumber: number) {
                     <button type="button" className="secondary" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'All pairings CSV' : 'Alle Paarungen CSV'}</button>
                     <button type="button" className="secondary" onClick={openLatestPairingsCsv} disabled={!selectedTournament || selectedTournament.rounds.length === 0}>{lang === 'en' ? 'Current pairings CSV' : 'Aktuelle Paarungen CSV'}</button>
                     <button type="button" className="secondary" onClick={openNextRoundPreviewCsv} disabled={!selectedTournament || activePlayerCount() < 2}>{lang === 'en' ? 'Preview CSV' : 'Vorschau CSV'}</button>
-                    <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>{lang === 'en' ? 'Export manifest JSON' : 'Exportmanifest JSON'}</button>
+                    <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>{lang === 'en' ? 'Export manifest JSON' : t('workflow.exportManifestJSON')}</button>
                     <button type="button" className="secondary" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>{lang === 'en' ? 'Backup JSON' : 'Backup JSON'}</button>
                   </div>
                 </section>
               </div>
 
-              <p className="muted export-center-note">{lang === 'en' ? 'Preview exports do not save a round. Pairings are committed only after you confirm the round.' : 'Hinweis: Vorschau-Exports speichern keine Runde. Erst „Diese Runde jetzt auslosen“ übernimmt die Paarungen ins Turnier.'}</p>
+              <p className="muted export-center-note">{lang === 'en' ? 'Preview exports do not save a round. Pairings are committed only after you confirm the round.' : t('workflow.previewExportsDoNotSaveARound')}</p>
             </article>
           )}
 
@@ -3712,34 +3952,33 @@ function openRoundPrint(roundNumber: number) {
           <article className="card audit-journal-card">
             <div className="audit-journal-heading">
               <div>
-                <h3>Audit-Journal</h3>
-                <p>Persistentes Protokoll wichtiger Turnierleiter-Aktionen. Hilft bei Ergebnis-Korrekturen, Rundenprüfung und späteren Nachfragen.</p>
+                <h3>{t('workflow.auditJournal')}</h3>
+                <p>{t('workflow.persistentRecordOfImportantTournamentDirectorActions')}</p>
               </div>
               <span className={`status-pill ${auditJournalCriticalCount > 0 ? 'audit-critical' : auditJournalWarningCount > 0 ? 'audit-warning' : 'audit-info'}`}>
-                {auditJournal.length} Einträge
-              </span>
+                {auditJournal.length} {t('workflow.entries')} </span>
             </div>
             <div className="audit-journal-summary">
               <div><strong>{auditJournalInfoCount}</strong><span>Info</span></div>
-              <div><strong>{auditJournalWarningCount}</strong><span>Warnung</span></div>
-              <div><strong>{auditJournalCriticalCount}</strong><span>kritisch</span></div>
-              <div><strong>{auditJournalRoundEntryCount}</strong><span>Rundenbezug</span></div>
-              <div><strong>{auditJournalPlayerEntryCount}</strong><span>Spielerbezug</span></div>
+              <div><strong>{auditJournalWarningCount}</strong><span>{t('workflow.warning')}</span></div>
+              <div><strong>{auditJournalCriticalCount}</strong><span>{t('workflow.critical')}</span></div>
+              <div><strong>{auditJournalRoundEntryCount}</strong><span>{t('workflow.roundReferences')}</span></div>
+              <div><strong>{auditJournalPlayerEntryCount}</strong><span>{t('workflow.playerReferences')}</span></div>
             </div>
-            {!selectedTournament && <p>Bitte zuerst ein Turnier auswählen.</p>}
-            {selectedTournament && auditJournal.length === 0 && <p className="ok">Noch keine Audit-Einträge vorhanden.</p>}
-            {auditJournalCriticalCount > 0 && <p className="warning-text">Kritische Audit-Einträge vorhanden: Bitte vor Veröffentlichung oder nächster Auslosung prüfen.</p>}
+            {!selectedTournament && <p>{t('workflow.selectATournamentFirst')}</p>}
+            {selectedTournament && auditJournal.length === 0 && <p className="ok">{t('workflow.noAuditEntriesYet')}</p>}
+            {auditJournalCriticalCount > 0 && <p className="warning-text">{t('workflow.criticalAuditEntriesFoundReviewBeforePublication')}</p>}
             {selectedTournament && auditJournal.length > 0 && (
               <>
                 <div className="table-scroll compact audit-journal-table">
                   <table>
-                    <thead><tr><th>Zeit</th><th>Stufe</th><th>Aktion</th><th>Bezug</th><th>Zusammenfassung</th><th>Details</th><th>Grund</th></tr></thead>
+                    <thead><tr><th>{t('workflow.time')}</th><th>{t('workflow.severity')}</th><th>{t('workflow.action')}</th><th>{t('workflow.reference')}</th><th>{t('tournaments.summary')}</th><th>{t('workflow.details')}</th><th>{t('workflow.reason')}</th></tr></thead>
                     <tbody>
                       {auditJournalRecentEntries.map(entry => (
                         <tr key={entry.id} className={auditSeverityClass(entry.severity)}>
-                          <td>{auditDateLabel(entry.createdAt)}</td>
-                          <td><span className={`audit-pill ${auditSeverityClass(entry.severity)}`}>{auditSeverityLabel(entry.severity)}</span></td>
-                          <td>{auditActionLabel(entry.action)}<small>{entry.actor}</small></td>
+                          <td>{auditDateLabel(entry.createdAt, lang)}</td>
+                          <td><span className={`audit-pill ${auditSeverityClass(entry.severity)}`}>{auditSeverityLabel(entry.severity, lang === 'en')}</span></td>
+                          <td>{auditActionLabel(entry.action, lang === 'en')}<small>{entry.actor}</small></td>
                           <td>{entry.roundNumber ? `R${entry.roundNumber}` : '—'}{entry.boardNumber ? ` · Brett ${entry.boardNumber}` : ''}{entry.playerName ? <small>{entry.playerName}</small> : null}</td>
                           <td>{entry.summary}</td>
                           <td>{entry.details || '—'}</td>
@@ -3749,16 +3988,16 @@ function openRoundPrint(roundNumber: number) {
                     </tbody>
                   </table>
                 </div>
-                {auditJournal.length > auditJournalRecentEntries.length && <p className="muted">Anzeige begrenzt auf die letzten {auditJournalRecentEntries.length} von {auditJournal.length} Einträgen. Für vollständige Auswertung bitte CSV/JSON exportieren.</p>}
+                {auditJournal.length > auditJournalRecentEntries.length && <p className="muted">{t('workflow.showingTheLatest')} {auditJournalRecentEntries.length} {t('workflow.of')} {auditJournal.length} {t('workflow.entriesExportCSVJSONForTheComplete')}</p>}
               </>
             )}
             <div className="actions">
               <button type="button" onClick={() => exportAuditJournalCsv()} disabled={!selectedTournament || auditJournal.length === 0}>Audit CSV</button>
               <button type="button" className="secondary" onClick={() => exportAuditJournalJson()} disabled={!selectedTournament || auditJournal.length === 0}>Audit JSON</button>
-              <button type="button" onClick={() => openTournamentExport('audit-journal/export.jsonl')} disabled={!selectedTournament} title="Forensisches Bundle: Manifest, Turnier-Snapshot, Pairing-Forensik je Runde und alle Audit-Ereignisse als JSONL.">Audit-Bundle (JSONL)</button>
+              <button type="button" onClick={() => openTournamentExport('audit-journal/export.jsonl')} disabled={!selectedTournament} title={t('workflow.forensicBundleManifestTournamentSnapshotPairingEvidence')}>Audit-Bundle (JSONL)</button>
               <button type="button" className="secondary" onClick={() => openTournamentExport('audit-journal/export.json')} disabled={!selectedTournament} title="Gleiches Forensik-Bundle als strukturiertes JSON-Dokument.">Audit-Bundle (JSON)</button>
             </div>
-            <p className="muted">Nach jeder Runde und nach Turnierende ein Audit-Bundle exportieren und lokal sichern – das schließt die Forensik-Lücke aus dem Bergfest-Postmortem.</p>
+            <p className="muted">{t('workflow.exportAnAuditBundleAfterEachRound')}</p>
           </article>
           )}
 
@@ -3767,21 +4006,21 @@ function openRoundPrint(roundNumber: number) {
             <h3>{lang === 'en' ? 'Import / export' : 'Import / Export'}</h3>
             <div className="grid two">
               <section>
-                <h4>Teilnehmer-CSV</h4>
+                <h4>{t('workflow.participantsCSV')}</h4>
                 <p className="muted csv-reimport-note">{csvReimportNote(lang)}</p>
                 <textarea value={csvContent} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => updateCsvContent(event.target.value)} rows={7} />
-                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateReplacePlayers(event.target.checked)} /> vorhandene Teilnehmer ersetzen</label>
+                <label className="checkbox"><input type="checkbox" checked={replacePlayers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateReplacePlayers(event.target.checked)} /> {t('workflow.replaceExistingParticipants')}</label>
                 <div className="actions">
-                  <button type="button" className="secondary" onClick={() => useSampleCsvTemplate()}>CSV-Vorlage einsetzen</button>
-                  <button type="button" onClick={() => void previewPlayersImport()} disabled={!selectedTournament || !csvContent.trim()}>Import prüfen</button>
-                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || !importPreviewGuard.matches({ tournamentId: selectedTournament.id, content: csvContent, replaceExisting: replacePlayers }, importPreview) || importPreview.hasBlockingIssues || (importPreview.warningRows > 0 && !confirmWarningImport)}>CSV importieren</button>
-                  <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>CSV exportieren</button>
+                  <button type="button" className="secondary" onClick={() => useSampleCsvTemplate()}>{t('workflow.insertCSVTemplate')}</button>
+                  <button type="button" onClick={() => void previewPlayersImport()} disabled={!selectedTournament || !csvContent.trim()}>{t('workflow.checkImport')}</button>
+                  <button type="button" onClick={() => void importPlayers()} disabled={!selectedTournament || !importPreview || !importPreviewGuard.matches({ tournamentId: selectedTournament.id, content: csvContent, replaceExisting: replacePlayers }, importPreview) || importPreview.hasBlockingIssues || (importPreview.warningRows > 0 && !confirmWarningImport)}>{t('workflow.importCSV')}</button>
+                  <button type="button" className="secondary" onClick={() => void exportPlayers()} disabled={!selectedTournament}>{t('workflow.exportCSV')}</button>
                 </div>
                 {importPreview && (
                   <div className="import-preview">
                     <div className={`preview-summary ${importPreview.hasBlockingIssues ? 'blocked' : importPreview.warningRows > 0 ? 'warning' : 'ready'}`}>
-                      <strong>{importPreview.hasBlockingIssues ? 'Import blockiert' : importPreview.warningRows > 0 ? 'Import mit Warnungen möglich' : 'Import bereit'}</strong>
-                      <span>{importPreview.totalRows} Zeilen · {importPreview.importableRows} importierbar · {importPreview.warningRows} Warnung(en) · {importPreview.blockingRows} blockiert · {importPreview.likelyDuplicateRows} mögliche Dublette(n)</span>
+                      <strong>{importPreview.hasBlockingIssues ? 'Import blockiert' : importPreview.warningRows > 0 ? t('workflow.importPossibleWithWarnings') : 'Import bereit'}</strong>
+                      <span>{importPreview.totalRows} {t('workflow.rows')} {importPreview.importableRows} {t('workflow.importable')} {importPreview.warningRows} {t('workflow.warningS')} {importPreview.blockingRows} {t('workflow.blocked')} {importPreview.likelyDuplicateRows} {t('workflow.possibleDuplicateS')}</span>
                     </div>
                     {importPreview.globalWarnings.length > 0 && (
                       <ul className="message-list critical">
@@ -3790,21 +4029,19 @@ function openRoundPrint(roundNumber: number) {
                     )}
                     {importPreview.warningRows > 0 && !importPreview.hasBlockingIssues && (
                       <label className="checkbox import-confirm">
-                        <input type="checkbox" checked={confirmWarningImport} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfirmWarningImport(event.target.checked)} />
-                        Ich habe Warnungen und mögliche Dubletten geprüft und möchte den Import trotzdem ausführen.
-                      </label>
+                        <input type="checkbox" checked={confirmWarningImport} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfirmWarningImport(event.target.checked)} />{t('workflow.iHaveReviewedTheWarningsAndPossible')} </label>
                     )}
-                    {importPreview.hasBlockingIssues && <p className="error">Blockierende Probleme müssen vor dem Import behoben werden.</p>}
+                    {importPreview.hasBlockingIssues && <p className="error">{t('workflow.blockingIssuesMustBeResolvedBeforeImport')}</p>}
                     <div className="table-scroll compact import-preview-table">
                       <table>
-                        <thead><tr><th>Zeile</th><th>Teilnehmer</th><th>Status</th><th>Dubletten</th><th>Hinweise</th></tr></thead>
+                        <thead><tr><th>{t('workflow.row')}</th><th>{t('nav.participants')}</th><th>{t('rounds.status')}</th><th>{t('workflow.duplicates')}</th><th>{t('workflow.notices')}</th></tr></thead>
                         <tbody>
                           {importPreview.rows.map(row => (
                             <tr key={`import-preview-${row.rowNumber}`} className={importPreviewStatusClass(row.status)}>
                               <td>{row.rowNumber}</td>
                               <td>{row.player.name}<small>{row.player.fideId ? `FIDE ${row.player.fideId}` : row.player.nationalId ? `DSB ${row.player.nationalId}` : row.player.club ?? ''}</small></td>
-                              <td>{importPreviewStatusLabel(row.status)}</td>
-                              <td>{row.duplicateCheck.matches.length === 0 ? '—' : row.duplicateCheck.matches.map(match => `${match.playerName} (${duplicateKindLabel(match.kind)}, ${match.score})`).join('; ')}</td>
+                              <td>{importPreviewStatusLabel(row.status, lang === 'en')}</td>
+                              <td>{row.duplicateCheck.matches.length === 0 ? '—' : row.duplicateCheck.matches.map(match => `${match.playerName} (${duplicateKindLabel(match.kind, lang === 'en')}, ${match.score})`).join('; ')}</td>
                               <td>{importPreviewMessages(row).length === 0 ? <span className="ok">ok</span> : <ul className="message-list">{importPreviewMessages(row).map((message, index) => <li key={`import-row-${row.rowNumber}-${index}`}>{message}</li>)}</ul>}</td>
                             </tr>
                           ))}
@@ -3815,8 +4052,8 @@ function openRoundPrint(roundNumber: number) {
                 )}
               </section>
               <section>
-                <h4>{lang === 'en' ? 'Swiss-Manager / TRF16 (player master data)' : 'Swiss-Manager / TRF16 (Spieler-Stammdaten)'}</h4>
-                <p className="muted">{lang === 'en' ? 'Exchange player master data such as name, rating, federation and FIDE ID. Pairings and results are not imported.' : 'Import/Export von Spieler-Stammdaten für den Austausch mit Swiss-Manager, Chess-Results.com oder FIDE. Nur Name, Rating, Föderation, FIDE-ID u. ä. – keine Paarungen/Ergebnisse.'}</p>
+                <h4>{lang === 'en' ? 'Swiss-Manager / TRF16 (player master data)' : t('workflow.swissManagerTRF16PlayerData')}</h4>
+                <p className="muted">{lang === 'en' ? 'Exchange player master data such as name, rating, federation and FIDE ID. Pairings and results are not imported.' : t('workflow.importExportPlayerDataForExchangeWith')}</p>
                 <div className="actions">
                   <button type="button" className="secondary" onClick={() => openTournamentExport('players/export-swissmanager.csv')} disabled={!selectedTournament}>{lang === 'en' ? 'Export Swiss-Manager CSV' : 'Swiss-Manager CSV exportieren'}</button>
                   <button type="button" className="secondary" onClick={() => openTournamentExport('standings/export.trf16')} disabled={!selectedTournament}>{lang === 'en' ? 'Export TRF16' : 'TRF16 exportieren'}</button>
@@ -3843,8 +4080,8 @@ function openRoundPrint(roundNumber: number) {
                 {formatImportResult && (
                   <div className="import-preview">
                     <div className={`preview-summary ${formatImportResult.errors.length > 0 ? 'warning' : 'ready'}`}>
-                      <strong>{formatImportResult.added} Teilnehmer importiert</strong>
-                      {formatImportResult.errors.length > 0 && <span>{formatImportResult.errors.length} Hinweis(e)</span>}
+                      <strong>{formatImportResult.added} {t('workflow.participantsImported')}</strong>
+                      {formatImportResult.errors.length > 0 && <span>{formatImportResult.errors.length} {t('workflow.noticeS2')}</span>}
                     </div>
                     {formatImportResult.errors.length > 0 && (
                       <ul className="message-list">
@@ -3856,24 +4093,24 @@ function openRoundPrint(roundNumber: number) {
               </section>
               <section>
                 <h4>JSON-Backup</h4>
-                <textarea value={backupJson} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setBackupJson(event.target.value)} rows={7} placeholder="Backup-JSON hier einfügen oder exportieren" />
+                <textarea value={backupJson} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => updateBackupJson(event.target.value)} rows={7} placeholder={t('workflow.pasteBackupJSONHereOrExportIt')} />
                 <div className="actions">
-                  <button type="button" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>Backup exportieren</button>
-                  <button type="button" className="secondary" onClick={() => void importTournamentJson()} disabled={!backupJson.trim()}>Backup importieren</button>
+                  <button type="button" onClick={() => void exportTournamentJson()} disabled={!selectedTournament}>{t('workflow.exportBackup')}</button>
+                  <button type="button" className="secondary" onClick={() => void importTournamentJson()} disabled={!backupJson.trim() || backupImportBusy || backupImportPending !== null}>{backupImportBusy ? t('workflow.checkingImportingBackup') : 'Backup importieren'}</button>
                 </div>
               </section>
               <section>
-                <h4>Druck / Aushang</h4>
-                <p className="muted">Erzeugt lokale CSV-/HTML-Dateien für Tabelle, Paarungen, Rundenblatt und kompletten Turnierbericht.</p>
+                <h4>{t('workflow.printPosting')}</h4>
+                <p className="muted">{t('workflow.createsLocalCSVHTMLFilesForStandings')}</p>
                 <div className="actions vertical-actions">
-                  <button type="button" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>Tabelle als CSV</button>
-                  <button type="button" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>Alle Paarungen als CSV</button>
-                  <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>Turnier-Druckansicht</button>
-                  <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>Exportmanifest JSON</button>
+                  <button type="button" onClick={() => openTournamentExport('standings/export.csv')} disabled={!selectedTournament}>{t('workflow.standingsCSV')}</button>
+                  <button type="button" onClick={() => openTournamentExport('pairings/export.csv')} disabled={!selectedTournament}>{t('workflow.allPairingsCSV')}</button>
+                  <button type="button" onClick={() => openTournamentExport('print/html')} disabled={!selectedTournament}>{t('workflow.tournamentPrintView')}</button>
+                  <button type="button" className="secondary" onClick={openExportManifest} disabled={!selectedTournament}>{t('workflow.exportManifestJSON')}</button>
                 </div>
                 <div className="round-print-list">
                   {selectedTournament?.rounds.map(round => (
-                    <button key={`print-${round.roundNumber}`} type="button" className="small secondary" onClick={() => openRoundPrint(round.roundNumber)}>Runde {round.roundNumber} drucken</button>
+                    <button key={`print-${round.roundNumber}`} type="button" className="small secondary" onClick={() => openRoundPrint(round.roundNumber)}>{t('operator.round')} {round.roundNumber} {t('workflow.print')}</button>
                   ))}
                 </div>
               </section>

@@ -54,7 +54,7 @@ function Write-NodeEngineHint {
     if ($isSupported) {
         Write-Host "[ReleaseGate] Node.js $nodeVersionRaw passt zur Vite/Rolldown-Engine-Anforderung."
     } else {
-        Write-Warning "Node.js $nodeVersionRaw ist unter der Vite/Rolldown-Anforderung (^20.21.0 || >=22.12.0). Der Build lief bisher trotzdem, aber ein Update ist empfohlen."
+        Write-Warning "Node.js $nodeVersionRaw ist unter der Vite/Rolldown-Anforderung (siehe .node-version und engines in package.json). Der Build lief bisher trotzdem, aber ein Update ist empfohlen."
     }
 }
 

@@ -71,9 +71,9 @@ Die Datei liegt innerhalb des Projektordners, ist aber gitignored und per Window
 
 Relevante Skills:
 
-- `.agents/skills/release-operations.md`
-- `.agents/skills/logging-observability.md`
-- `.agents/skills/repository-security.md`
-- `.agents/skills/installer-packaging.md`
+- `.agents/skills/release-operations/SKILL.md`
+- `.agents/skills/logging-observability/SKILL.md`
+- `.agents/skills/repository-security/SKILL.md`
+- `.agents/skills/installer-packaging/SKILL.md`
 
 Neue Codex-/Claude-Läufe sollen diese Skills lesen, bevor sie an Packaging, Logging, Secrets oder Release arbeiten.
