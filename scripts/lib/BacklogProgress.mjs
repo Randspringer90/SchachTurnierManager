@@ -4,6 +4,8 @@ export const MAX_BACKLOG_BYTES = 1024 * 1024;
 const STATUSES = ['Backlog', 'Ready', 'In Progress', 'In Review', 'Blocked', 'Done', 'Deferred'];
 const HEADER = ['ID', 'Titel', 'Prio', 'Status', 'Kategorie', 'Ziel-Bearb.', 'Issue', 'Release'];
 const RELEASE = /^(?:v\d+\.\d+\.\d+|post-\d+\.\d+|development)$/;
+// Explicitly designated rollups in the canonical backlog; ordinary INT tasks remain leaves.
+const ROLLUP_IDS = new Set(['STM-INT-002', 'STM-REV-001']);
 
 export class BacklogFormatError extends Error {
   constructor(code) { super(code); this.name = 'BacklogFormatError'; this.code = code; }
@@ -77,12 +79,15 @@ function counts(tasks) {
 export function measureBacklog(markdown, release = null) {
   const tasks = parseBacklog(markdown);
   if (release !== null && (typeof release !== 'string' || !RELEASE.test(release))) fail('INVALID_RELEASE_FILTER');
-  const selected = release === null ? tasks : tasks.filter(task => task.release === release);
+  const overview = release === null ? tasks : tasks.filter(task => task.release === release);
+  const selected = overview.filter(task => !ROLLUP_IDS.has(task.id));
   if (!selected.length) fail('RELEASE_NOT_FOUND');
   return {
     schemaVersion: 'stm-backlog-progress-1',
     sourceSha256: createHash('sha256').update(markdown, 'utf8').digest('hex'),
-    measure: 'unweighted-overview-done-status', release,
+    measure: 'unweighted-leaf-overview-done-status', release,
+    overviewTotal: overview.length,
+    excludedRollupIds: overview.filter(task => ROLLUP_IDS.has(task.id)).map(task => task.id).sort(),
     summary: counts(selected),
     byRelease: [...new Set(selected.map(task => task.release))].sort().map(name => ({ release: name, ...counts(selected.filter(task => task.release === name)) })),
     remainingIds: selected.filter(task => task.status !== 'Done').map(task => task.id).sort(),

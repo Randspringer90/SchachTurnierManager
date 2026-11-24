@@ -52,11 +52,32 @@ $artifactRootFull = Resolve-StmReleasePath -Path $ArtifactRoot -Kind Directory
 $ManifestPath = Resolve-StmReleasePath -Path $ManifestPath -Boundary $artifactRootFull -Kind File
 
 $raw = Get-Content -Raw -LiteralPath $ManifestPath
+$document = $null
+$rawCreated = ''
 try {
+    # Parse strict JSON before PowerShell can coerce date strings. Bind the
+    # timestamp to its decoded property, including escaped JSON characters.
+    $document = [System.Text.Json.JsonDocument]::Parse([string]$raw, [System.Text.Json.JsonDocumentOptions]::new())
+    if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
+        throw 'Manifest muss ein JSON-Objekt sein.'
+    }
+    $propertyNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($property in $document.RootElement.EnumerateObject()) {
+        if (-not $propertyNames.Add($property.Name)) { throw 'Doppeltes Manifestfeld.' }
+        if ($property.Name -ceq 'createdAtUtc') {
+            if ($property.Value.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+                throw 'createdAtUtc muss eine Zeichenfolge sein.'
+            }
+            $rawCreated = $property.Value.GetString()
+        }
+    }
     $manifest = $raw | ConvertFrom-Json
 }
 catch {
-    throw "Update-Manifest ist kein gueltiges JSON: $($_.Exception.Message)"
+    throw 'Update-Manifest ist kein eindeutiges, gueltiges JSON-Objekt.'
+}
+finally {
+    if ($null -ne $document) { $document.Dispose() }
 }
 
 Assert-ExactProperties -Object $manifest -Allowed @('schemaVersion','product','version','channel','createdAtUtc','updateMode','artifacts') -Required @('schemaVersion','product','version','channel','createdAtUtc','updateMode','artifacts') -Context 'Manifest'
@@ -74,8 +95,12 @@ if ([string]$manifest.updateMode -cne 'manual-only') {
     throw 'Nur updateMode=manual-only ist freigegeben; Auto-Update/Auto-Execute ist blockiert.'
 }
 
+# ConvertFrom-Json coerces dates on supported PowerShell versions. Validate the
+# exact decoded JSON string with an invariant culture and an explicit timezone.
 $created = [DateTimeOffset]::MinValue
-if (-not [DateTimeOffset]::TryParse([string]$manifest.createdAtUtc, [ref]$created)) {
+if (-not ($rawCreated -cmatch '\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})\z' -and
+        [DateTimeOffset]::TryParse($rawCreated, [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$created))) {
     throw 'createdAtUtc ist kein gueltiger ISO-Zeitstempel.'
 }
 if (@($manifest.artifacts).Count -lt 1) {

@@ -36,18 +36,18 @@ export const resultOptions = [
 ];
 
 export const formatOptions = [
-  { value: 1, label: 'Schweizer System' },
-  { value: 0, label: 'Jeder gegen Jeden' }
+  { value: 1, label: 'Schweizer System', labelEn: "Swiss system" },
+  { value: 0, label: 'Jeder gegen Jeden', labelEn: "Round robin" }
 ];
 
 export const pairingStrategyOptions = [
-  { value: 0, label: 'Optimal V2 (empfohlen)' },
-  { value: 1, label: 'FIDE Dutch' }
+  { value: 0, label: 'Optimal V2 (empfohlen)', labelEn: "Optimal V2 (recommended)" },
+  { value: 1, label: 'FIDE Dutch', labelEn: "FIDE Dutch" }
 ];
 
 export const swissInitialColourOptions = [
-  { value: 1, label: 'Weiß' },
-  { value: 2, label: 'Schwarz' }
+  { value: 1, label: 'Weiß', labelEn: "White" },
+  { value: 2, label: 'Schwarz', labelEn: "Black" }
 ];
 
 export const buildWeekDemoName = 'Build Week Demo Open';
@@ -64,42 +64,42 @@ export function isBuildWeekDemoTournament(tournament: Tournament): boolean {
 }
 
 export const scoringOptions = [
-  { value: 0, label: 'Klassisch: Sieg 1 · Remis ½ · Niederlage 0' },
-  { value: 1, label: '3-1-0: Sieg 3 · Remis 1 · Niederlage 0' },
-  { value: 2, label: 'Norway/Armageddon: Klassiksieg 3 · Armageddon 1½/1' }
+  { value: 0, label: 'Klassisch: Sieg 1 · Remis ½ · Niederlage 0', labelEn: "Classic: win 1 · draw ½ · loss 0" },
+  { value: 1, label: '3-1-0: Sieg 3 · Remis 1 · Niederlage 0', labelEn: "3-1-0: win 3 · draw 1 · loss 0" },
+  { value: 2, label: 'Norway/Armageddon: Klassiksieg 3 · Armageddon 1½/1', labelEn: "Norway/Armageddon: classical win 3 · Armageddon 1½/1" }
 ];
 
 export const twzSourceOptions = [
-  { value: 0, label: 'Manuelle TWZ → DWZ → Elo' },
-  { value: 1, label: 'Manuelle TWZ → Elo → DWZ' },
-  { value: 2, label: 'Manuelle TWZ → Rapid → Blitz → DWZ → Elo' }
+  { value: 0, label: 'Manuelle TWZ → DWZ → Elo', labelEn: "Manual rating → DWZ → Elo" },
+  { value: 1, label: 'Manuelle TWZ → Elo → DWZ', labelEn: "Manual rating → Elo → DWZ" },
+  { value: 2, label: 'Manuelle TWZ → Rapid → Blitz → DWZ → Elo', labelEn: "Manual rating → Rapid → Blitz → DWZ → Elo" }
 ];
 
 export const forfeitPolicyOptions = [
-  { value: 0, label: 'Kampflose Partien nicht für Buchholz/SB/Direktwertung' },
-  { value: 1, label: 'Kampflose Gegner nur für Buchholz/Gegnerschnitt' },
-  { value: 2, label: 'Kampflose Partien wie normale Partien behandeln' }
+  { value: 0, label: 'Kampflose Partien nicht für Buchholz/SB/Direktwertung', labelEn: "Exclude forfeits from Buchholz/SB/direct encounter" },
+  { value: 1, label: 'Kampflose Gegner nur für Buchholz/Gegnerschnitt', labelEn: "Include forfeit opponents only in Buchholz/average opposition" },
+  { value: 2, label: 'Kampflose Partien wie normale Partien behandeln', labelEn: "Treat forfeits as regular games" }
 ];
 
 export const unplayedRoundBuchholzOptions = [
-  { value: 0, label: 'Eigene ungespielte Runden ignorieren (bisheriges Verhalten)' },
-  { value: 1, label: 'FIDE-Modus (Schweizer): Dummy-/VUR-Wertung nach Art. 16' }
+  { value: 0, label: 'Eigene ungespielte Runden ignorieren (bisheriges Verhalten)', labelEn: "Ignore own unplayed rounds (legacy behaviour)" },
+  { value: 1, label: 'FIDE-Modus (Schweizer): Dummy-/VUR-Wertung nach Art. 16', labelEn: "FIDE mode (Swiss): dummy/VUR scoring under Article 16" }
 ];
 
 export const tiebreakOptions = [
-  { value: 0, label: 'Direkter Vergleich' },
-  { value: 1, label: 'Anzahl Siege' },
-  { value: 2, label: 'Buchholz' },
-  { value: 3, label: 'Buchholz Cut-1' },
-  { value: 4, label: 'Sonneborn-Berger' },
-  { value: 5, label: 'Gegnerschnitt' },
-  { value: 6, label: 'Turnierleistung' },
-  { value: 7, label: 'Buchholz Cut-2' },
-  { value: 8, label: 'Median-Buchholz' },
-  { value: 9, label: 'Progressiv' },
-  { value: 10, label: 'Koya' },
-  { value: 11, label: 'Schwarzsiege' },
-  { value: 99, label: 'Startnummer' }
+  { value: 0, label: 'Direkter Vergleich', labelEn: "Direct encounter" },
+  { value: 1, label: 'Anzahl Siege', labelEn: "Number of wins" },
+  { value: 2, label: 'Buchholz', labelEn: "Buchholz" },
+  { value: 3, label: 'Buchholz Cut-1', labelEn: "Buchholz Cut-1" },
+  { value: 4, label: 'Sonneborn-Berger', labelEn: "Sonneborn-Berger" },
+  { value: 5, label: 'Gegnerschnitt', labelEn: "Average opposition" },
+  { value: 6, label: 'Turnierleistung', labelEn: "Tournament performance" },
+  { value: 7, label: 'Buchholz Cut-2', labelEn: "Buchholz Cut-2" },
+  { value: 8, label: 'Median-Buchholz', labelEn: "Median-Buchholz" },
+  { value: 9, label: 'Progressiv', labelEn: "Progressive score" },
+  { value: 10, label: 'Koya', labelEn: "Koya" },
+  { value: 11, label: 'Schwarzsiege', labelEn: "Wins with Black" },
+  { value: 99, label: 'Startnummer', labelEn: "Starting rank" }
 ];
 
 export const genderOptions = [
@@ -117,10 +117,10 @@ export const playerStatusOptions = [
 ];
 
 export const externalSourceOptions = [
-  { value: 0, label: 'FIDE' },
-  { value: 1, label: 'DSB / DeWIS' },
-  { value: 2, label: 'ThSB' },
-  { value: 3, label: 'Lokal/Import' }
+  { value: 0, label: 'FIDE', labelEn: "FIDE" },
+  { value: 1, label: 'DSB / DeWIS', labelEn: "DSB / DeWIS" },
+  { value: 2, label: 'ThSB', labelEn: "ThSB" },
+  { value: 3, label: 'Lokal/Import', labelEn: "Local/import" }
 ];
 
 export const emptyPlayerForm: PlayerForm = {
@@ -165,3 +165,8 @@ export const emptySettingsForm: SettingsForm = {
   heroCupMinimumRatedGames: '1',
   tiebreaks: defaultTiebreaks
 };
+
+/** Display labels only. Numeric values and pairing/scoring rules remain unchanged. */
+export function optionLabel(option: { label: string; labelEn?: string } | undefined, english = false): string {
+  return (english ? option?.labelEn ?? option?.label : option?.label) ?? "—";
+}

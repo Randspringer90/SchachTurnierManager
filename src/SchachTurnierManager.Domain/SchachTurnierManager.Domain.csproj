@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <!-- STM-IE-002: Windows-1252-Fallback fuer Import-Dateien aus dem Swiss-Manager-Oekosystem,

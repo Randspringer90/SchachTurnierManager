@@ -42,7 +42,7 @@ Codex, Claude Code, Gemini oder lokale Modelle sind gleichberechtigte Ausführen
 
 Repository-Sicherheit ist organisatorisch verankert (technischer Deep-Dive folgt in einem separaten Lauf):
 
-- Skill `.agents/skills/repository-security.md` ist vor Commit-, Push- und Snapshot-Arbeiten verbindlich.
+- Skill `.agents/skills/repository-security/SKILL.md` ist vor Commit-, Push- und Snapshot-Arbeiten verbindlich.
 - `scripts/Test-GitCommitSafety.ps1` läuft als Pflicht-Gate in `scripts/Commit-If-Green.ps1` vor und nach dem Staging; kein blindes `git add .`/`git add --all`.
 - `scripts/Test-RepositoryOpenSourceSafety.ps1` prüft alle getrackten Dateien als Public-Snapshot-Kandidaten und schreibt Reports nach `output/repo-open-source-safety/`.
 

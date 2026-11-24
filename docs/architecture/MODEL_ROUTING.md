@@ -26,12 +26,38 @@ Kanonische Quellen:
 | Terra | ausschliesslich risikoarme, deterministische Massenarbeit |
 | Opus | Security, Schachregeln, Pairing/Tie-Breaks, Release, Installer und schwierige Reviews |
 | Sonnet | klar abgegrenzte Implementierung kleinen oder mittleren Umfangs und hoechstens mittleren Risikos |
+| Lokal (`local-assist`) | read-only Zuarbeit ueber ein lokal installiertes Modell; nur Kategorie `local-assist`, nur Risiko `low` |
 
 Die Namen sind logische Ausfuehrungsprofile, keine konkreten Modell-IDs. Eine Runtime darf
 sie nur auf Modelle abbilden, welche die geforderte Qualitaetsklasse tatsaechlich erfuellen.
 Das grosse Implementierungsprofil Luna verwendet dieselbe leistungsfaehige Modellklasse
 wie Sol; nur Terra wird auf die effiziente Modellklasse abgebildet. Profilnamen sind
 keine Anbieterfamilien und rechtfertigen keine Herabstufung.
+
+### Lokales Profil (STM-AI-008)
+
+`local-assist` hat die eigene Qualitaetsklasse `local-assist` (Rang 15) und ist nur ueber
+die Regel `local-assist-explicit` erreichbar: Taskkategorie `local-assist` und Risiko `low`.
+Keine andere Kategorie wird lokal geroutet; passt fuer eine `local-assist`-Aufgabe eine
+staerkere Regel (z. B. Implementierung), gewinnt diese. Mittleres oder hoeheres Risiko
+blockiert (`BLOCKED_HUMAN_REQUIRED`), ein nicht verfuegbares lokales Profil blockiert
+fail-closed, ohne Ausweichen auf Cloudprofile.
+
+Die Runtime-Zuordnung steht in `config/provider-runtime-policy.json` (Provider `ollama`),
+die Modell-ID ausschliesslich in `config/model-catalog.json`. Der Adapter
+`scripts/Invoke-LocalModelProfile.ps1` spricht ausschliesslich die Loopback-REST-API des
+lokalen Dienstes an: `/api/tags` bestaetigt lokal gespeicherte Gewichte (Cloud-/Remote-Modelle
+und Tags mit `cloud` werden abgewiesen, auch im Katalogschema), `/api/generate` mit
+`stream:false` laedt nie Modelle herunter; `/api/pull` wird nie aufgerufen. Akzeptiert werden
+nur literale Loopback-Hosts (`127.0.0.1`, `localhost`, `[::1]`, http/https). Das Modell
+erhaelt nur den Prompt, keine Werkzeuge; Antworten sind T3 und nie Limit-/Fehlersignal
+(klassifiziert wird nur der HTTP-Status). Gemessene Tokenzahlen des Dienstes landen in der
+Entscheidung. Auch der Executor akzeptiert das lokale Profil nur fuer Kategorie
+`local-assist` mit Risiko `low`. HTTP-Weiterleitungen werden nie verfolgt, `localhost` wird literal als
+`127.0.0.1` angesprochen. Die Konfiguration des Ollama-Dienstes selbst (Anmeldung,
+Weiterleitungen) liegt ausserhalb des Adapters; ein lokaler Akteur, der zwischen
+Bestandspruefung und Ausfuehrung ein gleichnamiges Modell austauscht, bleibt Restrisiko. Ergebnisse werden wie alle Child-Ausgaben
+von einem staerkeren Profil geprueft.
 
 ## Pflege aktueller Generationen
 

@@ -3,7 +3,7 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$RunName = 'STM_RUN53_ClickInstallReadiness',
-    [string]$BaseDirectory = 'D:\Temp',
+    [string]$BaseDirectory = (& (Join-Path $PSScriptRoot 'lib/Get-StmRunBaseDirectory.ps1')),
     [switch]$BuildPackage,
     [switch]$BuildInstaller,
     [switch]$AllowMissingInnoSetup,
@@ -113,7 +113,9 @@ function Test-InstalledAppSmoke {
     try {
         $background = Start-StmBackgroundProcess -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) `
             -LogDirectory $runDirectory -Name installed-app-smoke `
-            -Environment @{ ASPNETCORE_URLS = "http://127.0.0.1:$Port"; SchachTurnierManager__DataDirectory = $DataDirectory }
+            -Environment @{ ASPNETCORE_URLS = "http://127.0.0.1:$Port"; ASPNETCORE_ENVIRONMENT = 'Production'; DOTNET_ENVIRONMENT = 'Production';
+                ConnectionStrings__SchachTurnierManager = ('Data Source=' + (Join-Path $DataDirectory 'click-smoke.sqlite'));
+                SchachTurnierManager__DataDirectory = $DataDirectory }
         $process = $background.Process
         $healthUrl = "http://127.0.0.1:$Port/api/health"
         $dashboardUrl = "http://127.0.0.1:$Port/"
@@ -122,17 +124,17 @@ function Test-InstalledAppSmoke {
         for ($i = 0; $i -lt 45; $i++) {
             if ($process.HasExited) { throw "Installed app exited with $($process.ExitCode). See $($background.StderrPath)." }
             try {
-                $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 2
+                $response = Invoke-WebRequest -Uri $healthUrl -NoProxy -MaximumRedirection 0 -UseBasicParsing -TimeoutSec 2
                 if ($response.StatusCode -eq 200) { $ready = $true; break }
             }
             catch { Start-Sleep -Seconds 1 }
         }
         if (-not $ready) { throw 'Installierte App war nach 45 Sekunden nicht erreichbar.' }
 
-        $dashboard = Invoke-WebRequest -Uri $dashboardUrl -UseBasicParsing -TimeoutSec 5
+        $dashboard = Invoke-WebRequest -Uri $dashboardUrl -NoProxy -MaximumRedirection 0 -UseBasicParsing -TimeoutSec 5
         if ($dashboard.StatusCode -ne 200) { throw "Dashboard StatusCode=$($dashboard.StatusCode)" }
 
-        $tournaments = Invoke-WebRequest -Uri $tournamentsUrl -UseBasicParsing -TimeoutSec 5
+        $tournaments = Invoke-WebRequest -Uri $tournamentsUrl -NoProxy -MaximumRedirection 0 -UseBasicParsing -TimeoutSec 5
         if ($tournaments.StatusCode -ne 200) { throw "Tournaments StatusCode=$($tournaments.StatusCode)" }
     }
     finally {

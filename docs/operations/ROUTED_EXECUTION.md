@@ -5,7 +5,7 @@ Architektur: `docs/architecture/DYNAMIC_LLM_ORCHESTRATION.md`.
 
 ## Voraussetzungen
 
-- PowerShell 7+, lokale CLI-Logins für `claude` und/oder `codex` (keine Tokens im Repo).
+- PowerShell 7.3+ für Entwicklungsläufe mit `Invoke-NpmSafe.ps1` (isolierte temporäre npm-Konfigurationen benötigen .NET 7); lokale CLI-Logins für `claude` und/oder `codex` (keine Tokens im Repo).
 - Netzwerk-Proxy (falls nötig) **nur prozesslokal** setzen: `$env:HTTPS_PROXY`/`$env:HTTP_PROXY`
   vor dem Aufruf; Werte niemals committen.
 

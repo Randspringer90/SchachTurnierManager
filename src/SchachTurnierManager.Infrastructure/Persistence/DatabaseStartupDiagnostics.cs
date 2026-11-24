@@ -100,7 +100,8 @@ public static class DatabaseStartupDiagnostics
         lines.Add("  - Antivirus/Backup sperrt die Datei -> Ausnahme setzen oder Tool kurz schließen.");
         lines.Add("  - Eine zweite laufende Instanz hält .sqlite-wal/-shm offen -> nur eine Instanz starten.");
         lines.Add("  - Verzeichnis nicht beschreibbar -> SchachTurnierManager:DataDirectory auf beschreibbaren Pfad setzen.");
-        lines.Add("  - Reststände .sqlite-wal / .sqlite-shm löschen, wenn kein Prozess mehr läuft.");
+        lines.Add("  - .sqlite-wal / .sqlite-shm nicht löschen: Die WAL-Datei kann bereits bestätigte Änderungen enthalten.");
+        lines.Add("  - Vor einer Wiederherstellung alle Instanzen beenden und Datenbank, WAL und SHM gemeinsam sichern.");
 
         return string.Join(Environment.NewLine, lines);
     }

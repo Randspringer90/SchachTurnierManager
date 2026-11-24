@@ -140,7 +140,8 @@ public sealed class FideDutchCandidateEvaluator(FideDutchAbsoluteCriteria criter
             (bracket.Players.Count - downfloatCount) % 2 != 0 ||
             !bracket.IsHomogeneous && downfloatCount < bracket.Mdps.Count - bracket.Residents.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(downfloatCount));
+            throw new ArgumentOutOfRangeException(nameof(downfloatCount))
+                .WithErrorCode("FIDE_DOWNFLOAT_COUNT_INVALID");
         }
 
         var prefix = pairedPrefix ?? Array.Empty<(FideDutchPlayerProfile A, FideDutchPlayerProfile B)>();

@@ -128,6 +128,9 @@ function Start-StmFirefoxBackend {
     if (-not (Test-StmFirefoxPortFree $Context.Port)) { throw 'Dedicated backend port is already occupied.' }
     $environment = @{
         ASPNETCORE_URLS = $Context.BaseUrl
+        ASPNETCORE_ENVIRONMENT = 'Production'
+        DOTNET_ENVIRONMENT = 'Production'
+        ConnectionStrings__SchachTurnierManager = ('Data Source=' + (Join-Path $Context.DataDirectory 'smoke.sqlite'))
         SchachTurnierManager__DataDirectory = $Context.DataDirectory
         SchachTurnierManager__LogDirectory = Join-Path $Context.DataDirectory 'logs'
     }
@@ -180,6 +183,22 @@ function Stop-StmFirefoxBackend {
 function Start-StmFirefoxBrowser {
     param([psobject]$Context, [string]$Firefox, [string]$ProfileDirectory, [switch]$KeepBrowserOpen)
     if (-not (Test-StmFirefoxPortFree $Context.MarionettePort)) { throw 'Dedicated Marionette port is already occupied.' }
+    $profileRoot = [IO.Path]::GetFullPath($ProfileDirectory)
+    $profileBoundary = [IO.Path]::GetFullPath($Context.DataDirectory).TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
+    $profileComparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    if (-not $profileRoot.StartsWith($profileBoundary,$profileComparison)) { throw 'Smoke profile must stay inside its owned data directory.' }
+    $profileCursor = $profileRoot
+    while ($profileCursor -and $profileCursor.StartsWith($profileBoundary,$profileComparison)) {
+        if ((Test-Path -LiteralPath $profileCursor) -and ((Get-Item -LiteralPath $profileCursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Smoke profile has a reparse component.' }
+        $profileCursor = [IO.Path]::GetDirectoryName($profileCursor)
+    }
+    $preferences = Join-Path $profileRoot 'user.js'
+    if ((Test-Path -LiteralPath $preferences) -and ((Get-Item -LiteralPath $preferences -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Smoke preferences are a reparse point.' }
+    # Selector-based German acceptance fixtures must not inherit the installation
+    # language of a different signed Firefox distribution. Explicit test overrides remain possible.
+    if (-not (Test-Path -LiteralPath $preferences) -or -not (Select-String -LiteralPath $preferences -SimpleMatch 'intl.accept_languages' -Quiet)) {
+        Add-Content -LiteralPath $preferences -Encoding utf8 -Value 'user_pref("intl.accept_languages", "de-DE,de,en-US,en");'
+    }
     $arguments = @('-marionette', '-no-remote', '-profile', $ProfileDirectory, 'about:blank')
     if (-not $KeepBrowserOpen) { $arguments = @('-headless') + $arguments }
     $environment = if ($Context.SourceAssemblyPath) { @{ MOZ_HEADLESS = '1' } } else { @{} }

@@ -104,7 +104,7 @@ public sealed class BackupRequiredObjectsTests
         var tournament = service.CreateTournament("Synthetic existing", new TournamentSettings { PlannedRounds = 3 });
         for (var index = 1; index <= 3; index++) service.AddPlayer(tournament.Id, new Player { Name = $"Synthetic {index}" });
         var round = service.GenerateNextRound(tournament.Id);
-        Assert.Single(round.Pairings.Where(pairing => pairing.BlackPlayerId is null));
+        Assert.Single(round.Pairings, pairing => pairing.BlackPlayerId is null);
         return service.RequireTournament(tournament.Id);
     }
 

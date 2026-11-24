@@ -1,6 +1,6 @@
 {
-  "sourceVersion": "2026-07-09.1",
-  "sourceUpdated": "2026-07-09",
+  "sourceVersion": "2026-10-28.1",
+  "sourceUpdated": "2026-10-28",
   "providerMode": "local-only",
   "privacyNotice": "Diese Antwort kommt aus der lokalen Wissensbasis. Es wurden keine Turnierdaten an externe KI-Dienste gesendet.",
   "quickQuestions": [
@@ -35,9 +35,8 @@
         "Runde auslosen, Rundenblatt drucken und nach Ergebnissen erneut sichern."
       ],
       "sources": [
-        "Assistent",
-        "Runden / Auslosung",
-        "Druck / Backup"
+        "docs/planning/BACKLOG.md",
+        "docs/operations/LOCAL_DATA_AND_NETWORK.md"
       ]
     },
     {
@@ -62,9 +61,8 @@
         "Nach Veröffentlichung Rundenblatt/Aushang exportieren."
       ],
       "sources": [
-        "Auslosungsvorschau",
-        "Pairing-Qualität",
-        "Audit-Journal"
+        "docs/FIDE_DUTCH_REFERENCE.md",
+        "docs/AUDIT_JOURNAL.md"
       ]
     },
     {
@@ -90,8 +88,6 @@
         "Abschlussbericht erst nach Backup und finaler Plausibilitätsprüfung veröffentlichen."
       ],
       "sources": [
-        "Tabelle / Ergebnisse",
-        "Rundendiagnose",
         "docs/TIEBREAK_UNPLAYED_ROUNDS.md"
       ]
     },
@@ -106,19 +102,19 @@
         "json",
         "datenbank",
         "sqlite",
-        "verlust"
+        "verlust",
+        "nach runde"
       ],
       "answer": "Nach jeder wichtigen Aktion sollte ein JSON-Backup exportiert werden. Für den Turniertag ist das wichtiger als Komfort: Vor Runde 1, nach jeder Runde und vor Veröffentlichung der Endtabelle sichern.",
       "steps": [
         "Druck / Backup öffnen.",
-        "Backup exportieren und Datei extern ablegen.",
+        "Backup exportieren und eine getrennte lokale Kopie sichern.",
         "Nach Ergebniserfassung erneut sichern.",
-        "Bei Restore Backup-JSON prüfen, importieren und danach Health/Turnierliste kontrollieren."
+        "Bei Restore Backup-JSON prüfen, Ziel und Datenverlust bestätigen und anschließend Turnierliste und Runden kontrollieren."
       ],
       "sources": [
-        "Druck / Backup",
-        "Audit-Bundle",
-        "Portable-Frischordner-Test"
+        "docs/testing/BACKUP_PREFLIGHT.md",
+        "docs/AUDIT_JOURNAL.md"
       ]
     },
     {
@@ -135,17 +131,15 @@
         "hotspot",
         "wlan"
       ],
-      "answer": "QR/Handy funktioniert im lokalen WLAN oder Hotspot gegen den Laptop. Die PWA-Basis macht die App installierbar; echte Offline-Ergebnis-Synchronisation ist bewusst noch nicht aktiv, damit keine Datenkonflikte entstehen.",
+      "answer": "Die optionale Ergebnisqueue hält höchstens 200 Ergebniseingaben dauerhaft in diesem Browser, bis der Server sie bestätigt. Nach Wiederverbindung bewusst synchronisieren und Konflikte prüfen; eine Vormerkung ist noch keine Speicherbestätigung. QR/Handy-Zugriff ist bei den sicheren Standardeinstellungen gesperrt. Er benötigt eine vorbereitete TLS-LAN-Verbindung, zulässige Hosts, einen geschützten Zugriffsnachweis und eine abgenommene Geräteanbindung. Ein gemeinsames WLAN allein reicht nicht.",
       "steps": [
-        "Laptop-IP/Hotspot prüfen.",
-        "QR-Link vor Runde 1 testen.",
-        "Für Chess960 Startstellung je Brett würfeln und Audit prüfen.",
-        "Bei Verbindungsproblemen Ergebnis am Laptop erfassen."
+        "Gerätezugriff erst nach abgesicherter LAN-/TLS-Konfiguration und Abnahme nutzen; sonst am Laptop arbeiten.",
+        "Bei gewünschter Offline-Vormerkung die Ergebnisqueue einschalten und ihren Status prüfen.",
+        "Nach Wiederverbindung synchronisieren; Konflikte vergleichen und nicht blind überschreiben.",
+        "Für Chess960 die lokale Startstellung je Brett würfeln und Audit prüfen."
       ],
       "sources": [
-        "PWA-Readiness",
-        "Chess960/QR-Dialog",
-        "Service Worker network-only für /api"
+        "docs/operations/LOCAL_DATA_AND_NETWORK.md"
       ]
     },
     {
@@ -162,7 +156,7 @@
         "aushang",
         "druck"
       ],
-      "answer": "Teilnehmer, Tabellen, Paarungen, Rundenblätter und Backup-JSON können lokal exportiert werden. CSV ist der robuste erste Schritt; TRF/FIDE und Swiss-Manager-/Chess-Results-Kompatibilität bleiben eigene Ausbaustufen.",
+      "answer": "Teilnehmer, Tabellen, Paarungen, Rundenblätter und JSON-Backups können lokal exportiert werden. TRF16- und Swiss-Manager-Exporte sind vorhanden. Vor einer Verbandsabgabe Format, Pflichtmetadaten und Turnierregeln prüfen; ein Export ist keine FIDE-Zertifizierung. Die App veröffentlicht keine Datei automatisch.",
       "steps": [
         "Teilnehmer-CSV vor Turnierstart prüfen.",
         "Nach jeder Runde Tabelle/Paarungen exportieren.",
@@ -170,9 +164,8 @@
         "Finale Ergebnisse erst nach Backup und Plausibilitätsprüfung veröffentlichen."
       ],
       "sources": [
-        "Import / Export",
-        "Turnierleiter-Exportcenter",
-        "RUN-15 Roadmap"
+        "docs/IMPORT_EXPORT_ROADMAP.md",
+        "docs/planning/BACKLOG.md"
       ]
     },
     {
@@ -199,8 +192,6 @@
         "Vor externer KI-Nutzung Datenschutz und Personenbezug prüfen."
       ],
       "sources": [
-        "RUN-10 KI-Chatbot",
-        "RUN-11 Wissensbasis",
         ".secrets/README.md"
       ]
     },
@@ -223,9 +214,7 @@
         "Vor Runde 1 trotzdem Einstellungen und Pairing-Vorschau manuell prüfen."
       ],
       "sources": [
-        "RUN-17 Turnierassistent",
-        "Assistent-Reiter",
-        "PLANS.md"
+        "docs/planning/BACKLOG.md"
       ]
     }
   ]

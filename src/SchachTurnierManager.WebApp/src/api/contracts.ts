@@ -117,6 +117,7 @@ export type StandingRow = {
 
 export type Tournament = {
   id: string;
+  resultQueueEpoch?: string;
   name: string;
   createdOn: string;
   settings: {

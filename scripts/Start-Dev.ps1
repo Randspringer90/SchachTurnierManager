@@ -95,7 +95,7 @@ try {
     # Start the existing Vite package directly; no npm shell shim or new terminal.
     # Preserve LAN development access. StrictPort prevents silently moving elsewhere.
     $frontendHandle = Start-StmBackgroundProcess -FilePath $node `
-        -ArgumentList @($vite, '--host', '0.0.0.0', '--port', '5173', '--strictPort') `
+        -ArgumentList @($vite, '--host', '127.0.0.1', '--port', '5173', '--strictPort') `
         -WorkingDirectory $frontend -LogDirectory $runDirectory -Name frontend
     $children.Add($frontendHandle)
     Wait-DevHttp -Url $frontendUrl -Handle $frontendHandle

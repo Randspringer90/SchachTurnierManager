@@ -145,6 +145,13 @@ Invoke-RouteCase -Name 'Opus nicht verfuegbar' -TaskCategory 'security' -WorkMod
 Invoke-RouteCase -Name 'Verfuegbarkeit unbekannt' -TaskCategory 'architecture' -WorkMode 'architecture' -Size 'large' -Risk 'high' -AvailableProfiles @() -ExpectedProfile 'sol' -ExpectedStatus 'BLOCKED_AVAILABILITY_UNVERIFIED' -ExpectedExitCode 3
 Invoke-RouteCase -Name 'Riskante Massenarbeit' -TaskCategory 'metadata' -WorkMode 'bulk' -Size 'large' -Risk 'medium' -Deterministic $true -ExpectedProfile $null -ExpectedStatus 'BLOCKED_HUMAN_REQUIRED' -ExpectedExitCode 3
 Invoke-RouteCase -Name 'Nichtdeterministische Massenarbeit' -TaskCategory 'metadata' -WorkMode 'bulk' -Size 'large' -Risk 'low' -ExpectedProfile $null -ExpectedStatus 'BLOCKED_HUMAN_REQUIRED' -ExpectedExitCode 3
+# STM-AI-008: lokale Zuarbeit nur explizit, nur risikoarm, nie Ersatz fuer kritische oder staerkere Routen.
+$withLocal = @('fabel', 'sol', 'luna', 'terra', 'local-assist', 'opus', 'sonnet')
+Invoke-RouteCase -Name 'Lokale Zuarbeit explizit' -TaskCategory 'local-assist' -WorkMode 'review' -Size 'small' -Risk 'low' -AvailableProfiles $withLocal -ExpectedProfile 'local-assist' -ExpectedStatus 'SELECTED' -ExpectedExitCode 0
+Invoke-RouteCase -Name 'Lokale Zuarbeit mittleres Risiko' -TaskCategory 'local-assist' -WorkMode 'bulk' -Size 'small' -Risk 'medium' -AvailableProfiles $withLocal -ExpectedProfile $null -ExpectedStatus 'BLOCKED_HUMAN_REQUIRED' -ExpectedExitCode 3
+Invoke-RouteCase -Name 'Lokales Profil nicht verfuegbar' -TaskCategory 'local-assist' -WorkMode 'review' -Size 'small' -Risk 'low' -ExpectedProfile 'local-assist' -ExpectedStatus 'BLOCKED_PROFILE_UNAVAILABLE' -ExpectedExitCode 3
+Invoke-RouteCase -Name 'Security nie lokal' -TaskCategory 'security' -WorkMode 'bulk' -Size 'small' -Risk 'low' -AvailableProfiles $withLocal -ExpectedProfile 'opus' -ExpectedStatus 'SELECTED' -ExpectedExitCode 0
+Invoke-RouteCase -Name 'Risikoarme Massenarbeit bleibt Cloud' -TaskCategory 'metadata' -WorkMode 'bulk' -Size 'large' -Risk 'low' -Deterministic $true -AvailableProfiles $withLocal -ExpectedProfile 'terra' -ExpectedStatus 'SELECTED' -ExpectedExitCode 0
 
 if ($failures.Count -gt 0) {
     Write-Error ("MODEL_ROUTING_READINESS=FEHLER CASES={0} FAILURES={1}: {2}" -f $caseCount, $failures.Count, ($failures -join '; '))

@@ -19,6 +19,10 @@ that test command before the existing production build.
 ## Metric
 
 Each unique task has weight 1. Only status Done contributes to the numerator.
+Explicit integration/review rollups STM-INT-002 and STM-REV-001 are excluded
+from leaf totals, release groups and remaining IDs. `overviewTotal` and
+`excludedRollupIds` retain the distinction. Other integration tasks remain
+normal leaves. These status counts are separate from current DoD acceptance.
 Backlog, Ready, In Progress, In Review, Blocked and Deferred all stay in the
 denominator. Reports include total/done/remaining, counts for every status,
 release groups, remaining IDs and exact UTF-8 input SHA-256 (including a BOM).

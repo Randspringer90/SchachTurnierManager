@@ -66,7 +66,8 @@ public sealed class ExternalPlayerImportService
     {
         ValidateProfile(profile);
         var existing = tournament.Players.FirstOrDefault(player => player.Id == playerId)
-            ?? throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.");
+            ?? throw new InvalidOperationException($"Spieler {playerId} wurde nicht gefunden.")
+                .WithErrorCode("PLAYER_NOT_FOUND");
 
         var conflicts = BuildConflicts(existing, profile, overwriteExistingValues)
             .OrderByDescending(conflict => conflict.Severity)
@@ -292,7 +293,8 @@ public sealed class ExternalPlayerImportService
     {
         if (string.IsNullOrWhiteSpace(profile.Name))
         {
-            throw new ArgumentException("Externes Spielerprofil enthält keinen Namen.", nameof(profile));
+            throw new ArgumentException("Externes Spielerprofil enthält keinen Namen.", nameof(profile))
+                .WithErrorCode("EXTERNAL_PLAYER_NAME_MISSING");
         }
     }
 

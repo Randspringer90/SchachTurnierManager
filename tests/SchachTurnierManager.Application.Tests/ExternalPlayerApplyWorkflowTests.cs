@@ -78,7 +78,7 @@ public sealed class ExternalPlayerApplyWorkflowTests
     }
 
     [Fact]
-    public void ApplyExternalPlayer_CreatesNewPlayerAndReturnsDuplicateWarning()
+    public void ApplyExternalPlayer_RejectsAnExistingFideIdBeforeCreatingAnotherPlayer()
     {
         var service = new TournamentService(new InMemoryTournamentStore());
         var tournament = service.CreateTournament("Vereinsturnier");
@@ -89,15 +89,12 @@ public sealed class ExternalPlayerApplyWorkflowTests
             FideId = "99900123"
         });
 
-        var result = service.ApplyExternalPlayer(tournament.Id, SyntheticFideProfile(), targetPlayerId: null, createIfNoTarget: true, overwriteExistingValues: false);
+        var beforeAuditCount = service.GetAuditJournal(tournament.Id).Count;
+        Assert.Throws<InvalidOperationException>(() => service.ApplyExternalPlayer(tournament.Id, SyntheticFideProfile(), targetPlayerId: null, createIfNoTarget: true, overwriteExistingValues: false));
         var updated = service.RequireTournament(tournament.Id);
 
-        Assert.True(result.Created);
-        Assert.False(result.Updated);
-        Assert.True(result.DuplicateCheck.HasLikelyDuplicate);
-        Assert.Equal(2, updated.Players.Count);
-        Assert.Equal("99900123", result.Player.FideId);
-        Assert.Contains("FIDE-ID", result.ChangedFields);
+        Assert.Equal("99900123", Assert.Single(updated.Players).FideId);
+        Assert.Equal(beforeAuditCount, service.GetAuditJournal(tournament.Id).Count);
     }
 
     [Fact]

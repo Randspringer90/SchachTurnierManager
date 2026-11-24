@@ -86,9 +86,15 @@ function Get-ProviderRuntimePolicy {
     $officialSources = @{
         openai = 'https://developers.openai.com/api/docs/models'
         anthropic = 'https://platform.claude.com/docs/en/models/overview'
+        ollama = 'https://ollama.com/library'
     }
-    foreach ($providerName in $officialSources.Keys) {
-        if ($catalog.sources.$providerName -cne $officialSources[$providerName]) {
+    # openai/anthropic sind immer Pflicht; weitere Provider, wenn ein Katalogmodell sie nutzt.
+    # Jede deklarierte Quelle muss ebenfalls exakt der freigegebenen offiziellen Quelle entsprechen.
+    $requiredSources = @('openai', 'anthropic') + @($catalog.models.PSObject.Properties.Value | ForEach-Object { [string]$_.provider }) +
+        @($catalog.sources.PSObject.Properties.Name)
+    foreach ($providerName in @($requiredSources | Select-Object -Unique)) {
+        $declared = if ($catalog.sources.PSObject.Properties.Name -ccontains $providerName) { [string]$catalog.sources.$providerName } else { $null }
+        if (-not $officialSources.ContainsKey($providerName) -or $declared -cne $officialSources[$providerName]) {
             throw "Modellkatalog: nicht freigegebene offizielle Quelle fuer $providerName."
         }
     }
@@ -114,6 +120,55 @@ function Get-ProviderRuntimePolicy {
         }
     }
     return $policy
+}
+
+function Test-LocalModelLoopbackHost {
+    <#
+    STM-AI-008: Aufgabeninhalte fuer lokale Modelle duerfen den Rechner nicht verlassen.
+    Leer bedeutet Ollama-Standard 127.0.0.1:11434. Akzeptiert nur Loopback-Hosts.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$HostSetting)
+    return $null -ne (Get-LocalModelEndpoint -HostSetting $HostSetting)
+}
+
+function Get-LocalModelEndpoint {
+    <#
+    Literale Pruefung statt .NET-Normalisierung: nur http/https, nur 127.0.0.1, localhost
+    oder [::1], optional Port, kein Userinfo/Pfad/Query. Liefert die Basis-URL oder $null.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$HostSetting)
+    if ([string]::IsNullOrWhiteSpace($HostSetting)) { return 'http://127.0.0.1:11434' }
+    $match = [regex]::Match($HostSetting.Trim(),
+        '\A(?:(?<scheme>https?)://)?(?<host>127\.0\.0\.1|localhost|\[::1\])(?::(?<port>\d{1,5}))?/?\z',
+        [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if (-not $match.Success) { return $null }
+    $port = if ($match.Groups['port'].Success) { [int]$match.Groups['port'].Value } else { 11434 }
+    if ($port -lt 1 -or $port -gt 65535) { return $null }
+    $scheme = if ($match.Groups['scheme'].Success) { $match.Groups['scheme'].Value.ToLowerInvariant() } else { 'http' }
+    # localhost wird ueber das Betriebssystem aufgeloest (hosts-Datei); daher literal festlegen.
+    $hostName = $match.Groups['host'].Value.ToLowerInvariant()
+    if ($hostName -ceq 'localhost') { $hostName = '127.0.0.1' }
+    return '{0}://{1}:{2}' -f $scheme, $hostName, $port
+}
+
+function Test-LocalModelInventoryEntry {
+    <#
+    STM-AI-008: Nur lokal gespeicherte Gewichte zaehlen. Ollama-Cloudmodelle erscheinen in
+    der lokalen Liste, leiten Prompts aber an einen Fremddienst weiter.
+    #>
+    param([Parameter(Mandatory)][psobject]$Entry)
+    $fields = @($Entry.PSObject.Properties.Name)
+    $name = if ($fields -contains 'name') { [string]$Entry.name } else { '' }
+    if ($name -match '(?i)(?:^|[:.\-])cloud(?:$|[:.\-])') { return 'REMOTE_MODEL' }
+    foreach ($field in @('remote_host', 'remote_model')) {
+        if ($fields -contains $field -and -not [string]::IsNullOrWhiteSpace([string]$Entry.$field)) {
+            return 'REMOTE_MODEL'
+        }
+    }
+    $size = 0L
+    $rawSize = if ($fields -contains 'size') { [string]$Entry.size } else { '' }
+    if (-not [long]::TryParse($rawSize, [ref]$size) -or $size -lt 100MB) { return 'REMOTE_MODEL' }
+    return 'LOCAL'
 }
 
 function Get-ProfileProvider {
@@ -163,24 +218,76 @@ function Get-RedactedText {
     return $redacted
 }
 
+function Read-RunnerStructuredEvents {
+    param([AllowEmptyString()][string]$OutputText)
+    if ($OutputText.Length -gt 16MB) { return }
+    try {
+        $single = ConvertFrom-Json -InputObject $OutputText -ErrorAction Stop
+        if ($null -ne $single -and $single -isnot [array]) { return $single }
+    } catch { }
+    foreach ($line in ($OutputText -split '\r?\n')) {
+        if (-not $line.TrimStart().StartsWith('{') -or $line.Length -gt 1MB) { continue }
+        try { ConvertFrom-Json -InputObject $line -ErrorAction Stop } catch { }
+    }
+}
+
+function Get-RunnerAnswerText {
+    param([ValidateSet('openai','anthropic')][string]$Provider, [AllowEmptyString()][string]$OutputText)
+    $answer = ''
+    foreach ($event in @(Read-RunnerStructuredEvents $OutputText)) {
+        $fields = @($event.PSObject.Properties.Name)
+        if ($fields -notcontains 'type') { continue }
+        if ($Provider -eq 'anthropic' -and $event.type -eq 'result' -and $fields -contains 'is_error' -and
+            $event.is_error -is [bool] -and -not $event.is_error -and $fields -contains 'result' -and $event.result -is [string]) { $answer = $event.result }
+        if ($Provider -eq 'openai' -and $event.type -eq 'item.completed' -and $fields -contains 'item' -and $null -ne $event.item) {
+            $itemFields = @($event.item.PSObject.Properties.Name)
+            if ($itemFields -contains 'type' -and $event.item.type -eq 'agent_message' -and $itemFields -contains 'text' -and
+                $event.item.text -is [string]) { $answer = $event.item.text }
+        }
+    }
+    return $answer
+}
+
 function Get-RunnerOutputClassification {
     param(
         [AllowEmptyString()][string]$Text,
+        [AllowEmptyString()][string]$ErrorText,
+        [AllowEmptyString()][string]$StructuredOutput,
         [Parameter(Mandatory)][int]$ExitCode,
         [Parameter(Mandatory)][psobject]$RuntimePolicy,
         [switch]$TimedOut
     )
     if ($TimedOut) { return 'timeout' }
-    $lower = ([string]$Text).ToLowerInvariant()
-    foreach ($pattern in @($RuntimePolicy.classification.usageLimit)) {
-        if ($lower.Contains($pattern.ToLowerInvariant())) { return 'usage-limit' }
+    # Answers are T3 content. Only explicit provider error envelopes, or the
+    # diagnostic channel of a failed native process, may classify a failure.
+    $diagnostics = [Collections.Generic.List[string]]::new()
+    $structuredFailure = $false
+    foreach ($event in @(Read-RunnerStructuredEvents ([string]$StructuredOutput))) {
+        if ($null -eq $event) { continue }
+        $fields = @($event.PSObject.Properties.Name)
+        $type = if ($fields -contains 'type') { [string]$event.type } else { '' }
+        $isError = $type -in @('error', 'turn.failed') -or
+            ($type -eq 'result' -and $fields -contains 'is_error' -and $event.is_error -is [bool] -and $event.is_error)
+        if (-not $isError) { continue }
+        $structuredFailure = $true
+        foreach ($field in @('error', 'errors', 'message', 'result')) {
+            if ($fields -contains $field) { $diagnostics.Add(($event.$field | ConvertTo-Json -Depth 8 -Compress)) }
+        }
     }
-    foreach ($pattern in @($RuntimePolicy.classification.rateLimit)) {
-        if ($lower.Contains($pattern.ToLowerInvariant())) { return 'rate-limit' }
+    if ($ExitCode -ne 0) {
+        $diagnostics.Add([string]$ErrorText)
+        # Compatibility: Text is a diagnostic-only input, never combined output.
+        $diagnostics.Add([string]$Text)
     }
-    foreach ($pattern in @($RuntimePolicy.classification.authError)) {
-        if ($lower.Contains($pattern.ToLowerInvariant())) { return 'auth-error' }
+    $diagnosticText = $diagnostics -join "`n"
+    foreach ($entry in @(@('usageLimit', 'usage-limit'), @('rateLimit', 'rate-limit'), @('authError', 'auth-error'))) {
+        foreach ($pattern in @($RuntimePolicy.classification.($entry[0]))) {
+            $expression = [regex]::Escape([string]$pattern)
+            if ($pattern -match '^\d+$') { $expression = '(?<!\d)' + $expression + '(?!\d)' }
+            if ([regex]::IsMatch($diagnosticText, $expression, [Text.RegularExpressions.RegexOptions]::IgnoreCase)) { return $entry[1] }
+        }
     }
+    if ($structuredFailure) { return 'error' }
     if ($ExitCode -eq 0) { return 'ok' }
     return 'error'
 }
@@ -219,6 +326,18 @@ function Test-ChildOutputInjectionSuspicion {
     return @($suspicions)
 }
 
+function Test-RoutedTaskId {
+    param([AllowNull()][object]$TaskId)
+    # IDs become filenames for output, prompts, logs and quarantine. Keep existing
+    # ASCII identifiers portable to Windows, with a bounded component length.
+    if ($TaskId -isnot [string] -or
+        $TaskId -cnotmatch '\A[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}\z' -or
+        $TaskId.EndsWith('.', [StringComparison]::Ordinal)) { return $false }
+    # Windows device names remain reserved even when followed by an extension.
+    if ($TaskId -match '\A(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|\z)') { return $false }
+    return $true
+}
+
 function Test-RoutedTaskGraph {
     <#
     .SYNOPSIS
@@ -254,6 +373,10 @@ function Test-RoutedTaskGraph {
             if ($task.PSObject.Properties.Name -notcontains $field) {
                 $violations.Add("Task '$($task.taskId)': Pflichtfeld '$field' fehlt.")
             }
+        }
+        if (-not (Test-RoutedTaskId -TaskId $task.taskId)) {
+            $violations.Add('Task-ID ist kein portabler Dateiname (1-128 ASCII-Zeichen, keine Pfade oder Windows-Geraetenamen).')
+            continue
         }
         $taskId = [string]$task.taskId
         if ($ids.ContainsKey($taskId)) { $violations.Add("Task-ID doppelt: $taskId") }
@@ -476,7 +599,23 @@ function Read-RoutedCheckpoint {
         throw 'Checkpoint gehoert zu einem anderen Repository.'
     }
     if (-not $SkipHeadValidation) {
-        $branch = ([string](& git rev-parse --abbrev-ref HEAD 2>$null)).Trim()
+        $headOutput = @(& git rev-parse --verify HEAD 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $headOutput.Count -ne 1) {
+            throw 'Aktueller HEAD konnte nicht verlaesslich aufgeloest werden.'
+        }
+        $head = ([string]$headOutput[0]).Trim()
+        if ($head -cnotmatch '\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z') {
+            throw 'Git hat keinen gueltigen Commit-SHA fuer HEAD geliefert.'
+        }
+        if ($head -cne ([string]$checkpoint.head).Trim()) {
+            throw 'Checkpoint-HEAD weicht vom aktuellen Commit ab; Resume ist blockiert.'
+        }
+        $branchOutput = @(& git rev-parse --abbrev-ref HEAD 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $branchOutput.Count -ne 1 -or
+            [string]::IsNullOrWhiteSpace([string]$branchOutput[0])) {
+            throw 'Aktueller Branch konnte nicht verlaesslich aufgeloest werden.'
+        }
+        $branch = ([string]$branchOutput[0]).Trim()
         if ($branch -ne ([string]$checkpoint.branch).Trim()) {
             throw "Checkpoint-Branch '$($checkpoint.branch)' weicht vom aktuellen Branch '$branch' ab."
         }

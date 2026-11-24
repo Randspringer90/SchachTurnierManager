@@ -60,6 +60,16 @@ test('release-specific denominator excludes future scope', () => {
   assert.equal(measureBacklog(source, 'v1.0.0').summary.donePercent, 100);
   assert.equal(measureBacklog(source, 'post-1.0').summary.donePercent, 0);
 });
+test('integration and review rollups do not duplicate leaf progress', () => {
+  const source = doc(row(), row('STM-INT-002', 'Done'), row('STM-REV-001', 'Done'), row('STM-REV-002', 'In Progress'));
+  const result = measureBacklog(source, 'v1.0.0');
+  assert.equal(result.summary.total, 2);
+  assert.equal(result.summary.done, 1);
+  assert.equal(result.summary.donePercent, 50);
+  assert.equal(result.overviewTotal, 4);
+  assert.deepEqual(result.excludedRollupIds, ['STM-INT-002', 'STM-REV-001']);
+  assert.deepEqual(result.remainingIds, ['STM-REV-002']);
+});
 test('unknown release filter rejected', () => assert.throws(() => measureBacklog(good, 'soon'), code('INVALID_RELEASE_FILTER')));
 test('empty selected release not fake 100 percent', () => assert.throws(() => measureBacklog(good, 'v9.0.0'), code('RELEASE_NOT_FOUND')));
 test('titles/links are not emitted and no merge approval inferred', () => {

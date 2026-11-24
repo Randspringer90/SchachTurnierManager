@@ -8,5 +8,9 @@ public sealed class TournamentState
     public TournamentSettings Settings { get; set; } = new();
     public List<Player> Players { get; init; } = new();
     public List<TournamentRound> Rounds { get; init; } = new();
+    public RoundRobinPlan? RoundRobinPlan { get; set; }
+    // Guid.Empty is the stable backward-compatible epoch for legacy snapshots.
+    public Guid ResultQueueEpoch { get; set; }
+    public Dictionary<Guid, QueuedResultMutation> ResultMutationReceipts { get; init; } = new();
     public List<AuditJournalEntry> AuditJournal { get; init; } = new();
 }

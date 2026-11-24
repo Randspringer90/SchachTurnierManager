@@ -18,7 +18,8 @@ public sealed class Chess960PositionService
     {
         if (positionNumber is < 0 or > 959)
         {
-            throw new ArgumentOutOfRangeException(nameof(positionNumber), "Chess960-Positionsnummer muss zwischen 0 und 959 liegen.");
+            throw new ArgumentOutOfRangeException(nameof(positionNumber), "Chess960-Positionsnummer muss zwischen 0 und 959 liegen.")
+                .WithErrorCode("CHESS960_POSITION_RANGE");
         }
 
         var remainingNumber = positionNumber;
@@ -104,7 +105,8 @@ public sealed class Chess960PositionService
         var normalized = Normalize(position);
         if (!ValidatePosition(normalized))
         {
-            throw new ArgumentException("Keine gültige Chess960-Grundreihe.", nameof(position));
+            throw new ArgumentException("Keine gültige Chess960-Grundreihe.", nameof(position))
+                .WithErrorCode("CHESS960_BACK_RANK_INVALID");
         }
 
         var bishopSquares = normalized

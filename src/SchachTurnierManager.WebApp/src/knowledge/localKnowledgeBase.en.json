@@ -1,0 +1,230 @@
+{
+  "sourceVersion": "2026-10-28.1",
+  "sourceUpdated": "2026-10-28",
+  "providerMode": "local-only",
+  "privacyNotice": "This answer comes from the local knowledge base. No tournament data was sent to external AI services.",
+  "quickQuestions": [
+    "How do I start a tournament?",
+    "Why this pairing?",
+    "What should I do after round 3?",
+    "What does Buchholz Cut mean?",
+    "How do I back up my tournament?",
+    "How do I use QR/mobile?",
+    "When should I use the assistant?",
+    "What data is sent to AI?"
+  ],
+  "topics": [
+    {
+      "id": "start",
+      "title": "Tournament start",
+      "keywords": [
+        "start",
+        "begin",
+        "create",
+        "new tournament",
+        "club night",
+        "first round",
+        "checklist"
+      ],
+      "answer": "Create the tournament with the appropriate format, import or enter participants, check settings and export a backup before round 1. Then open the pairing preview, review its quality and create the round only after review.",
+      "steps": [
+        "Apply an assistant recommendation or set the options manually.",
+        "Enter or import participants and check starting ranks.",
+        "Export a backup.",
+        "Open the pairing preview and check the pairing audit.",
+        "Pair the round, print its sheet and back up again after entering results."
+      ],
+      "sources": [
+        "docs/planning/BACKLOG.md",
+        "docs/operations/LOCAL_DATA_AND_NETWORK.md"
+      ]
+    },
+    {
+      "id": "pairing",
+      "title": "Pairing and pairing audit",
+      "keywords": [
+        "pairing",
+        "why this pairing",
+        "rematch",
+        "colours",
+        "colors",
+        "quality",
+        "fide",
+        "audit"
+      ],
+      "answer": "The app shows a pairing preview with a quality report before publication. Swiss tournaments offer Optimal V2 and FIDE Dutch. Rematches, colours and score notices appear in the audit. For large fields, review the preview and audit particularly carefully. The software does not claim FIDE certification.",
+      "steps": [
+        "Open the preview for the next round.",
+        "Review pairing quality and warnings.",
+        "If needed, use an allowed manual pairing or keep the round unpublished.",
+        "After pairing, export the round sheet or posting."
+      ],
+      "sources": [
+        "docs/FIDE_DUTCH_REFERENCE.md",
+        "docs/AUDIT_JOURNAL.md"
+      ]
+    },
+    {
+      "id": "tiebreak",
+      "title": "Scoring and tie-breaks",
+      "keywords": [
+        "buchholz",
+        "cut",
+        "sonneborn",
+        "scoring",
+        "tie",
+        "tiebreak",
+        "direct encounter",
+        "performance",
+        "bye",
+        "forfeit"
+      ],
+      "answer": "Buchholz uses the opponents’ points. Buchholz Cut usually removes the lowest opponent contribution. Byes and forfeits need special attention; the app shows these boards separately and applies the selected scoring policy. Set the announcement and federation rules before a rated tournament.",
+      "steps": [
+        "Check the tie-break order in tournament settings.",
+        "Choose the bye and forfeit policy before the tournament.",
+        "Review standings and diagnostics after each round.",
+        "Publish the final report only after a backup and a final plausibility check."
+      ],
+      "sources": [
+        "docs/TIEBREAK_UNPLAYED_ROUNDS.md"
+      ]
+    },
+    {
+      "id": "backup",
+      "title": "Backup and recovery",
+      "keywords": [
+        "backup",
+        "back up",
+        "save",
+        "restore",
+        "recovery",
+        "json",
+        "database",
+        "sqlite",
+        "loss",
+        "after round"
+      ],
+      "answer": "Export a JSON backup after every important action. On tournament day, back up before round 1, after every round and before publishing final standings. A locally queued result still needs server confirmation.",
+      "steps": [
+        "Open Print, export & backup.",
+        "Export a backup and keep a separate local copy.",
+        "Back up again after entering results.",
+        "For restore, check the backup JSON, confirm the target and any data loss, then inspect the tournament list and rounds."
+      ],
+      "sources": [
+        "docs/testing/BACKUP_PREFLIGHT.md",
+        "docs/AUDIT_JOURNAL.md"
+      ]
+    },
+    {
+      "id": "mobile",
+      "title": "QR/mobile and Chess960",
+      "keywords": [
+        "qr",
+        "mobile",
+        "phone",
+        "pwa",
+        "chess960",
+        "freestyle",
+        "dice",
+        "hotspot",
+        "wifi",
+        "wi-fi",
+        "offline",
+        "queue"
+      ],
+      "answer": "The optional result queue keeps up to 200 result entries durably in this browser until the server acknowledges them. After reconnecting, deliberately sync and review conflicts. A queued entry is not a save confirmation. QR/mobile access is blocked by the secure defaults. It requires a prepared TLS LAN connection, allowed hosts, a protected access credential and an accepted device connection. Sharing Wi-Fi alone is insufficient.",
+      "steps": [
+        "Use device access only after secure LAN/TLS configuration and acceptance; otherwise work on the laptop.",
+        "Enable the result queue when you need offline entries and check its status.",
+        "After reconnecting, sync and compare conflicts without blindly overwriting data.",
+        "For Chess960, roll the local starting position for each board and check the audit."
+      ],
+      "sources": [
+        "docs/operations/LOCAL_DATA_AND_NETWORK.md"
+      ]
+    },
+    {
+      "id": "export",
+      "title": "Import, export and publication",
+      "keywords": [
+        "import",
+        "export",
+        "csv",
+        "excel",
+        "trf",
+        "trf16",
+        "chess-results",
+        "publish",
+        "publication",
+        "posting",
+        "print"
+      ],
+      "answer": "Participants, standings, pairings, round sheets and JSON backups can be exported locally. TRF16 and Swiss-Manager exports are available. Before federation submission, verify the format, required metadata and tournament rules. An export is not FIDE certification. The app does not publish any file automatically.",
+      "steps": [
+        "Check the participant CSV before the tournament starts.",
+        "Export standings and pairings after each round.",
+        "Save an audit bundle for traceability.",
+        "Publish final results only after a backup and plausibility check."
+      ],
+      "sources": [
+        "docs/IMPORT_EXPORT_ROADMAP.md",
+        "docs/planning/BACKLOG.md"
+      ]
+    },
+    {
+      "id": "ki",
+      "title": "AI help and privacy",
+      "keywords": [
+        "ai service",
+        "sent to ai",
+        "artificial intelligence",
+        "chatbot",
+        "openai",
+        "claude",
+        "api",
+        "key",
+        "secret",
+        "privacy",
+        "personal data",
+        "knowledge",
+        "rag",
+        "provider"
+      ],
+      "answer": "This help is local and rule-based. It sends no tournament data, logs or personal information to external providers. Any future provider connection requires an explicit privacy decision, protected local credentials, visible sources and limited tool permissions.",
+      "steps": [
+        "Use the local knowledge base and its references first.",
+        "Treat future provider access as a separately authorized capability.",
+        "Do not let a help response perform destructive actions automatically.",
+        "Review privacy and personal data before any external AI use."
+      ],
+      "sources": [
+        ".secrets/README.md"
+      ]
+    },
+    {
+      "id": "assistant",
+      "title": "Using the tournament assistant",
+      "keywords": [
+        "assistant",
+        "recommendation",
+        "which format",
+        "how many rounds",
+        "schedule",
+        "time window",
+        "boards"
+      ],
+      "answer": "The tournament assistant helps tournament directors plan a format, round count, time requirement and checklists using participants, boards, available time and scenario.",
+      "steps": [
+        "Choose a scenario and check participants, time and boards.",
+        "Read the warnings and adjust the format or round count if necessary.",
+        "Apply the recommendation to the new tournament draft or export the plan.",
+        "Before round 1, still check settings and the pairing preview manually."
+      ],
+      "sources": [
+        "docs/planning/BACKLOG.md"
+      ]
+    }
+  ]
+}

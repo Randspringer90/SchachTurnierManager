@@ -106,6 +106,11 @@ public sealed class FideDutchColourAllocatorTests
         var forward = allocator.Allocate(Profile(firstTpn, firstColours), Profile(secondTpn, secondColours), ChessColor.White);
         var reversed = allocator.Allocate(Profile(secondTpn, secondColours), Profile(firstTpn, firstColours), ChessColor.White);
 
+        // Both call orders must also match the independently verified fixture;
+        // equal but jointly incorrect assignments would not prove correctness.
+        Assert.Equal(expectedWhiteTpn, forward.White.Tpn);
+        Assert.Equal(expectedRule, forward.AppliedRule);
+        Assert.False(string.IsNullOrWhiteSpace(reversed.Reason), $"Audit-Begründung fehlt ({origin}).");
         Assert.Equal(forward.White.Tpn, reversed.White.Tpn);
         Assert.Equal(forward.AppliedRule, reversed.AppliedRule);
     }
@@ -148,6 +153,31 @@ public sealed class FideDutchColourAllocatorTests
 
         Assert.Equal("C.04.3 Art. 5.2.3", allocation.AppliedRule);
         Assert.Equal(2, allocation.White.Tpn);
+    }
+
+    // C.04.3 Art. 1.2: points take precedence over TPN for both final colour rules.
+    [Theory]
+    [InlineData("W", 1, 2, ChessColor.White, 1, "C.04.3 Art. 5.2.4")]
+    [InlineData("B", 1, 2, ChessColor.White, 2, "C.04.3 Art. 5.2.4")]
+    [InlineData("", 1, 3, ChessColor.White, 3, "C.04.3 Art. 5.2.5")]
+    [InlineData("", 1, 3, ChessColor.Black, 1, "C.04.3 Art. 5.2.5")]
+    [InlineData("", 2, 4, ChessColor.White, 2, "C.04.3 Art. 5.2.5")]
+    [InlineData("", 2, 4, ChessColor.Black, 4, "C.04.3 Art. 5.2.5")]
+    public void Allocate_HigherRankedMeansMorePointsBeforeLowerTpn(
+        string colours, int lowerScoringTpn, int higherScoringTpn, ChessColor initialColour,
+        int expectedWhiteTpn, string expectedRule)
+    {
+        var lowerScoring = Profile(lowerScoringTpn, colours);
+        var higherScoring = Profile(higherScoringTpn, colours) with { Points = 1m };
+        var allocator = new FideDutchColourAllocator();
+
+        var forward = allocator.Allocate(lowerScoring, higherScoring, initialColour);
+        var reversed = allocator.Allocate(higherScoring, lowerScoring, initialColour);
+
+        Assert.Equal(expectedWhiteTpn, forward.White.Tpn);
+        Assert.Equal(expectedRule, forward.AppliedRule);
+        Assert.Equal(forward.White.Player.Id, reversed.White.Player.Id);
+        Assert.Equal(forward.Black.Player.Id, reversed.Black.Player.Id);
     }
 
     /// <summary>Baut ein Profil mit der angegebenen Farbfolge; Runde 1..n in Reihenfolge.</summary>

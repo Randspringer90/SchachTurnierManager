@@ -130,6 +130,99 @@ public sealed class PairingQualityAnalyzerTests
         Assert.Equal(PairingQualitySeverity.Notice, report.Severity);
     }
 
+    [Theory]
+    [InlineData(GameResultKind.WhiteForfeitWin, false)]
+    [InlineData(GameResultKind.BlackForfeitWin, false)]
+    [InlineData(GameResultKind.DoubleForfeit, false)]
+    [InlineData(GameResultKind.NotPlayed, false)]
+    [InlineData(GameResultKind.WhiteWin, true)]
+    [InlineData(GameResultKind.Draw, true)]
+    [InlineData(GameResultKind.BlackWin, true)]
+    public void Analyze_DutchRematchRequiresAnOverTheBoardEncounter(GameResultKind previousResult, bool isRematch)
+    {
+        var players = CreatePlayers(2);
+        var tournament = CreateTournament(players);
+        tournament.Settings = tournament.Settings with { PairingStrategy = SwissPairingStrategyKind.FideDutch };
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 1,
+            Pairings = new[] { Pairing.Game(1, players[0].Id, players[1].Id) with { Result = new GameResult(previousResult) } }
+        });
+        var round = new TournamentRound
+        {
+            RoundNumber = 2,
+            Pairings = new[] { Pairing.Game(1, players[0].Id, players[1].Id) }
+        };
+
+        var report = new PairingQualityAnalyzer().Analyze(tournament, round);
+
+        Assert.Equal(isRematch ? 1 : 0, report.RematchCount);
+        Assert.Equal(isRematch, Assert.Single(report.Boards).IsRematch);
+        Assert.Equal(isRematch, report.Severity == PairingQualitySeverity.Critical);
+    }
+
+    [Fact]
+    public void Analyze_DutchUnplayedRoundsDoNotCreateColourStreaks()
+    {
+        var players = CreatePlayers(4);
+        var tournament = CreateTournament(players);
+        tournament.Settings = tournament.Settings with { PairingStrategy = SwissPairingStrategyKind.FideDutch };
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 1,
+            Pairings = new[]
+            {
+                Pairing.Game(1, players[0].Id, players[1].Id) with { Result = GameResult.Draw },
+                Pairing.Game(2, players[3].Id, players[2].Id) with { Result = GameResult.Draw }
+            }
+        });
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 2,
+            Pairings = new[]
+            {
+                Pairing.Game(1, players[0].Id, players[2].Id) with { Result = new GameResult(GameResultKind.WhiteForfeitWin) },
+                Pairing.Game(2, players[1].Id, players[3].Id) with { Result = GameResult.Draw }
+            }
+        });
+        var round = new TournamentRound
+        {
+            RoundNumber = 3,
+            Pairings = new[] { Pairing.Game(1, players[0].Id, players[3].Id), Pairing.Game(2, players[1].Id, players[2].Id) }
+        };
+
+        var report = new PairingQualityAnalyzer().Analyze(tournament, round);
+
+        Assert.Equal(0, report.ThirdSameColorRiskCount);
+        Assert.All(report.Boards, board => Assert.False(board.WouldGiveWhiteThirdSameColor || board.WouldGiveBlackThirdSameColor));
+    }
+
+    [Theory]
+    [InlineData(SwissPairingStrategyKind.FideDutch, "Swiss-ScoreGroup-Optimal-V2", 1)]
+    [InlineData(SwissPairingStrategyKind.OptimalMatchingV2, "Swiss-FIDE-Dutch-C0403", 0)]
+    public void Analyze_RecordedAlgorithmPreservesHistorySemanticsAfterStrategyChange(
+        SwissPairingStrategyKind currentStrategy, string recordedAlgorithm, int expectedRematches)
+    {
+        var players = CreatePlayers(2);
+        var tournament = CreateTournament(players);
+        tournament.Settings = tournament.Settings with { PairingStrategy = currentStrategy };
+        tournament.Rounds.Add(new TournamentRound
+        {
+            RoundNumber = 1,
+            Pairings = new[] { Pairing.Game(1, players[0].Id, players[1].Id) with { Result = new GameResult(GameResultKind.WhiteForfeitWin) } }
+        });
+        var round = new TournamentRound
+        {
+            RoundNumber = 2,
+            Audit = new PairingAudit { Algorithm = recordedAlgorithm },
+            Pairings = new[] { Pairing.Game(1, players[0].Id, players[1].Id) }
+        };
+
+        var report = new PairingQualityAnalyzer().Analyze(tournament, round);
+
+        Assert.Equal(expectedRematches, report.RematchCount);
+    }
+
     private static TournamentState CreateTournament(IReadOnlyList<Player> players)
     {
         var tournament = new TournamentState

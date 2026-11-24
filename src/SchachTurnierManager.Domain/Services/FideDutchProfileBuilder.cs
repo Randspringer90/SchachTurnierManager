@@ -41,7 +41,8 @@ public sealed class FideDutchProfileBuilder
         // VOR der jeweiligen Runde, nicht der Endstand: Wer in R4 als Fuehrender gegen einen
         // Schwaecheren antritt, hat einen Downfloat bekommen - auch wenn er die Partie verliert und
         // am Ende gleichauf liegt.
-        var pointsBeforeRound = states.Keys.ToDictionary(id => id, _ => 0m);
+        // Auch inzwischen inaktive Gegner hatten zum damaligen Zeitpunkt ihre Punkte.
+        var pointsBeforeRound = tournament.Players.ToDictionary(player => player.Id, _ => 0m);
 
         foreach (var round in rounds)
         {
@@ -147,14 +148,16 @@ public sealed class FideDutchProfileBuilder
         //
         // Eine Wirkung bleibt: Wer ohne zu spielen die volle Siegpunktzahl bekommt, erhaelt kein
         // Freilos mehr ([C2], Art. 2.1.2) und gilt als Downfloat (Art. 1.4.3).
-        ApplyUnplayedSideEffects(pairing, white, black, states);
+        ApplyUnplayedSideEffects(pairing, white, black, states, isLastRound, isTwoRoundsBack);
     }
 
     private static void ApplyUnplayedSideEffects(
         Pairing pairing,
         Guid white,
         Guid black,
-        Dictionary<Guid, MutableState> states)
+        Dictionary<Guid, MutableState> states,
+        bool isLastRound,
+        bool isTwoRoundsBack)
     {
         var forfeitWinner = pairing.Result.Kind switch
         {
@@ -166,6 +169,7 @@ public sealed class FideDutchProfileBuilder
         if (forfeitWinner is { } winner && states.TryGetValue(winner, out var winnerState))
         {
             winnerState.IsByeIneligible = true;
+            winnerState.SetFloat(FideFloat.Down, isLastRound, isTwoRoundsBack);
         }
     }
 
