@@ -250,6 +250,21 @@
       "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
     },
     {
+      "path": "scripts/Smoke-FirefoxFideLookup.ps1",
+      "mode": "100644",
+      "blobSha": "08845c924883781216b5c60999dd1b3949f1a93b",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "145dc4d81e2da37fdc484979417faa6dfce234c9",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review 2026-11-24; retain HIGH and exact-SHA execution approval."
+    },
+    {
       "path": "scripts/Smoke-FirefoxIntegratedTools.ps1",
       "mode": "100644",
       "blobSha": "1dc125ce67b2f7d6cc8c2fd5fa1ad8b7982695e0",
@@ -263,6 +278,66 @@
         }
       ],
       "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxOfflineQueue.ps1",
+      "mode": "100644",
+      "blobSha": "819b64e7a455ceeaa7c6bbf80d103c5218a918b0",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "145dc4d81e2da37fdc484979417faa6dfce234c9",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review 2026-11-24; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxOperatorLanguages.ps1",
+      "mode": "100644",
+      "blobSha": "b4a714e6e590d149a97d3aab628047108047e82b",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "145dc4d81e2da37fdc484979417faa6dfce234c9",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review 2026-11-24; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxProjectionRecovery.ps1",
+      "mode": "100644",
+      "blobSha": "a175a270d686142b83b50e8d67f84f3d9f08ade3",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "145dc4d81e2da37fdc484979417faa6dfce234c9",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review 2026-11-24; retain HIGH and exact-SHA execution approval."
+    },
+    {
+      "path": "scripts/Smoke-FirefoxSettingsRestore.ps1",
+      "mode": "100644",
+      "blobSha": "abc7aee017d8fc6c7417ffa3e2641c273b35d967",
+      "beforeBlobSha": "",
+      "beforeMode": "",
+      "reviewHeadSha": "145dc4d81e2da37fdc484979417faa6dfce234c9",
+      "patterns": [
+        {
+          "id": "credential-access",
+          "definitionSha256": "f69cc4f140b81a428ee3738f16f7434e233870260ca67b9328904b2ceccbc3d3"
+        }
+      ],
+      "reviewEvidence": "Independent whole-file context review 2026-11-24; retain HIGH and exact-SHA execution approval."
     },
     {
       "path": "scripts/Smoke-FirefoxTournamentEditors.ps1",
@@ -357,17 +432,17 @@
     {
       "path": "tests/scripts/service-worker.test.mjs",
       "mode": "100644",
-      "blobSha": "c854d9760aee34e0519d537bc4e049c2637a193f",
-      "beforeBlobSha": "",
-      "beforeMode": "",
-      "reviewHeadSha": "745582e84a6d95df20c6a567c4531085c37de69f",
+      "blobSha": "cf5b23ead72079f2e4f16ea9aa75ee2318497299",
+      "beforeBlobSha": "c854d9760aee34e0519d537bc4e049c2637a193f",
+      "beforeMode": "100644",
+      "reviewHeadSha": "145dc4d81e2da37fdc484979417faa6dfce234c9",
       "patterns": [
         {
           "id": "persistence",
           "definitionSha256": "e0aacb511088598bccf81e88ff518a8506b7ece5b863ff05ea3a0f88dcb3a79a"
         }
       ],
-      "reviewEvidence": "Independent whole-file context review; retain HIGH and exact-SHA execution approval."
+      "reviewEvidence": "Independent whole-file context review 2026-11-24; retain HIGH and exact-SHA execution approval."
     }
   ]
 }
