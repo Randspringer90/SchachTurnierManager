@@ -357,6 +357,99 @@ try {
     $fakeSecret = 'api' + '_key = ' + 'zzz-synthetic-not-real-1234567890'
     $redacted = Get-RedactedText -Text "Log: $fakeSecret Ende" -RuntimePolicy $runtimePolicy
     Assert-Check 'log-redaktion' ($redacted -match '\[REDACTED\]' -and $redacted -notmatch 'zzz-synthetic-not-real')
+
+    # --- 22) STM-AI-008: lokales Modellprofil bleibt lokal, explizit und fail-closed ----
+    $loopbackCases = @{ '' = $true; '127.0.0.1:11434' = $true; 'http://localhost:11434' = $true; 'http://[::1]:11434' = $true
+        'HTTPS://LOCALHOST' = $true; '0.0.0.0:11434' = $false; 'remote.example:11434' = $false; 'https://10.0.0.5:11434' = $false
+        '::not a host::' = $false; 'http://127.0.0.1@evil.example:11434' = $false; 'localhost.' = $false; 'localhost.evil.example' = $false
+        '127.0.0.2' = $false; '[::ffff:127.0.0.1]' = $false; 'ftp://localhost' = $false; 'file://localhost' = $false
+        '127.1' = $false; '0x7f.1' = $false; 'localhost:11434/@evil.example' = $false; 'localhost:99999' = $false }
+    $loopbackFailures = @($loopbackCases.GetEnumerator() | Where-Object { (Test-LocalModelLoopbackHost -HostSetting $_.Key) -ne $_.Value } | ForEach-Object Key)
+    Assert-Check 'lokal-nur-literaler-loopback-host' ($loopbackFailures.Count -eq 0) ($loopbackFailures -join ', ')
+    $inventoryCases = @(
+        @{ Entry = [pscustomobject]@{ name = 'local:7b'; size = 4GB }; Expected = 'LOCAL' },
+        @{ Entry = [pscustomobject]@{ name = 'local:7b-cloud'; size = 4GB }; Expected = 'REMOTE_MODEL' },
+        @{ Entry = [pscustomobject]@{ name = 'local:7b'; size = 4GB; remote_host = 'https://ollama.example' }; Expected = 'REMOTE_MODEL' },
+        @{ Entry = [pscustomobject]@{ name = 'local:7b'; size = 384 }; Expected = 'REMOTE_MODEL' })
+    Assert-Check 'lokal-nur-lokal-gespeicherte-gewichte' (@($inventoryCases | Where-Object { (Test-LocalModelInventoryEntry -Entry $_.Entry) -cne $_.Expected }).Count -eq 0)
+    $localMapping = Get-ProfileProvider -RuntimePolicy $runtimePolicy -ProfileId 'local-assist'
+    Assert-Check 'lokal-profil-aus-katalog' ($null -ne $localMapping -and $localMapping.ProviderName -ceq 'ollama' -and
+        -not [string]::IsNullOrWhiteSpace($localMapping.Model))
+    $adapterPath = Join-Path $scriptsRoot 'Invoke-LocalModelProfile.ps1'
+    $promptPath = Join-Path $workRoot 'local.prompt.md'
+    Set-Content -LiteralPath $promptPath -Value 'Synthetischer Prompt.' -Encoding utf8NoBOM
+    function Invoke-LocalAdapter([string]$HostSetting) {
+        $output = & pwsh -NoProfile -Command "`$env:OLLAMA_HOST = '$HostSetting'; & '$adapterPath' -ProfileId 'local-assist' -PromptFile '$promptPath' -OutputFile '$(Join-Path $workRoot 'local.out')' -TimeoutSeconds 30; exit `$LASTEXITCODE" 2>&1 | Out-String
+        return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
+    }
+    $remoteRun = Invoke-LocalAdapter 'remote.example:11434'
+    Assert-Check 'lokal-fremder-host-hold' ($remoteRun.ExitCode -eq 3 -and $remoteRun.Output -match 'HOLD_NON_LOOPBACK_HOST') $remoteRun.Output
+
+    # Verhaltenstests gegen einen minimalen Ollama-Ersatz auf einem freien Loopback-Port.
+    function Start-FakeLocalModelService([hashtable]$Routes) {
+        $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+        $listener.Start()
+        $log = [Collections.Concurrent.ConcurrentQueue[string]]::new()
+        $job = Start-ThreadJob -ArgumentList $listener, $Routes, $log -ScriptBlock {
+            param($Listener, $Routes, $Log)
+            while ($true) {
+                try { $client = $Listener.AcceptTcpClient() } catch { return }
+                try {
+                    $stream = $client.GetStream()
+                    $reader = [IO.StreamReader]::new($stream, [Text.Encoding]::UTF8, $false, 8192, $true)
+                    $requestLine = $reader.ReadLine()
+                    $length = 0
+                    while ($true) { $header = $reader.ReadLine(); if ([string]::IsNullOrEmpty($header)) { break }
+                        if ($header -match '^(?i)content-length:\s*(\d+)') { $length = [int]$Matches[1] } }
+                    if ($length -gt 0) { $buffer = [char[]]::new($length); [void]$reader.ReadBlock($buffer, 0, $length) }
+                    $key = (($requestLine -split ' ')[0..1]) -join ' '
+                    $Log.Enqueue($key)
+                    $route = if ($Routes.ContainsKey($key)) { $Routes[$key] } else { @{ Status = 404; Body = '{}' } }
+                    $bytes = [Text.Encoding]::UTF8.GetBytes([string]$route.Body)
+                    $extra = if ($route.ContainsKey('Location')) { "Location: $($route.Location)`r`n" } else { '' }
+                    $head = [Text.Encoding]::ASCII.GetBytes("HTTP/1.1 $($route.Status) X`r`n${extra}Content-Type: application/json`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n")
+                    $stream.Write($head, 0, $head.Length); $stream.Write($bytes, 0, $bytes.Length); $stream.Flush()
+                }
+                finally { $client.Dispose() }
+            }
+        }
+        return [pscustomobject]@{ Listener = $listener; Job = $job; Log = $log; HostSetting = "127.0.0.1:$($listener.LocalEndpoint.Port)" }
+    }
+    function Stop-FakeLocalModelService($Service) { $Service.Listener.Stop(); $null = Wait-Job $Service.Job -Timeout 10; Remove-Job $Service.Job -Force }
+    $localModel = $localMapping.Model
+    $tagsLocal = @{ Status = 200; Body = (@{ models = @(@{ name = $localModel; size = 14GB }) } | ConvertTo-Json -Depth 4 -Compress) }
+    $scenarios = @(
+        @{ Name = 'lokal-modellinhalt-ist-kein-limitsignal'; ExpectedExit = 0; ExpectedStatus = '"status":"ok"'; Routes = @{
+                'GET /api/tags' = $tagsLocal
+                'POST /api/generate' = @{ Status = 200; Body = '{"response":"429 rate limit exceeded; 503 capacity; unauthorized","done":true,"prompt_eval_count":5,"eval_count":7}' } } },
+        @{ Name = 'lokal-fehlendes-modell-hold-ohne-download'; ExpectedExit = 5; ExpectedStatus = 'HOLD_MODEL_NOT_INSTALLED'; Routes = @{
+                'GET /api/tags' = @{ Status = 200; Body = '{"models":[{"name":"other:1b","size":2000000000}]}' } } },
+        @{ Name = 'lokal-cloudmodell-hold'; ExpectedExit = 3; ExpectedStatus = 'HOLD_REMOTE_MODEL'; Routes = @{
+                'GET /api/tags' = @{ Status = 200; Body = (@{ models = @(@{ name = $localModel; size = 384; remote_host = 'https://ollama.example' }) } | ConvertTo-Json -Depth 4 -Compress) } } },
+        @{ Name = 'lokal-http-429-ist-rate-limit'; ExpectedExit = 2; ExpectedStatus = '"status":"rate-limit"'; Routes = @{
+                'GET /api/tags' = $tagsLocal
+                'POST /api/generate' = @{ Status = 429; Body = '{"error":"busy"}' } } })
+    foreach ($scenario in $scenarios) {
+        $service = Start-FakeLocalModelService -Routes $scenario.Routes
+        try { $run = Invoke-LocalAdapter $service.HostSetting } finally { Stop-FakeLocalModelService $service }
+        $requests = @($service.Log.ToArray())
+        Assert-Check $scenario.Name ($run.ExitCode -eq $scenario.ExpectedExit -and $run.Output.Contains($scenario.ExpectedStatus) -and
+            $requests -notcontains 'POST /api/pull' -and
+            ($scenario.ExpectedExit -ne 5 -or $requests -notcontains 'POST /api/generate')) "$($run.ExitCode) $($run.Output) $($requests -join ',')"
+    }
+    # Weiterleitungen duerfen den Prompt nicht an einen anderen Endpunkt tragen.
+    $foreign = Start-FakeLocalModelService -Routes @{ 'POST /api/generate' = @{ Status = 200; Body = '{"response":"x","done":true}' } }
+    $redirecting = Start-FakeLocalModelService -Routes @{ 'GET /api/tags' = $tagsLocal
+        'POST /api/generate' = @{ Status = 307; Body = '{}'; Location = "http://$($foreign.HostSetting)/api/generate" } }
+    try { $run = Invoke-LocalAdapter $redirecting.HostSetting } finally { Stop-FakeLocalModelService $redirecting; Stop-FakeLocalModelService $foreign }
+    Assert-Check 'lokal-keine-weiterleitung' ($run.ExitCode -eq 5 -and @($foreign.Log.ToArray()).Count -eq 0) "$($run.ExitCode) $($run.Output)"
+    $broken = Start-FakeLocalModelService -Routes @{ 'GET /api/tags' = @{ Status = 200; Body = 'not json' } }
+    try { $run = Invoke-LocalAdapter $broken.HostSetting } finally { Stop-FakeLocalModelService $broken }
+    Assert-Check 'lokal-defekte-modellliste-hold' ($run.ExitCode -eq 5 -and $run.Output -match 'HOLD_RUNTIME_UNAVAILABLE') "$($run.ExitCode) $($run.Output)"
+    $router = Get-Content -Raw -LiteralPath (Join-Path $scriptsRoot 'Invoke-RoutedTaskGraph.ps1')
+    Assert-Check 'router-ohne-stillen-adapterfallback' ($router -match "'ollama' \{ 'Invoke-LocalModelProfile\.ps1' \}" -and
+        $router -match 'default \{ throw "Kein Adapter fuer Provider')
+    Assert-Check 'router-lokal-nur-explizit-risikoarm' ($router -match "category -cne 'local-assist' -or \[string\]\`$task\.risk -cne 'low'")
 }
 finally {
     Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue

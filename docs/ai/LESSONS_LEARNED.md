@@ -4,6 +4,46 @@ Kumulativ, neueste zuerst. Jeder Eintrag: Datum, Kontext, Lesson, Konsequenz. Da
 persistiert seine Lessons eigenständig in diesem Repository; externe lokale Wissenspfade sind
 keine Voraussetzung.
 
+## 2026-10-29 — Sprachumfang und Fehlerverträge
+
+- Bestätigten DE/EN-Umfang von bestehenden Vorschaukatalogen trennen; zusätzliche Entwürfe nach Ownerkorrektur aus dem Kandidaten entfernen und nur lokal erhalten.
+- Englische Fehler über stabile strukturierte Codes darstellen. Ursprüngliche Exceptiontypen, Parameter, deutsche Auditdetails und HTTP-Status erhalten; unbekannte Fehler weiterhin kontrolliert behandeln. Ziffern oder deutsche Textfragmente sind keine zuverlässigen Fehlercodes.
+- Erfolgsmeldungen ebenfalls im echten Browser prüfen. Schlüsselparität allein erkennt keinen hart codierten deutschen Save-Hinweis. Zugehörige Persistenz und ungespeicherte Eingaben mitprüfen.
+- Angenommene Headless-Task-/Run-IDs beweisen weder einen abgeschlossenen Providerturn noch ein unabhängiges Review. Nach semantischen Änderungen den exakten Quellsnapshot erneuern.
+
+## 2026-10-29 — Wiederherstellung und Nachweisbindung
+
+- Ein gesunder Backend-Heartbeat allein repariert keine zuvor fehlgeschlagene
+  Projektion. Fehlgeschlagene Lesevorgänge über den vorhandenen Pollingpfad oder
+  eine sichtbare Wiederholung erneuern; erfolgreiche Polls dürfen Entwürfe nicht
+  zurücksetzen. Den Fehler zuerst im echten Browser reproduzieren.
+- Sprachwechsel am Chess960-Brett gegen die tatsächlich gespeicherte Stellung
+  prüfen: Positionsnummer, typisiertes Overwrite-Flag und Cancel ohne Mutation.
+  Ein lokaler QR-Code schaltet keine LAN-/TLS-/Zugriffsfreigabe ein.
+- Bei zentralem Commit-Guardfehler die STM-Identität read-only isolieren und den
+  vollständigen Registryfehler getrennt melden. Ein isolierter Treffer erlaubt
+  weder gefilterte Commitprüfungen noch Änderungen an fremden Registryeinträgen.
+- Herstellerstände am neuen Ausführungstag erneut lesen. Ein Node-Patch umfasst
+  auch den realen CI-Versionspfad, konsistente Pins und lokale Hash-/Signaturbelege.
+
+## 2026-10-28 — Grenzen und aktueller Quellstand zählen
+
+- Ausführungsadmission und installierte Registrierung sind verschiedene Nachweise.
+  Eine IPC-Anfrage-ID ist keine Worker-Task-ID; lokale Modellverfügbarkeit ist kein
+  Ownership-/Admissionrecht. Den vorhandenen Bus nutzen, keine Direktprovider als Ausweg.
+- Parentaufgaben nicht durch Teilfunktionen schließen. Ergebnisqueue ersetzt keine
+  begründete Ergebniskorrektur; vollständige Sprachschlüssel ersetzen keine inhaltliche
+  Gesamtübersetzung; erfolgreicher Apply-/Parse-Check ersetzt keine Skriptmigration.
+- Serializer-/Store-Roundtrips und sämtliche Legacy-Runden gegen den eingefrorenen
+  Spielplan prüfen. Doppelte Erstrunden müssen kontrolliert sichtbar scheitern.
+- Browser-Origin/CORS ist keine Zugriffskontrolle. Direkte API und Devproxy separat
+  reproduzieren; Loopbackvertrauen und sichere LAN-Bedingungen ehrlich dokumentieren.
+- Native Browserharness-Prefs, genaue Menülabels und echte Übersetzungskontexte
+  pflegen. Routing-Hauptsummary und verschachtelte Unterchecks getrennt zählen;
+  ungültige Wrapper bleiben sichtbar, Pflichtserien vollständig neu belegen.
+- Paketmanifest, Lock, tatsächlich geladene native SQLite-Bibliothek, ausgelieferte
+  Frameworks und globale Hostwerkzeuge getrennt inventarisieren. Keine pauschale
+  latest-Umstellung und keine globale Installation unter Projektupdatefreigabe.
 ## 2026-10-08 — Ausführung und Evidenz getrennt validieren
 
 - Kontext: Ein korrekt umbenannter Argumentvektor wurde zunächst mit dem alten Splatnamen aufgerufen;17 exit0-Hosts bedeuteten NO_EXECUTION. Ein erfolgreicher Node-Lauf lieferte SPEC statt erwarteter TAP-Metadaten.

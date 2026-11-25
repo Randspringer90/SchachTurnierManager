@@ -90,14 +90,16 @@ $result = Invoke-ExternalRunner -Executable $provider.executable -Arguments $arg
 $duration = [int]((Get-Date) - $started).TotalSeconds
 
 $combined = "$($result.StdOut)`n$($result.StdErr)"
-$classification = Get-RunnerOutputClassification -Text $combined -ExitCode $result.ExitCode `
+$classification = Get-RunnerOutputClassification -StructuredOutput $result.StdOut -ErrorText $result.StdErr -ExitCode $result.ExitCode `
     -RuntimePolicy $runtimePolicy -TimedOut:$result.TimedOut
 
 $outputDir = Split-Path -Parent ([IO.Path]::GetFullPath($OutputFile))
 if ($outputDir -and -not (Test-Path -LiteralPath $outputDir)) {
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 }
-Set-Content -LiteralPath $OutputFile -Value $result.StdOut -Encoding utf8NoBOM
+$answer = Get-RunnerAnswerText -Provider anthropic -OutputText $result.StdOut
+if ($classification -eq 'ok' -and [string]::IsNullOrWhiteSpace($answer)) { $classification = 'error' }
+Set-Content -LiteralPath $OutputFile -Value $answer -Encoding utf8NoBOM
 
 if ($LogFile) {
     $logDir = Split-Path -Parent ([IO.Path]::GetFullPath($LogFile))
@@ -113,7 +115,7 @@ $decision.status = $classification
 $decision.exitCode = $result.ExitCode
 $decision.durationSeconds = $duration
 $decision.outputFile = [IO.Path]::GetFullPath($OutputFile)
-$decision.outputChars = ([string]$result.StdOut).Length
+$decision.outputChars = $answer.Length
 $decision | ConvertTo-Json -Depth 6 -Compress
 
 switch ($classification) {

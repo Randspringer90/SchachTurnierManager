@@ -4,7 +4,7 @@
 Bereitet einen Release-Branch release/<semver> von development vor (kein Tag, kein Push per Default).
 .DESCRIPTION
 Validiert die SemVer, zweigt von origin/development ab. Erstellt KEINEN Tag und KEIN Release.
-Details nach D:\Temp\<RunName>_<Timestamp>, genau ein Upload-ZIP. Ohne -Push nur lokal.
+Details nach <Run-Basis>\<RunName>_<Timestamp>, genau ein Upload-ZIP. Ohne -Push nur lokal.
 .EXAMPLE
 pwsh scripts/Prepare-ReleaseBranch.ps1 -Version 1.0.0
 #>

@@ -1,17 +1,17 @@
 // Display formatting for enum-ish backend values (results, audit entries,
 // import previews, pairing quality). Extracted from main.tsx (STM-FE-014).
-import { externalSourceOptions, genderOptions, playerStatusOptions, resultOptions, tiebreakOptions } from './tournamentOptions';
+import { optionLabel, externalSourceOptions, genderOptions, playerStatusOptions, resultOptions, tiebreakOptions } from './tournamentOptions';
 import type { PwaStatus } from '../api/contracts';
-export function pwaStatusLabel(status: PwaStatus): string {
+export function pwaStatusLabel(status: PwaStatus, english = false): string {
   switch (status) {
-    case 'checking': return 'PWA wird geprüft…';
-    case 'unsupported': return 'PWA nicht unterstützt';
-    case 'ready': return 'PWA bereit';
-    case 'installable': return 'PWA installierbar';
-    case 'installed': return 'PWA installiert';
-    case 'update-available': return 'PWA-Update verfügbar';
-    case 'error': return 'PWA-Serviceworker blockiert';
-    default: return 'PWA-Status unbekannt';
+    case 'checking': return english ? "Checking PWA…" : 'PWA wird geprüft…';
+    case 'unsupported': return english ? "PWA unsupported" : 'PWA nicht unterstützt';
+    case 'ready': return english ? "PWA ready" : 'PWA bereit';
+    case 'installable': return english ? "PWA installable" : 'PWA installierbar';
+    case 'installed': return english ? "PWA installed" : 'PWA installiert';
+    case 'update-available': return english ? "PWA update available" : 'PWA-Update verfügbar';
+    case 'error': return english ? "PWA service worker blocked" : 'PWA-Serviceworker blockiert';
+    default: return english ? "PWA status unknown" : 'PWA-Status unbekannt';
   }
 }
 
@@ -54,11 +54,11 @@ export function externalSourceLabel(value: number): string {
   return externalSourceOptions.find(option => option.value === value)?.label ?? String(value);
 }
 
-export function duplicateKindLabel(kind: number): string {
+export function duplicateKindLabel(kind: number, english = false): string {
   switch (kind) {
     case 0: return 'FIDE-ID';
     case 1: return 'DSB-ID/National-ID';
-    case 2: return 'Name + Geburtsjahr';
+    case 2: return english ? "Name + birth year" : 'Name + Geburtsjahr';
     case 3: return 'Name';
     default: return String(kind);
   }
@@ -78,11 +78,11 @@ export function approximateAgeLabel(birthYear?: number | null): string {
   return `~${age}`;
 }
 
-export function importPreviewStatusLabel(status: number): string {
+export function importPreviewStatusLabel(status: number, english = false): string {
   switch (status) {
-    case 0: return 'bereit';
-    case 1: return 'Warnung';
-    case 2: return 'blockiert';
+    case 0: return english ? "ready" : 'bereit';
+    case 1: return english ? "Warning" : 'Warnung';
+    case 2: return english ? "blocked" : 'blockiert';
     default: return String(status);
   }
 }
@@ -129,10 +129,10 @@ export function auditSeverityKey(severity: number | string): 'info' | 'warning' 
   }
 }
 
-export function auditSeverityLabel(severity: number | string): string {
+export function auditSeverityLabel(severity: number | string, english = false): string {
   switch (auditSeverityKey(severity)) {
-    case 'warning': return 'Warnung';
-    case 'critical': return 'kritisch';
+    case 'warning': return english ? "Warning" : 'Warnung';
+    case 'critical': return english ? "critical" : 'kritisch';
     default: return 'Info';
   }
 }
@@ -141,69 +141,72 @@ export function auditSeverityClass(severity: number | string): string {
   return `audit-${auditSeverityKey(severity)}`;
 }
 
-export function auditActionLabel(action: number | string): string {
+export function auditActionLabel(action: number | string, english = false): string {
   switch (String(action)) {
     case '0':
-    case 'TournamentCreated': return 'Turnier angelegt';
+    case 'TournamentCreated': return english ? "Tournament created" : 'Turnier angelegt';
     case '1':
-    case 'SettingsUpdated': return 'Einstellungen geändert';
+    case 'SettingsUpdated': return english ? "Settings changed" : 'Einstellungen geändert';
     case '2':
-    case 'TournamentImported': return 'Turnier importiert';
+    case 'TournamentImported': return english ? "Tournament imported" : 'Turnier importiert';
     case '3':
-    case 'ExternalPlayerApplied': return 'Externe Spielerdaten';
+    case 'ExternalPlayerApplied': return english ? "External player data" : 'Externe Spielerdaten';
     case '4':
-    case 'TournamentReset': return 'Turnier zurückgesetzt';
+    case 'TournamentReset': return english ? "Tournament reset" : 'Turnier zurückgesetzt';
     case '5':
-    case 'TournamentDeleted': return 'Turnier gelöscht';
+    case 'TournamentDeleted': return english ? "Tournament deleted" : 'Turnier gelöscht';
     case '10':
-    case 'PlayerAdded': return 'Spieler hinzugefügt';
+    case 'PlayerAdded': return english ? "Player added" : 'Spieler hinzugefügt';
     case '11':
-    case 'PlayerUpdated': return 'Spieler geändert';
+    case 'PlayerUpdated': return english ? "Player updated" : 'Spieler geändert';
     case '12':
-    case 'PlayerStatusChanged': return 'Spielerstatus geändert';
+    case 'PlayerStatusChanged': return english ? "Player status changed" : 'Spielerstatus geändert';
     case '13':
-    case 'PlayerRemoved': return 'Spieler entfernt';
+    case 'PlayerRemoved': return english ? "Player removed" : 'Spieler entfernt';
     case '14':
-    case 'PlayerWithdrawn': return 'Spieler zurückgezogen';
+    case 'PlayerWithdrawn': return english ? "Player withdrawn" : 'Spieler zurückgezogen';
     case '20':
-    case 'RoundGenerated': return 'Runde ausgelost';
+    case 'RoundGenerated': return english ? "Round paired" : 'Runde ausgelost';
     case '21':
-    case 'ResultRecorded': return 'Ergebnis erfasst';
+    case 'ResultRecorded': return english ? "Result recorded" : 'Ergebnis erfasst';
     case '22':
-    case 'PairingOverridden': return 'Paarung korrigiert';
+    case 'PairingOverridden': return english ? "Pairing corrected" : 'Paarung korrigiert';
     case '23':
-    case 'RoundLocked': return 'Runde gesperrt';
+    case 'RoundLocked': return english ? "Round locked" : 'Runde gesperrt';
     case '24':
-    case 'RoundUnlocked': return 'Runde entsperrt';
+    case 'RoundUnlocked': return english ? "Round unlocked" : 'Runde entsperrt';
     case '25':
-    case 'RoundVerified': return 'Runde geprüft';
+    case 'RoundVerified': return english ? "Round reviewed" : 'Runde geprüft';
     case '26':
-    case 'RoundUnverified': return 'Prüfung zurückgenommen';
+    case 'RoundUnverified': return english ? "Review revoked" : 'Prüfung zurückgenommen';
     case '27':
-    case 'Chess960StartPositionsRolled': return 'Chess960-Startstellungen gewürfelt';
+    case 'Chess960StartPositionsRolled': return english ? "Chess960 starting positions rolled" : 'Chess960-Startstellungen gewürfelt';
     case '28':
-    case 'RoundPreviewGenerated': return 'Runde-Vorschau erzeugt';
+    case 'RoundPreviewGenerated': return english ? "Round preview generated" : 'Runde-Vorschau erzeugt';
     case '29':
-    case 'PairingGenerationBlocked': return 'Auslosung blockiert';
+    case 'PairingGenerationBlocked': return english ? "Pairing blocked" : 'Auslosung blockiert';
     case '30':
-    case 'AuditJournalExported': return 'Audit-Bundle exportiert';
+    case 'AuditJournalExported': return english ? "Audit bundle exported" : 'Audit-Bundle exportiert';
     case '31':
-    case 'AuditJournalMirrorFailed': return 'Audit-Spiegel fehlgeschlagen';
+    case 'AuditJournalMirrorFailed': return english ? "Audit mirror failed" : 'Audit-Spiegel fehlgeschlagen';
+    case '32':
+    case 'ResultCorrected': return english ? "Result corrected" : 'Ergebnis korrigiert';
     default: return String(action);
   }
 }
 
-export function auditDateLabel(value: string): string {
+export function auditDateLabel(value: string, locale = 'de-DE'): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value || '—';
   }
 
-  return parsed.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+  return parsed.toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
 }
 
 export { auditCsvCell } from './auditCsv';
 
-export function tiebreakLabel(value: number): string {
-  return tiebreakOptions.find(option => option.value === value)?.label ?? String(value);
+export function tiebreakLabel(value: number, english = false): string {
+  const option = tiebreakOptions.find(option => option.value === value);
+  return option ? optionLabel(option, english) : String(value);
 }

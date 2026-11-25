@@ -1,5 +1,7 @@
 using System.Text;
 
+using SchachTurnierManager.Domain.Models;
+
 namespace SchachTurnierManager.Domain.Services;
 
 /// <summary>
@@ -62,7 +64,8 @@ public static class ImportTextDecoder
             {
                 // Existing API handlers accept ArgumentException. Do not expose
                 // decoder messages/inner exceptions containing imported bytes.
-                throw new ArgumentException("Die Importdatei enthaelt ungueltige Unicode-Daten fuer ihre Byte-Reihenfolgemarkierung.", nameof(bytes));
+                throw new ArgumentException("Die Importdatei enthaelt ungueltige Unicode-Daten fuer ihre Byte-Reihenfolgemarkierung.", nameof(bytes))
+                    .WithErrorCode("IMPORT_UNICODE_INVALID");
             }
         }
 

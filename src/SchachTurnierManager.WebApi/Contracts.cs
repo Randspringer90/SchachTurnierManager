@@ -56,13 +56,16 @@ public sealed record PlayerRequest(
     }
 }
 
-public sealed record RecordResultRequest(GameResultKind Result, GameResultKind? ExpectedPreviousResult = null);
+public sealed record RecordResultRequest(GameResultKind Result, GameResultKind? ExpectedPreviousResult = null, string? CorrectionReason = null,
+    DateTimeOffset? ExpectedLastChangedAt = null);
 
 public sealed record RecordBoardResultRequest(
     int RoundNumber,
     int BoardNumber,
     GameResultKind Result,
-    GameResultKind? ExpectedPreviousResult = null);
+    GameResultKind? ExpectedPreviousResult = null,
+    string? CorrectionReason = null,
+    DateTimeOffset? ExpectedLastChangedAt = null);
 
 public sealed record OverridePairingRequest(Guid? WhitePlayerId, Guid? BlackPlayerId, string? Notes);
 
@@ -88,7 +91,7 @@ public sealed record PreviewPlayersCsvRequest(string Content, bool ReplaceExisti
 /// </summary>
 public sealed record ImportPlayersFileRequest(byte[] FileBytes, bool ReplaceExisting = false);
 
-public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = true);
+public sealed record ImportTournamentRequest(TournamentState Tournament, bool OverwriteExisting = false);
 
 public sealed record ExternalPlayerDuplicateRequest(ExternalPlayerProfile Profile);
 
@@ -96,5 +99,7 @@ public sealed record ApplyExternalPlayerRequest(
     ExternalPlayerProfile Profile,
     Guid? TargetPlayerId,
     bool CreateIfNoTarget = true,
-    bool OverwriteExistingValues = false);
+    bool OverwriteExistingValues = false,
+    IReadOnlyList<string>? SelectedFields = null,
+    Player? ExpectedPlayer = null);
 

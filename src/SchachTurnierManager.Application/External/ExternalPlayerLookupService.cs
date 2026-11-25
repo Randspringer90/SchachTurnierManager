@@ -96,9 +96,10 @@ public sealed class ExternalPlayerLookupService(IEnumerable<IExternalPlayerLooku
                     ? await provider.LookupByIdAsync(normalized, cancellationToken).ConfigureAwait(false)
                     : await provider.SearchByNameAsync(normalized, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception)
             {
-                result = ExternalPlayerLookupResult.Unavailable(provider.Source, normalized, $"Abfrage fehlgeschlagen: {ex.Message}");
+                result = ExternalPlayerLookupResult.Unavailable(provider.Source, normalized, "Spielerdatenquelle ist voruebergehend nicht verfuegbar. Lokale Teilnehmerdaten bleiben unveraendert.");
             }
 
             return new SourceOutcome(

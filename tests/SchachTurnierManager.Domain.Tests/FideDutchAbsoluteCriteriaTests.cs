@@ -83,7 +83,12 @@ public sealed class FideDutchAbsoluteCriteriaTests
 
         Assert.Equal(expectedForbidden, criteria.IsForbiddenByColour(first, second));
         Assert.Equal(expectedForbidden, !criteria.MayBePaired(first, second));
-        Assert.Equal(expectedForbidden, criteria.ExplainRejection(first, second) is not null);
+        var rejection = criteria.ExplainRejection(first, second);
+        Assert.Equal(expectedForbidden, rejection is not null);
+        if (expectedForbidden)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(rejection), $"Ablehnungsbegründung fehlt ({origin}).");
+        }
     }
 
     /// <summary>

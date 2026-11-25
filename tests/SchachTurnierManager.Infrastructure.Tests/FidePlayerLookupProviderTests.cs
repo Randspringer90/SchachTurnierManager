@@ -68,6 +68,53 @@ public sealed class FidePlayerLookupProviderTests
         Assert.Empty(result.Players);
     }
 
+    [Theory]
+    [InlineData("prefix99900123")]
+    [InlineData("99900123/suffix")]
+    [InlineData("999001239990012399900123")]
+    public async Task MixedOrOversizedIdsNeverReachTheNetwork(string id)
+    {
+        var handler = new StaticHtmlHandler("<html></html>");
+        using var http = new HttpClient(handler);
+        var result = await new FidePlayerLookupProvider(http).LookupByIdAsync(id);
+        Assert.Equal(ExternalPlayerLookupStatus.InvalidRequest, result.Status);
+        Assert.Null(handler.LastRequestUri);
+    }
+
+    [Fact]
+    public async Task TransportExceptionDoesNotDiscloseItsRawMessage()
+    {
+        using var http = new HttpClient(new ResponseHandler(() => throw new HttpRequestException("synthetic-private-path-marker")));
+        var result = await new FidePlayerLookupProvider(http).LookupByIdAsync("99900123");
+        Assert.Equal(ExternalPlayerLookupStatus.Unavailable, result.Status);
+        Assert.DoesNotContain("synthetic-private-path-marker", result.Message);
+    }
+
+    [Fact]
+    public async Task RateLimitBackoffDoesNotSendAnotherRequest()
+    {
+        var handler = new ResponseHandler(() => new HttpResponseMessage(HttpStatusCode.TooManyRequests));
+        using var http = new HttpClient(handler);
+        var provider = new FidePlayerLookupProvider(http);
+        Assert.Equal(ExternalPlayerLookupStatus.Unavailable, (await provider.LookupByIdAsync("99900123")).Status);
+        Assert.Equal(ExternalPlayerLookupStatus.Unavailable, (await provider.LookupByIdAsync("99900124")).Status);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public async Task OversizedProfileIsRejectedWithoutParsing()
+    {
+        using var http = new HttpClient(new ResponseHandler(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(new string('x', 512 * 1024 + 1)) }));
+        var result = await new FidePlayerLookupProvider(http).LookupByIdAsync("99900123");
+        Assert.Equal(ExternalPlayerLookupStatus.Unavailable, result.Status);
+    }
+
+    private sealed class ResponseHandler(Func<HttpResponseMessage> response) : HttpMessageHandler
+    {
+        public int Calls { get; private set; }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) { Calls++; return Task.FromResult(response()); }
+    }
+
     private sealed class StaticHtmlHandler(string html) : HttpMessageHandler
     {
         public Uri? LastRequestUri { get; private set; }

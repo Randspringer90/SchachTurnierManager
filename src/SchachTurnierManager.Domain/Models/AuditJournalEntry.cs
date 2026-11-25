@@ -24,7 +24,8 @@ public enum AuditJournalAction
     RoundPreviewGenerated = 28,
     PairingGenerationBlocked = 29,
     AuditJournalExported = 30,
-    AuditJournalMirrorFailed = 31
+    AuditJournalMirrorFailed = 31,
+    ResultCorrected = 32
 }
 
 public enum AuditJournalSeverity

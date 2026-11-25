@@ -81,7 +81,7 @@ else
 
 builder.Services.AddSchachTurnierPersistence(connectionString);
 builder.Services.AddFileAuditJournalSink(auditDirectory);
-builder.Services.AddExternalPlayerLookupAdapters();
+builder.Services.AddExternalPlayerLookupAdapters(dataDirectory);
 builder.Services.AddScoped<TournamentService>();
 builder.Services.AddCors(options =>
 {
@@ -115,7 +115,15 @@ try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TournamentDbContext>();
-    db.Database.EnsureCreated();
+    // Creates a new database or upgrades an existing one; an existing file is copied to
+    // <data>/backups before its schema is changed.
+    var migration = DatabaseSchemaMigrator.Migrate(db, usesFileDatabase ? Path.Combine(dataDirectory, "backups") : null);
+    if (migration.Changed)
+    {
+        startupLogger.LogInformation(
+            "Datenbankschema von Version {FromVersion} auf {ToVersion} aktualisiert; {MigratedRows} Turniere übernommen, {UnreadableRows} nicht lesbar; Sicherung vorhanden: {HasBackup}.",
+            migration.FromVersion, migration.ToVersion, migration.MigratedRows, migration.UnreadableRows, migration.BackupPath is not null);
+    }
 }
 catch (Exception ex)
 {
@@ -136,6 +144,7 @@ catch (Exception ex)
     return;
 }
 
+app.UseMiddleware<SchachTurnierManager.WebApi.Security.LocalApiAccessGuard>();
 app.UseCors();
 
 var httpLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SchachTurnierManager.Http");
@@ -191,6 +200,7 @@ app.MapGet("/api/health", () => Results.Ok(new
     version = "0.54.1",
     time = DateTimeOffset.UtcNow,
     database = databaseHealthLabel,
+    sqliteVersion = SQLitePCL.raw.sqlite3_libversion().utf8_to_string(),
     embeddedDashboard = embeddedDashboardAvailable,
     logging = new
     {
@@ -207,11 +217,29 @@ app.MapGet("/api/health", () => Results.Ok(new
 
 app.MapGet("/api/external-players/providers", (ExternalPlayerLookupService service) => Results.Ok(service.Providers));
 
+app.MapGet("/api/external-players/fide/catalog", (IFideRatingListCatalog catalog) => Results.Ok(catalog.Info));
+app.MapGet("/api/external-players/fide/local-search", async (string? query, string? federation, IFideRatingListCatalog catalog, CancellationToken cancellationToken) =>
+    Results.Ok(await catalog.SearchAsync(query ?? string.Empty, federation, cancellationToken)));
+app.MapPost("/api/external-players/fide/catalog", async (HttpContext context, IFideRatingListCatalog catalog, CancellationToken cancellationToken) =>
+{
+    if (context.Request.ContentLength > FideRatingListCatalog.MaximumBytes) return Results.StatusCode(413);
+    if (!string.Equals(context.Request.ContentType?.Split(';')[0].Trim(), "text/plain", StringComparison.OrdinalIgnoreCase))
+        return Results.BadRequest(new { code = "FIDE_LIST_FORMAT", error = "Eine entpackte Standard-TXT-Liste als text/plain senden." });
+    var limit = context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
+    if (limit is { IsReadOnly: false }) limit.MaxRequestBodySize = FideRatingListCatalog.MaximumBytes;
+    try { return Results.Ok(await catalog.ImportAsync(context.Request.Body, cancellationToken)); }
+    catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested) { return Results.Json(new { code = "FIDE_LIST_TIMEOUT", error = "FIDE-Listenimport abgebrochen." }, statusCode: 408); }
+    catch (Exception error) when (error is InvalidDataException or DecoderFallbackException or BadHttpRequestException)
+    {
+        return Results.BadRequest(new { code = "FIDE_LIST_INVALID", error = "Die FIDE-Standard-TXT-Liste ist ungueltig oder ueberschreitet die Importgrenzen. Vorhandene Daten bleiben erhalten." });
+    }
+});
+
 app.MapGet("/api/external-players/search", async (string? source, string? query, ExternalPlayerLookupService service, CancellationToken cancellationToken) =>
 {
     if (!TryParseExternalPlayerSource(source, out var parsedSource))
     {
-        return Results.BadRequest(new { error = $"Unbekannte Quelle: {source ?? "<leer>"}." });
+        return Results.BadRequest(new { code = "EXTERNAL_SOURCE_INVALID", error = $"Unbekannte Quelle: {source ?? "<leer>"}." });
     }
 
     var result = await service.SearchAsync(parsedSource, query ?? string.Empty, cancellationToken);
@@ -238,6 +266,11 @@ app.MapPost("/api/tournaments/{id:guid}/external-players/check-duplicates", (Gui
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -246,15 +279,24 @@ app.MapPost("/api/tournaments/{id:guid}/external-players/apply", (Guid id, Apply
 {
     try
     {
-        return Results.Ok(service.ApplyExternalPlayer(id, request.Profile, request.TargetPlayerId, request.CreateIfNoTarget, request.OverwriteExistingValues));
+        return Results.Ok(service.ApplyExternalPlayer(id, request.Profile, request.TargetPlayerId, request.CreateIfNoTarget, request.OverwriteExistingValues, request.SelectedFields, request.ExpectedPlayer));
     }
+    catch (ExternalPlayerConflictException ex) { return Results.Conflict(new { code = "EXTERNAL_PLAYER_STALE", error = ex.Message }); }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
 
 app.MapGet("/api/tournaments", (TournamentService service) => Results.Ok(service.ListTournaments()));
+
+// Lightweight list without tournament content or participant data (ADR-0006).
+app.MapGet("/api/tournaments/summaries", (TournamentService service) => Results.Ok(service.ListTournamentSummaries()));
 
 app.MapPost("/api/tournaments", (CreateTournamentRequest request, TournamentService service) =>
 {
@@ -265,18 +307,37 @@ app.MapPost("/api/tournaments", (CreateTournamentRequest request, TournamentServ
     }
     catch (ArgumentException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
 
-app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
+app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service, HttpContext http) =>
 {
     try
     {
-        return Results.Ok(service.RequireTournament(id));
+        var tournament = service.RequireTournament(id);
+        // The revision changes with every stored change, so a client can skip unchanged data.
+        http.Response.Headers.ETag = TournamentEtag.For(tournament);
+        http.Response.Headers.CacheControl = "no-cache";
+        if (TournamentEtag.IsUnchanged(http.Request.Headers.IfNoneMatch, tournament))
+        {
+            return Results.StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        return Results.Ok(tournament);
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -285,7 +346,7 @@ app.MapDelete("/api/tournaments/{id:guid}", (Guid id, TournamentService service)
 {
     if (!service.DeleteTournament(id))
     {
-        return Results.NotFound(new { error = $"Turnier {id} wurde nicht gefunden." });
+        return Results.NotFound(new { code = "TOURNAMENT_NOT_FOUND", error = $"Turnier {id} wurde nicht gefunden." });
     }
 
     return Results.Ok(new { deleted = true, id });
@@ -299,6 +360,11 @@ app.MapPost("/api/tournaments/{id:guid}/reset", (Guid id, TournamentService serv
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -311,6 +377,11 @@ app.MapPut("/api/tournaments/{id:guid}/settings", (Guid id, UpdateTournamentSett
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -323,6 +394,11 @@ app.MapPost("/api/tournaments/import", (ImportTournamentRequest request, Tournam
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -335,6 +411,11 @@ app.MapGet("/api/tournaments/{id:guid}/export/json", (Guid id, TournamentService
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -347,6 +428,11 @@ app.MapPost("/api/tournaments/{id:guid}/players", (Guid id, PlayerRequest reques
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -359,6 +445,11 @@ app.MapPut("/api/tournaments/{id:guid}/players/{playerId:guid}", (Guid id, Guid 
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -371,6 +462,11 @@ app.MapPatch("/api/tournaments/{id:guid}/players/{playerId:guid}/status", (Guid 
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -383,6 +479,11 @@ app.MapDelete("/api/tournaments/{id:guid}/players/{playerId:guid}", (Guid id, Gu
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -395,6 +496,11 @@ app.MapGet("/api/tournaments/{id:guid}/players/export.csv", (Guid id, Tournament
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -407,6 +513,11 @@ app.MapPost("/api/tournaments/{id:guid}/players/preview-import.csv", (Guid id, P
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -418,6 +529,11 @@ app.MapPost("/api/tournaments/{id:guid}/players/import.csv", (Guid id, ImportPla
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -432,6 +548,11 @@ app.MapPost("/api/tournaments/{id:guid}/players/import-swissmanager.csv", (Guid 
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -444,6 +565,11 @@ app.MapPost("/api/tournaments/{id:guid}/players/import-trf16", (Guid id, ImportP
     }
     catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -456,6 +582,11 @@ app.MapGet("/api/tournaments/{id:guid}/pairings/preview-next-round", (Guid id, T
     }
     catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -467,6 +598,11 @@ app.MapGet("/api/tournaments/{id:guid}/pairings/preview-next-round/export.csv", 
     }
     catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -479,6 +615,11 @@ app.MapGet("/api/tournaments/{id:guid}/pairings/preview-next-round/print/html", 
     }
     catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -491,6 +632,11 @@ app.MapPost("/api/tournaments/{id:guid}/pairings/next-round", (Guid id, Tourname
     }
     catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -503,6 +649,32 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/generate", (Guid id, TournamentSe
     }
     catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/tournaments/{id:guid}/queued-results", (Guid id, QueuedResultMutation request, TournamentService service) =>
+{
+    try { return Results.Ok(service.RecordQueuedResult(id, request)); }
+    catch (QueuedResultConflictException ex) {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.Conflict(new { error = ex.Message, code = ruleErrorCode });
+        }
+
+        return Results.Conflict(new { error = ex.Message });
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -516,10 +688,17 @@ app.MapPost("/api/tournaments/{id:guid}/results", (Guid id, RecordBoardResultReq
             request.RoundNumber,
             request.BoardNumber,
             request.Result,
-            request.ExpectedPreviousResult));
+            request.ExpectedPreviousResult,
+            request.CorrectionReason,
+            request.ExpectedLastChangedAt));
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -533,10 +712,17 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNu
             roundNumber,
             boardNumber,
             request.Result,
-            request.ExpectedPreviousResult));
+            request.ExpectedPreviousResult,
+            request.CorrectionReason,
+            request.ExpectedLastChangedAt));
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -549,6 +735,11 @@ app.MapPut("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/boards/{boardNum
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -561,6 +752,11 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -573,10 +769,20 @@ app.MapPost("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/chess960/start-
     }
     catch (ArgumentOutOfRangeException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -589,6 +795,11 @@ app.MapPatch("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/lock", (Guid i
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -601,6 +812,11 @@ app.MapPatch("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/verify", (Guid
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.BadRequest(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.BadRequest(new { error = ex.Message });
     }
 });
@@ -613,6 +829,11 @@ app.MapGet("/api/tournaments/{id:guid}/standings", (Guid id, TournamentService s
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -625,6 +846,11 @@ app.MapGet("/api/tournaments/{id:guid}/cross-table", (Guid id, TournamentService
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -637,6 +863,11 @@ app.MapGet("/api/tournaments/{id:guid}/categories", (Guid id, TournamentService 
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -649,6 +880,11 @@ app.MapGet("/api/tournaments/{id:guid}/hero-cup", (Guid id, TournamentService se
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -661,6 +897,11 @@ app.MapGet("/api/tournaments/{id:guid}/audit", (Guid id, TournamentService servi
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -673,6 +914,11 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal", (Guid id, TournamentServi
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -690,7 +936,7 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/query", (Guid id, HttpReque
             var severityText = severityValues.ToString();
             if (!Enum.TryParse<AuditJournalSeverity>(severityText, ignoreCase: true, out var parsedSeverity))
             {
-                return Results.BadRequest(new { error = $"Unbekannter Audit-Schweregrad: {severityText}." });
+                return Results.BadRequest(new { code = "AUDIT_SEVERITY_INVALID", error = $"Unbekannter Audit-Schweregrad: {severityText}." });
             }
 
             severity = parsedSeverity;
@@ -702,7 +948,7 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/query", (Guid id, HttpReque
             var actionText = actionValues.ToString();
             if (!Enum.TryParse<AuditJournalAction>(actionText, ignoreCase: true, out var parsedAction))
             {
-                return Results.BadRequest(new { error = $"Unbekannte Audit-Aktion: {actionText}." });
+                return Results.BadRequest(new { code = "AUDIT_ACTION_INVALID", error = $"Unbekannte Audit-Aktion: {actionText}." });
             }
 
             action = parsedAction;
@@ -757,6 +1003,11 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/query", (Guid id, HttpReque
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -769,6 +1020,11 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/export.jsonl", (Guid id, To
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -781,6 +1037,11 @@ app.MapGet("/api/tournaments/{id:guid}/audit-journal/export.json", (Guid id, Tou
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -793,6 +1054,11 @@ app.MapGet("/api/tournaments/{id:guid}/round-diagnostics", (Guid id, TournamentS
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -805,6 +1071,11 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/diagnostics", (G
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -817,6 +1088,11 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/pairing-quality"
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -830,6 +1106,11 @@ app.MapGet("/api/tournaments/{id:guid}/exports/manifest.json", (Guid id, Tournam
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -842,6 +1123,11 @@ app.MapGet("/api/tournaments/{id:guid}/standings/export.csv", (Guid id, Tourname
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -854,6 +1140,11 @@ app.MapGet("/api/tournaments/{id:guid}/standings/export.trf16", (Guid id, Tourna
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -866,6 +1157,11 @@ app.MapGet("/api/tournaments/{id:guid}/players/export-swissmanager.csv", (Guid i
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -878,6 +1174,11 @@ app.MapGet("/api/tournaments/{id:guid}/pairings/export.csv", (Guid id, int? roun
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -890,6 +1191,11 @@ app.MapGet("/api/tournaments/{id:guid}/print/html", (Guid id, TournamentService 
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -902,6 +1208,11 @@ app.MapGet("/api/tournaments/{id:guid}/rounds/{roundNumber:int}/print/html", (Gu
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -918,6 +1229,11 @@ app.MapGet("/api/tournaments/{id:guid}/package/print/html", (Guid id, Tournament
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });
@@ -930,6 +1246,11 @@ app.MapGet("/api/tournaments/{id:guid}/package/export.json", (Guid id, Tournamen
     }
     catch (InvalidOperationException ex)
     {
+        if (RuleErrorMetadata.GetErrorCode(ex) is { } ruleErrorCode)
+        {
+            return Results.NotFound(new { error = ex.Message, code = ruleErrorCode });
+        }
+
         return Results.NotFound(new { error = ex.Message });
     }
 });

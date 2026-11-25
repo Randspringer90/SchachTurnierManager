@@ -130,7 +130,7 @@ Datenbank:
 Hinweise:
 
 - Dieses Paket ist eine portable lokale Version.
-- Es benötigt bei framework-dependent Publish ein installiertes .NET 10 Runtime/SDK.
+- Es benötigt bei framework-dependent Publish ein installiertes .NET-11-Runtime (oder neuer, passend zur global.json).
 - Für ein paketiertes .NET kann Pack-Portable.ps1 mit -SelfContained ausgeführt werden.
 - Laufzeitlogs liegen im portablen Ordner `logs\`.
 - Keine Dateien aus app\ manuell bearbeiten.

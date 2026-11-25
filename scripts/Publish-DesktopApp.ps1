@@ -45,12 +45,21 @@ function Invoke-Checked {
 }
 
 Write-Host "[Publish-Desktop] Ziel: $desktopRoot"
-Remove-Item -Recurse -Force $desktopRoot -ErrorAction SilentlyContinue
+$desktopAbsolute = [IO.Path]::GetFullPath($desktopRoot).TrimEnd('\','/')
+$expectedDesktop = [IO.Path]::GetFullPath((Join-Path $root 'output/desktop')).TrimEnd('\','/')
+if (-not $desktopAbsolute.Equals($expectedDesktop,[StringComparison]::OrdinalIgnoreCase)) { throw 'Unexpected desktop build removal target.' }
+$desktopCursor = $desktopAbsolute
+while ($desktopCursor) {
+    if ((Test-Path -LiteralPath $desktopCursor) -and
+        ((Get-Item -LiteralPath $desktopCursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Desktop build path has a reparse component.' }
+    $desktopCursor = [IO.Path]::GetDirectoryName($desktopCursor)
+}
+if (Test-Path -LiteralPath $desktopAbsolute) { Remove-Item -LiteralPath $desktopAbsolute -Recurse -Force -ErrorAction Stop }
 New-Item -ItemType Directory -Force -Path $appOutput | Out-Null
 
 Push-Location $webApp
 try {
-    $npmInstallCommand = "install"
+    $npmInstallCommand = "ci"
     Invoke-Checked "npm $npmInstallCommand" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand $npmInstallCommand -NoAudit -NoFund }
     Invoke-Checked "npm run build" { pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\Invoke-NpmSafe.ps1") -WorkingDirectory $webApp -NpmCommand run -NpmScript build }
 }

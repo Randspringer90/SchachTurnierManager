@@ -9,8 +9,12 @@ import type {
   SettingsForm,
   Tournament,
 } from '../api/contracts';
-export function twzOf(player: Player): number {
-  return player.rating.manualTwz ?? player.rating.dwz ?? player.rating.elo ?? 0;
+export function twzOf(player: Player, source = 0): number {
+  const rating = player.rating;
+  const candidates = source === 1 ? [rating.manualTwz, rating.elo, rating.dwz]
+    : source === 2 ? [rating.manualTwz, rating.rapidElo, rating.blitzElo, rating.dwz, rating.elo]
+    : [rating.manualTwz, rating.dwz, rating.elo];
+  return candidates.find(value => value !== null && value !== undefined && value > 0) ?? 0;
 }
 
 export function numberOrNull(value: string): number | null {

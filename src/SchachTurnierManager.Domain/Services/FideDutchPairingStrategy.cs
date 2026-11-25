@@ -45,25 +45,29 @@ public sealed record FideDutchSearchOptions
         {
             if (value <= 0)
             {
-                throw new ArgumentOutOfRangeException(name, "Das Ressourcenlimit muss positiv sein.");
+                throw new ArgumentOutOfRangeException(name, "Das Ressourcenlimit muss positiv sein.")
+                    .WithErrorCode("FIDE_RESOURCE_LIMIT_INVALID");
             }
         }
 
         if (MaxPlayers > 1_024)
         {
-            throw new ArgumentOutOfRangeException(nameof(MaxPlayers), "Die Spielergrenze muss konservativ bleiben.");
+            throw new ArgumentOutOfRangeException(nameof(MaxPlayers), "Die Spielergrenze muss konservativ bleiben.")
+                .WithErrorCode("FIDE_PLAYER_LIMIT_INVALID");
         }
 
         if (MaxRecursionDepth > 512)
         {
-            throw new ArgumentOutOfRangeException(nameof(MaxRecursionDepth), "Die Rekursionsgrenze muss konservativ bleiben.");
+            throw new ArgumentOutOfRangeException(nameof(MaxRecursionDepth), "Die Rekursionsgrenze muss konservativ bleiben.")
+                .WithErrorCode("FIDE_RECURSION_LIMIT_INVALID");
         }
 
         foreach (var timeout in new[] { UpTo50Players, UpTo100Players, UpTo200Players, Above200Players })
         {
             if (timeout < TimeSpan.Zero)
             {
-                throw new ArgumentOutOfRangeException(nameof(UpTo50Players), "Suchbudgets dürfen nicht negativ sein.");
+                throw new ArgumentOutOfRangeException(nameof(UpTo50Players), "Suchbudgets dürfen nicht negativ sein.")
+                    .WithErrorCode("FIDE_SEARCH_BUDGET_NEGATIVE");
             }
         }
     }
@@ -74,7 +78,8 @@ public sealed record FideDutchSearchOptions
         {
             if (configured < TimeSpan.Zero)
             {
-                throw new ArgumentOutOfRangeException(nameof(TimeoutOverride), "Das Suchbudget darf nicht negativ sein.");
+                throw new ArgumentOutOfRangeException(nameof(TimeoutOverride), "Das Suchbudget darf nicht negativ sein.")
+                    .WithErrorCode("FIDE_SEARCH_BUDGET_NEGATIVE");
             }
 
             return configured;
@@ -179,7 +184,8 @@ public sealed class FideDutchPairingStrategy : ISwissPairingStrategy
         {
             throw new InvalidOperationException(
                 "FIDE-Dutch: Für diese Runde existiert keine regelkonforme Paarung (C.04.3 Art. 1.9.3). " +
-                "Die Entscheidung liegt beim Schiedsrichter — bitte manuell paaren und im Audit begründen.");
+                "Die Entscheidung liegt beim Schiedsrichter — bitte manuell paaren und im Audit begründen.")
+                .WithErrorCode("FIDE_PAIRING_IMPOSSIBLE");
         }
 
         // Nur die endgültige, vollständig bewiesene Kette trägt zum Audit und Resultat bei.

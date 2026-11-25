@@ -35,7 +35,7 @@ jobs:
         run: echo "Push-Lauf; kein PR-Static-Gate erforderlich."
       - name: Vertrauenswürdigen Base-SHA auschecken
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 1
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -161,12 +161,12 @@ jobs:
     needs: [static-prerequisite, agent-integrity]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Setup .NET (global.json)
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       # STM-SEC-002: offline, read-only manifest/lockfile check after the static
@@ -175,7 +175,7 @@ jobs:
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File scripts/Test-DependencySupplyChainSafety.ps1
       - name: Restore
-        run: dotnet restore SchachTurnierManager.sln
+        run: dotnet restore SchachTurnierManager.sln --locked-mode
       - name: Build
         run: dotnet build SchachTurnierManager.sln -c Release --no-restore
       - name: Test
@@ -189,21 +189,21 @@ jobs:
       run:
         working-directory: src/SchachTurnierManager.WebApp
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Setup Node 22
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - name: Setup Node LTS (.node-version)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version-file: .node-version
           cache: npm
           cache-dependency-path: src/SchachTurnierManager.WebApp/package-lock.json
       - name: Dependency supply-chain gate (before npm ci)
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File ../../scripts/Test-DependencySupplyChainSafety.ps1
       - name: Install (npm ci)
-        run: npm ci
+        run: npm ci --ignore-scripts
       # One chained line: in the Windows pwsh shell a failing first line of a
       # multi-line block would otherwise be masked by later successful commands.
       - name: Frontend tests (app, i18n runtime, backup preview)
@@ -216,7 +216,7 @@ jobs:
     needs: static-prerequisite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0

@@ -91,7 +91,7 @@ if (-not (Test-Path -LiteralPath $PromptFile -PathType Leaf)) {
 if (-not $SkipAuthProbe -and ($provider.PSObject.Properties.Name -contains 'authProbeArgs')) {
     $probe = Invoke-ExternalRunner -Executable $provider.executable `
         -Arguments @($provider.authProbeArgs) -PromptText '' -TimeoutSeconds 60
-    $probeClass = Get-RunnerOutputClassification -Text "$($probe.StdOut)`n$($probe.StdErr)" `
+    $probeClass = Get-RunnerOutputClassification -StructuredOutput $probe.StdOut -ErrorText $probe.StdErr `
         -ExitCode $probe.ExitCode -RuntimePolicy $runtimePolicy -TimedOut:$probe.TimedOut
     if ($probe.ExitCode -ne 0 -or $probeClass -eq 'auth-error') {
         $decision.status = 'auth-error'
@@ -114,14 +114,15 @@ $result = Invoke-ExternalRunner -Executable $provider.executable -Arguments $arg
 $duration = [int]((Get-Date) - $started).TotalSeconds
 
 $combined = "$($result.StdOut)`n$($result.StdErr)"
-$classification = Get-RunnerOutputClassification -Text $combined -ExitCode $result.ExitCode `
+$classification = Get-RunnerOutputClassification -StructuredOutput $result.StdOut -ErrorText $result.StdErr -ExitCode $result.ExitCode `
     -RuntimePolicy $runtimePolicy -TimedOut:$result.TimedOut
 
 # codex schreibt die letzte Nachricht selbst nach {lastMessageFile}; Fallback: stdout.
 if (-not (Test-Path -LiteralPath $lastMessageFile -PathType Leaf) -or
     (Get-Item -LiteralPath $lastMessageFile).Length -eq 0) {
-    Set-Content -LiteralPath $lastMessageFile -Value $result.StdOut -Encoding utf8NoBOM
+    Set-Content -LiteralPath $lastMessageFile -Value (Get-RunnerAnswerText -Provider openai -OutputText $result.StdOut) -Encoding utf8NoBOM
 }
+if ($classification -eq 'ok' -and [string]::IsNullOrWhiteSpace((Get-Content -LiteralPath $lastMessageFile -Raw))) { $classification = 'error' }
 
 if ($LogFile) {
     $logDir = Split-Path -Parent ([IO.Path]::GetFullPath($LogFile))

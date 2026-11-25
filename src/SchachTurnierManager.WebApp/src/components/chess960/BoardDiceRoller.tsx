@@ -6,7 +6,8 @@ import React from 'react';
 import { describeApiError, requestJson } from '../../api/client';
 import { ConfirmDialog } from '../dialogs/ConfirmDialog';
 import { ChessDie } from './ChessDie';
-import { chess960BackRankFromNumber, chess960PieceFace, diceFaceGlyphs, diceFaceNames } from '../../lib/chess960';
+import { chess960BackRankFromNumber, chess960PieceFace, diceFaceGlyphs } from '../../lib/chess960';
+import { useI18n } from '../../i18n';
 import type { Chess960StartPosition, Tournament, TournamentRound } from '../../api/contracts';
 // Schritt-für-Schritt-Würfel für genau ein Brett. Wird im Modal (Reiter „Browser würfeln")
 // und auf der mobilen QR-Seite verwendet. Die Animation ist Visualisierung; gespeichert wird
@@ -26,6 +27,7 @@ export function BoardDiceRoller({
   disabled: boolean;
   onSaved: (round: TournamentRound) => void;
 }): React.ReactElement {
+  const { t } = useI18n();
   const [phase, setPhase] = React.useState<'idle' | 'rolling' | 'revealed'>('idle');
   const [previewNumber, setPreviewNumber] = React.useState<number | null>(null);
   const [previewBackRank, setPreviewBackRank] = React.useState<string>('');
@@ -115,7 +117,7 @@ export function BoardDiceRoller({
           body: JSON.stringify({ overwriteExisting: Boolean(currentPosition), positionNumber: previewNumber })
         }
       );
-      setLocalStatus(`Gespeichert: SP ${previewNumber} für Brett ${boardNumber}.`);
+      setLocalStatus(t('dice.saved', { position: previewNumber, board: boardNumber }));
       setPhase('idle');
       setPreviewNumber(null);
       setPreviewBackRank('');
@@ -135,7 +137,7 @@ export function BoardDiceRoller({
   return (
     <div className="board-dice-roller">
       <ChessDie rolling={rolling} spin={spin} face={face} quick={quick} compact />
-      <div className="board-dice-squares" aria-label="Chess960-Grundreihe Feld für Feld">
+      <div className="board-dice-squares" aria-label={t('dice.rankLabel')}>
         {revealedRank.map((piece, index) => (
           <div
             key={index}
@@ -147,29 +149,29 @@ export function BoardDiceRoller({
       </div>
       <p className="dice-result-line">
         {phase === 'rolling'
-          ? 'Der Würfel arbeitet sich Feld für Feld nach rechts …'
+          ? t('dice.revealing')
           : phase === 'revealed' && previewNumber !== null
-            ? `Ergebnis: ${previewBackRank} · SP ${previewNumber}`
+            ? t('dice.result', { rank: previewBackRank, position: previewNumber })
             : currentPosition
-              ? `Aktuell gespeichert: ${currentPosition.whiteBackRank} · SP ${currentPosition.positionNumber}`
-              : 'Bereit zum Würfeln für dieses Brett.'}
+              ? t('dice.current', { rank: currentPosition.whiteBackRank, position: currentPosition.positionNumber })
+              : t('dice.ready')}
       </p>
       {phase === 'revealed' && previewNumber !== null && (
-        <p className="board-dice-black muted">Schwarz spiegelbildlich: {previewBackRank.toLowerCase()}</p>
+        <p className="board-dice-black muted">{t('dice.blackRank', { rank: previewBackRank.toLowerCase() })}</p>
       )}
       <div className="dice-modal-actions">
         {phase !== 'revealed' && (
           <button type="button" onClick={startRoll} disabled={rolling || saving || disabled}>
-            {rolling ? 'Würfelt …' : currentPosition ? '🎲 Neu würfeln' : '🎲 Würfeln'}
+            {rolling ? t('dice.rolling') : currentPosition ? t('dice.rollAgain') : t('dice.roll')}
           </button>
         )}
         {phase === 'revealed' && (
           <>
             <button type="button" onClick={requestSave} disabled={saving || disabled}>
-              {saving ? 'Speichert …' : '💾 Für Brett speichern'}
+              {saving ? t('dice.saving') : t('dice.saveBoard')}
             </button>
-            <button type="button" className="secondary" onClick={startRoll} disabled={saving}>🎲 Nochmal würfeln</button>
-            <button type="button" className="secondary" onClick={() => { setPhase('idle'); setPreviewNumber(null); setRevealStep(0); }} disabled={saving}>Abbrechen</button>
+            <button type="button" className="secondary" onClick={startRoll} disabled={saving}>{t('dice.rollAgain')}</button>
+            <button type="button" className="secondary" onClick={() => { setPhase('idle'); setPreviewNumber(null); setRevealStep(0); }} disabled={saving}>{t('dice.cancel')}</button>
           </>
         )}
       </div>
@@ -177,17 +179,17 @@ export function BoardDiceRoller({
       {localError && <p className="board-dice-error">⚠ {localError}</p>}
       <ConfirmDialog
         open={overwriteConfirmOpen && currentPosition !== null}
-        title={`Brett ${boardNumber}: Startstellung überschreiben?`}
-        description={`Für dieses Brett ist bereits SP ${currentPosition?.positionNumber ?? '—'} gespeichert.`}
+        title={t('dice.overwriteTitle', { board: boardNumber })}
+        description={t('dice.overwriteDescription', { position: currentPosition?.positionNumber ?? '—' })}
         consequences={[
-          `Bisher: ${currentPosition?.whiteBackRank ?? '—'} · SP ${currentPosition?.positionNumber ?? '—'}`,
-          `Neu: ${previewBackRank || '—'} · SP ${previewNumber ?? '—'}`
+          t('dice.previous', { rank: currentPosition?.whiteBackRank ?? '—', position: currentPosition?.positionNumber ?? '—' }),
+          t('dice.next', { rank: previewBackRank || '—', position: previewNumber ?? '—' })
         ]}
-        confirmLabel="Überschreiben"
-        cancelLabel="Abbrechen"
+        confirmLabel={t('dice.overwrite')}
+        cancelLabel={t('dice.cancel')}
         destructive
         busy={saving}
-        busyLabel="Speichert …"
+        busyLabel={t('dice.saving')}
         onConfirm={() => void save()}
         onCancel={() => setOverwriteConfirmOpen(false)}
       />

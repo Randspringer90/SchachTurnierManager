@@ -6,14 +6,65 @@
 // ApiUnreachableError and rendered through describeApiError.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   ApiUnreachableError,
+  ApiResponseError,
   describeApiError,
   requestJson,
   requestText,
 } from '../src/api/client.ts';
 
 const originalFetch = globalThis.fetch;
+
+test('every coded domain/application rule has English feedback that does not echo server details', () => {
+  const domainDirectory = new URL('../../SchachTurnierManager.Domain/Services/', import.meta.url);
+  const sources = [
+    readFileSync(new URL('../../SchachTurnierManager.Application/TournamentService.cs', import.meta.url), 'utf8'),
+    ...readdirSync(domainDirectory).filter(name => name.endsWith('.cs'))
+      .map(name => readFileSync(new URL(name, domainDirectory), 'utf8')),
+  ];
+  const codes = new Set(sources.flatMap(source => [...source.matchAll(/\.WithErrorCode\("([A-Z][A-Z0-9_]*)"\)/g)].map(match => match[1])));
+  assert.ok(codes.size > 1, 'the producer contract must cover multiple real validation rules');
+  for (const code of codes) {
+    const detail = 'synthetic-original-server-detail';
+    const error = new ApiResponseError(400, detail, code);
+    assert.notEqual(describeApiError(error, 'en'), detail, `English translation missing for ${code}`);
+    assert.equal(describeApiError(error, 'de'), detail, `original detail changed for ${code}`);
+  }
+});
+
+test('tournament validation codes keep English feedback readable and preserve the German detail', async () => {
+  const originalDetail = 'Turniername darf nicht leer sein.';
+  await withFetch(() => Promise.resolve(jsonResponse({ code: 'TOURNAMENT_NAME_REQUIRED', error: originalDetail }, { status: 400 })), async () => {
+    const error = await requestJson('/api/tournaments').catch(value => value);
+    assert.equal(describeApiError(error, 'en'), 'Enter a tournament name.');
+    assert.equal(describeApiError(error, 'de'), originalDetail);
+  });
+});
+
+test('explicit API error codes have English feedback without reflecting rejected input', () => {
+  const program = readFileSync(new URL('../../SchachTurnierManager.WebApi/Program.cs', import.meta.url), 'utf8');
+  const codes = new Set([...program.matchAll(/\bcode\s*=\s*"([A-Z][A-Z0-9_]*)"/g)].map(match => match[1]));
+  assert.ok(codes.has('EXTERNAL_SOURCE_INVALID'));
+  for (const code of codes) {
+    const detail = 'synthetic-rejected-input';
+    assert.notEqual(describeApiError(new ApiResponseError(400, detail, code), 'en'), detail, `English API error missing for ${code}`);
+  }
+});
+
+test('structured FIDE errors are localized without parsing or echoing response text', async () => {
+  await withFetch(() => Promise.resolve(jsonResponse({ code: 'FIDE_LIST_INVALID', error: 'synthetic-private-message-marker' }, { status: 400 })), async () => {
+    const error = await requestJson('/api/external-players/fide/catalog').catch(value => value);
+    assert.match(describeApiError(error, 'en'), /standard TXT list/i);
+    assert.match(describeApiError(error, 'de'), /Standard-TXT-Liste/);
+    assert.doesNotMatch(describeApiError(error, 'en'), /synthetic-private-message-marker/);
+  });
+});
+test('access denial gives a useful localized connection explanation', () => {
+  assert.match(describeApiError(new ApiResponseError(403, 'HTTP 403'), 'en'), /connection/i);
+  assert.match(describeApiError(new ApiResponseError(403, 'HTTP 403'), 'de'), /Verbindung/);
+});
 
 function withFetch(stub: typeof globalThis.fetch, run: () => Promise<void>): Promise<void> {
   globalThis.fetch = stub;

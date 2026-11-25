@@ -8,12 +8,17 @@
 required-tools, forbidden-tools, procedure, security-controls, verification, outputs,
 typical-failures, lessons-learned, owning-agent`
 
-## Status
-- **canonical** (neues SKILL.md, volles Schema): prompt-injection-defense, instruction-integrity, untrusted-content-review, knowledge-management, secret-management, model-routing, pull-request-security-review, dependency-delta-review, malware-risk-review, safe-pr-adoption, contributor-feedback.
-- **legacy-flat** (bestehende `.agents/skills/*.md`, Migration zu SKILL.md offen unter STM-AI-001b):
-  repository-security, ai-run-logging, release-operations, runtime-logging, pairing-engine, tiebreaks, imports-exports, ui-dashboard, plus click-installation, colleague-*, external-player-lookup,
-  installer-packaging, logging-observability, rating-performance, internet-research.
-- **planned** (noch zu autorieren, STM-AI-001b): public-snapshot, fide-dutch, contributor-workflow, documentation-maintenance, dependency-security.
+## Katalog
 
-Legacy-Skills bleiben gueltig und werden nicht dupliziert; die Migration ueberfuehrt sie 1:1 ins
-SKILL.md-Format ohne fachliche Aenderung.
+Das Manifest beschreibt 36 Skills im kanonischen Format. Die bisherigen 16
+Legacy-Eintraege behalten ihren Fachtext im Abschnitt `Urspruenglicher Fachvertrag`;
+14 flache Dateien wurden an ihren kanonischen Ort verschoben. Die bereits als
+Ordner vorliegenden Skills ai-run-logging und internet-research erhielten das
+vollstaendige Schema. Historische Laufberichte behalten ihre damaligen Pfade.
+
+Die fuenf bisherigen Planungseintraege public-snapshot, fide-dutch,
+contributor-workflow, documentation-maintenance und dependency-security haben
+einen begrenzten Fachvertrag. Sie verleihen keine weiteren Aktionsfreigaben.
+
+Format- und Schemastatus sind keine Ownerfreigabe. Instruktionsaenderungen
+unterliegen weiterhin dem Reviewvertrag aus AGENTS.md und CODEOWNERS.

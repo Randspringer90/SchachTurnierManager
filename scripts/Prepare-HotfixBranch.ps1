@@ -4,7 +4,7 @@
 Bereitet einen Hotfix-Branch hotfix/<semver>-<name> von main vor.
 .DESCRIPTION
 Validiert SemVer und Namenssegment, zweigt von origin/main ab. Kein Tag, ohne -Push nur lokal.
-Details nach D:\Temp\<RunName>_<Timestamp>, genau ein Upload-ZIP.
+Details nach <Run-Basis>\<RunName>_<Timestamp>, genau ein Upload-ZIP.
 .EXAMPLE
 pwsh scripts/Prepare-HotfixBranch.ps1 -Version 1.0.1 -Name crash-import
 #>
