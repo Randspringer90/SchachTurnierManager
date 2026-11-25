@@ -36,6 +36,26 @@ public sealed class WebApiBoundaryTests
     }
 
     [Fact]
+    public void TournamentEtag_ChangesWithRevision_AndNeverTreatsUnversionedStateAsUnchanged()
+    {
+        var tournament = new TournamentState { Revision = 4 };
+        var etag = TournamentEtag.For(tournament);
+
+        Assert.Equal($"\"{tournament.Id:N}-4\"", etag);
+        Assert.True(TournamentEtag.IsUnchanged(etag, tournament));
+        Assert.False(TournamentEtag.IsUnchanged(default, tournament));
+        Assert.False(TournamentEtag.IsUnchanged(new Microsoft.Extensions.Primitives.StringValues(new[] { etag, etag }), tournament));
+
+        tournament.Revision = 5;
+        Assert.False(TournamentEtag.IsUnchanged(etag, tournament));
+        Assert.NotEqual(etag, TournamentEtag.For(tournament));
+
+        var legacy = new TournamentState { Revision = 0 };
+        Assert.False(TournamentEtag.IsUnchanged(TournamentEtag.For(legacy), legacy));
+        Assert.False(TournamentEtag.IsUnchanged(TournamentEtag.For(new TournamentState { Revision = 4 }), tournament));
+    }
+
+    [Fact]
     public void ResultRequests_BindCorrectionReasonAndTimestamp_AndStayBackwardCompatible()
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };

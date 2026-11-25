@@ -118,6 +118,8 @@ export type StandingRow = {
 export type Tournament = {
   id: string;
   resultQueueEpoch?: string;
+  /** Store-assigned change counter (ADR-0006); absent on servers older than persistence v2. */
+  revision?: number;
   name: string;
   createdOn: string;
   settings: {
@@ -457,4 +459,16 @@ export type KnowledgeBase = {
   privacyNotice: string;
   quickQuestions: string[];
   topics: KnowledgeTopic[];
+};
+
+/** List entry from GET /api/tournaments/summaries: no tournament content and no participant data. */
+export type TournamentSummary = {
+  id: string;
+  name: string;
+  createdOn: string;
+  updatedAt: string;
+  revision: number;
+  format: number | string;
+  playerCount: number;
+  roundCount: number;
 };

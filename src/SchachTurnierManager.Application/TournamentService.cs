@@ -27,6 +27,8 @@ public sealed class TournamentService(ITournamentStore store, IAuditJournalSink?
 
     public IReadOnlyList<TournamentState> ListTournaments() => _store.List();
 
+    public IReadOnlyList<TournamentSummary> ListTournamentSummaries() => _store.ListSummaries();
+
     public TournamentState CreateTournament(string name, TournamentSettings? settings = null)
     {
         if (string.IsNullOrWhiteSpace(name))

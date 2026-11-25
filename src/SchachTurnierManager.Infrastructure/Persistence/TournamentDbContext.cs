@@ -15,6 +15,11 @@ public sealed class TournamentDbContext(DbContextOptions<TournamentDbContext> op
         entity.Property(x => x.CreatedOn).HasMaxLength(16).IsRequired();
         entity.Property(x => x.UpdatedAt).IsRequired();
         entity.Property(x => x.Json).IsRequired();
+        // Defaults keep rows written by an older build readable until the schema migration ran.
+        entity.Property(x => x.Revision).IsRequired().HasDefaultValue(0L);
+        entity.Property(x => x.PlayerCount).IsRequired().HasDefaultValue(0);
+        entity.Property(x => x.RoundCount).IsRequired().HasDefaultValue(0);
+        entity.Property(x => x.Format).HasMaxLength(32).IsRequired().HasDefaultValue(string.Empty);
         entity.HasIndex(x => x.Name);
     }
 }

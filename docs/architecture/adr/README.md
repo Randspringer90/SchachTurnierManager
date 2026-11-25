@@ -7,6 +7,7 @@
 | [0003](0003-versionierter-rundenturnierplan.md) | Versionierter Rundenturnier-Spielplan | angenommen |
 | [0004](0004-lokaler-netzzugriff-und-geraetekopplung.md) | Lokaler Netzzugriff und Gerätekopplung | teilweise angenommen |
 | [0005](0005-aktuelle-abhaengigkeiten-und-paketquellen.md) | Aktuelle Abhängigkeiten aus geprüften Paketquellen | angenommen |
+| [0006](0006-persistenz-v2-revision-und-schemaversion.md) | Persistenz v2: Revision, Schemaversion, Liste ohne Snapshot | angenommen |
 
 Neue Entscheidungen erhalten die nächste freie Nummer; überholte ADRs werden als „ersetzt durch“ markiert,
 nicht gelöscht.

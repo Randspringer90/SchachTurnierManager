@@ -115,7 +115,15 @@ try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TournamentDbContext>();
-    db.Database.EnsureCreated();
+    // Creates a new database or upgrades an existing one; an existing file is copied to
+    // <data>/backups before its schema is changed.
+    var migration = DatabaseSchemaMigrator.Migrate(db, usesFileDatabase ? Path.Combine(dataDirectory, "backups") : null);
+    if (migration.Changed)
+    {
+        startupLogger.LogInformation(
+            "Datenbankschema von Version {FromVersion} auf {ToVersion} aktualisiert; {MigratedRows} Turniere übernommen, {UnreadableRows} nicht lesbar; Sicherung vorhanden: {HasBackup}.",
+            migration.FromVersion, migration.ToVersion, migration.MigratedRows, migration.UnreadableRows, migration.BackupPath is not null);
+    }
 }
 catch (Exception ex)
 {
@@ -287,6 +295,9 @@ app.MapPost("/api/tournaments/{id:guid}/external-players/apply", (Guid id, Apply
 
 app.MapGet("/api/tournaments", (TournamentService service) => Results.Ok(service.ListTournaments()));
 
+// Lightweight list without tournament content or participant data (ADR-0006).
+app.MapGet("/api/tournaments/summaries", (TournamentService service) => Results.Ok(service.ListTournamentSummaries()));
+
 app.MapPost("/api/tournaments", (CreateTournamentRequest request, TournamentService service) =>
 {
     try
@@ -305,11 +316,20 @@ app.MapPost("/api/tournaments", (CreateTournamentRequest request, TournamentServ
     }
 });
 
-app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service) =>
+app.MapGet("/api/tournaments/{id:guid}", (Guid id, TournamentService service, HttpContext http) =>
 {
     try
     {
-        return Results.Ok(service.RequireTournament(id));
+        var tournament = service.RequireTournament(id);
+        // The revision changes with every stored change, so a client can skip unchanged data.
+        http.Response.Headers.ETag = TournamentEtag.For(tournament);
+        http.Response.Headers.CacheControl = "no-cache";
+        if (TournamentEtag.IsUnchanged(http.Request.Headers.IfNoneMatch, tournament))
+        {
+            return Results.StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        return Results.Ok(tournament);
     }
     catch (InvalidOperationException ex)
     {

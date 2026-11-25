@@ -15,4 +15,14 @@ public sealed class TournamentSnapshot
     public DateTimeOffset UpdatedAt { get; set; }
 
     public string Json { get; set; } = string.Empty;
+
+    // Schema version 1: list and staleness data that must be readable without parsing Json.
+    public long Revision { get; set; }
+
+    public int PlayerCount { get; set; }
+
+    public int RoundCount { get; set; }
+
+    [MaxLength(32)]
+    public string Format { get; set; } = string.Empty;
 }

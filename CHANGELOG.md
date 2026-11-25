@@ -8,6 +8,7 @@
 - STM-FACH-007: Ergebniskorrekturen erzeugen ein eigenes Audit-Ereignis `ResultCorrected` mit altem und neuem Ergebnis sowie optionalem Grund; Warnung, wenn Folgerunden bereits mit dem alten Ergebnis gepaart wurden (Paarungen bleiben, Wertung wird neu berechnet); Zeitstempelbindung erkennt zwischenzeitliche Änderungen; Doppelklick-Schutz im Bestätigungsdialog.
 - Log-Redaktion schwärzt wieder zusammengesetzte Schlüssel wie `clientSecret`, `apiToken`, `auth_token` (Regression des Kandidaten behoben, mit Tests).
 - `AGENTS.md` neu gegliedert (Freigaben, Vertrauenszonen, Paketquellen, Aktualitätsregel), Claude-Adapter auf reine Verweise reduziert; Architekturprüfung `docs/architecture/ARCHITECTURE_REVIEW_2026-11-24.md` und ADR-0001 bis ADR-0005 ergänzt.
+- Persistenz v2 (ADR-0006): Revision je Turnier (steigt nur bei inhaltlicher Änderung), Schemaversion über `PRAGMA user_version` mit automatischer Sicherungskopie vor jeder Schemaänderung, Ablehnung neuerer Datenbanken, Turnierliste `GET /api/tournaments/summaries` aus Spalten ohne Teilnehmerdaten, `ETag`/`304` für `GET /api/tournaments/{id}`. Bestehende Datenbanken werden beim Start angehoben; Turnierinhalte bleiben byteidentisch.
 - Geprüft: .NET 1043 Tests, Frontend 174, i18n 53, Backup 80, Node-Suite 1932 (4 plattformbedingt übersprungen), TypeScript- und Vite-Build. Browser-End-to-End-, Installer-, Geräte- und CI-Nachweise für diesen Stand stehen aus.
 
 ### Lokaler Integrationskandidat 2026-10-28 – noch nicht übernommen

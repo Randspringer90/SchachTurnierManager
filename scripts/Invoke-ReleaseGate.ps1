@@ -92,9 +92,11 @@ try {
     $lockHashBefore = (Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash
 
     Invoke-NativeStep 'dotnet restore' { dotnet restore }
-    Invoke-NativeStep 'dotnet build' { dotnet build }
+    # Same configuration as the CI. The time budgets of the pairing search are defined for optimized
+    # builds; an unoptimized Debug build can exceed them on slower machines although nothing is wrong.
+    Invoke-NativeStep 'dotnet build' { dotnet build -c Release --no-restore }
     if (-not $NoDotnetTest) {
-        Invoke-NativeStep 'dotnet test' { dotnet test }
+        Invoke-NativeStep 'dotnet test' { dotnet test -c Release --no-build }
     } else {
         Write-Host '[ReleaseGate] dotnet test übersprungen.'
     }
